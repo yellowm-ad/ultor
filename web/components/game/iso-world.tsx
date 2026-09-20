@@ -6,10 +6,11 @@ import type { GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { ELEMENT_META } from '@/lib/constants'
 import { NPCS, MONSTERS } from '@/lib/mock-data'
-import { wanderPosition, wanderFacing, wanderIsMoving, npcWanderPosition, npcWanderFacing, npcWanderIsMoving } from '@/lib/field'
+import { wanderState, npcWanderState } from '@/lib/field'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
 import type { TileKind, PropDef } from '@/lib/iso'
 import { renderProp } from '@/components/game/iso-sprites'
+import { FURNITURE_BY_ID } from '@/lib/housing'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 
 const SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
@@ -34,6 +35,10 @@ function RasterProp({ p }: { p: PropDef }) {
   const ay = p.anchor?.y ?? (h ?? 0)
   // facing:'left' — 좌우 반전(벤치 등, 배치 방향을 통로 쪽으로 맞출 때 사용). wall은 이미 별도 처리하므로 제외.
   const mirror = p.facing === 'left' && p.kind !== 'wall'
+  // 벽면 기울이기 — 발밑 앵커(ax,ay)를 축으로 skewY, 쿼터뷰 바닥선 각도에 맞춰 벽이 뜨지 않게 함
+  const skew = p.skewYDeg ? `skewY(${p.skewYDeg}deg)` : ''
+  const flip = mirror || p.mirrorX ? 'scaleX(-1)' : ''
+  const transform = [flip, skew].filter(Boolean).join(' ') || undefined
   return (
     <image
       href={p.sprite}
@@ -43,8 +48,8 @@ function RasterProp({ p }: { p: PropDef }) {
       height={h}
       style={{
         imageRendering: 'pixelated',
-        transform: mirror ? 'scaleX(-1)' : undefined,
-        transformOrigin: mirror ? 'center' : undefined,
+        transform,
+        transformOrigin: transform ? `${ax}px ${ay}px` : undefined,
       }}
     />
   )
@@ -191,9 +196,7 @@ export function IsoWorld({
   const mapNpcsForRoam = useMemo(() => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId)), [map])
   const ND = 74 // NPC 도트 스프라이트 표시 크기
   const npcEntities = mapNpcsForRoam.map((npc) => {
-    const pos = npcWanderPosition(npc, wanderT, map.blockers)
-    const dir = npcWanderFacing(npc, wanderT, map.blockers)
-    const moving = npcWanderIsMoving(npc, wanderT)
+    const { pos, facing: dir, moving } = npcWanderState(npc, wanderT, map.blockers)
     const s = isoToScreen(pos.x, pos.y)
     return {
       sortY: pos.x + pos.y + 0.2,
@@ -234,9 +237,7 @@ export function IsoWorld({
   const monsterEntities = visibleMonsters.flatMap((fm) => {
     const def = MONSTERS.find((m) => m.id === fm.monsterId)
     if (!def) return []
-    const pos = wanderPosition(fm, wanderT, map.blockers)
-    const dir = wanderFacing(fm, wanderT, map.blockers)
-    const moving = wanderIsMoving(fm, wanderT)
+    const { pos, facing: dir, moving } = wanderState(fm, wanderT, map.blockers)
     const s = isoToScreen(pos.x, pos.y)
     const scale = fieldRankScale(def.rank)
     const size = MD * scale
@@ -368,7 +369,34 @@ export function IsoWorld({
     </g>
   )
 
-  const allEntities = [...staticEntities, ...monsterEntities, ...npcEntities].sort((a, b) => a.sortY - b.sortY)
+  // 개인 공간 가구 — 플레이어가 배치한 것만, 편집 모드에서는 클릭으로 제거
+  const furnitureEntities =
+    state.currentMapId === 'personal-space'
+      ? state.housing.placed.flatMap((f) => {
+          const def = FURNITURE_BY_ID[f.defId]
+          if (!def) return []
+          const s = isoToScreen(f.cell.x, f.cell.y)
+          const prop: PropDef = { id: f.id, kind: 'cottage', cell: f.cell, sprite: def.sprite.s, px: { w: def.sprite.w, h: def.sprite.h } }
+          const half = (def.sprite.fw + def.sprite.fd) / 2
+          return [
+            {
+              sortY: f.cell.x + f.cell.y + half,
+              node: (
+                <g
+                  key={f.id}
+                  transform={`translate(${s.sx},${s.sy})`}
+                  style={state.housing.editMode ? { cursor: 'pointer' } : undefined}
+                  onClick={state.housing.editMode ? () => dispatch({ type: 'HOUSING_REMOVE', id: f.id }) : undefined}
+                >
+                  <RasterProp p={prop} />
+                </g>
+              ),
+            },
+          ]
+        })
+      : []
+
+  const allEntities = [...staticEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities].sort((a, b) => a.sortY - b.sortY)
   const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 

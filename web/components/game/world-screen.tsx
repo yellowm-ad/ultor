@@ -6,13 +6,14 @@ import { useGame } from '@/lib/game-state'
 import { ELEMENT_META } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
 import { MONSTERS, NPCS } from '@/lib/mock-data'
+import { FURNITURE_CATALOG } from '@/lib/housing'
 import { npcWanderPosition } from '@/lib/field'
 import { Button } from '@/components/ui/button'
 import { HeroPortrait } from '@/components/game/portrait'
 import { HeroSprite as PixelHero } from '@/components/game/pixel-hero'
 import { CreatureSprite, type Facing } from '@/components/game/creature-sprite'
 import { IsoWorld } from '@/components/game/iso-world'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, DoorOpen, MessageCircle, ShieldAlert } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, DoorOpen, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
 const TILE = 64
 const MOVE_SPEED = 2.1 // 초당 이동 셀 수 (쿼터뷰 맵)
@@ -514,6 +515,42 @@ export function WorldScreen() {
             <MessageCircle className="size-3.5" /> {interactTarget.name}와(과) 대화 (E)
           </div>
         </div>
+      )}
+
+      {/* 내 개인 공간 — 가구 배치 모드 */}
+      {state.currentMapId === 'personal-space' && (
+        <>
+          <div className="pointer-events-auto absolute bottom-3 right-3 z-20">
+            <Button
+              variant={state.housing.editMode ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => dispatch({ type: 'HOUSING_TOGGLE_EDIT' })}
+            >
+              <Hammer className="size-3.5" /> {state.housing.editMode ? '배치 완료' : '가구 배치'}
+            </Button>
+          </div>
+          {state.housing.editMode && (
+            <div className="pointer-events-auto absolute inset-x-0 bottom-16 z-20 flex justify-center">
+              <div className="panel-gilded flex max-w-[92vw] items-center gap-2 overflow-x-auto px-3 py-2">
+                <span className="shrink-0 text-[11px] text-muted-foreground">바라보는 방향 앞에 놓기 →</span>
+                {FURNITURE_CATALOG.map((f) => (
+                  <button
+                    key={f.id}
+                    className="flex shrink-0 flex-col items-center gap-0.5 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gold-soft hover:bg-white/10"
+                    onClick={() => dispatch({ type: 'HOUSING_PLACE', defId: f.id })}
+                  >
+                    <img src={f.sprite.s} alt={f.label} className="h-8 w-8 object-contain" style={{ imageRendering: 'pixelated' }} />
+                    {f.label}
+                  </button>
+                ))}
+                <span className="mx-1 shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <X className="size-3" /> 배치된 가구 클릭 시 제거
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* 군 통문 — 목적지 선택 */}

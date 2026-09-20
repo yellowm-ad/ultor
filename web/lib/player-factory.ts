@@ -57,5 +57,19 @@ export function createInitialGameState(): GameState {
     battle: null,
     settings: DEFAULT_SETTINGS,
     toast: null,
+    housing: {
+      editMode: false,
+      placed: [
+        { id: 'seed-bed', defId: 'bed', cell: { x: 2.5, y: 8 } },
+        { id: 'seed-nightstand', defId: 'nightstand', cell: { x: 2.5, y: 6.3 } },
+        { id: 'seed-wardrobe', defId: 'wardrobe', cell: { x: 5, y: 1.8 } },
+        { id: 'seed-weaponrack', defId: 'weaponrack', cell: { x: 9.5, y: 1.8 } },
+        { id: 'seed-chest', defId: 'chest', cell: { x: 7, y: 5 } },
+        { id: 'seed-desk', defId: 'desk', cell: { x: 11.5, y: 3 } },
+        { id: 'seed-fireplace', defId: 'fireplace', cell: { x: 12.3, y: 6 } },
+        { id: 'seed-firewood', defId: 'firewood', cell: { x: 12.3, y: 7.5 } },
+        { id: 'seed-boots', defId: 'boots', cell: { x: 3.5, y: 9 } },
+      ],
+    },
   }
 }

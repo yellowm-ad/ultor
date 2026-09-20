@@ -334,6 +334,12 @@ export type MapId =
   | 'volcano'
   | 'demon-village'
   | 'demon-castle'
+  | 'atlantis-temple'
+  | 'demon-temple'
+  | 'sky-sanctum'
+  | 'ruin-sanctum'
+  | 'aurora-sanctum'
+  | 'personal-space'
   | 'testroom'
 
 /** 포탈: 타일에 서면(또는 군 통문에서 선택하면) 다른 맵으로 이동 */
@@ -495,6 +501,7 @@ export type ScreenId =
   | 'settings'
   | 'dialogue'
   | 'craft'
+  | 'worldmap'
 
 export interface GameSettings {
   testMode: boolean
@@ -523,4 +530,17 @@ export interface GameState {
   battle: BattleState | null
   settings: GameSettings
   toast: string | null
+  housing: HousingState
+}
+
+/** 내 개인 공간에 배치한 가구 한 개 */
+export interface PlacedFurniture {
+  id: string
+  defId: string
+  cell: { x: number; y: number }
+}
+
+export interface HousingState {
+  editMode: boolean
+  placed: PlacedFurniture[]
 }

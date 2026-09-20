@@ -141,6 +141,35 @@ export function wanderFacing(fm: FieldMonster, timeMs: number, blockers?: Blocke
   return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
 }
 
+function facingFromDelta(dx: number, dy: number): 'down' | 'up' | 'left' | 'right' {
+  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return 'down'
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+}
+
+/**
+ * wanderPosition/wanderFacing/wanderIsMoving을 렌더 프레임마다 각각 따로 부르면
+ * pauseCycle·avoidBlockers 가 3배로 중복 계산된다(iso-world.tsx가 몬스터마다 매 틱 호출).
+ * 같은 값을 한 번만 계산해 세 결과를 함께 돌려주는 합本(合本) 버전 — 결과는 기존 함수들과 100% 동일.
+ */
+export function wanderState(
+  fm: FieldMonster,
+  timeMs: number,
+  blockers?: Blocker[],
+): { pos: { x: number; y: number }; facing: 'down' | 'up' | 'left' | 'right'; moving: boolean } {
+  const t = timeMs / 1000 + fm.wanderSeed
+  const { effectiveT, moving } = pauseCycle(t, 7, 0.6)
+  const radius = 1.1
+  const speed = 0.22
+  const pos = avoidBlockers(
+    { x: fm.homeCell.x + Math.cos(effectiveT * speed) * radius, y: fm.homeCell.y + Math.sin(effectiveT * speed * 1.35) * radius * 0.85 },
+    fm.homeCell,
+    blockers,
+    MONSTER_BODY_R,
+  )
+  const next = wanderPosition(fm, timeMs + 100, blockers)
+  return { pos, facing: facingFromDelta(next.x - pos.x, next.y - pos.y), moving }
+}
+
 // ── NPC 자유 이동(배회) ── npc.cell(홈 위치) 주변을 몬스터와 동일한 방식(결정론적 리사주 곡선)으로
 // 맴돈다. 상점/훈련 등 기능형 NPC는 카운터를 이탈하면 상호작용이 어려워지므로 반경을 아주 작게(제자리
 // 서성임) 두고, flavor(장식용 주민) NPC만 넓게 돌아다니게 한다.
@@ -191,4 +220,25 @@ export function npcWanderFacing(npc: NpcDef, timeMs: number, blockers?: Blocker[
   const dy = b.y - a.y
   if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return 'down'
   return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+}
+
+/** npcWanderPosition/Facing/IsMoving 3중 호출로 인한 pauseCycle·avoidBlockers 중복 계산을 합쳐 한 번만 — wanderState와 동일 취지 */
+export function npcWanderState(
+  npc: NpcDef,
+  timeMs: number,
+  blockers?: Blocker[],
+): { pos: { x: number; y: number }; facing: 'down' | 'up' | 'left' | 'right'; moving: boolean } {
+  const seed = npcSeed(npc.id)
+  const t = timeMs / 1000 + (seed % 1000)
+  const { effectiveT, moving } = pauseCycle(t, 6 + (seed % 4), 0.55)
+  const radius = npcWanderRadius(npc)
+  const speed = 0.14 + (seed % 53) / 1000
+  const pos = avoidBlockers(
+    { x: npc.cell.x + Math.cos(effectiveT * speed) * radius, y: npc.cell.y + Math.sin(effectiveT * speed * 1.35) * radius * 0.85 },
+    npc.cell,
+    blockers,
+    NPC_BODY_R,
+  )
+  const next = npcWanderPosition(npc, timeMs + 100, blockers)
+  return { pos, facing: facingFromDelta(next.x - pos.x, next.y - pos.y), moving }
 }

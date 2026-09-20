@@ -59,6 +59,8 @@ export type TileKind =
   | 'demon-road' // 마을 테마 평면 타일 (scripts/gen-town-tiles.mjs)
   | 'demon-ash' // 마을 테마 평면 타일 (scripts/gen-town-tiles.mjs)
   | 'demon-lava' // 마을 테마 평면 타일 (scripts/gen-town-tiles.mjs)
+  | 'personal-wood' // 내 개인 공간 — 픽셀랩 생성 + plaza 마스크로 정합(scripts/mask-fit-tile.mjs)
+  | 'atlantis-cathedral' // 아틀란티스 대성당 내부 — 픽셀랩 생성 + plaza 마스크로 정합(scripts/mask-fit-tile.mjs)
 
 /**
  * 라스터 모드에서 지면 타일 PNG 경로 (다이메트릭 2:1, 폭 = ISO_TILE_W 배수).
@@ -96,6 +98,8 @@ export const TILE_SPRITES: Partial<Record<TileKind, string>> = {
   'demon-road': '/images/map/tiles/demon-road.png',
   'demon-ash': '/images/map/tiles/demon-ash.png',
   'demon-lava': '/images/map/tiles/demon-lava.png',
+  'personal-wood': '/images/map/tiles/personal-wood.png',
+  'atlantis-cathedral': '/images/map/tiles/atlantis-cathedral.png',
 }
 
 /** 타일별 상/좌/우 면 색 (좌·우는 살짝 어둡게 해 미세 입체) */
@@ -131,6 +135,8 @@ export const TILE_COLORS: Record<TileKind, { top: string; edge: string }> = {
   'demon-road': { top: '#2a1d1f', edge: '#8a3a14' },
   'demon-ash': { top: '#4a4143', edge: '#2b2426' },
   'demon-lava': { top: '#ff6a1a', edge: '#5a1a0a' },
+  'personal-wood': { top: '#5a3a2c', edge: '#3a2419' },
+  'atlantis-cathedral': { top: '#1f5c52', edge: '#123a34' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -174,6 +180,10 @@ export interface PropDef {
   /** 색 변주(주택 지붕색 등) / 방향 */
   variant?: string
   facing?: 'left' | 'right'
+  /** 쿼터뷰 바닥선에 맞춰 벽면을 기울이는 각도(도) — 벽(kind:'wall') 전용, 발밑 앵커를 축으로 기움 */
+  skewYDeg?: number
+  /** 벽면 좌우 반전(facing/wall 제외 로직과 무관한 별도 플래그) — 반대쪽 벽에 같은 스프라이트를 거울상으로 재사용할 때 */
+  mirrorX?: boolean
   /** 라벨(대형 구조물 위 표시, 선택) */
   label?: string
   /**

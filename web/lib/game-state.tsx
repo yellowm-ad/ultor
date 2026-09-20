@@ -17,6 +17,7 @@ import {
   computeStatsForLevel,
 } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
+import { FURNITURE_BY_ID } from '@/lib/housing'
 import { ITEMS, MONSTERS, NPCS, SKILLS, autoLearnSkillIds, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { applyExp } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
@@ -57,6 +58,9 @@ export type Action =
   | { type: 'USE_PORTAL'; portalId: string }
   | { type: 'PORTAL_CONFIRM' }
   | { type: 'PORTAL_CANCEL' }
+  | { type: 'HOUSING_TOGGLE_EDIT' }
+  | { type: 'HOUSING_PLACE'; defId: string }
+  | { type: 'HOUSING_REMOVE'; id: string }
   | { type: 'OPEN_GATE' }
   | { type: 'CLOSE_GATE' }
   | { type: 'BATTLE_ACTOR_ACTION'; actorUid: string; action: EngineBattleAction }
@@ -107,11 +111,20 @@ function refreshLearnedSkills(element: string, level: number, tierId: string): s
 }
 
 const BODY_R = 0.24 // 캐릭터 반경(셀) — 이 만큼 건물 벽에서 떨어져 선다
-function blockedAt(mapId: GameState['currentMapId'], x: number, y: number): boolean {
+function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number, y: number): boolean {
+  const hits = (r: { x0: number; y0: number; x1: number; y1: number }) =>
+    x > r.x0 - BODY_R && x < r.x1 + BODY_R && y > r.y0 - BODY_R && y < r.y1 + BODY_R
   const b = MAPS[mapId].blockers
-  if (!b) return false
-  for (const r of b) {
-    if (x > r.x0 - BODY_R && x < r.x1 + BODY_R && y > r.y0 - BODY_R && y < r.y1 + BODY_R) return true
+  if (b && b.some(hits)) return true
+  // 개인 공간 가구 — 플레이어가 배치한 가구도 충돌 처리(정적 blockers 에는 없음)
+  if (mapId === 'personal-space') {
+    for (const f of state.housing.placed) {
+      const def = FURNITURE_BY_ID[f.defId]
+      if (!def) continue
+      const hw = def.sprite.fw / 2
+      const hd = def.sprite.fd / 2
+      if (hits({ x0: f.cell.x - hw, y0: f.cell.y - hd, x1: f.cell.x + hw, y1: f.cell.y + hd })) return true
+    }
   }
   return false
 }
@@ -161,13 +174,13 @@ function reducer(state: GameState, action: Action): GameState {
       // 건물 충돌: 대각선이 막히면 x/y 축으로 슬라이드
       let nx = clampX(ox + action.dx)
       let ny = clampY(oy + action.dy)
-      if (blockedAt(state.currentMapId, nx, ny)) {
+      if (blockedAt(state, state.currentMapId, nx, ny)) {
         const slideX = clampX(ox + action.dx)
         const slideY = clampY(oy + action.dy)
-        if (!blockedAt(state.currentMapId, slideX, oy)) {
+        if (!blockedAt(state, state.currentMapId, slideX, oy)) {
           nx = slideX
           ny = oy
-        } else if (!blockedAt(state.currentMapId, ox, slideY)) {
+        } else if (!blockedAt(state, state.currentMapId, ox, slideY)) {
           nx = ox
           ny = slideY
         } else {
@@ -267,6 +280,28 @@ function reducer(state: GameState, action: Action): GameState {
         }
       }
       return { ...state, position, pendingPortalId: null }
+    }
+
+    case 'HOUSING_TOGGLE_EDIT': {
+      if (state.currentMapId !== 'personal-space') return state
+      return { ...state, housing: { ...state.housing, editMode: !state.housing.editMode } }
+    }
+
+    case 'HOUSING_PLACE': {
+      if (state.currentMapId !== 'personal-space' || !state.housing.editMode) return state
+      const def = FURNITURE_BY_ID[action.defId]
+      if (!def) return state
+      const off =
+        state.facing === 'up' ? { x: 0, y: -0.9 } : state.facing === 'down' ? { x: 0, y: 0.9 } : state.facing === 'left' ? { x: -0.9, y: 0 } : { x: 0.9, y: 0 }
+      const cell = { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
+      if (blockedAt(state, 'personal-space', cell.x, cell.y)) return state
+      const placed = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, defId: action.defId, cell }
+      return { ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed] } }
+    }
+
+    case 'HOUSING_REMOVE': {
+      if (state.currentMapId !== 'personal-space' || !state.housing.editMode) return state
+      return { ...state, housing: { ...state.housing, placed: state.housing.placed.filter((p) => p.id !== action.id) } }
     }
 
     case 'OPEN_NPC':
