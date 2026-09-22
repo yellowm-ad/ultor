@@ -70,8 +70,10 @@ export function Minimap() {
 
   if (state.screen !== 'world') return null
 
-  const fx = (cx: number) => (cx / map.grid.w) * w
-  const fy = (cy: number) => (cy / map.grid.h) * h
+  // 원형 미니맵 테두리에 마커가 반쯤 가려지지 않도록 안쪽으로 살짝 여백을 둔다(지도 끝 근처를 걸을 때 대비).
+  const MARK_PAD = 6
+  const fx = (cx: number) => Math.min(w - MARK_PAD, Math.max(MARK_PAD, (cx / map.grid.w) * w))
+  const fy = (cy: number) => Math.min(h - MARK_PAD, Math.max(MARK_PAD, (cy / map.grid.h) * h))
   const elem = ELEMENT_META[state.player.element]
 
   return (

@@ -30,7 +30,7 @@ export function Hud() {
           </div>
           <div className="flex w-40 flex-col gap-1 sm:w-48">
             <div className="hud-clean-text hud-clean-label flex items-center gap-1.5 text-[13px]">
-              <span className="truncate text-gold-soft">{player.name}</span>
+              <span className="min-w-0 flex-1 truncate text-gold-soft">{player.name}</span>
               <span className="shrink-0 text-white/75">Lv.{player.level}</span>
             </div>
             <div className="hud-clean-bar-track hud-clean-bar-hp-size">

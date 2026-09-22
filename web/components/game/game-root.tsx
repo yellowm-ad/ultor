@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
+import type { ScreenId } from '@/lib/types'
 import { TitleScreen } from '@/components/game/title-screen'
 import { CreateScreen } from '@/components/game/create-screen'
 import { WorldScreen } from '@/components/game/world-screen'
@@ -18,8 +20,49 @@ import { CraftScreen } from '@/components/game/craft-screen'
 import { WorldMapScreen } from '@/components/game/world-map-screen'
 import { Toast } from '@/components/game/toast'
 
+const OVERLAY_HOTKEYS: Record<string, ScreenId> = { i: 'inventory', c: 'character', p: 'party', m: 'worldmap' }
+const CLOSABLE_WITH_ESC = new Set<ScreenId>([
+  'inventory',
+  'character',
+  'party',
+  'shop',
+  'tamer',
+  'settings',
+  'craft',
+  'worldmap',
+  'dialogue',
+])
+
 function GameShell() {
-  const { state } = useGame()
+  const { state, dispatch } = useGame()
+
+  // 단축키: ESC로 오버레이 닫기, I/C/P/M으로 가방·정보·파티·전체지도 토글(월드 화면에서만 동작).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+
+      if (e.key === 'Escape') {
+        if (CLOSABLE_WITH_ESC.has(state.screen)) {
+          e.preventDefault()
+          dispatch({ type: 'CLOSE_OVERLAY' })
+        }
+        return
+      }
+
+      const wanted = OVERLAY_HOTKEYS[e.key.toLowerCase()]
+      if (!wanted) return
+      if (state.screen === 'world') {
+        e.preventDefault()
+        dispatch({ type: 'SET_SCREEN', screen: wanted })
+      } else if (state.screen === wanted) {
+        e.preventDefault()
+        dispatch({ type: 'SET_SCREEN', screen: 'world' })
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [state.screen, dispatch])
 
   if (state.screen === 'title') return <TitleScreen />
   if (state.screen === 'create') return <CreateScreen />
