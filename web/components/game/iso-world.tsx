@@ -38,7 +38,8 @@ function RasterProp({ p }: { p: PropDef }) {
   // 벽면 기울이기 — 발밑 앵커(ax,ay)를 축으로 skewY, 쿼터뷰 바닥선 각도에 맞춰 벽이 뜨지 않게 함
   const skew = p.skewYDeg ? `skewY(${p.skewYDeg}deg)` : ''
   const flip = mirror || p.mirrorX ? 'scaleX(-1)' : ''
-  const transform = [flip, skew].filter(Boolean).join(' ') || undefined
+  const rotate = p.rotateDeg ? `rotate(${p.rotateDeg}deg)` : ''
+  const transform = [rotate, flip, skew].filter(Boolean).join(' ') || undefined
   return (
     <image
       href={p.sprite}
@@ -49,7 +50,9 @@ function RasterProp({ p }: { p: PropDef }) {
       style={{
         imageRendering: 'pixelated',
         transform,
-        transformOrigin: transform ? `${ax}px ${ay}px` : undefined,
+        // 앵커(ax,ay)만큼 x=-ax,y=-ay 로 이미 옮겨놨으므로, 발밑 앵커는 항상 로컬 원점(0,0)에 위치한다.
+        // 여기를 (ax,ay)로 잘못 잡으면 스프라이트마다 ax/ay 값이 달라 skew/flip 축이 제각각 어긋난다.
+        transformOrigin: transform ? '0px 0px' : undefined,
       }}
     />
   )

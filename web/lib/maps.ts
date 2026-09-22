@@ -1059,116 +1059,316 @@ const PERSONAL_ROOM_SPAWN = { x: PERSONAL_ROOM_W / 2, y: PERSONAL_ROOM_H - 2.6 }
 const PERSONAL_ROOM_EXIT = { x: PERSONAL_ROOM_W / 2, y: PERSONAL_ROOM_H - 1.2 }
 
 /** 사방 벽 + 남쪽 출입구만 뚫은 빈 방 블로커(뼈대) */
-function roomBlockers(w: number, h: number, doorW = 2.6): Blocker[] {
+function roomBlockers(w: number, h: number, doorW = 2.6, wallThickness = 0.5): Blocker[] {
   const doorX = w / 2
   return [
-    { x0: 0, y0: 0, x1: w, y1: 0.5 }, // 북벽
+    { x0: 0, y0: 0, x1: w, y1: wallThickness }, // 북벽
     { x0: 0, y0: h - 0.5, x1: doorX - doorW / 2, y1: h }, // 남벽 서쪽
     { x0: doorX + doorW / 2, y0: h - 0.5, x1: w, y1: h }, // 남벽 동쪽
-    { x0: 0, y0: 0, x1: 0.5, y1: h }, // 서벽
+    { x0: 0, y0: 0, x1: wallThickness, y1: h }, // 서벽
     { x0: w - 0.5, y0: 0, x1: w, y1: h }, // 동벽
   ]
 }
 const atlantisTempleTileAt = (): TileKind => 'atlantis-cathedral'
 const demonTempleTileAt = (): TileKind => 'demon-stone'
-const personalSpaceTileAt = (): TileKind => 'personal-wood'
+// 중앙 러그(원탁 주변)만 별도 타일, 나머지는 목재 바닥
+const PERSONAL_RUG_X0 = PERSONAL_ROOM_W / 2 - 1.6
+const PERSONAL_RUG_X1 = PERSONAL_ROOM_W / 2 + 1.6
+const PERSONAL_RUG_Y0 = PERSONAL_ROOM_H / 2 - 1.7
+const PERSONAL_RUG_Y1 = PERSONAL_ROOM_H / 2 + 1.7
+const personalSpaceTileAt = (cx: number, cy: number): TileKind =>
+  cx > PERSONAL_RUG_X0 && cx < PERSONAL_RUG_X1 && cy > PERSONAL_RUG_Y0 && cy < PERSONAL_RUG_Y1 ? 'personal-rug' : 'personal-wood'
 
-// 개인 공간 벽 — 참조 이미지(돌벽+바다 창)의 느낌으로 북쪽 벽을 배경 패널로 채운다.
-// (플랫 스프라이트 엔진 특성상 서쪽 벽까지 이어붙이면 방향이 어색해져 북쪽 한 면만 우선 구성)
-// 앵커는 다른 프롭과 동일(하단 중앙=cell), 'wall' kind 라 SOLID_KINDS 로 자동 충돌 처리됨.
-const WALL_PLAIN = { s: '/images/map/props/housing/wall_plain.png', w: 116, h: 72, fw: 1.6 }
-const WALL_WINDOW = { s: '/images/map/props/housing/wall_window.png', w: 80, h: 121, fw: 1.1 }
+// 개인 공간 벽 — 뒤쪽 두 면(북벽=오른쪽, 서벽=왼쪽)만 세우고 앞쪽은 개방(참고 이미지 구도).
+// PixelLab 빌딩 키트(1칸짜리 독립 블록)는 칸 사이에 틈이 생겨(=기둥처럼 뚝뚝 끊김) 폐기하고,
+// 평면 벽돌 텍스처를 그 칸의 바닥 대각선 기울기(ISO_SKEW_DEG)만큼 skewY 로 눕혀 이어붙이는 방식으로
+// 되돌린다 — 이 방식은 빈틈 없이 이어지는 걸 실측으로 확인했다. 문도 같은 벽의 한 세그먼트로 넣어
+// 그 벽면 각도에 맞춰 같이 기울인다(뚝 떨어진 정면 삽화가 아니라 벽에 실제로 박힌 문이 되도록).
+const WALL_PLAIN = { s: '/images/map/props/housing/wall_plain.png', w: 116, h: 72 }
+const WALL_WINDOW = { s: '/images/map/props/housing/wall_window.png', w: 80, h: 121 }
+const WALL_DOOR = { s: '/images/map/props/housing/door.png', w: 92, h: 148 }
+const WALL_PX_PER_CELL = 72.6 // WALL_PLAIN.w/1.6 ≈ 72.5, 이 비율로 셀폭→px폭 환산
 // 쿼터뷰 바닥선 기울기 — ISO_TILE_W:ISO_TILE_H = 64:32(2:1)이므로 셀당 화면 이동은 (±32,±16),
 // 즉 벽 밑변이 바닥 대각선과 같은 기울기(높이:폭 = 1:2)로 누워야 뜨지 않는다.
 const ISO_SKEW_DEG = (Math.atan2(1, 2) * 180) / Math.PI // ≈ 26.565°
-function personalSpaceWalls(): PropDef[] {
+
+type WallSeg = { fw: number; pxW: number; pxH: number; sprite: { s: string; w: number; h: number }; feature?: boolean }
+
+/** 평범한 벽 세그먼트 — 셀 폭(fw)에서 px 크기를 그대로 환산(원본 비율 유지) */
+function plainSeg(sprite: { s: string; w: number; h: number }, fw: number, pxPerCell: number): WallSeg {
+  const pxW = fw * pxPerCell
+  return { fw, pxW, pxH: sprite.h * (pxW / sprite.w), sprite }
+}
+/**
+ * 창문/문처럼 벽보다 아치가 높이 솟는 조각 — "벽 폭에 맞춰 늘리기"가 아니라
+ * "평벽 높이의 배수"로 목표 높이를 먼저 정하고 그 높이에서 원본 비율대로 폭을 역산한다.
+ * (전엔 반대로 폭부터 맞춰서 세로로 2배 넘게 부풀어 보였다 — "창문이 벽보다 훨씬 크다"는 지적의 원인.)
+ * feature:true 표시 — renderWallRun 에서 정렬 우선순위를 올려, 폭이 좁아진 만큼 바로 옆 평벽 조각한테
+ * (겹치는 기울어진 영역에서) 덮여 가려지지 않도록 한다.
+ */
+function featureSeg(sprite: { s: string; w: number; h: number }, plainPxH: number, hFactor: number, pxPerCell: number): WallSeg {
+  const pxH = plainPxH * hFactor
+  const pxW = pxH * (sprite.w / sprite.h)
+  return { fw: pxW / pxPerCell, pxW, pxH, sprite, feature: true }
+}
+
+/**
+ * 세그먼트 목록을 이어붙여 하나의 skewY 벽으로 렌더.
+ * sign=1: 북벽(+x 방향, +skew, 결 그대로). sign=-1: 서벽(+y 방향) — 벽돌 텍스처의 결(가로줄)이
+ * 원래 "북벽 방향"으로 그려져 있어, 좌우반전(mirrorX)만으로는 서벽 길이 방향과 결이 안 맞는다.
+ * 북벽과 동일하게 먼저 스큐를 먹인 뒤 앵커를 축으로 90도 통째로 돌려(rotateDeg) 결을 서벽 방향으로 맞춘다.
+ */
+function renderWallRun(idPrefix: string, segs: WallSeg[], start: number, fixedOther: number, sign: 1 | -1): PropDef[] {
   const out: PropDef[] = []
-  let n = 0
-  // 북벽 — +x 방향으로 이어붙임(화면상 우하향), skewY(+)
-  let x = 1.0
-  let i = 0
-  while (x < PERSONAL_ROOM_W - 1.0) {
-    const useWindow = i === 2 || i === 6
-    const S = useWindow ? WALL_WINDOW : WALL_PLAIN
+  let pos = start
+  segs.forEach((seg, i) => {
+    const center = pos + seg.fw / 2
+    const cell = sign === 1 ? { x: center, y: fixedOther } : { x: fixedOther, y: center }
+    const collide = sign === 1 ? { w: seg.fw, d: 0.3 } : { w: 0.3, d: seg.fw }
+    // feature(창문/문)는 폭이 평벽보다 좁아서, 기울어져 겹치는 영역에서 옆 평벽 조각이 나중에(sortY 더 크게)
+    // 그려지면 문/창을 덮어버린다 — size 를 부풀려 항상 옆 평벽보다 나중에(sortY 더 크게) 그려지도록 강제한다.
+    // collide 는 실제 폭 그대로 둬 충돌엔 영향 없다.
+    const size = seg.feature ? (sign === 1 ? { w: 6, d: 0.3 } : { w: 0.3, d: 6 }) : collide
     out.push({
-      id: `pwall-n${n++}`, kind: 'wall', cell: { x: x + S.fw / 2, y: 0.9 },
-      sprite: S.s, px: { w: S.w, h: S.h }, size: { w: S.fw, d: 0.3 }, skewYDeg: ISO_SKEW_DEG,
+      id: `${idPrefix}${i}`, kind: 'wall', cell,
+      sprite: seg.sprite.s, px: { w: seg.pxW, h: seg.pxH }, size, collide,
+      // mirrorX 를 같이 걸면 scaleX(-1)·skewY(-θ) 가 합성돼 도로 skewY(+θ)와 같은 모양(오른쪽이 처지는 평행사변형)이
+      // 나와버린다(부호가 상쇄됨) — 그래서 서벽이 북벽과 "같은 방향"으로 기운 것처럼 보였다.
+      // 반대쪽으로 기운 모양이 필요할 뿐이니 미러 없이 skew 부호만 반대로 준다.
+      skewYDeg: sign * ISO_SKEW_DEG,
     })
-    x += S.fw
-    i++
-  }
-  // 서벽 — +y 방향으로 이어붙임(화면상 좌하향) = 북벽의 거울상, skewY(-) + 좌우반전
-  let y = 1.0
-  let j = 0
-  while (y < PERSONAL_ROOM_H - 1.0) {
-    const useWindow = j === 3
-    const S = useWindow ? WALL_WINDOW : WALL_PLAIN
-    out.push({
-      id: `pwall-w${n++}`, kind: 'wall', cell: { x: 0.9, y: y + S.fw / 2 },
-      sprite: S.s, px: { w: S.w, h: S.h }, size: { w: 0.3, d: S.fw }, skewYDeg: -ISO_SKEW_DEG, mirrorX: true,
-    })
-    y += S.fw
-    j++
-  }
+    pos += seg.fw
+  })
   return out
+}
+
+function personalSpaceWalls(): PropDef[] {
+  const margin = 1.0 // 방 모서리 여백(=roomBlockers 두께와 정렬)
+  const plainFw = 1.9 // 평벽 한 칸 기준 폭 — 이 높이를 창문/문 크기의 기준으로 삼는다
+  const plainPxH = plainSeg(WALL_PLAIN, plainFw, WALL_PX_PER_CELL).pxH
+  const windowSeg = () => featureSeg(WALL_WINDOW, plainPxH, 1.2, WALL_PX_PER_CELL) // 평벽보다 아치가 20% 더 높은 "작은 창"
+  const doorSeg = () => featureSeg(WALL_DOOR, plainPxH, 1.35, WALL_PX_PER_CELL) // 평벽보다 35% 더 높은 "작은 문" — 벽과 어울리는 크기
+
+  // 북벽(오른쪽, +x 방향으로 이어붙임, 화면상 우하향) — 뒤쪽 꼭짓점에 문, 창문 2개
+  const door = doorSeg()
+  const northLen = PERSONAL_ROOM_W - 2 * margin - door.fw
+  const northPlainCount = 5
+  const northWindows = [windowSeg(), windowSeg()]
+  const northPlainW = (northLen - northWindows.reduce((s, w) => s + w.fw, 0)) / northPlainCount
+  const northSegs: WallSeg[] = [door]
+  let wi = 0
+  for (let i = 0; i < northPlainCount; i++) {
+    northSegs.push(i === 1 || i === 3 ? northWindows[wi++] : plainSeg(WALL_PLAIN, northPlainW, WALL_PX_PER_CELL))
+  }
+  const northWalls = renderWallRun('pwall-n', northSegs, margin, margin - 0.1, 1)
+
+  // 서벽(왼쪽, +y 방향으로 이어붙임, 화면상 좌하향) = 북벽의 거울상 — 창문 1개, 뒤쪽 꼭짓점은 북벽 문과 맞물림
+  const westLen = PERSONAL_ROOM_H - 2 * margin
+  const westPlainCount = 5
+  const westWindow = windowSeg()
+  const westPlainW = (westLen - westWindow.fw) / westPlainCount
+  const westSegs: WallSeg[] = Array.from({ length: westPlainCount }, (_, i) =>
+    i === 2 ? westWindow : plainSeg(WALL_PLAIN, westPlainW, WALL_PX_PER_CELL),
+  )
+  const westWalls = renderWallRun('pwall-w', westSegs, margin, margin - 0.1, -1)
+
+  return [...northWalls, ...westWalls]
 }
 const PERSONAL_SPACE_WALLS = personalSpaceWalls()
 const PERSONAL_SPACE_BLOCKERS = buildBlockers(PERSONAL_SPACE_WALLS, roomBlockers(PERSONAL_ROOM_W, PERSONAL_ROOM_H))
 
+// ── 랜드마크 실내(대성당·옥좌실·신전 등) = "웅장한 홀" 뼈대 — 개인 공간 크기의 약 6배(북쪽/깊이 3배 × 동쪽/폭 2배),
+// 벽 높이도 약 4배로 키운 전용 텍스처를 테마별로 하나씩 써서 개인 공간과 같은 skewY 눕히기 기법으로 두 면만 세운다.
+// 기존 기둥/제단 등 장식 프롭은 좌표를 새 크기에 비례 확대해 그대로 재사용(세부 장식 추가는 다음 패스).
+const GRAND_ROOM_W = PERSONAL_ROOM_W * 2 // 28 — 동쪽(폭) 2배
+const GRAND_ROOM_H = PERSONAL_ROOM_H * 3 // 36 — 북쪽(깊이) 3배
+const GRAND_CX = GRAND_ROOM_W / 2
+const GRAND_ROOM_SPAWN = { x: GRAND_CX, y: GRAND_ROOM_H - 3 }
+const GRAND_ROOM_EXIT = { x: GRAND_CX, y: GRAND_ROOM_H - 1.5 }
+const GRAND_DOOR_W = 4.0
+
+/**
+ * 평벽 조각 n개 사이사이에 feature(창/문) 조각들을 균등 간격으로 끼워 넣은 세그먼트 목록을 만든다.
+ * leadingFeature 가 있으면 맨 앞에 고정으로 붙인다(랜드마크 문 = 벽 시작점, 뒤쪽 꼭짓점 쪽).
+ */
+function interleaveWallSegs(
+  plain: { s: string; w: number; h: number },
+  totalLen: number,
+  plainCount: number,
+  pxPerCell: number,
+  features: WallSeg[],
+  leadingFeature?: WallSeg,
+): WallSeg[] {
+  const fixedLen = (leadingFeature?.fw ?? 0) + features.reduce((s, f) => s + f.fw, 0)
+  const plainW = (totalLen - fixedLen) / plainCount
+  const segs: WallSeg[] = leadingFeature ? [leadingFeature] : []
+  // 남은 평벽 자리에 창문을 거의 고르게 분산(끝 칸은 피해 모서리와 안 겹치게)
+  const gap = Math.max(1, Math.floor(plainCount / (features.length + 1)))
+  let fi = 0
+  for (let i = 0; i < plainCount; i++) {
+    if (fi < features.length && i > 0 && i % gap === 0) segs.push(features[fi++])
+    segs.push(plainSeg(plain, plainW, pxPerCell))
+  }
+  while (fi < features.length) segs.push(features[fi++])
+  return segs
+}
+
+/**
+ * 랜드마크 전용 큰 벽판(테마별 1장)을 개인 공간과 똑같은 기법(plainSeg/featureSeg/renderWallRun)으로
+ * 북/서 두 면에 이어붙인다. windowSprite/doorSprite 를 주면 개인 공간처럼 벽보다 살짝 높이 솟는 작은 창/문을
+ * 끼워 넣는다(없으면 평벽만 있는 뼈대). 문은 북벽 뒤쪽 꼭짓점 쪽 첫 칸, 창문은 북벽 2개·서벽(더 긴 면) 3개.
+ */
+function buildGrandHallWalls(
+  plain: { s: string; w: number; h: number },
+  plainFw = 3.2,
+  windowSprite?: { s: string; w: number; h: number },
+  doorSprite?: { s: string; w: number; h: number },
+): PropDef[] {
+  const margin = 1.5
+  const pxPerCell = plain.w / plainFw
+  const plainPxH = plainSeg(plain, plainFw, pxPerCell).pxH
+  const mkWindow = () => featureSeg(windowSprite!, plainPxH, 1.15, pxPerCell)
+  const door = doorSprite ? featureSeg(doorSprite, plainPxH, 1.3, pxPerCell) : undefined
+
+  const northWindows = windowSprite ? [mkWindow(), mkWindow()] : []
+  const northSegs = interleaveWallSegs(plain, GRAND_ROOM_W - 2 * margin, 5, pxPerCell, northWindows, door)
+  const westWindows = windowSprite ? [mkWindow(), mkWindow(), mkWindow()] : []
+  const westSegs = interleaveWallSegs(plain, GRAND_ROOM_H - 2 * margin, 6, pxPerCell, westWindows)
+
+  return [
+    ...renderWallRun('gwall-n', northSegs, margin, margin - 0.1, 1),
+    ...renderWallRun('gwall-w', westSegs, margin, margin - 0.1, -1),
+  ]
+}
+
+/** 기존 랜드마크 장식 프롭(옛 16×14 기준 좌표)을 새 웅장한 홀 크기에 비례 확대 배치 */
+function scaleLandmarkToGrand(props: PropDef[]): PropDef[] {
+  const sx = GRAND_ROOM_W / LANDMARK_ROOM_W
+  const sy = GRAND_ROOM_H / LANDMARK_ROOM_H
+  return props.map((p) => ({ ...p, cell: { x: GRAND_CX + (p.cell.x - LM_CX) * sx, y: p.cell.y * sy } }))
+}
+
 // ── 랜드마크 실내 장식 — 참고 이미지(고딕 성당·용암 옥좌실) 컨셉으로 "웅장한" 느낌만 우선 채움.
 // 픽셀랩 생성 에셋(기둥·장미창·옥좌) + SVG 폴백 램프로 최소 구성. 세부 장식은 추후 보강.
 const LM_CX = LANDMARK_ROOM_W / 2
+
+// 랜드마크별 웅장한 홀 전용 벽판(픽셀랩 생성, 테마 컨셉) — 개인 공간 wall_plain.png 자리를 대신한다
+const GW = '/images/map/props/grand/'
+const GRAND_WALL_SCHOOL = { s: GW + 'wall-school.png', w: 96, h: 252 }
+const GRAND_WALL_ATLANTIS = { s: GW + 'wall-atlantis.png', w: 64, h: 168 }
+const GRAND_WALL_DEMON = { s: GW + 'wall-demon.png', w: 64, h: 168 }
+const GRAND_WALL_SKY = { s: GW + 'wall-sky.png', w: 64, h: 168 }
+const GRAND_WALL_RUIN = { s: GW + 'wall-ruin.png', w: 64, h: 168 }
+// TODO: 오로라 전용 벽 텍스처는 픽셀랩 생성 예산(9/30 리셋) 소진으로 보류 — 당분간 하늘 신전 벽(흰-파랑 톤이 비슷)을 임시로 재사용
+const GRAND_WALL_AURORA = GRAND_WALL_SKY
+// 창문/문 — 개인 공간 wall_window.png/door.png 를 테마 색상으로 로컬 리컬러링(scripts, 생성 예산 0 소모)
+const GRAND_WINDOW_SCHOOL = { s: GW + 'window-school.png', w: 80, h: 121 }
+const GRAND_WINDOW_ATLANTIS = { s: GW + 'window-atlantis.png', w: 80, h: 121 }
+const GRAND_WINDOW_DEMON = { s: GW + 'window-demon.png', w: 80, h: 121 }
+const GRAND_WINDOW_SKY = { s: GW + 'window-sky.png', w: 80, h: 121 }
+const GRAND_WINDOW_RUIN = { s: GW + 'window-ruin.png', w: 80, h: 121 }
+const GRAND_WINDOW_AURORA = { s: GW + 'window-aurora.png', w: 80, h: 121 }
+const GRAND_DOOR_SCHOOL = { s: GW + 'door-school.png', w: 92, h: 148 }
+const GRAND_DOOR_ATLANTIS = { s: GW + 'door-atlantis.png', w: 92, h: 148 }
+const GRAND_DOOR_DEMON = { s: GW + 'door-demon.png', w: 92, h: 148 }
+const GRAND_DOOR_SKY = { s: GW + 'door-sky.png', w: 92, h: 148 }
+const GRAND_DOOR_RUIN = { s: GW + 'door-ruin.png', w: 92, h: 148 }
+const GRAND_DOOR_AURORA = { s: GW + 'door-aurora.png', w: 92, h: 148 }
+/** 홀 중간 깊이에 마주보는 동상 2개 + 안쪽 기둥 옆 결정 장식 2개(테마별 기존 에셋 재사용, 생성 예산 0) */
+function grandDecor(idPrefix: string, statue: { s: string; w: number; h: number }, crystal: { s: string; w: number; h: number }): PropDef[] {
+  return [
+    { id: `${idPrefix}-statue-w`, kind: 'statue', cell: { x: GRAND_CX - 7, y: 16 }, sprite: statue.s, px: { w: statue.w, h: statue.h }, size: { w: 0.4, d: 0.4 } },
+    { id: `${idPrefix}-statue-e`, kind: 'statue', cell: { x: GRAND_CX + 7, y: 16 }, sprite: statue.s, px: { w: statue.w, h: statue.h }, size: { w: 0.4, d: 0.4 } },
+    { id: `${idPrefix}-crystal-w`, kind: 'bush', cell: { x: GRAND_CX - 5, y: 6 }, sprite: crystal.s, px: { w: crystal.w, h: crystal.h }, size: { w: 0.3, d: 0.3 } },
+    { id: `${idPrefix}-crystal-e`, kind: 'bush', cell: { x: GRAND_CX + 5, y: 6 }, sprite: crystal.s, px: { w: crystal.w, h: crystal.h }, size: { w: 0.3, d: 0.3 } },
+  ]
+}
 const ATLANTIS_TEMPLE_PROPS: PropDef[] = [
-  { id: 'atltemple-window', kind: 'dome', cell: { x: LM_CX, y: 1.6 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '장미창', sprite: '/images/map/props/atlantis/atl4_window.png', px: { w: 86, h: 162 } },
-  { id: 'atltemple-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'atltemple-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'atltemple-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'atltemple-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'atltemple-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'atltemple-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ...buildGrandHallWalls(GRAND_WALL_ATLANTIS, 3.2, GRAND_WINDOW_ATLANTIS, GRAND_DOOR_ATLANTIS),
+  ...scaleLandmarkToGrand([
+    { id: 'atltemple-window', kind: 'dome', cell: { x: LM_CX, y: 1.6 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '장미창', sprite: '/images/map/props/atlantis/atl4_window.png', px: { w: 86, h: 162 } },
+    { id: 'atltemple-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'atltemple-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'atltemple-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'atltemple-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'atltemple-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'atltemple-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ]),
+  // 세부 장식 — 진주 기념비 중앙 + 해초 장식(테마 기존 에셋 재사용)
+  { id: 'atltemple-monument', kind: 'statue', cell: { x: GRAND_CX, y: 16 }, sprite: '/images/map/props/atlantis/atl_pearlmonument.png', px: { w: 120, h: 119 }, size: { w: 0.5, d: 0.5 } },
+  { id: 'atltemple-kelp-w', kind: 'bush', cell: { x: GRAND_CX - 5, y: 6 }, sprite: '/images/map/props/atlantis/atl_kelp.png', px: { w: 38, h: 56 }, size: { w: 0.3, d: 0.3 } },
+  { id: 'atltemple-kelp-e', kind: 'bush', cell: { x: GRAND_CX + 5, y: 6 }, sprite: '/images/map/props/atlantis/atl_kelp.png', px: { w: 38, h: 56 }, size: { w: 0.3, d: 0.3 } },
 ]
 const DEMON_TEMPLE_PROPS: PropDef[] = [
-  { id: 'demtemple-throne', kind: 'dome', cell: { x: LM_CX, y: 2.2 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '옥좌', sprite: '/images/map/props/demon/dm_throne.png', px: { w: 50, h: 105 } },
-  { id: 'demtemple-lamp-w', kind: 'lamp', cell: { x: LM_CX - 3, y: 5.5 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'demtemple-lamp-e', kind: 'lamp', cell: { x: LM_CX + 3, y: 5.5 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'demtemple-lamp-w2', kind: 'lamp', cell: { x: LM_CX - 3, y: 9 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'demtemple-lamp-e2', kind: 'lamp', cell: { x: LM_CX + 3, y: 9 }, size: { w: 0.2, d: 0.2 } },
+  ...buildGrandHallWalls(GRAND_WALL_DEMON, 3.2, GRAND_WINDOW_DEMON, GRAND_DOOR_DEMON),
+  ...scaleLandmarkToGrand([
+    { id: 'demtemple-throne', kind: 'dome', cell: { x: LM_CX, y: 2.2 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '옥좌', sprite: '/images/map/props/demon/dm_throne.png', px: { w: 50, h: 105 } },
+    { id: 'demtemple-lamp-w', kind: 'lamp', cell: { x: LM_CX - 3, y: 5.5 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'demtemple-lamp-e', kind: 'lamp', cell: { x: LM_CX + 3, y: 5.5 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'demtemple-lamp-w2', kind: 'lamp', cell: { x: LM_CX - 3, y: 9 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'demtemple-lamp-e2', kind: 'lamp', cell: { x: LM_CX + 3, y: 9 }, size: { w: 0.2, d: 0.2 } },
+  ]),
+  ...grandDecor('demtemple', { s: '/images/map/props/demon/dm_statue.png', w: 57, h: 107 }, { s: '/images/map/props/demon/dm_crystals.png', w: 54, h: 56 }),
 ]
 const skySanctumTileAt = (): TileKind => 'sky-marble'
 const ruinSanctumTileAt = (): TileKind => 'ruin-stone'
 const auroraSanctumTileAt = (): TileKind => 'aurora-stone'
 const SKY_SANCTUM_PROPS: PropDef[] = [
-  { id: 'skysanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '빛의 제단', sprite: '/images/map/props/skytemple/sk4_altar.png', px: { w: 64, h: 71 } },
-  { id: 'skysanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'skysanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'skysanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'skysanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'skysanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'skysanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ...buildGrandHallWalls(GRAND_WALL_SKY, 3.2, GRAND_WINDOW_SKY, GRAND_DOOR_SKY),
+  ...scaleLandmarkToGrand([
+    { id: 'skysanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '빛의 제단', sprite: '/images/map/props/skytemple/sk4_altar.png', px: { w: 64, h: 71 } },
+    { id: 'skysanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'skysanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'skysanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'skysanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/atlantis/atl4_pillar.png', px: { w: 31, h: 133 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'skysanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'skysanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ]),
+  ...grandDecor('skysanctum', { s: '/images/map/props/skytemple/sk2_statue.png', w: 58, h: 99 }, { s: '/images/map/props/skytemple/sk2_crystals.png', w: 46, h: 66 }),
 ]
 const RUIN_SANCTUM_PROPS: PropDef[] = [
-  { id: 'ruinsanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '깨어진 제단', sprite: '/images/map/props/templeruin/rt4_altar.png', px: { w: 85, h: 82 } },
-  { id: 'ruinsanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'ruinsanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'ruinsanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'ruinsanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'ruinsanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'ruinsanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ...buildGrandHallWalls(GRAND_WALL_RUIN, 3.2, GRAND_WINDOW_RUIN, GRAND_DOOR_RUIN),
+  ...scaleLandmarkToGrand([
+    { id: 'ruinsanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '깨어진 제단', sprite: '/images/map/props/templeruin/rt4_altar.png', px: { w: 85, h: 82 } },
+    { id: 'ruinsanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'ruinsanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'ruinsanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'ruinsanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/templeruin/rt4_pillar.png', px: { w: 56, h: 138 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'ruinsanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'ruinsanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ]),
+  ...grandDecor('ruinsanctum', { s: '/images/map/props/templeruin/rt_statue.png', w: 58, h: 98 }, { s: '/images/map/props/templeruin/rt_crystals.png', w: 54, h: 60 }),
 ]
 const AURORA_SANCTUM_PROPS: PropDef[] = [
-  { id: 'aurorasanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '오로라 제단', sprite: '/images/map/props/aurora/au4_altar.png', px: { w: 61, h: 91 } },
-  { id: 'aurorasanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'aurorasanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'aurorasanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'aurorasanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
-  { id: 'aurorasanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'aurorasanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ...buildGrandHallWalls(GRAND_WALL_AURORA, 3.2, GRAND_WINDOW_AURORA, GRAND_DOOR_AURORA),
+  ...scaleLandmarkToGrand([
+    { id: 'aurorasanctum-altar', kind: 'dome', cell: { x: LM_CX, y: 2.4 }, size: { w: 0.1, d: 0.1 }, radial: true, label: '오로라 제단', sprite: '/images/map/props/aurora/au4_altar.png', px: { w: 61, h: 91 } },
+    { id: 'aurorasanctum-pillar-nw', kind: 'tower', cell: { x: LM_CX - 4, y: 3.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'aurorasanctum-pillar-ne', kind: 'tower', cell: { x: LM_CX + 4, y: 3.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'aurorasanctum-pillar-sw', kind: 'tower', cell: { x: LM_CX - 4, y: 8.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'aurorasanctum-pillar-se', kind: 'tower', cell: { x: LM_CX + 4, y: 8.4 }, sprite: '/images/map/props/aurora/au4_pillar.png', px: { w: 53, h: 134 }, size: { w: 0.3, d: 0.3 } },
+    { id: 'aurorasanctum-lamp-w', kind: 'lamp', cell: { x: LM_CX - 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+    { id: 'aurorasanctum-lamp-e', kind: 'lamp', cell: { x: LM_CX + 2.2, y: 6 }, size: { w: 0.2, d: 0.2 } },
+  ]),
+  ...grandDecor('aurorasanctum', { s: '/images/map/props/aurora/au_statue.png', w: 66, h: 94 }, { s: '/images/map/props/aurora/au_crystals.png', w: 58, h: 65 }),
 ]
-const ATLANTIS_TEMPLE_BLOCKERS = buildBlockers(ATLANTIS_TEMPLE_PROPS, roomBlockers(LANDMARK_ROOM_W, LANDMARK_ROOM_H))
-const DEMON_TEMPLE_BLOCKERS = buildBlockers(DEMON_TEMPLE_PROPS, roomBlockers(LANDMARK_ROOM_W, LANDMARK_ROOM_H))
-const SKY_SANCTUM_BLOCKERS = buildBlockers(SKY_SANCTUM_PROPS, roomBlockers(LANDMARK_ROOM_W, LANDMARK_ROOM_H))
-const RUIN_SANCTUM_BLOCKERS = buildBlockers(RUIN_SANCTUM_PROPS, roomBlockers(LANDMARK_ROOM_W, LANDMARK_ROOM_H))
-const AURORA_SANCTUM_BLOCKERS = buildBlockers(AURORA_SANCTUM_PROPS, roomBlockers(LANDMARK_ROOM_W, LANDMARK_ROOM_H))
+const ATLANTIS_TEMPLE_BLOCKERS = buildBlockers(ATLANTIS_TEMPLE_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+const DEMON_TEMPLE_BLOCKERS = buildBlockers(DEMON_TEMPLE_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+const SKY_SANCTUM_BLOCKERS = buildBlockers(SKY_SANCTUM_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+const RUIN_SANCTUM_BLOCKERS = buildBlockers(RUIN_SANCTUM_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+const AURORA_SANCTUM_BLOCKERS = buildBlockers(AURORA_SANCTUM_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+
+// 마법학교 본관 대강당(신규) — 아직 세부 장식 없는 뼈대만(다음 패스에서 채움)
+const schoolHallTileAt = (): TileKind => 'plaza'
+// school 벽판은 원래부터 스테인드글라스가 그려져 있어 별도 창문은 넣지 않고 문만 추가
+const SCHOOL_HALL_PROPS: PropDef[] = [
+  ...buildGrandHallWalls(GRAND_WALL_SCHOOL, 3.2, undefined, GRAND_DOOR_SCHOOL),
+  // 세부 장식 — 마을에서 쓰는 동상(기존 에셋)을 중앙에, 램프는 SVG 폴백(양옆)
+  { id: 'schoolhall-statue', kind: 'statue', cell: { x: GRAND_CX, y: 18 }, sprite: '/images/map/props/b_statue.png', px: { w: 86, h: 156 }, size: { w: 0.5, d: 0.5 } },
+  { id: 'schoolhall-lamp-w', kind: 'lamp', cell: { x: GRAND_CX - 6, y: 8 }, size: { w: 0.2, d: 0.2 } },
+  { id: 'schoolhall-lamp-e', kind: 'lamp', cell: { x: GRAND_CX + 6, y: 8 }, size: { w: 0.2, d: 0.2 } },
+]
+const SCHOOL_HALL_BLOCKERS = buildBlockers(SCHOOL_HALL_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
 
 // ── 관리자 테스트룸 (/admin 전용) — NPC 25종·몬스터 23종을 한 방에 모아 배치 ────
 // field.ts 의 generateFieldMonsters() 가 map.id==='testroom' 을 특수 처리해 그리드로 배치하고,
@@ -1204,6 +1404,7 @@ export const MAPS: Record<MapId, GameMap> = {
       { id: 'gate-snowfield', cell: { x: 43.5, y: 36.6 }, to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 15 },
       { id: 'gate-volcano', cell: { x: 43.5, y: 36.6 }, to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 20 },
       { id: 'personal-space-enter', cell: { x: 42, y: 5 }, to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
+      { id: 'school-hall-enter', cell: { x: 6.9, y: 6.5 }, to: 'school-hall', label: '본관 대강당', kind: 'portal' },
     ],
   },
 
@@ -1609,7 +1810,7 @@ export const MAPS: Record<MapId, GameMap> = {
     id: 'atlantis-temple',
     name: '아틀란티스 대성당 내부',
     kind: 'town',
-    grid: { w: LANDMARK_ROOM_W, h: LANDMARK_ROOM_H },
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
     bg: 'atlantis',
     render: 'iso',
     assets: 'raster',
@@ -1617,16 +1818,16 @@ export const MAPS: Record<MapId, GameMap> = {
     props: ATLANTIS_TEMPLE_PROPS,
     blockers: ATLANTIS_TEMPLE_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...LANDMARK_ROOM_SPAWN },
+    spawn: { ...GRAND_ROOM_SPAWN },
     portals: [
-      { id: 'atlantis-temple-exit', cell: { ...LANDMARK_ROOM_EXIT }, to: 'atlantis', toSpawn: { x: 26, y: 10.2 }, label: '대성당 밖으로', kind: 'exit' },
+      { id: 'atlantis-temple-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'atlantis', toSpawn: { x: 26, y: 10.2 }, label: '대성당 밖으로', kind: 'exit' },
     ],
   },
   'demon-temple': {
     id: 'demon-temple',
     name: '화산 성채 내부',
     kind: 'town',
-    grid: { w: LANDMARK_ROOM_W, h: LANDMARK_ROOM_H },
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
     bg: 'demon',
     render: 'iso',
     assets: 'raster',
@@ -1634,16 +1835,16 @@ export const MAPS: Record<MapId, GameMap> = {
     props: DEMON_TEMPLE_PROPS,
     blockers: DEMON_TEMPLE_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...LANDMARK_ROOM_SPAWN },
+    spawn: { ...GRAND_ROOM_SPAWN },
     portals: [
-      { id: 'demon-temple-exit', cell: { ...LANDMARK_ROOM_EXIT }, to: 'demon-village', toSpawn: { x: 32, y: 11.4 }, label: '화산 성채 밖으로', kind: 'exit' },
+      { id: 'demon-temple-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'demon-village', toSpawn: { x: 32, y: 11.4 }, label: '화산 성채 밖으로', kind: 'exit' },
     ],
   },
   'sky-sanctum': {
     id: 'sky-sanctum',
     name: '천공 대신전 내부',
     kind: 'town',
-    grid: { w: LANDMARK_ROOM_W, h: LANDMARK_ROOM_H },
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
     bg: 'temple',
     render: 'iso',
     assets: 'raster',
@@ -1651,16 +1852,16 @@ export const MAPS: Record<MapId, GameMap> = {
     props: SKY_SANCTUM_PROPS,
     blockers: SKY_SANCTUM_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...LANDMARK_ROOM_SPAWN },
+    spawn: { ...GRAND_ROOM_SPAWN },
     portals: [
-      { id: 'sky-sanctum-exit', cell: { ...LANDMARK_ROOM_EXIT }, to: 'sky-temple', toSpawn: { x: 32, y: 11.4 }, label: '신전 밖으로', kind: 'exit' },
+      { id: 'sky-sanctum-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'sky-temple', toSpawn: { x: 32, y: 11.4 }, label: '신전 밖으로', kind: 'exit' },
     ],
   },
   'ruin-sanctum': {
     id: 'ruin-sanctum',
     name: '버려진 신전 내부',
     kind: 'town',
-    grid: { w: LANDMARK_ROOM_W, h: LANDMARK_ROOM_H },
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
     bg: 'temple',
     render: 'iso',
     assets: 'raster',
@@ -1668,16 +1869,16 @@ export const MAPS: Record<MapId, GameMap> = {
     props: RUIN_SANCTUM_PROPS,
     blockers: RUIN_SANCTUM_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...LANDMARK_ROOM_SPAWN },
+    spawn: { ...GRAND_ROOM_SPAWN },
     portals: [
-      { id: 'ruin-sanctum-exit', cell: { ...LANDMARK_ROOM_EXIT }, to: 'temple-ruin', toSpawn: { x: 32, y: 11.4 }, label: '신전 밖으로', kind: 'exit' },
+      { id: 'ruin-sanctum-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'temple-ruin', toSpawn: { x: 32, y: 11.4 }, label: '신전 밖으로', kind: 'exit' },
     ],
   },
   'aurora-sanctum': {
     id: 'aurora-sanctum',
     name: '설원 성소 내부',
     kind: 'town',
-    grid: { w: LANDMARK_ROOM_W, h: LANDMARK_ROOM_H },
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
     bg: 'aurora',
     render: 'iso',
     assets: 'raster',
@@ -1685,9 +1886,26 @@ export const MAPS: Record<MapId, GameMap> = {
     props: AURORA_SANCTUM_PROPS,
     blockers: AURORA_SANCTUM_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...LANDMARK_ROOM_SPAWN },
+    spawn: { ...GRAND_ROOM_SPAWN },
     portals: [
-      { id: 'aurora-sanctum-exit', cell: { ...LANDMARK_ROOM_EXIT }, to: 'aurora-village', toSpawn: { x: 32, y: 11.4 }, label: '성소 밖으로', kind: 'exit' },
+      { id: 'aurora-sanctum-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'aurora-village', toSpawn: { x: 32, y: 11.4 }, label: '성소 밖으로', kind: 'exit' },
+    ],
+  },
+  'school-hall': {
+    id: 'school-hall',
+    name: '마법학교 본관 대강당',
+    kind: 'town',
+    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: schoolHallTileAt,
+    props: SCHOOL_HALL_PROPS,
+    blockers: SCHOOL_HALL_BLOCKERS,
+    zones: NO_ZONES,
+    spawn: { ...GRAND_ROOM_SPAWN },
+    portals: [
+      { id: 'school-hall-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'village', toSpawn: { x: 6.9, y: 7.2 }, label: '대강당 밖으로', kind: 'exit' },
     ],
   },
   'personal-space': {

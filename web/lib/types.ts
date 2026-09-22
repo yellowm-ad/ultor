@@ -339,6 +339,7 @@ export type MapId =
   | 'sky-sanctum'
   | 'ruin-sanctum'
   | 'aurora-sanctum'
+  | 'school-hall'
   | 'personal-space'
   | 'testroom'
 
