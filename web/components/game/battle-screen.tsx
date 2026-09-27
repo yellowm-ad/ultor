@@ -274,7 +274,7 @@ export function BattleScreen() {
       </div>
 
       {/* ── 전장 ── */}
-      <div className={`relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : ''}`}>
+      <div className={`battle-stage relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : ''}`}>
         {isForestBattle && (
           <>
             {/* 살랑이는 나무 그림자 */}
@@ -333,7 +333,7 @@ export function BattleScreen() {
       </div>
 
       {/* ── 로그 스트립 ── */}
-      <div className="relative z-20 mx-3 mb-1 max-h-12 overflow-y-auto rounded-lg border border-gold/30 bg-black/50 px-2.5 py-1.5 text-[11px] leading-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] scrollbar-thin">
+      <div className="battle-log relative z-20 mx-3 mb-1 max-h-12 overflow-y-auto rounded-lg border border-gold/30 bg-black/50 px-2.5 py-1.5 text-[11px] leading-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] scrollbar-thin">
         {battle.log.slice(-3).map((l) => (
           <div
             key={l.id}
@@ -354,7 +354,7 @@ export function BattleScreen() {
       <div className="relative z-20 flex items-end gap-2 px-3 pb-3">
         {/* 타임라인 */}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="flex items-center gap-1 text-xs font-display text-white/60">
+          <span className="battle-timeline-label flex items-center gap-1 text-xs font-display text-white/60">
             <DiamondMark size={9} />
             행동 순서
           </span>
@@ -381,7 +381,7 @@ export function BattleScreen() {
         </div>
 
         {/* 액션 패널 */}
-        <div className="panel-royal w-[48%] max-w-[360px] shrink-0 p-2.5">
+        <div className="battle-action-panel panel-royal w-[48%] max-w-[360px] shrink-0 p-2.5">
           {battle.isOver ? (
             <BattleResult />
           ) : !isHeroTurn ? (
@@ -394,7 +394,7 @@ export function BattleScreen() {
               <Button size="sm" variant="ghost" onClick={() => setPending(null)}>취소</Button>
             </div>
           ) : menu === 'root' ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="battle-root-menu grid grid-cols-2 gap-2">
               <RingBtn icon={<Swords className="size-5" />} label="공격" hint="기본 공격" onClick={() => setPending({ kind: 'attack' })} />
               <RingBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`${availableSkills.length}개`} onClick={() => setMenu('skill')} />
               <RingBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`${availableItems.length}개`} onClick={() => setMenu('item')} />
@@ -499,8 +499,8 @@ function CombatantSprite({
 
   return (
     <div
-      className="absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${left}%`, top: `${top}%`, transform: `translate(-50%,-50%) scale(${scale})`, zIndex: Math.round(top) }}
+      className="battle-combatant absolute -translate-x-1/2 -translate-y-1/2"
+      style={{ left: `${left}%`, top: `${top}%`, transform: `translate(-50%,-50%) scale(calc(var(--battle-sprite-k, 1) * ${scale}))`, zIndex: Math.round(top) }}
     >
       <button
         onClick={targetable ? onClick : undefined}
@@ -586,10 +586,10 @@ function RingBtn({
   onClick: () => void
 }) {
   return (
-    <button onClick={onClick} className="gem-btn flex h-16 flex-col items-center justify-center gap-0.5 text-gold-soft">
+    <button onClick={onClick} className="battle-ring-btn gem-btn flex h-16 flex-col items-center justify-center gap-0.5 text-gold-soft">
       {icon}
       <span className="font-display text-sm leading-none">{label}</span>
-      {hint && <span className="mt-0.5 text-[10px] text-white/60">{hint}</span>}
+      {hint && <span className="battle-ring-hint mt-0.5 text-[10px] text-white/60">{hint}</span>}
     </button>
   )
 }

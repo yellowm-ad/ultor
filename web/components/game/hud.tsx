@@ -18,7 +18,7 @@ export function Hud() {
   const canJobChange = eligible.id !== player.jobTierId
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
+    <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
       {/* 좌측: 캐릭터 + 펫 상태 — 박스 없이 초상+바만 화면 위에 직접 떠 있음(원신풍) */}
       <div className="pointer-events-auto flex flex-col gap-2">
         <div className="title-enter-1 flex items-center gap-2.5">

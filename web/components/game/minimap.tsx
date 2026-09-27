@@ -77,7 +77,7 @@ export function Minimap() {
   const elem = ELEMENT_META[state.player.element]
 
   return (
-    <div className="title-enter-2 pointer-events-none absolute right-3 top-24 z-30 flex flex-col items-center gap-1 sm:right-4 sm:top-32">
+    <div className="minimap-safe title-enter-2 pointer-events-none absolute right-3 top-24 z-30 flex flex-col items-center gap-1 sm:right-4 sm:top-32">
       <div className="hud-map-label flex items-center gap-1 text-[11px]">
         <DiamondMark size={8} />
         {map.name}

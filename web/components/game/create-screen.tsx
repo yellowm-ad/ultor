@@ -69,7 +69,7 @@ export function CreateScreen() {
   const meta = ELEMENT_META[element]
 
   return (
-    <div className="screen-fade-in flex h-full w-full flex-col overflow-hidden bg-[#0b0907]">
+    <div className="create-root screen-fade-in flex h-full w-full flex-col overflow-hidden bg-[#0b0907]">
       {/* 상단: 마법학교 뒷배경 위에 인게임 캐릭터(도트 스프라이트)가 마법진을 밟고 서있는 모습.
           좌측엔 원화 삼면도, 우측 상단엔 일러스트를 곁들인다. */}
       <div className="relative min-h-[260px] flex-1 overflow-hidden">

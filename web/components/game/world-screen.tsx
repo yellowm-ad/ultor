@@ -499,8 +499,8 @@ export function WorldScreen() {
       )}
 
       {/* 상단 좌측 구역 안내 */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20">
-        <div className="panel-gilded px-3 py-1.5 text-xs text-gold-soft">
+      <div className="world-location-label pointer-events-none absolute bottom-3 left-3 z-20">
+        <div className="panel-gilded whitespace-nowrap px-3 py-1.5 text-xs text-gold-soft">
           현재 위치: <span className="font-display">{locationName}</span>
           {map.kind === 'field' && map.recommendedLevel ? (
             <span className="ml-1 text-muted-foreground">· 권장 Lv.{map.recommendedLevel}+</span>
@@ -512,7 +512,7 @@ export function WorldScreen() {
       {interactTarget && !state.pendingEncounterUid && !state.pendingPortalId && !state.gateOpen && (
         <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2">
           <div className="panel-gilded flex items-center gap-2 px-3 py-1.5 text-xs text-gold-soft">
-            <MessageCircle className="size-3.5" /> {interactTarget.name}와(과) 대화 (E)
+            <MessageCircle className="size-3.5" /> {interactTarget.name}와(과) 대화 <span className="touch-hide">(E)</span>
           </div>
         </div>
       )}
@@ -628,17 +628,17 @@ export function WorldScreen() {
         </div>
       )}
 
-      {/* 모바일용 D-Pad */}
-      <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 grid-rows-3 gap-1 select-none sm:hidden">
+      {/* 터치 기기용 D-Pad — 폰·태블릿(가로) 모두 노출, 키보드+마우스 환경에선 숨김 */}
+      <div className="dpad touch-only absolute z-20 grid-cols-3 grid-rows-3 gap-1" onContextMenu={(e) => e.preventDefault()}>
         <div />
         <DpadBtn icon={<ArrowUp className="size-4" />} onDown={() => dpadPress(0, -1)} onUp={() => dpadRelease(0, -1)} />
         <div />
         <DpadBtn icon={<ArrowLeft className="size-4" />} onDown={() => dpadPress(-1, 0)} onUp={() => dpadRelease(-1, 0)} />
         <button
-          className="panel-gilded flex size-10 items-center justify-center text-[10px] text-gold-soft"
+          className="panel-gilded flex size-10 items-center justify-center text-[11px] text-gold-soft active:brightness-125"
           onClick={tryInteract}
         >
-          talk
+          대화
         </button>
         <DpadBtn icon={<ArrowRight className="size-4" />} onDown={() => dpadPress(1, 0)} onUp={() => dpadRelease(1, 0)} />
         <div />
@@ -653,9 +653,13 @@ function DpadBtn({ icon, onDown, onUp }: { icon: ReactNode; onDown: () => void; 
   return (
     <button
       className="panel-gilded flex size-10 items-center justify-center text-gold-soft active:brightness-125"
-      onPointerDown={onDown}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        onDown()
+      }}
       onPointerUp={onUp}
       onPointerLeave={onUp}
+      onPointerCancel={onUp}
     >
       {icon}
     </button>
