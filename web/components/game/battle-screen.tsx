@@ -40,16 +40,37 @@ const GEM_ELEMENT_BG: Record<ElementOrNeutral, string> = {
   neutral: 'linear-gradient(160deg, #3a3560, #201c3c)',
 }
 
-/** 전장 배치 좌표(%) — CombatantSprite 렌더와 SkillFxLayer 위치 계산이 같은 값을 쓰도록 공유 */
-function combatantPos(side: 'player' | 'enemy', index: number, count: number): FxPos {
-  const spread = count > 1 ? index / (count - 1) - 0.5 : 0
-  const left = side === 'enemy' ? 68 + spread * 22 : 32 + spread * 24
-  const top =
-    side === 'enemy'
-      ? 42 + Math.abs(spread) * 12 + (index % 2) * 7
-      : 58 + Math.abs(spread) * 8 + (index % 2) * 8
-  return { left, top }
+/**
+ * 4 대 4 진형 슬롯 — 값은 전투원의 **발밑** 좌표(무대 %). 인원 수와 상관없이 고정 자리를 쓰므로
+ * 지금(주인공+펫 2명)도 나중에 4명이 들어와도 구도가 흔들리지 않는다.
+ * 0·1 = 전열(가운데 쪽), 2·3 = 후열. top 은 숲 배경 판석 바닥(무대 ≈45% 아래) 안에 들어오게 잡았다.
+ */
+const FORMATION: Record<'player' | 'enemy', FxPos[]> = {
+  player: [
+    { left: 36, top: 58 },
+    { left: 31, top: 82 },
+    { left: 22, top: 52 },
+    { left: 16, top: 76 },
+  ],
+  enemy: [
+    { left: 64, top: 58 },
+    { left: 69, top: 82 },
+    { left: 78, top: 52 },
+    { left: 84, top: 75 },
+  ],
 }
+
+/** 발밑 좌표(%) — CombatantSprite 렌더용. 5명 이상이면 후열 뒤로 조금씩 밀어 넣는다. */
+function combatantPos(side: 'player' | 'enemy', index: number): FxPos {
+  const slots = FORMATION[side]
+  if (index < slots.length) return slots[index]
+  const extra = index - slots.length + 1
+  const base = slots[slots.length - 1]
+  return { left: base.left + (side === 'enemy' ? 4 : -4) * extra, top: base.top - 8 * extra }
+}
+
+/** 스킬 연출은 몸 중심을 기준으로 — 발밑에서 위로 올린 좌표 */
+const FX_BODY_LIFT = 11
 
 // 지역별 전투 배경 삽화 — 구도는 숲(forest_bg.png)과 동일한 PixelLab Pro 생성물,
 // 기후/부산물/원경만 지역에 맞게 다름. 아직 그리지 않은 bg 키(cave/mine/swamp/deepsea/demon 등)는
@@ -170,8 +191,12 @@ export function BattleScreen() {
   const hero = players.find((c) => c.kind === 'hero')
 
   const posMap: Record<string, FxPos> = {}
-  enemies.forEach((c, i) => { posMap[c.uid] = combatantPos('enemy', i, enemies.length) })
-  players.forEach((c, i) => { posMap[c.uid] = combatantPos('player', i, players.length) })
+  enemies.forEach((c, i) => { posMap[c.uid] = combatantPos('enemy', i) })
+  players.forEach((c, i) => { posMap[c.uid] = combatantPos('player', i) })
+  const fxPosOf = (uid: string) => {
+    const p = posMap[uid]
+    return p && { left: p.left, top: p.top - FX_BODY_LIFT }
+  }
 
   function submit(action: BattleAction) {
     if (!actor) return
@@ -329,11 +354,11 @@ export function BattleScreen() {
             heroAnim={c.kind === 'hero' ? heroAnim : undefined}
           />
         ))}
-        <SkillFxLayer fx={battle.lastFx} posOf={(uid) => posMap[uid]} />
+        <SkillFxLayer fx={battle.lastFx} posOf={fxPosOf} />
       </div>
 
-      {/* ── 로그 스트립 ── */}
-      <div className="battle-log relative z-20 mx-3 mb-1 max-h-12 overflow-y-auto rounded-lg border border-gold/30 bg-black/50 px-2.5 py-1.5 text-[11px] leading-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] scrollbar-thin">
+      {/* ── 로그 스트립 — 상단 가운데(하늘 쪽). 바닥에 두면 앞줄 전투원 발밑을 가려서 위로 올림 ── */}
+      <div className="battle-log absolute left-1/2 top-11 z-20 w-[min(34rem,56%)] -translate-x-1/2 max-h-12 overflow-y-auto rounded-lg border border-gold/30 bg-black/50 px-2.5 py-1.5 text-[11px] leading-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] scrollbar-thin">
         {battle.log.slice(-3).map((l) => (
           <div
             key={l.id}
@@ -351,7 +376,7 @@ export function BattleScreen() {
       </div>
 
       {/* ── 하단: 타임라인 + 액션 ── */}
-      <div className="relative z-20 flex items-end gap-2 px-3 pb-3">
+      <div className="relative z-20 mt-auto flex items-end gap-2 px-3 pb-3">
         {/* 타임라인 */}
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <span className="battle-timeline-label flex items-center gap-1 text-xs font-display text-white/60">
@@ -487,9 +512,13 @@ function CombatantSprite({
   heroElement?: 'fire' | 'ice' | 'earth'
   heroAnim?: 'idle' | 'lunge' | 'hit'
 }) {
-  // 필드 배치: 중앙에서 대치 — 아군은 좌중앙(근경, 크게), 적은 우중앙(원경, 약간 작게)
+  // pos = 발밑 좌표. 래퍼 하단 중앙을 그 점에 맞추고, 축소도 발밑 기준으로 해서 바닥에 붙어 있게 한다.
   const { left, top } = pos
-  const scale = side === 'enemy' ? 0.95 : 1.12
+  const scale = side === 'enemy' ? 1 : 1.08
+  const isHero = c.kind === 'hero' && !!heroElement && !!heroGender
+  const spritePx = isHero ? 150 : enemyMonsterPx(side, c.refId)
+  // 히어로 시트 프레임 아래쪽 투명 여백(≈14%)만큼 끌어내려 발이 실제 좌표에 닿게 (크리처는 CreatureSprite groundPad)
+  const footPad = isHero ? Math.round(spritePx * 0.14) : 0
 
   const statuses = c.effects.filter((e) => e.kind === 'status')
   const buffs = c.effects.filter((e) => e.kind === 'buff')
@@ -499,8 +528,14 @@ function CombatantSprite({
 
   return (
     <div
-      className="battle-combatant absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${left}%`, top: `${top}%`, transform: `translate(-50%,-50%) scale(calc(var(--battle-sprite-k, 1) * ${scale}))`, zIndex: Math.round(top) }}
+      className="battle-combatant absolute"
+      style={{
+        left: `${left}%`,
+        top: `${top}%`,
+        transform: `translate(-50%,-100%) scale(calc(var(--battle-sprite-k, 1) * ${scale}))`,
+        transformOrigin: '50% 100%',
+        zIndex: Math.round(top),
+      }}
     >
       <button
         onClick={targetable ? onClick : undefined}
@@ -534,19 +569,26 @@ function CombatantSprite({
           </div>
         </div>
 
+        {/* 발밑 그림자 — 바닥에 서 있는 느낌 */}
+        <span
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-[50%] bg-black/40 blur-[2px]"
+          style={{ bottom: -5, width: spritePx * 0.5, height: 12 }}
+          aria-hidden
+        />
         {/* 스프라이트 */}
         <div
-          className={`${active ? 'battle-active' : ''} ${
+          style={{ marginBottom: -footPad }}
+          className={`relative ${active ? 'battle-active' : ''} ${
             heroAnim === 'lunge' ? (side === 'player' ? 'hero-lunge-right' : 'hero-lunge-left') : ''
           }`}
         >
-          {c.kind === 'hero' && heroElement && heroGender ? (
+          {isHero ? (
             <HeroSprite
-              element={heroElement}
-              gender={heroGender}
+              element={heroElement!}
+              gender={heroGender!}
               dir="right"
               walking={heroAnim === 'lunge'}
-              px={150}
+              px={spritePx}
               className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
             />
           ) : (
@@ -556,7 +598,8 @@ function CombatantSprite({
               dir="right"
               flip={side === 'enemy'}
               walking={active && c.alive}
-              px={enemyMonsterPx(side, c.refId)}
+              px={spritePx}
+              groundPad={0.24}
               className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
             />
           )}
@@ -564,7 +607,7 @@ function CombatantSprite({
 
         {/* TU 뱃지 */}
         {c.alive && (
-          <span className="mt-0.5 rounded-full bg-black/55 px-1.5 text-[8px] font-bold text-white/80">
+          <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/55 px-1.5 text-[8px] font-bold text-white/80">
             {active ? 'NOW' : `TU ${tuUntil(c)}`}
           </span>
         )}

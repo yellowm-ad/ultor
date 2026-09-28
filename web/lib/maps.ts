@@ -213,7 +213,6 @@ const B_ = (n: string, w: number, h: number, ax: number, ay: number): Rs => ({
 const BUILDING_SPRITE: Record<string, Rs> = {
   // 대성당 앞광장 연못 — kind:'fountain' 공용이라 KIND_BUILDING_SPRITE.fountain(중앙광장 분수)로
   // 자동 덮어써지는 걸 막으려면 id 기준 오버라이드가 먼저 매치되어야 한다.
-  'b-pondL': B_('temple_pond', 160, 96, 80, 96),
   'b-pondR': B_('temple_pond', 160, 96, 80, 96),
   'b-magic': B_('b_hall_magic', 259, 283, 130, 150),
   'b-alch': B_('b_hall_small', 157, 178, 79, 100),
@@ -258,6 +257,17 @@ const COTTAGE_SPRITE: Record<string, Rs> = {
 const BENCH_SPRITE: Record<string, Rs> = {
   l: B_('b_bench_l', 30, 30, 15, 30),
   r: B_('b_bench_r', 28, 30, 14, 30),
+  // 분수 둘레 벤치 — 아틀란티스 4방향 세트 재사용(이름 = 앉아서 바라보는 방향: SE=+x, SW=+y, NW=-x, NE=-y).
+  // 앵커 = 하단 중앙 → cell 은 벤치 바닥의 앞 꼭짓점(중심 + fw/2, fd/2)에 둔다(fountainBenchPair 참고).
+  SE: B_('atlantis/atl3_benchSE', 53, 57, 26.5, 57),
+  NW: B_('atlantis/atl3_benchNW', 55, 50, 27.5, 50),
+  SW: B_('atlantis/atl3_benchSW', 53, 57, 26.5, 57),
+  NE: B_('atlantis/atl3_benchNE', 55, 50, 27.5, 50),
+}
+/** 4방향 벤치 바닥 크기(셀) — 벤치 길이는 바라보는 축의 수직 방향 */
+const BENCH_FOOT: Record<'SE' | 'NW' | 'SW' | 'NE', { fw: number; fd: number }> = {
+  SE: { fw: 0.55, fd: 1.25 }, NW: { fw: 0.55, fd: 1.25 },
+  SW: { fw: 1.25, fd: 0.55 }, NE: { fw: 1.25, fd: 0.55 },
 }
 // 성벽 세그먼트 (타일링) — facing 별 축
 const WALL_SPRITE: Record<'left' | 'right', Rs> = {
@@ -283,7 +293,7 @@ function villageProps(): PropDef[] {
     size: { w: 2.8, d: 2.8 }, collide: { w: 4.2, d: 4.2 },
   })
   P.push({ id: 'b-statue', kind: 'statue', cell: { x: 21.5, y: 4.6 }, size: { w: 1.0, d: 1.0 }, label: '창립자 상' })
-  P.push({ id: 'b-gazebo', kind: 'gazebo', cell: { x: 32.0, y: 10.8 }, size: { w: 1.8, d: 1.8 } })
+  P.push({ id: 'b-gazebo', kind: 'gazebo', cell: { x: 32.3, y: 11.7 }, size: { w: 1.8, d: 1.8 } })
 
   // ════════ 하우징 마을 (x36–50, y2–13) — 2줄 8동 ════════
   const houseVariants = ['red', 'slate', 'teal', 'red', 'slate', 'teal', 'red', 'slate']
@@ -328,22 +338,15 @@ function villageProps(): PropDef[] {
   // ════════ 성역 대성당 (x2–17, y27–38) — 돔 + 종탑 + 회랑 + 숙소 + 앞광장 ════════
   P.push({ id: 'b-temple', kind: 'dome', cell: { x: 3.0, y: 27.8 }, size: { w: 4.8, d: 3.8 }, label: '성역 대성당' })
   P.push({ id: 'b-belltower', kind: 'tower', cell: { x: 13.4, y: 28.0 }, size: { w: 1.4, d: 1.4 }, label: '종탑' })
-  // 회랑 — 앞광장 좌·우를 짧게 감싸는 콜로네이드 (돔 옆 3칸씩)
-  for (let i = 0; i < 4; i++) {
-    P.push({ id: `b-cloW${i}`, kind: 'cloister', cell: { x: 3.4, y: 28.6 + i * 0.95 }, size: { w: 0.6, d: 0.85 } })
-    P.push({ id: `b-cloE${i}`, kind: 'cloister', cell: { x: 15.6, y: 28.6 + i * 0.95 }, size: { w: 0.6, d: 0.85 } })
-  }
+  // (회랑 콜로네이드 b-cloW/E 는 종탑·돔과 겹쳐 보이는 갈색 난간이라 제거 — 2026-09-28)
   P.push({ id: 'b-priest0', kind: 'cottage', cell: { x: 3.6, y: 35.4 }, size: { w: 1.6, d: 1.4 }, variant: 'slate' })
   P.push({ id: 'b-priest1', kind: 'cottage', cell: { x: 6.4, y: 36.0 }, size: { w: 1.6, d: 1.4 }, variant: 'slate' })
   P.push({ id: 'b-priest2', kind: 'cottage', cell: { x: 13.6, y: 35.6 }, size: { w: 1.6, d: 1.4 }, variant: 'slate' })
   P.push({ id: 'b-statue-saint', kind: 'statue', cell: { x: TEMPLE_YARD.x, y: 32.4 }, size: { w: 1.0, d: 1.0 }, label: '성녀 상' })
-  // 대성당 앞광장 좌·우 대칭 반사 연못 — PixelLab 프롭(돌 테두리+수련) 로 교체.
+  // 대성당 앞광장 반사 연못 — PixelLab 프롭(돌 테두리+수련). 좌측 연못·진입부 봉헌 조상 2기는
+  // 광장이 답답해 보여 제거(2026-09-28), 우측 연못만 남김.
   // radial: true → cell 이 중심점. solid: true → 벤치·나무가 실제 footprint 만큼만 피해감.
-  P.push({ id: 'b-pondL', kind: 'fountain', cell: { x: 5.7, y: 33.4 }, size: { w: 2.0, d: 1.2 }, radial: true, solid: true })
   P.push({ id: 'b-pondR', kind: 'fountain', cell: { x: 13.3, y: 33.4 }, size: { w: 2.0, d: 1.2 }, radial: true, solid: true })
-  // 앞광장 진입부 소형 봉헌 조상 2기
-  P.push({ id: 'b-shrineL', kind: 'statue', cell: { x: 7.2, y: 36.4 }, size: { w: 0.8, d: 0.8 } })
-  P.push({ id: 'b-shrineR', kind: 'statue', cell: { x: 11.8, y: 36.4 }, size: { w: 0.8, d: 0.8 } })
   // 대성당 정원 — 앞광장 둘레 화단(부시 타원 링) + 가로수 + 벤치 (배치 헬퍼는 아래에서 재적용)
   TEMPLE_GARDEN.push(
     ...Array.from({ length: 18 }, (_, a) => {
@@ -355,7 +358,11 @@ function villageProps(): PropDef[] {
     [3.4, 31.2, 'c'], [3.4, 34.0, 'a'], [15.9, 34.6, 'c'], [15.9, 30.0, 'a'],
     [9.8, 37.2, 'a'], [6.0, 37.2, 'g'], [13.2, 37.2, 'o'], [3.6, 37.0, 'c'],
   ]
-  templeGreen.forEach(([x, y, v], i) => P.push({ id: `tg-t${i}`, kind: 'tree', cell: { x, y }, variant: v }))
+  // tg-t0(돔 옆)·tg-t4(앞광장 남측)는 제거 요청 — 인덱스(id)는 그대로 유지해 나머지 나무 id 가 안 바뀌게
+  const TEMPLE_TREE_SKIP = new Set([0, 4])
+  templeGreen.forEach(([x, y, v], i) => {
+    if (!TEMPLE_TREE_SKIP.has(i)) P.push({ id: `tg-t${i}`, kind: 'tree', cell: { x, y }, variant: v })
+  })
 
   // ════════ 햇살 농가 (x20–33, y33–38) — 밭을 서·동에서 헛간·풍차·농가가 감쌈 ════════
   P.push({ id: 'b-barn', kind: 'barn', cell: { x: 20.0, y: 32.8 }, size: { w: 2.6, d: 2.0 } })
@@ -455,6 +462,7 @@ function villageProps(): PropDef[] {
     [TEMPLE_YARD.x - 2.6, TEMPLE_YARD.y + 2.7, 'r'], [TEMPLE_YARD.x + 2.6, TEMPLE_YARD.y + 2.7, 'l'],
   ]
   yardBench.forEach(([x, y, v], i) => {
+    if (i === 3) return // be-tp3(우측 연못 남서) 제거 요청
     if (!blocked(x, y) && !onRoad(x, y)) P.push({ id: `be-tp${i}`, kind: 'bench', cell: { x, y }, variant: v })
   })
 
@@ -489,14 +497,27 @@ function villageProps(): PropDef[] {
   // (과거 좌표들이 진입로/대로 판정 경계에 딱 걸쳐 onRoad()에 은근슬쩍 걸러지던 문제 —
   // 분수 진입로 폭 ±2.2, 아케이드 폭 ±1.5, 대로 AV_L/AV_R 과 확실히 떨어지도록 여유를 둠)
   const benchSpots: [number, number, 'l' | 'r'][] = [
-    [FOUNTAIN.x - 3.4, FOUNTAIN.y - 2.7, 'l'], [FOUNTAIN.x + 3.4, FOUNTAIN.y - 2.7, 'r'],
-    [FOUNTAIN.x - 3.4, FOUNTAIN.y + 2.7, 'r'], [FOUNTAIN.x + 3.4, FOUNTAIN.y + 2.7, 'l'],
     [36.2, 22.2, 'l'], [43.5, 22.2, 'r'], [48.0, 22.2, 'l'], // 아케이드(북측은 상가 건물과 겹쳐 전부 남측으로)
     [COLOSSEUM.x - 5.2, COLOSSEUM.y - 3.2, 'r'], [COLOSSEUM.x + 5.2, COLOSSEUM.y + 3.2, 'l'], // 투기장 대각 코너(동서는 대로에 걸림)
   ]
   benchSpots.forEach(([x, y, v], i) => {
-    if (!blocked(x, y) && !onRoad(x, y)) P.push({ id: `be${i}`, kind: 'bench', cell: { x, y }, variant: v })
+    if (!blocked(x, y) && !onRoad(x, y)) P.push({ id: `be${i + 4}`, kind: 'bench', cell: { x, y }, variant: v })
   })
+
+  // ── 중앙 분수 벤치 — 분수를 바라보는 벤치를 한 변에 두 개씩(서·북·동 3면. 남측은 광장 진입 동선이라 비움).
+  // 예전 분수 대각 벤치 4개(be0~3)는 방향이 어긋나 보여 이걸로 교체.
+  const fountainBenchPair = (tag: string, dir: 'SE' | 'NW' | 'SW' | 'NE', cx: number, cy: number, gap = 1.15) => {
+    const { fw, fd } = BENCH_FOOT[dir]
+    const alongY = dir === 'SE' || dir === 'NW' // 서·동 벤치는 y축을 따라 나란히
+    for (const s of [-1, 1]) {
+      const x = cx + (alongY ? 0 : s * gap)
+      const y = cy + (alongY ? s * gap : 0)
+      P.push({ id: `be-fn${tag}${s < 0 ? 0 : 1}`, kind: 'bench', cell: { x: x + fw / 2, y: y + fd / 2 }, variant: dir })
+    }
+  }
+  fountainBenchPair('w', 'SE', FOUNTAIN.x - 3.5, FOUNTAIN.y) // 서쪽 → 동(분수)을 봄
+  fountainBenchPair('n', 'SW', FOUNTAIN.x, FOUNTAIN.y - 3.5) // 북쪽 → 남(분수)을 봄
+  fountainBenchPair('e', 'NW', FOUNTAIN.x + 3.5, FOUNTAIN.y - 0.7) // 동쪽 → 서(분수)를 봄 (남쪽 정자 지붕에 안 가리게 살짝 북으로)
 
   // ── 마로니에 공원 벤치 — 산책로 양편에 마주보게, 가운데 정자 축은 비워 자연스럽게 ──
   const parkBench: { x: number; y: number; v: 'l' | 'r' }[] = []
@@ -578,7 +599,10 @@ function villageProps(): PropDef[] {
       p.anchor = rs.anchor
     }
   }
-  return P
+  // 대성당 회랑·좌측 연못·봉헌 조상을 빼자 그 자리에 막혀 있던 자동 배치 소품(가로등·쓰레기통·나무·관목)이
+  // 새로 튀어나옴 → 제거 전 모습 그대로 두도록 명시적으로 뺀다.
+  const SUPPRESSED = new Set(['l6', 'l65', 'l67', 'tb2', 't7', 'tg-bush3', 'tg-bush9'])
+  return P.filter((p) => !SUPPRESSED.has(p.id))
 }
 
 const VILLAGE_PROPS = villageProps()

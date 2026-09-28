@@ -41,6 +41,7 @@ export function CreatureSprite({
   walking = false,
   px = 64,
   flip = false,
+  groundPad = 0,
   className,
   basePath = '/images/creatures',
   label = '크리처 스프라이트',
@@ -52,6 +53,8 @@ export function CreatureSprite({
   px?: number
   /** 추가 좌우 반전(적군이 왼쪽을 보게 할 때 등). 걷기 left 반전과 XOR 합성. */
   flip?: boolean
+  /** 시트 프레임 아래 투명 여백 비율 — 이만큼 아래로 당겨 발을 바닥선에 맞춘다(폴백 아이콘엔 적용 안 함) */
+  groundPad?: number
   className?: string
   /** 시트 폴더 — 크리처는 /images/creatures, NPC는 /images/npc(NpcSprite 참고) */
   basePath?: string
@@ -99,6 +102,7 @@ export function CreatureSprite({
         style={{
           width: px,
           height: px,
+          marginBottom: groundPad ? -Math.round(px * groundPad) : undefined,
           transform: flipX ? 'scaleX(-1)' : undefined,
           backgroundImage: `url(${creatureSheetSrc(spriteId, basePath)})`,
           backgroundSize: `${px * SHEET_COLS}px ${px * SHEET_ROWS}px`,
