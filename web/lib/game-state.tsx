@@ -43,6 +43,7 @@ import {
   battleStats,
   claimQuest,
   dismissStory,
+  chooseStory,
   eatFood,
   endWeek,
   ensureWeek,
@@ -118,6 +119,7 @@ export type Action =
   | { type: 'CLAIM_QUEST'; instanceId: string }
   | { type: 'END_WEEK' }
   | { type: 'DISMISS_STORY' }
+  | { type: 'STORY_CHOICE'; setFlags: string[] }
   | { type: 'SET_FLAG'; flag: string; value?: boolean | number }
   | { type: 'GATHER'; nodeKey: string }
   | { type: 'START_FISHING' }
@@ -201,6 +203,9 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'DISMISS_STORY':
       return dismissStory(state)
+
+    case 'STORY_CHOICE':
+      return chooseStory(state, action.setFlags)
 
     case 'SET_FLAG':
       return setStoryFlag(state, action.flag, action.value ?? true)

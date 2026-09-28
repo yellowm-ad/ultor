@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { npcById } from '@/lib/mock-data'
+import { npcWeeklyLine } from '@/lib/npc-weekly-lines'
 import { Button } from '@/components/ui/button'
 import { Portrait } from '@/components/game/portrait'
 import { DiamondMark } from '@/components/game/ui-motifs'
@@ -44,7 +45,10 @@ export function DialogueScreen() {
   const eligible = jobTierForLevel(state.player.level)
   const canJobChange = isJobTrainer && eligible.id !== state.player.jobTierId
   const currentTier = JOB_TIERS.find((t) => t.id === state.player.jobTierId)!
-  const lastLine = lineIdx >= npc.greeting.length - 1
+  // 이번 주 대사(주간 풀)를 첫 줄로, 이어서 기본 인사
+  const weekly = npcWeeklyLine(npc.id, state)
+  const lines = weekly ? [weekly, ...npc.greeting] : npc.greeting
+  const lastLine = lineIdx >= lines.length - 1
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-40 flex items-end justify-center bg-black/50 p-3 sm:p-6">
@@ -67,11 +71,11 @@ export function DialogueScreen() {
               <span className="text-[10px] font-normal text-white/60">{ROLE_LABEL[npc.role]}</span>
             </div>
 
-            <p className="min-h-16 pt-1 text-sm leading-relaxed text-[var(--parchment-foreground)]">{npc.greeting[lineIdx]}</p>
+            <p className="min-h-16 pt-1 text-sm leading-relaxed text-[var(--parchment-foreground)]">{lines[lineIdx]}</p>
 
             <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
               {!lastLine && (
-                <Button variant="parchment" size="sm" onClick={() => setLineIdx((i) => Math.min(npc.greeting.length - 1, i + 1))}>
+                <Button variant="parchment" size="sm" onClick={() => setLineIdx((i) => Math.min(lines.length - 1, i + 1))}>
                   ▼ 다음
                 </Button>
               )}

@@ -66,6 +66,11 @@ export function dismissStory(state: GameState): GameState {
   return { ...state, storyQueue: state.storyQueue.slice(1) }
 }
 
+/** 스토리 선택지 — 현재 비트를 닫고 고른 쪽 플래그를 켠다(FLAG 트리거로 다음 장면이 이어짐) */
+export function chooseStory(state: GameState, flags: string[]): GameState {
+  return flags.reduce((s, f) => setStoryFlag(s, f), dismissStory(state))
+}
+
 /** 퀘스트 진행 이벤트 적용 + 완료 알림 토스트 */
 export function withQuestEvents(state: GameState, events: QuestEvent[], toast?: string | null): GameState {
   if (events.length === 0) return toast !== undefined ? { ...state, toast } : state
@@ -405,6 +410,10 @@ export function afterBattleVictory(state: GameState, battle: BattleState): GameS
 
   const mealBuff = next.mealBuff && next.mealBuff.battlesLeft > 1 ? { ...next.mealBuff, battlesLeft: next.mealBuff.battlesLeft - 1 } : null
   next = { ...next, inventory, mealBuff, collections: { ...next.collections, monsters } }
+  // 전투 승리 스토리 비트(보스 처치 후 장면 등)
+  const defeated = new Set(battle.combatants.filter((c) => c.side === 'enemy').map((c) => c.refId))
+  const mapId = next.currentMapId
+  next = queueBeats(next, (t) => t.type === 'DEFEAT' && (!t.monsterId || defeated.has(t.monsterId)) && (!t.mapId || t.mapId === mapId))
   return withQuestEvents(next, events, next.toast)
 }
 
