@@ -6,6 +6,9 @@ import { ELEMENT_META, JOB_TIERS, jobTierForLevel } from '@/lib/constants'
 import { petDefById, petStatsForLevel } from '@/lib/pets'
 import { expProgressPercent, MAX_LEVEL } from '@/lib/exp-table'
 import { Sparkles } from 'lucide-react'
+import { calendarShortLabel } from '@/lib/calendar'
+import { questTemplateById, REQUIRED_OPTIONAL, weekCompletion } from '@/lib/quests'
+import { itemById } from '@/lib/mock-data'
 
 export function Hud() {
   const { state, dispatch } = useGame()
@@ -52,6 +55,9 @@ export function Hud() {
           </div>
         </div>
 
+        {/* 학사 달력 + 이번 주 필수 미션 + 식사 버프 */}
+        <WeekTracker />
+
         {/* 펫 미니 상태 */}
         <div className="title-enter-2 hidden items-center gap-2 pl-1 sm:flex">
           <div className="portrait-ring flex size-9 shrink-0 items-center justify-center">
@@ -69,6 +75,7 @@ export function Hud() {
       {/* 우측: 아이콘 메뉴 — 박스 버튼 대신 순수 아이콘 */}
       <div className="pointer-events-auto title-enter-3 flex flex-col items-end gap-2">
         <div className="flex gap-3 sm:gap-3.5">
+          <MenuIcon src="/images/icons/hud/journal.svg" label="수첩" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'journal' })} />
           <MenuIcon src="/images/icons/hud/backpack.png" label="가방" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'inventory' })} />
           <MenuIcon src="/images/npc/npc-workbench.png" label="제작" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: 'npc-workbench' })} />
           <MenuIcon src="/images/icons/hud/character.png" label="정보" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'character' })} />
@@ -82,6 +89,40 @@ export function Hud() {
         )}
       </div>
     </div>
+  )
+}
+
+function WeekTracker() {
+  const { state, dispatch } = useGame()
+  const main = state.weekly.quests.find((q) => q.slot === 'MAIN')
+  const mainT = main ? questTemplateById(main.templateId) : undefined
+  const { canEnd, optionalDone } = weekCompletion(state.weekly)
+  const ready = state.weekly.quests.some((q) => q.status === 'complete')
+  const meal = state.mealBuff ? itemById(state.mealBuff.itemId) : undefined
+  return (
+    <button
+      type="button"
+      onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'journal' })}
+      className="title-enter-2 flex w-56 flex-col items-start gap-0.5 pl-1 text-left"
+      title="학사 수첩 (J)"
+    >
+      <span className="hud-clean-text hud-clean-label text-[11px] text-gold-soft">{calendarShortLabel(state.calendar)}</span>
+      {mainT && main && (
+        <span className="hud-clean-text truncate text-[10px] text-white/80">
+          ★ {mainT.title}{' '}
+          {main.status === 'claimed' ? '✔' : main.status === 'complete' ? '(보상 대기)' : `${main.progress[0] ?? 0}/${mainT.objectives[0]?.count ?? 1}`}
+          <span className="ml-1 text-white/50">· 선택 {optionalDone}/{REQUIRED_OPTIONAL}</span>
+        </span>
+      )}
+      {(ready || canEnd) && (
+        <span className="hud-clean-text text-[10px] text-gold-soft">{canEnd ? '▶ 이번 주 마감 가능' : '● 받을 보상이 있어요'}</span>
+      )}
+      {meal && state.mealBuff && (
+        <span className="hud-clean-text text-[10px] text-emerald-200">
+          식사 버프 · {meal.mealBuff?.label} ({state.mealBuff.battlesLeft}전투)
+        </span>
+      )}
+    </button>
   )
 }
 

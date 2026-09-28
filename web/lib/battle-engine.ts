@@ -24,6 +24,7 @@ import type {
 } from '@/lib/types'
 import { ATB, elementMultiplier } from '@/lib/constants'
 import { MONSTERS, itemById, skillById } from '@/lib/mock-data'
+import { rollHuntDrops } from '@/lib/life'
 import { testMonsterExpReward } from '@/lib/exp-table'
 import { petDefById, affectionTier, AFFECTION_TIER_META, petStatsForLevel } from '@/lib/pets'
 import {
@@ -64,7 +65,7 @@ export function combatantFromPlayer(player: PlayerCharacter, effectiveStats?: St
     kind: 'hero',
     refId: 'hero',
     name: player.name || '주인공',
-    icon: `/images/elements/${player.element}.svg`,
+    icon: `/images/elements/${player.element}-crest.png`,
     element: player.element,
     level: player.level,
     stats,
@@ -138,11 +139,14 @@ export function initBattle(
   originCell: { x: number; y: number },
   fieldMonsterUid?: string,
   effectiveStats?: Stats,
+  /** 동료(kind:'ally') — 파티 순서대로 진형 3·4번 자리에 선다 */
+  allies: Combatant[] = [],
+  opts: { huntEnabled?: boolean } = {},
 ): BattleState {
   const hero = combatantFromPlayer(player, effectiveStats)
   const petC = combatantFromPet(pet)
   const enemies = monsterDefs.map(combatantFromMonster)
-  const combatants = [hero, petC, ...enemies]
+  const combatants = [hero, petC, ...allies, ...enemies]
 
   const entries: BattleLogEntry[] = []
   log(entries, `${enemies.map((e) => e.name).join(', ')}이(가) 나타났다!`, 'system')
@@ -157,6 +161,7 @@ export function initBattle(
     victory: false,
     originCell,
     fieldMonsterUid,
+    huntEnabled: opts.huntEnabled,
   }
 }
 
@@ -610,6 +615,7 @@ export function checkBattleEnd(battle: BattleState): BattleState {
     let expTotal = 0
     let goldTotal = 0
     const drops: string[] = []
+    const huntDrops: string[] = []
     for (const c of battle.combatants) {
       if (c.side !== 'enemy') continue
       const def = MONSTERS.find((m) => m.id === c.refId)
@@ -620,11 +626,13 @@ export function checkBattleEnd(battle: BattleState): BattleState {
         expTotal += def.expReward
         goldTotal += def.goldReward
         for (const d of def.dropTable ?? []) if (Math.random() < d.chance) drops.push(d.itemId)
+        if (battle.huntEnabled) huntDrops.push(...rollHuntDrops(def.family))
       }
     }
     log(entries, `전투에서 승리했다! 경험치 ${expTotal}, 골드 ${goldTotal} 획득!`, 'system')
     if (drops.length) log(entries, `획득: ${drops.map((id) => itemById(id)?.name ?? id).join(', ')}`, 'system')
-    return { ...battle, isOver: true, victory: true, log: entries, rewardExp: expTotal, rewardGold: goldTotal, rewardDrops: drops }
+    if (huntDrops.length) log(entries, `사냥 부산물: ${huntDrops.map((id) => itemById(id)?.name ?? id).join(', ')}`, 'system')
+    return { ...battle, isOver: true, victory: true, log: entries, rewardExp: expTotal, rewardGold: goldTotal, rewardDrops: drops, huntDrops }
   }
 
   log(entries, `파티가 쓰러졌다... 마법학교로 후송된다.`, 'system')

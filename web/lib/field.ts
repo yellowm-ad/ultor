@@ -45,13 +45,23 @@ export function generateFieldMonsters(map: GameMap, testMode: boolean): FieldMon
 
   const rollCount = (d: number) => Math.floor(d) + (rand() < d % 1 ? 1 : 0)
 
-  const place = (id: string, cx: number, cy: number, prefix: string) => {
+  // 넓어진 맵에서 몹이 뭉치지 않도록: 서로 spacing 이상 · 스폰/포탈 주변 비움 · 길 위는 피함.
+  // 셀 안에서 못 찾으면 주변 2셀까지 흔들어 보고, 끝내 자리가 없으면 그 마리는 건너뛴다.
+  const clearOf = (x: number, y: number) =>
+    Math.hypot(x - map.spawn.x, y - map.spawn.y) > 3.2 &&
+    map.portals.every((p) => Math.hypot(p.cell.x - x, p.cell.y - y) > 2.4) &&
+    !(map.roadAt?.(x, y) ?? false) &&
+    !result.some((r) => Math.hypot(r.homeCell.x - x, r.homeCell.y - y) < spacing)
+  const place = (id: string, cx: number, cy: number, prefix: string, force = false) => {
     let home = { x: cx + rand() * 0.8 + 0.1, y: cy + rand() * 0.8 + 0.1 }
-    for (let attempt = 0; attempt < 6; attempt++) {
-      const tooClose = result.some((r) => Math.hypot(r.homeCell.x - home.x, r.homeCell.y - home.y) < spacing)
-      if (!tooClose) break
-      home = { x: cx + rand() * 0.8 + 0.1, y: cy + rand() * 0.8 + 0.1 }
+    let ok = force || clearOf(home.x, home.y)
+    for (let attempt = 0; !ok && attempt < 10; attempt++) {
+      const x = Math.min(map.grid.w - 0.6, Math.max(0.6, cx + 0.5 + (rand() - 0.5) * 4))
+      const y = Math.min(map.grid.h - 0.6, Math.max(0.6, cy + 0.5 + (rand() - 0.5) * 4))
+      home = { x, y }
+      ok = clearOf(x, y)
     }
+    if (!ok) return
     result.push({
       uid: `${prefix}-${uidCounter++}`,
       monsterId: id,
@@ -59,6 +69,11 @@ export function generateFieldMonsters(map: GameMap, testMode: boolean): FieldMon
       homeCell: { ...home },
       wanderSeed: Math.floor(rand() * 100000),
     })
+  }
+
+  // 중간보스/필드보스 — 먼저 고정 배치(일반 몹 간격 판정에 밀려 빠지지 않게). 재입장 시 재도전 가능
+  if (map.bossSpawns) {
+    for (const boss of map.bossSpawns) place(boss.monsterId, Math.floor(boss.cell.x), Math.floor(boss.cell.y), 'fm-boss', true)
   }
 
   if (pool.length > 0) {
@@ -72,12 +87,7 @@ export function generateFieldMonsters(map: GameMap, testMode: boolean): FieldMon
 
   if (testMode && testMonster) {
     // 입구(스폰 지점) 바로 근처에 테스트용 허수아비 1마리만 배치
-    place(testMonster.id, Math.floor(map.spawn.x) - 1, Math.floor(map.spawn.y) - 1, 'fm-test')
-  }
-
-  // 중간보스/필드보스 — 랜덤 풀과 별개로 지정된 위치에 항상 고정 배치(재입장 시 재도전 가능)
-  if (map.bossSpawns) {
-    for (const boss of map.bossSpawns) place(boss.monsterId, Math.floor(boss.cell.x), Math.floor(boss.cell.y), 'fm-boss')
+    place(testMonster.id, Math.floor(map.spawn.x) - 1, Math.floor(map.spawn.y) - 1, 'fm-test', true)
   }
 
   return result

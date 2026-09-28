@@ -1,7 +1,7 @@
 import type { GameMap, MapId, ZoneDef, ZoneKind } from '@/lib/types'
 import type { PropDef, TileKind } from '@/lib/iso'
 import { propAABB } from '@/lib/iso'
-import { mulberry32 } from '@/lib/rng'
+import { assembleFieldMaps } from '@/lib/field-specs'
 import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS } from '@/lib/atlantis-map'
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
@@ -37,53 +37,16 @@ function buildBlockers(props: PropDef[], extra: Blocker[] = []): Blocker[] {
   return out
 }
 
-/** props 배열의 셀 좌표만 균일 스케일(맵 확장 시 기존 배치를 그대로 넓힌다) */
-function scaleProps(props: PropDef[], s: number): PropDef[] {
-  return props.map((p) => ({ ...p, cell: { x: p.cell.x * s, y: p.cell.y * s } }))
-}
-
-/**
- * 빈 공간에 자연물을 흩뿌려 채운다(결정론적 시드) — 지형 확장으로 생긴 여백을
- * 손으로 일일이 배치하지 않고 자연스럽게 메우기 위한 헬퍼.
- */
-function scatterProps(
-  biome: keyof typeof FIELD_SPRITES,
-  pool: string[],
-  count: number,
-  w: number,
-  h: number,
-  avoid: { x: number; y: number; r: number }[],
-  seed: number,
-  idPrefix: string,
-  reject?: (x: number, y: number) => boolean,
-): PropDef[] {
-  const rand = mulberry32(seed)
-  const out: PropDef[] = []
-  let tries = 0
-  while (out.length < count && tries < count * 25) {
-    tries++
-    const x = 1 + rand() * (w - 2)
-    const y = 1 + rand() * (h - 2)
-    if (avoid.some((a) => Math.hypot(x - a.x, y - a.y) < a.r)) continue
-    if (reject?.(x, y)) continue
-    if (out.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < 1.7)) continue
-    const key = pool[Math.floor(rand() * pool.length)] as keyof (typeof FIELD_SPRITES)[typeof biome]
-    out.push(fprop(biome, key, `${idPrefix}${out.length}`, x, y))
-  }
-  return out
-}
-
 // ============================================================================
 // 멀티맵 정의 — 메인 마을(안전) + 야생 스테이지(포탈 이동)
 // 셀 = 200m. 맵마다 grid 크기가 다르며 정사각형이 아니어도 된다.
-// 스테이지 트리:
-//   village ──군 통문──▶ forest / sea / stormhaven / ruins / snowfield / volcano
-//   forest    ─▶ cave ─▶ mine,   forest ─▶ swamp
-//   sea       ─▶ deepsea,        sea    ─▶ atlantis(안전)
-//   stormhaven─▶ sky-temple(천공 신전, 안전)
-//   ruins     ─▶ graveyard,      ruins  ─▶ temple-ruin(버려진 신전, 안전)
-//   snowfield ─▶ aurora-village(오로라 마을, 안전)
-//   volcano   ─▶ demon-village(마물 마을, 안전),  volcano ─▶ demon-castle
+// 스테이지 트리(2026-09-28 개편, lib/field-specs.ts): 지역마다 기본 3단계 → 3단계 갈림길에서 특수맵 2 + 마을
+//   forest → forest-2 → forest-3 ┬ cave · swamp            (+ 마을 귀환 마법진)
+//   sea → sea-2 → sea-3            ┬ deepsea · sea-cave · atlantis(안전)
+//   stormhaven → -2 → -3           ┬ cloud-rift · thunder-spire · sky-temple(안전)
+//   ruins → ruins-2 → ruins-3      ┬ graveyard · catacomb · temple-ruin(안전)
+//   snowfield → -2 → -3            ┬ ice-cave · frozen-lake · aurora-village(안전)
+//   volcano → -2 → -3              ┬ mine · lava-cave · demon-village(안전) · demon-castle
 // ============================================================================
 
 function z(
@@ -612,440 +575,7 @@ const VILLAGE_BLOCKERS = buildBlockers(VILLAGE_PROPS)
 // 야생 필드 맵은 라벨 구역을 두지 않고 맵 이름/배경으로 표시한다.
 const NO_ZONES: ZoneDef[] = []
 
-// ── 필드(야생) 지역 프롭 세트 ────────────────────────────────────────────────
-// world-screen 의 쿼터뷰 경로에서 빌보드 PNG 로 세워 렌더한다(FieldProp).
-// kind 는 쿼터뷰 빌보드에서 쓰이지 않으므로 형식상 근사값을 넣는다.
-// px = 파일 실제 픽셀, anchor = 파일 좌상단 기준 발밑(그라운드) 오프셋.
-type FieldSprite = { sprite: string; px: { w: number; h: number }; anchor: { x: number; y: number }; kind: PropDef['kind'] }
-const FIELD_SPRITES = {
-  forest: {
-    tree: { sprite: '/images/map/props/f_forest_tree.png', px: { w: 128, h: 160 }, anchor: { x: 64, y: 150 }, kind: 'tree' },
-    bush: { sprite: '/images/map/props/f_forest_bush.png', px: { w: 96, h: 56 }, anchor: { x: 48, y: 52 }, kind: 'bush' },
-    rock: { sprite: '/images/map/props/f_forest_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 60 }, kind: 'bush' },
-    mushroom: { sprite: '/images/map/props/f_forest_mushroom.png', px: { w: 72, h: 56 }, anchor: { x: 36, y: 52 }, kind: 'bush' },
-    log: { sprite: '/images/map/props/f_forest_log.png', px: { w: 120, h: 56 }, anchor: { x: 60, y: 48 }, kind: 'bush' },
-    firefly: { sprite: '/images/map/props/f_forest_firefly.png', px: { w: 56, h: 96 }, anchor: { x: 28, y: 92 }, kind: 'lamp' },
-  },
-  volcano: {
-    spire: { sprite: '/images/map/props/f_volcano_spire.png', px: { w: 72, h: 144 }, anchor: { x: 36, y: 134 }, kind: 'tree' },
-    deadtree: { sprite: '/images/map/props/f_volcano_deadtree.png', px: { w: 104, h: 136 }, anchor: { x: 52, y: 128 }, kind: 'tree' },
-    rock: { sprite: '/images/map/props/f_volcano_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 58 }, kind: 'bush' },
-    vent: { sprite: '/images/map/props/f_volcano_vent.png', px: { w: 88, h: 56 }, anchor: { x: 44, y: 50 }, kind: 'bush' },
-    sulfur: { sprite: '/images/map/props/f_volcano_sulfur.png', px: { w: 64, h: 64 }, anchor: { x: 32, y: 58 }, kind: 'bush' },
-    ashmound: { sprite: '/images/map/props/f_volcano_ashmound.png', px: { w: 72, h: 48 }, anchor: { x: 36, y: 44 }, kind: 'bush' },
-  },
-  sea: {
-    driftwood: { sprite: '/images/map/props/f_sea_driftwood.png', px: { w: 120, h: 56 }, anchor: { x: 60, y: 52 }, kind: 'bush' },
-    rock: { sprite: '/images/map/props/f_sea_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 59 }, kind: 'bush' },
-    coral: { sprite: '/images/map/props/f_sea_coral.png', px: { w: 80, h: 56 }, anchor: { x: 40, y: 52 }, kind: 'bush' },
-    dunegrass: { sprite: '/images/map/props/f_sea_dunegrass.png', px: { w: 56, h: 72 }, anchor: { x: 28, y: 66 }, kind: 'bush' },
-  },
-  stormhaven: {
-    banner: { sprite: '/images/map/props/f_storm_banner.png', px: { w: 56, h: 120 }, anchor: { x: 28, y: 110 }, kind: 'tree' },
-    stormgrass: { sprite: '/images/map/props/f_storm_grass.png', px: { w: 64, h: 48 }, anchor: { x: 32, y: 44 }, kind: 'bush' },
-    floatrock: { sprite: '/images/map/props/f_storm_rock.png', px: { w: 88, h: 72 }, anchor: { x: 44, y: 66 }, kind: 'bush' },
-  },
-  ruinsField: {
-    pillar: { sprite: '/images/map/props/f_ruins_pillar.png', px: { w: 72, h: 104 }, anchor: { x: 36, y: 96 }, kind: 'tree' },
-    rubble: { sprite: '/images/map/props/f_ruins_rubble.png', px: { w: 88, h: 56 }, anchor: { x: 44, y: 52 }, kind: 'bush' },
-    crystal: { sprite: '/images/map/props/f_ruins_crystal.png', px: { w: 56, h: 80 }, anchor: { x: 28, y: 74 }, kind: 'lamp' },
-    vine: { sprite: '/images/map/props/f_ruins_vine.png', px: { w: 72, h: 48 }, anchor: { x: 36, y: 44 }, kind: 'bush' },
-  },
-  snowfield: {
-    pine: { sprite: '/images/map/props/f_snow_pine.png', px: { w: 96, h: 148 }, anchor: { x: 48, y: 136 }, kind: 'tree' },
-    frostrock: { sprite: '/images/map/props/f_snow_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 59 }, kind: 'bush' },
-    icicle: { sprite: '/images/map/props/f_snow_icicle.png', px: { w: 64, h: 64 }, anchor: { x: 32, y: 59 }, kind: 'bush' },
-    snowmound: { sprite: '/images/map/props/f_snow_mound.png', px: { w: 72, h: 44 }, anchor: { x: 36, y: 40 }, kind: 'bush' },
-  },
-  cave: {
-    crystal: { sprite: '/images/map/props/f_cave_crystal.png', px: { w: 64, h: 88 }, anchor: { x: 32, y: 81 }, kind: 'lamp' },
-    stalagmite: { sprite: '/images/map/props/f_cave_stalagmite.png', px: { w: 72, h: 104 }, anchor: { x: 36, y: 96 }, kind: 'tree' },
-    mushroom: { sprite: '/images/map/props/f_forest_mushroom.png', px: { w: 72, h: 56 }, anchor: { x: 36, y: 52 }, kind: 'bush' },
-    rock: { sprite: '/images/map/props/f_forest_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 60 }, kind: 'bush' },
-  },
-  mine: {
-    orevein: { sprite: '/images/map/props/f_mine_orevein.png', px: { w: 80, h: 60 }, anchor: { x: 40, y: 55 }, kind: 'bush' },
-    beam: { sprite: '/images/map/props/f_mine_beam.png', px: { w: 64, h: 112 }, anchor: { x: 32, y: 104 }, kind: 'lamp' },
-    cart: { sprite: '/images/map/props/f_mine_cart.png', px: { w: 88, h: 72 }, anchor: { x: 44, y: 66 }, kind: 'bush' },
-    rock: { sprite: '/images/map/props/f_forest_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 60 }, kind: 'bush' },
-  },
-  swamp: {
-    reed: { sprite: '/images/map/props/f_swamp_reed.png', px: { w: 56, h: 88 }, anchor: { x: 28, y: 82 }, kind: 'bush' },
-    mangrove: { sprite: '/images/map/props/f_swamp_mangrove.png', px: { w: 112, h: 140 }, anchor: { x: 56, y: 130 }, kind: 'tree' },
-    lilypad: { sprite: '/images/map/props/f_swamp_lilypad.png', px: { w: 72, h: 40 }, anchor: { x: 36, y: 36 }, kind: 'bush' },
-  },
-  deepsea: {
-    kelp: { sprite: '/images/map/props/f_deepsea_kelp.png', px: { w: 64, h: 100 }, anchor: { x: 32, y: 93 }, kind: 'tree' },
-    wreck: { sprite: '/images/map/props/f_deepsea_wreck.png', px: { w: 120, h: 64 }, anchor: { x: 60, y: 59 }, kind: 'bush' },
-    coral: { sprite: '/images/map/props/f_sea_coral.png', px: { w: 80, h: 56 }, anchor: { x: 40, y: 52 }, kind: 'bush' },
-    rock: { sprite: '/images/map/props/f_sea_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 59 }, kind: 'bush' },
-  },
-  graveyard: {
-    tombstone: { sprite: '/images/map/props/f_grave_tombstone.png', px: { w: 56, h: 80 }, anchor: { x: 28, y: 74 }, kind: 'bush' },
-    deadtree: { sprite: '/images/map/props/f_grave_deadtree.png', px: { w: 96, h: 136 }, anchor: { x: 48, y: 126 }, kind: 'tree' },
-    lantern: { sprite: '/images/map/props/f_grave_lantern.png', px: { w: 48, h: 72 }, anchor: { x: 24, y: 66 }, kind: 'lamp' },
-  },
-  demonCastle: {
-    bones: { sprite: '/images/map/props/f_demon_bones.png', px: { w: 80, h: 52 }, anchor: { x: 40, y: 48 }, kind: 'bush' },
-    banner: { sprite: '/images/map/props/f_demon_banner.png', px: { w: 56, h: 128 }, anchor: { x: 28, y: 118 }, kind: 'tree' },
-    spire: { sprite: '/images/map/props/f_volcano_spire.png', px: { w: 72, h: 144 }, anchor: { x: 36, y: 134 }, kind: 'tree' },
-    vent: { sprite: '/images/map/props/f_volcano_vent.png', px: { w: 88, h: 56 }, anchor: { x: 44, y: 50 }, kind: 'bush' },
-  },
-} as const satisfies Record<string, Record<string, FieldSprite>>
-
-function fprop<B extends keyof typeof FIELD_SPRITES>(
-  biome: B,
-  key: keyof (typeof FIELD_SPRITES)[B],
-  id: string,
-  x: number,
-  y: number,
-): PropDef {
-  const s = FIELD_SPRITES[biome][key] as FieldSprite
-  return { id, kind: s.kind, cell: { x, y }, sprite: s.sprite, px: s.px, anchor: s.anchor }
-}
-
-// ── 야생 스테이지 공통 템플릿 ────────────────────────────────────────────────
-// 6개 야생 사냥터(숲·바다·스톰헤이븐·폐허·설원·화산) 전부 같은 12×10 원본 골격
-// (스폰 6,8.6 / 마을출구 6,9.4 / 포탈 2,1.6·10,1.6 또는 단일 포탈 6,1.6) 을 공유한다.
-// "좁아서 답답하다" 피드백 반영 — 1.5배(18×15)에서 2배(24×20)로 더 넓히고,
-// 스폰↔포탈을 잇는 굽이치는 통로(nearRoad)를 깔아 시야가 트이게 한다.
-const FIELD_SCALE = 2
-const FIELD_W = 12 * FIELD_SCALE
-const FIELD_H = 10 * FIELD_SCALE
-const FIELD_SPAWN = { x: 6 * FIELD_SCALE, y: 8.6 * FIELD_SCALE }
-const FIELD_EXIT = { x: 6 * FIELD_SCALE, y: 9.4 * FIELD_SCALE }
-const FIELD_PORTAL_L = { x: 2 * FIELD_SCALE, y: 1.6 * FIELD_SCALE }
-const FIELD_PORTAL_R = { x: 10 * FIELD_SCALE, y: 1.6 * FIELD_SCALE }
-const FIELD_PORTAL_C = { x: 6 * FIELD_SCALE, y: 1.6 * FIELD_SCALE } // 포탈이 하나뿐인 맵(스톰헤이븐·설원)
-
-/** 스폰→목적지 사이 굽이치는 통로 판정 — 통로 폭 안이면 true (지형 타일/장식 배치 양쪽에 사용) */
-function nearRoad(
-  x: number,
-  y: number,
-  from: { x: number; y: number },
-  to: { x: number; y: number },
-  width: number,
-  wiggle: number,
-): boolean {
-  const dy = to.y - from.y
-  if (Math.abs(dy) < 0.01) return false
-  const t = (y - from.y) / dy
-  if (t < -0.08 || t > 1.08) return false
-  const baseX = from.x + (to.x - from.x) * t
-  const wob = Math.sin(t * Math.PI * 2.4) * wiggle
-  return Math.abs(x - (baseX + wob)) < width
-}
-/** 스폰에서 여러 목적지로 뻗는 통로 중 하나에라도 걸리면 true */
-function onFieldRoad(x: number, y: number, targets: { x: number; y: number }[], width = 1.3, wiggle = 1.7): boolean {
-  return targets.some((t) => nearRoad(x, y, FIELD_SPAWN, t, width, wiggle))
-}
-
-// 에르디아 숲 — 원본 배치를 FIELD_SCALE 만큼 넓히고, 새로 생긴 여백은 scatterProps 로 채운다.
-const FOREST_BASE_PROPS: PropDef[] = [
-  fprop('forest', 'tree', 'ft1', 1.2, 2.3), fprop('forest', 'tree', 'ft2', 3.6, 1.1), fprop('forest', 'tree', 'ft3', 8.0, 1.0),
-  fprop('forest', 'tree', 'ft4', 11.0, 2.6), fprop('forest', 'tree', 'ft5', 0.8, 5.6), fprop('forest', 'tree', 'ft6', 11.2, 6.2),
-  fprop('forest', 'tree', 'ft7', 2.0, 8.6), fprop('forest', 'tree', 'ft8', 9.7, 8.8), fprop('forest', 'tree', 'ft9', 6.2, 0.7),
-  fprop('forest', 'bush', 'fb1', 4.4, 3.2), fprop('forest', 'bush', 'fb2', 8.6, 4.0), fprop('forest', 'bush', 'fb3', 2.7, 6.7),
-  fprop('forest', 'bush', 'fb4', 10.2, 4.7),
-  fprop('forest', 'rock', 'fr1', 7.4, 2.6), fprop('forest', 'rock', 'fr2', 3.0, 4.6),
-  fprop('forest', 'log', 'fl1', 5.6, 5.2), fprop('forest', 'log', 'fl2', 8.8, 6.8),
-  fprop('forest', 'mushroom', 'fm1', 4.8, 6.3), fprop('forest', 'mushroom', 'fm2', 6.9, 4.1), fprop('forest', 'mushroom', 'fm3', 9.4, 2.2),
-  fprop('forest', 'firefly', 'ff1', 3.9, 7.7), fprop('forest', 'firefly', 'ff2', 7.7, 7.6),
-]
-const FOREST_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_L.x, y: FIELD_PORTAL_L.y, r: 2.0 },
-  { x: FIELD_PORTAL_R.x, y: FIELD_PORTAL_R.y, r: 2.0 },
-]
-const forestOnRoad = (x: number, y: number) => onFieldRoad(x, y, [FIELD_PORTAL_L, FIELD_PORTAL_R], 1.5, 2.0)
-const FOREST_PROPS: PropDef[] = [
-  ...scaleProps(FOREST_BASE_PROPS, FIELD_SCALE).filter((p) => !forestOnRoad(p.cell.x, p.cell.y)),
-  ...scatterProps(
-    'forest',
-    ['tree', 'bush', 'bush', 'rock', 'mushroom', 'log', 'firefly'],
-    30,
-    FIELD_W,
-    FIELD_H,
-    FOREST_AVOID,
-    7301,
-    'ftx',
-    forestOnRoad,
-  ),
-]
-
-/** 에르디아 숲 지면 — 스폰↔포탈 굽이치는 오솔길(우선) + 완만한 개울 + 잔디 얼룩 */
-function forestTileAt(x: number, y: number): TileKind {
-  if (forestOnRoad(x, y)) return 'dirt'
-  const streamY = FIELD_H * 0.5 + Math.sin(x * 0.24) * 2.6
-  if (Math.abs(y - streamY) < 0.7) return 'water'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 3 ? 'grass-dark' : 'grass'
-}
-
-// 화산지대 — forest 와 동일한 원리로 넓히고, 스폰↔포탈 길은 맨 ash 로 정리해 걸어다니기 편하게.
-const VOLCANO_BASE_PROPS: PropDef[] = [
-  fprop('volcano', 'spire', 'vt1', 1.2, 2.3), fprop('volcano', 'spire', 'vt2', 3.6, 1.1), fprop('volcano', 'spire', 'vt3', 8.0, 1.0),
-  fprop('volcano', 'deadtree', 'vt4', 11.0, 2.6), fprop('volcano', 'deadtree', 'vt5', 0.8, 5.6), fprop('volcano', 'deadtree', 'vt6', 11.2, 6.2),
-  fprop('volcano', 'deadtree', 'vt7', 2.0, 8.6), fprop('volcano', 'spire', 'vt8', 9.7, 8.8), fprop('volcano', 'spire', 'vt9', 6.2, 0.7),
-  fprop('volcano', 'sulfur', 'vb1', 4.4, 3.2), fprop('volcano', 'ashmound', 'vb2', 8.6, 4.0), fprop('volcano', 'sulfur', 'vb3', 2.7, 6.7),
-  fprop('volcano', 'ashmound', 'vb4', 10.2, 4.7),
-  fprop('volcano', 'rock', 'vr1', 7.4, 2.6), fprop('volcano', 'rock', 'vr2', 3.0, 4.6),
-  fprop('volcano', 'rock', 'vl1', 5.6, 5.2), fprop('volcano', 'rock', 'vl2', 8.8, 6.8),
-  fprop('volcano', 'vent', 'vm1', 4.8, 6.3), fprop('volcano', 'vent', 'vm2', 6.9, 4.1), fprop('volcano', 'vent', 'vm3', 9.4, 2.2),
-  fprop('volcano', 'ashmound', 'vf1', 3.9, 7.7), fprop('volcano', 'sulfur', 'vf2', 7.7, 7.6),
-]
-const VOLCANO_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_L.x, y: FIELD_PORTAL_L.y, r: 2.0 },
-  { x: FIELD_PORTAL_R.x, y: FIELD_PORTAL_R.y, r: 2.0 },
-]
-const volcanoOnRoad = (x: number, y: number) => onFieldRoad(x, y, [FIELD_PORTAL_L, FIELD_PORTAL_R], 1.5, 2.0)
-const VOLCANO_PROPS: PropDef[] = [
-  ...scaleProps(VOLCANO_BASE_PROPS, FIELD_SCALE).filter((p) => !volcanoOnRoad(p.cell.x, p.cell.y)),
-  ...scatterProps(
-    'volcano',
-    ['spire', 'deadtree', 'rock', 'vent', 'sulfur', 'ashmound'],
-    28,
-    FIELD_W,
-    FIELD_H,
-    VOLCANO_AVOID,
-    8302,
-    'vtx',
-    volcanoOnRoad,
-  ),
-]
-
-/** 화산지대 지면 — 스폰↔포탈 길은 맨 ash로 정리, 나머지는 흑요석 얼룩 */
-function volcanoTileAt(x: number, y: number): TileKind {
-  if (volcanoOnRoad(x, y)) return 'path'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 4 ? 'ash' : 'obsidian'
-}
-
-// ── 바다 해안 — 위쪽 물결치는 해안선, 아래쪽 모래톱 뒤 사구 잔디 ─────────────
-/** 해안선(위=바다) — x에 따라 완만히 굽이침 */
-function seaShoreline(x: number): number {
-  return FIELD_H * 0.27 + Math.sin(x * 0.22) * 2.4
-}
-function seaTileAt(x: number, y: number): TileKind {
-  if (y < seaShoreline(x)) return 'water'
-  if (y > FIELD_H - 5.5 + Math.sin(x * 0.22) * 1.6) {
-    const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-    return h < 4 ? 'grass-dark' : 'grass'
-  }
-  const h = (Math.floor(x) * 5 + Math.floor(y) * 11) % 13
-  return h < 2 ? 'dirt' : 'sand'
-}
-const SEA_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_L.x, y: FIELD_PORTAL_L.y, r: 2.0 },
-  { x: FIELD_PORTAL_R.x, y: FIELD_PORTAL_R.y, r: 2.0 },
-]
-const seaOnRoad = (x: number, y: number) => onFieldRoad(x, y, [FIELD_PORTAL_L, FIELD_PORTAL_R], 1.6, 2.2)
-const SEA_PROPS: PropDef[] = scatterProps(
-  'sea',
-  ['driftwood', 'rock', 'coral', 'dunegrass', 'dunegrass'],
-  32,
-  FIELD_W,
-  FIELD_H,
-  SEA_AVOID,
-  4102,
-  'sex',
-  (x, y) => y < seaShoreline(x) + 0.6 || seaOnRoad(x, y), // 물속·바로 물가·통행로엔 세우지 않는다
-)
-
-// ── 스톰헤이븐 — 구름바다 위, 폭풍에 부서진 돌길이 스폰→천공 신전 포탈까지 굽이쳐 지나간다
-function stormhavenTileAt(x: number, y: number): TileKind {
-  if (onFieldRoad(x, y, [FIELD_PORTAL_C], 1.6, 2.6)) return 'path'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 9
-  return h === 0 ? 'plaza' : 'cloud'
-}
-const STORM_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_C.x, y: FIELD_PORTAL_C.y, r: 2.2 },
-]
-const STORM_PROPS: PropDef[] = scatterProps(
-  'stormhaven',
-  ['banner', 'stormgrass', 'stormgrass', 'floatrock'],
-  28,
-  FIELD_W,
-  FIELD_H,
-  STORM_AVOID,
-  5203,
-  'stx',
-  (x, y) => onFieldRoad(x, y, [FIELD_PORTAL_C], 1.6, 2.6),
-)
-
-// ── 버려진 폐허(야생) — 깨진 포석·잡초 침식·보랏빛 크리스탈, 포탈까지 넓은 포석 길 ──
-const ruinsOnRoad = (x: number, y: number) => onFieldRoad(x, y, [FIELD_PORTAL_L, FIELD_PORTAL_R], 1.6, 2.0)
-function ruinsFieldTileAt(x: number, y: number): TileKind {
-  if (ruinsOnRoad(x, y)) return 'plaza'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 13
-  if (h < 3) return 'plaza'
-  if (h < 5) return 'dirt'
-  return 'ash'
-}
-const RUINSF_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_L.x, y: FIELD_PORTAL_L.y, r: 2.0 },
-  { x: FIELD_PORTAL_R.x, y: FIELD_PORTAL_R.y, r: 2.0 },
-]
-const RUINSF_PROPS: PropDef[] = scatterProps(
-  'ruinsField',
-  ['pillar', 'rubble', 'crystal', 'vine', 'vine'],
-  30,
-  FIELD_W,
-  FIELD_H,
-  RUINSF_AVOID,
-  6304,
-  'rfx',
-  ruinsOnRoad,
-)
-
-// ── 루미나 설원 — 얼어붙은 연못 두 곳 + 다져진 눈길이 포탈까지 이어진다 ────────
-const SNOWF_POND1 = { x: FIELD_W * 0.28, y: FIELD_H * 0.58, r: 2.8 }
-const SNOWF_POND2 = { x: FIELD_W * 0.7, y: FIELD_H * 0.32, r: 2.2 }
-const snowfOnRoad = (x: number, y: number) => onFieldRoad(x, y, [FIELD_PORTAL_C], 1.6, 2.6)
-function snowfieldTileAt(x: number, y: number): TileKind {
-  if (snowfOnRoad(x, y)) return 'path'
-  if (Math.hypot(x - SNOWF_POND1.x, y - SNOWF_POND1.y) < SNOWF_POND1.r) return 'ice'
-  if (Math.hypot(x - SNOWF_POND2.x, y - SNOWF_POND2.y) < SNOWF_POND2.r) return 'ice'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 2 ? 'path' : 'snow'
-}
-const SNOWF_AVOID = [
-  { x: FIELD_SPAWN.x, y: FIELD_SPAWN.y, r: 2.2 },
-  { x: FIELD_EXIT.x, y: FIELD_EXIT.y, r: 1.8 },
-  { x: FIELD_PORTAL_C.x, y: FIELD_PORTAL_C.y, r: 2.2 },
-  { x: SNOWF_POND1.x, y: SNOWF_POND1.y, r: SNOWF_POND1.r + 0.4 },
-  { x: SNOWF_POND2.x, y: SNOWF_POND2.y, r: SNOWF_POND2.r + 0.4 },
-]
-const SNOWF_PROPS: PropDef[] = scatterProps(
-  'snowfield',
-  ['pine', 'frostrock', 'icicle', 'snowmound'],
-  30,
-  FIELD_W,
-  FIELD_H,
-  SNOWF_AVOID,
-  7405,
-  'sfx',
-  snowfOnRoad,
-)
-
-// ── 2차 던전(서브 스테이지) 공통 템플릿 — 여태 구 렌더러(반복 텍스처)로 남아있던
-// 이끼 동굴·폐광산·안개 늪지·심해·버려진 묘지·모르스의 성을 같은 iso 방식으로 구현.
-// 원본 10×8(늪지만 10×10) 골격을 1.8배 넓히고, 스폰 근처는 넉넉히 비워 답답하지 않게 한다.
-const SUB_W = 18
-const SUB_H = 14
-const SUB_SPAWN = { x: 9, y: 11.6 }
-const SUB_EXIT = { x: 9, y: 12.9 }
-const CAVE_FORWARD = { x: 3.6, y: 2.5 } // 폐광산 갱도 입구
-
-// 이끼 동굴 — 스폰에서 폐광산 입구까지 다져진 길이 이어진다.
-function caveTileAt(x: number, y: number): TileKind {
-  if (nearRoad(x, y, SUB_SPAWN, CAVE_FORWARD, 1.4, 1.6)) return 'dirt'
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 3 ? 'dirt' : 'cave'
-}
-const CAVE_AVOID = [
-  { x: SUB_SPAWN.x, y: SUB_SPAWN.y, r: 2.0 },
-  { x: SUB_EXIT.x, y: SUB_EXIT.y, r: 1.6 },
-  { x: CAVE_FORWARD.x, y: CAVE_FORWARD.y, r: 1.8 },
-]
-const CAVE_PROPS: PropDef[] = scatterProps(
-  'cave',
-  ['stalagmite', 'crystal', 'mushroom', 'rock'],
-  18,
-  SUB_W,
-  SUB_H,
-  CAVE_AVOID,
-  9101,
-  'cvx',
-  (x, y) => nearRoad(x, y, SUB_SPAWN, CAVE_FORWARD, 1.4, 1.6),
-)
-
-// 폐광산 — 막다른 갱도. 광맥·갱목·수레를 산개.
-function mineTileAt(x: number, y: number): TileKind {
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 3 ? 'dirt' : 'mine'
-}
-const MINE_AVOID = [
-  { x: SUB_SPAWN.x, y: SUB_SPAWN.y, r: 2.2 },
-  { x: SUB_EXIT.x, y: SUB_EXIT.y, r: 1.8 },
-]
-const MINE_PROPS: PropDef[] = scatterProps('mine', ['orevein', 'beam', 'cart', 'rock'], 18, SUB_W, SUB_H, MINE_AVOID, 9202, 'mnx')
-
-// 안개 늪지 — 막다른 늪. 웅덩이 사이 갈대·맹그로브·수련.
-const SWAMP_W = 18
-const SWAMP_H = 18
-const SWAMP_SPAWN = { x: 9, y: 15.5 }
-const SWAMP_EXIT = { x: 9, y: 16.9 }
-function swampTileAt(x: number, y: number): TileKind {
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 9
-  if (h === 0) return 'water'
-  return h < 4 ? 'dirt' : 'swamp'
-}
-const SWAMP_AVOID = [
-  { x: SWAMP_SPAWN.x, y: SWAMP_SPAWN.y, r: 2.2 },
-  { x: SWAMP_EXIT.x, y: SWAMP_EXIT.y, r: 1.8 },
-]
-const SWAMP_PROPS: PropDef[] = scatterProps('swamp', ['reed', 'reed', 'mangrove', 'lilypad'], 22, SWAMP_W, SWAMP_H, SWAMP_AVOID, 9303, 'swx')
-
-// 심해 — 막다른 해저. 수초·난파선 잔해, 바다 프롭 재사용.
-function deepseaTileAt(x: number, y: number): TileKind {
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 13
-  return h < 3 ? 'sand' : 'water'
-}
-const DEEPSEA_AVOID = [
-  { x: SUB_SPAWN.x, y: SUB_SPAWN.y, r: 2.2 },
-  { x: SUB_EXIT.x, y: SUB_EXIT.y, r: 1.8 },
-]
-const DEEPSEA_PROPS: PropDef[] = scatterProps('deepsea', ['kelp', 'kelp', 'wreck', 'coral', 'rock'], 18, SUB_W, SUB_H, DEEPSEA_AVOID, 9404, 'dsx')
-
-// 버려진 묘지 — 막다른 묘역. 비석·고사목·도깨비불.
-function graveyardTileAt(x: number, y: number): TileKind {
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 3 ? 'dirt' : 'ash'
-}
-const GRAVEYARD_AVOID = [
-  { x: SUB_SPAWN.x, y: SUB_SPAWN.y, r: 2.2 },
-  { x: SUB_EXIT.x, y: SUB_EXIT.y, r: 1.8 },
-]
-const GRAVEYARD_PROPS: PropDef[] = scatterProps(
-  'graveyard',
-  ['tombstone', 'tombstone', 'deadtree', 'lantern'],
-  20,
-  SUB_W,
-  SUB_H,
-  GRAVEYARD_AVOID,
-  9505,
-  'grx',
-)
-
-// 모르스의 성 — 최종 던전 입구. 흑요석 바닥에 뼈무더기·마물 깃발, 화산 프롭 재사용.
-function demonCastleTileAt(x: number, y: number): TileKind {
-  const h = (Math.floor(x) * 7 + Math.floor(y) * 13) % 11
-  return h < 4 ? 'ash' : 'obsidian'
-}
-const DEMONCASTLE_AVOID = [
-  { x: SUB_SPAWN.x, y: SUB_SPAWN.y, r: 2.2 },
-  { x: SUB_EXIT.x, y: SUB_EXIT.y, r: 1.8 },
-]
-const DEMONCASTLE_PROPS: PropDef[] = scatterProps(
-  'demonCastle',
-  ['bones', 'banner', 'spire', 'vent'],
-  18,
-  SUB_W,
-  SUB_H,
-  DEMONCASTLE_AVOID,
-  9606,
-  'dcx',
-)
+// ── 야생 전투맵 — lib/field-maps.ts(생성기) + lib/field-specs.ts(지역별 구성표) ──
 
 // ── 아틀란티스 마을 — lib/atlantis-map.ts (리빌드: 도로→광장→건물→조경, 앵커 규칙 보정) ──
 
@@ -1405,7 +935,16 @@ function testroomTileAt(x: number, y: number): TileKind {
   return (Math.floor(x / 3) + Math.floor(y / 3)) % 2 === 0 ? 'grass' : 'grass-dark'
 }
 
-export const MAPS: Record<MapId, GameMap> = {
+// 야생 전투맵(지역별 기본 3 + 특수 2) — 충돌은 여기서 소품 footprint 로 붙인다
+const FIELD = assembleFieldMaps()
+const FIELD_MAPS = Object.fromEntries(
+  Object.entries(FIELD.built).map(([id, b]) => [id, { ...b.map, blockers: buildBlockers(b.props) } as GameMap]),
+) as Partial<Record<MapId, GameMap>>
+/** 안전 마을 출구 → 갈림길(3단계) 맵의 해당 포탈 앞 */
+const townReturn = (town: string) => FIELD.townReturns[town]
+
+export const MAPS = {
+  ...FIELD_MAPS,
   village: {
     id: 'village',
     name: '울토르 마법학교 마을',
@@ -1422,160 +961,19 @@ export const MAPS: Record<MapId, GameMap> = {
     respawn: { x: 9.5, y: 30.0 },
     portals: [
       { id: 'gate-forest', cell: { x: 43.5, y: 36.6 }, to: 'forest', label: '에르디아 숲', kind: 'gate' },
-      { id: 'gate-sea', cell: { x: 43.5, y: 36.6 }, to: 'sea', label: '바다', kind: 'gate', requiredLevel: 3 },
-      { id: 'gate-stormhaven', cell: { x: 43.5, y: 36.6 }, to: 'stormhaven', label: '스톰헤이븐', kind: 'gate', requiredLevel: 7 },
-      { id: 'gate-ruins', cell: { x: 43.5, y: 36.6 }, to: 'ruins', label: '버려진 폐허', kind: 'gate', requiredLevel: 10 },
-      { id: 'gate-snowfield', cell: { x: 43.5, y: 36.6 }, to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 15 },
-      { id: 'gate-volcano', cell: { x: 43.5, y: 36.6 }, to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 20 },
+      { id: 'gate-sea', cell: { x: 43.5, y: 36.6 }, to: 'sea', label: '바다', kind: 'gate', requiredLevel: 5 },
+      { id: 'gate-stormhaven', cell: { x: 43.5, y: 36.6 }, to: 'stormhaven', label: '스톰헤이븐', kind: 'gate', requiredLevel: 15 },
+      { id: 'gate-ruins', cell: { x: 43.5, y: 36.6 }, to: 'ruins', label: '버려진 폐허', kind: 'gate', requiredLevel: 21 },
+      { id: 'gate-snowfield', cell: { x: 43.5, y: 36.6 }, to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 31 },
+      { id: 'gate-volcano', cell: { x: 43.5, y: 36.6 }, to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
       { id: 'personal-space-enter', cell: { x: 42, y: 5 }, to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
       { id: 'school-hall-enter', cell: { x: 6.9, y: 6.5 }, to: 'school-hall', label: '본관 대강당', kind: 'portal' },
     ],
   },
 
   // ── 숲 계열 ───────────────────────────────────────────────────────────────
-  forest: {
-    id: 'forest',
-    name: '에르디아 숲',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'forest',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: forestTileAt,
-    props: FOREST_PROPS,
-    blockers: buildBlockers(FOREST_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'forest',
-    // 권장레벨(2) ±5 범위로 제한 + 1레벨 잡몹 비중 확대(나무골렘 lv8은 범위 밖이라 제외, cave/swamp에서 담당)
-    monsterPool: ['mon-field-mouse', 'mon-glow-moth', 'mon-field-mouse', 'mon-glow-moth', 'mon-forest-raccoon', 'mon-thorn-vine', 'mon-sprite-green', 'mon-grey-wolf', 'mon-mush-cap'],
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    bossSpawns: [{ monsterId: 'mon-thorn-matriarch', cell: { x: 12, y: 13 } }],
-    recommendedLevel: 2,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'forest-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'forest-cave', cell: { ...FIELD_PORTAL_L }, to: 'cave', label: '동굴 입구', kind: 'portal' },
-      { id: 'forest-swamp', cell: { ...FIELD_PORTAL_R }, to: 'swamp', label: '안개 늪지', kind: 'portal', requiredLevel: 5 },
-    ],
-  },
-  cave: {
-    id: 'cave',
-    name: '이끼 동굴',
-    kind: 'field',
-    grid: { w: SUB_W, h: SUB_H },
-    bg: 'cave',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: caveTileAt,
-    props: CAVE_PROPS,
-    blockers: buildBlockers(CAVE_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'forest',
-    monsterDensity: 0.12,
-    monsterSpacing: 1.5,
-    recommendedLevel: 6,
-    spawn: { ...SUB_SPAWN },
-    portals: [
-      { id: 'cave-exit', cell: { ...SUB_EXIT }, to: 'forest', toSpawn: { x: 4, y: 5.2 }, label: '숲으로', kind: 'exit' },
-      { id: 'cave-mine', cell: { ...CAVE_FORWARD }, to: 'mine', label: '폐광산 갱도', kind: 'portal', requiredLevel: 10 },
-    ],
-  },
-  mine: {
-    id: 'mine',
-    name: '폐광산',
-    kind: 'field',
-    grid: { w: SUB_W, h: SUB_H },
-    bg: 'mine',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: mineTileAt,
-    props: MINE_PROPS,
-    blockers: buildBlockers(MINE_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(10) ±5 범위로 제한
-    monsterPool: ['mon-ember-imp', 'mon-ash-hound', 'mon-bone-archer', 'mon-cursed-armor'],
-    monsterDensity: 0.12,
-    monsterSpacing: 1.5,
-    recommendedLevel: 10,
-    spawn: { ...SUB_SPAWN },
-    portals: [
-      { id: 'mine-exit', cell: { ...SUB_EXIT }, to: 'cave', toSpawn: { x: 3.6, y: 4.3 }, label: '동굴로', kind: 'exit' },
-    ],
-  },
-  swamp: {
-    id: 'swamp',
-    name: '안개 늪지',
-    kind: 'field',
-    grid: { w: SWAMP_W, h: SWAMP_H },
-    bg: 'swamp',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: swampTileAt,
-    props: SWAMP_PROPS,
-    blockers: buildBlockers(SWAMP_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'forest',
-    monsterDensity: 0.11,
-    monsterSpacing: 1.5,
-    bossSpawns: [{ monsterId: 'mon-ancient-bark-golem', cell: { x: 9, y: 5 } }],
-    recommendedLevel: 5,
-    spawn: { ...SWAMP_SPAWN },
-    portals: [
-      { id: 'swamp-exit', cell: { ...SWAMP_EXIT }, to: 'forest', toSpawn: { x: 20, y: 5.2 }, label: '숲으로', kind: 'exit' },
-    ],
-  },
 
   // ── 바다 계열 (바다 해안 ─▶ 심해 / 아틀란티스 마을[안전]) ──────────────────
-  sea: {
-    id: 'sea',
-    name: '바다 해안',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'sea',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: seaTileAt,
-    props: SEA_PROPS,
-    blockers: buildBlockers(SEA_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'sea',
-    // 권장레벨(3) ±5 범위로 제한 — 암초거북(lv9)·밀물정령(lv11)은 범위 밖이라 심해에서 담당
-    monsterPool: ['mon-bubble-spirit', 'mon-crab-soldier', 'mon-shallows-eel', 'mon-siren-larva'],
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    bossSpawns: [{ monsterId: 'mon-jelly-queen', cell: { x: 12, y: 13 } }],
-    recommendedLevel: 3,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'sea-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'sea-deepsea', cell: { ...FIELD_PORTAL_L }, to: 'deepsea', label: '심해로', kind: 'portal', requiredLevel: 9 },
-      { id: 'sea-atlantis', cell: { ...FIELD_PORTAL_R }, to: 'atlantis', label: '아틀란티스 마을', kind: 'portal' },
-    ],
-  },
-  deepsea: {
-    id: 'deepsea',
-    name: '심해',
-    kind: 'field',
-    grid: { w: SUB_W, h: SUB_H },
-    bg: 'deepsea',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: deepseaTileAt,
-    props: DEEPSEA_PROPS,
-    blockers: buildBlockers(DEEPSEA_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'sea',
-    monsterDensity: 0.12,
-    monsterSpacing: 1.5,
-    bossSpawns: [{ monsterId: 'mon-reef-king', cell: { x: 9, y: 4 } }],
-    recommendedLevel: 9,
-    spawn: { ...SUB_SPAWN },
-    portals: [
-      { id: 'deepsea-exit', cell: { ...SUB_EXIT }, to: 'sea', toSpawn: { x: 4, y: 5.2 }, label: '해안으로', kind: 'exit' },
-    ],
-  },
   atlantis: {
     id: 'atlantis',
     name: '아틀란티스 마을',
@@ -1592,34 +990,12 @@ export const MAPS: Record<MapId, GameMap> = {
     ],
     spawn: { x: ACX, y: ENTRANCE_CY - 0.2 },
     portals: [
-      { id: 'atlantis-exit', cell: { x: ACX, y: ENTRANCE_CY + 0.5 }, to: 'sea', toSpawn: { x: 20, y: 5.2 }, label: '해안으로', kind: 'exit' },
+      { id: 'atlantis-exit', cell: { x: ACX, y: ENTRANCE_CY + 0.5 }, to: townReturn('atlantis').to, toSpawn: townReturn('atlantis').spawn, label: '해안으로', kind: 'exit' },
       { id: 'atlantis-temple-enter', cell: { x: 26, y: 9 }, to: 'atlantis-temple', label: '대성당 내부', kind: 'portal' },
     ],
   },
 
   // ── 스톰헤이븐 계열 (스톰헤이븐 ─▶ 천공 신전[안전]) ────────────────────────
-  stormhaven: {
-    id: 'stormhaven',
-    name: '스톰헤이븐',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'sky',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: stormhavenTileAt,
-    props: STORM_PROPS,
-    blockers: buildBlockers(STORM_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'sea',
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    recommendedLevel: 7,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'stormhaven-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'stormhaven-sky-temple', cell: { ...FIELD_PORTAL_C }, to: 'sky-temple', label: '천공 신전', kind: 'portal', requiredLevel: 9 },
-    ],
-  },
   'sky-temple': {
     id: 'sky-temple',
     name: '천공 신전',
@@ -1636,62 +1012,12 @@ export const MAPS: Record<MapId, GameMap> = {
     ],
     spawn: { x: SKY_CX, y: SKY_ENTRANCE_CY - 0.2 },
     portals: [
-      { id: 'sky-temple-exit', cell: { x: SKY_CX, y: SKY_ENTRANCE_CY + 0.5 }, to: 'stormhaven', toSpawn: { x: 12, y: 5.2 }, label: '스톰헤이븐으로', kind: 'exit' },
+      { id: 'sky-temple-exit', cell: { x: SKY_CX, y: SKY_ENTRANCE_CY + 0.5 }, to: townReturn('sky-temple').to, toSpawn: townReturn('sky-temple').spawn, label: '스톰헤이븐으로', kind: 'exit' },
       { id: 'sky-sanctum-enter', cell: { x: 32, y: 10 }, to: 'sky-sanctum', label: '천공 대신전 내부', kind: 'portal' },
     ],
   },
 
   // ── 버려진 폐허 계열 (버려진 폐허 ─▶ 버려진 묘지 / 버려진 신전[안전]) ─────
-  ruins: {
-    id: 'ruins',
-    name: '버려진 폐허',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'ruins',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: ruinsFieldTileAt,
-    props: RUINSF_PROPS,
-    blockers: buildBlockers(RUINSF_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(10) ±5 범위로 제한
-    monsterPool: ['mon-ember-imp', 'mon-ash-hound', 'mon-bone-archer', 'mon-cursed-armor'],
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    bossSpawns: [{ monsterId: 'mon-stone-titan', cell: { x: 12, y: 13 } }],
-    recommendedLevel: 10,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'ruins-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'ruins-graveyard', cell: { ...FIELD_PORTAL_L }, to: 'graveyard', label: '버려진 묘지', kind: 'portal', requiredLevel: 13 },
-      { id: 'ruins-temple', cell: { ...FIELD_PORTAL_R }, to: 'temple-ruin', label: '버려진 신전', kind: 'portal', requiredLevel: 18 },
-    ],
-  },
-  graveyard: {
-    id: 'graveyard',
-    name: '버려진 묘지',
-    kind: 'field',
-    grid: { w: SUB_W, h: SUB_H },
-    bg: 'graveyard',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: graveyardTileAt,
-    props: GRAVEYARD_PROPS,
-    blockers: buildBlockers(GRAVEYARD_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(13) ±5 범위로 제한
-    monsterPool: ['mon-ember-imp', 'mon-ash-hound', 'mon-bone-archer', 'mon-cursed-armor', 'mon-wraith', 'mon-dark-acolyte'],
-    monsterDensity: 0.12,
-    monsterSpacing: 1.5,
-    bossSpawns: [{ monsterId: 'mon-stone-titan-king', cell: { x: 9, y: 4 } }],
-    recommendedLevel: 13,
-    spawn: { ...SUB_SPAWN },
-    portals: [
-      { id: 'graveyard-exit', cell: { ...SUB_EXIT }, to: 'ruins', toSpawn: { x: 4, y: 5.2 }, label: '폐허로', kind: 'exit' },
-    ],
-  },
   'temple-ruin': {
     id: 'temple-ruin',
     name: '버려진 신전',
@@ -1708,36 +1034,12 @@ export const MAPS: Record<MapId, GameMap> = {
     ],
     spawn: { x: RUIN_CX, y: RUIN_ENTRANCE_CY - 0.2 },
     portals: [
-      { id: 'temple-ruin-exit', cell: { x: RUIN_CX, y: RUIN_ENTRANCE_CY + 0.5 }, to: 'ruins', toSpawn: { x: 20, y: 5.2 }, label: '폐허로', kind: 'exit' },
+      { id: 'temple-ruin-exit', cell: { x: RUIN_CX, y: RUIN_ENTRANCE_CY + 0.5 }, to: townReturn('temple-ruin').to, toSpawn: townReturn('temple-ruin').spawn, label: '폐허로', kind: 'exit' },
       { id: 'ruin-sanctum-enter', cell: { x: 32, y: 10 }, to: 'ruin-sanctum', label: '신전 내부', kind: 'portal' },
     ],
   },
 
   // ── 루미나 설원 계열 (루미나 설원 ─▶ 오로라 마을[안전]) ────────────────────
-  snowfield: {
-    id: 'snowfield',
-    name: '루미나 설원',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'snow',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: snowfieldTileAt,
-    props: SNOWF_PROPS,
-    blockers: buildBlockers(SNOWF_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(15) ±5 범위로 제한
-    monsterPool: ['mon-ember-imp', 'mon-ash-hound', 'mon-bone-archer', 'mon-cursed-armor', 'mon-wraith', 'mon-dark-acolyte', 'mon-flame-warden'],
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    recommendedLevel: 15,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'snowfield-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'snowfield-aurora', cell: { ...FIELD_PORTAL_C }, to: 'aurora-village', label: '오로라 마을', kind: 'portal', requiredLevel: 16 },
-    ],
-  },
   'aurora-village': {
     id: 'aurora-village',
     name: '오로라 마을',
@@ -1754,37 +1056,12 @@ export const MAPS: Record<MapId, GameMap> = {
     ],
     spawn: { x: AUR_CX, y: AUR_ENTRANCE_CY - 0.2 },
     portals: [
-      { id: 'aurora-exit', cell: { x: AUR_CX, y: AUR_ENTRANCE_CY + 0.5 }, to: 'snowfield', toSpawn: { x: 12, y: 5.2 }, label: '설원으로', kind: 'exit' },
+      { id: 'aurora-exit', cell: { x: AUR_CX, y: AUR_ENTRANCE_CY + 0.5 }, to: townReturn('aurora-village').to, toSpawn: townReturn('aurora-village').spawn, label: '설원으로', kind: 'exit' },
       { id: 'aurora-sanctum-enter', cell: { x: 32, y: 10 }, to: 'aurora-sanctum', label: '설원 성소 내부', kind: 'portal' },
     ],
   },
 
   // ── 화산 계열 ─────────────────────────────────────────────────────────────
-  volcano: {
-    id: 'volcano',
-    name: '화산지대',
-    kind: 'field',
-    grid: { w: FIELD_W, h: FIELD_H },
-    bg: 'volcano',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: volcanoTileAt,
-    props: VOLCANO_PROPS,
-    blockers: buildBlockers(VOLCANO_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(20) ±5 범위로 제한
-    monsterPool: ['mon-cursed-armor', 'mon-wraith', 'mon-dark-acolyte', 'mon-flame-warden', 'mon-frost-revenant', 'mon-dark-mage'],
-    monsterDensity: 0.1,
-    monsterSpacing: 1.7,
-    recommendedLevel: 20,
-    spawn: { ...FIELD_SPAWN },
-    portals: [
-      { id: 'volcano-exit', cell: { ...FIELD_EXIT }, to: 'village', toSpawn: { x: 43.5, y: 35.4 }, label: '마을로 돌아가기', kind: 'exit' },
-      { id: 'volcano-demon-village', cell: { ...FIELD_PORTAL_L }, to: 'demon-village', label: '마물 마을', kind: 'portal', requiredLevel: 25 },
-      { id: 'volcano-demon-castle', cell: { ...FIELD_PORTAL_R }, to: 'demon-castle', label: '모르스의 성', kind: 'portal', requiredLevel: 32 },
-    ],
-  },
   'demon-village': {
     id: 'demon-village',
     name: '마물 마을',
@@ -1801,31 +1078,8 @@ export const MAPS: Record<MapId, GameMap> = {
     ],
     spawn: { x: DEMON_CX, y: DEMON_ENTRANCE_CY - 0.2 },
     portals: [
-      { id: 'demon-village-exit', cell: { x: DEMON_CX, y: DEMON_ENTRANCE_CY + 0.5 }, to: 'volcano', toSpawn: { x: 4, y: 5.2 }, label: '화산지대로', kind: 'exit' },
+      { id: 'demon-village-exit', cell: { x: DEMON_CX, y: DEMON_ENTRANCE_CY + 0.5 }, to: townReturn('demon-village').to, toSpawn: townReturn('demon-village').spawn, label: '화산지대로', kind: 'exit' },
       { id: 'demon-temple-enter', cell: { x: 32, y: 10 }, to: 'demon-temple', label: '화산 성채 내부', kind: 'portal' },
-    ],
-  },
-  'demon-castle': {
-    id: 'demon-castle',
-    name: '모르스의 성',
-    kind: 'field',
-    grid: { w: SUB_W, h: SUB_H },
-    bg: 'demon',
-    render: 'iso',
-    assets: 'raster',
-    tileAt: demonCastleTileAt,
-    props: DEMONCASTLE_PROPS,
-    blockers: buildBlockers(DEMONCASTLE_PROPS),
-    zones: NO_ZONES,
-    monsterZoneKind: 'ruins',
-    // 권장레벨(32) ±5 범위로 제한 — 이 레벨대는 모르스의 전령(lv32) 하나뿐
-    monsterPool: ['mon-azka-herald'],
-    monsterDensity: 0.12,
-    monsterSpacing: 1.5,
-    recommendedLevel: 32,
-    spawn: { ...SUB_SPAWN },
-    portals: [
-      { id: 'demon-castle-exit', cell: { ...SUB_EXIT }, to: 'volcano', toSpawn: { x: 20, y: 5.2 }, label: '화산지대로', kind: 'exit' },
     ],
   },
 
@@ -1969,6 +1223,16 @@ export const MAPS: Record<MapId, GameMap> = {
       { id: 'testroom-exit', cell: { x: 11, y: 31 }, to: 'village', label: '마을로 돌아가기', kind: 'exit' },
     ],
   },
+} as Record<MapId, GameMap>
+
+// 스프라이트 없이 남은 점배치 소품(실내 대홀 조명 등)에 PixelLab 도트를 붙인다 —
+// 코드로 그린 SVG 건물/소품(iso-sprites) 폴백을 없애면서 모든 소품이 라스터로 그려지게.
+for (const m of Object.values(MAPS)) {
+  for (const p of m.props ?? []) {
+    if (p.sprite) continue
+    const rs = PROP_SPRITE[p.kind]
+    if (rs) Object.assign(p, { sprite: rs.sprite, px: rs.px, anchor: rs.anchor })
+  }
 }
 
 export const VILLAGE_MAP_ID: MapId = 'village'

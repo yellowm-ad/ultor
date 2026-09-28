@@ -515,8 +515,15 @@ function CombatantSprite({
   // pos = 발밑 좌표. 래퍼 하단 중앙을 그 점에 맞추고, 축소도 발밑 기준으로 해서 바닥에 붙어 있게 한다.
   const { left, top } = pos
   const scale = side === 'enemy' ? 1 : 1.08
-  const isHero = c.kind === 'hero' && !!heroElement && !!heroGender
-  const spritePx = isHero ? 150 : enemyMonsterPx(side, c.refId)
+  // 4등신 히어로 시트로 그리는 전투원 — 주인공 + 학생 동료(appearance.kind 'hero')
+  const heroLook =
+    c.kind === 'hero' && heroElement && heroGender
+      ? { element: heroElement, gender: heroGender }
+      : c.appearance?.kind === 'hero'
+        ? { element: c.appearance.element, gender: c.appearance.gender }
+        : null
+  const isHero = !!heroLook
+  const spritePx = isHero ? (c.kind === 'hero' ? 150 : 138) : enemyMonsterPx(side, c.refId)
   // 히어로 시트 프레임 아래쪽 투명 여백(≈14%)만큼 끌어내려 발이 실제 좌표에 닿게 (크리처는 CreatureSprite groundPad)
   const footPad = isHero ? Math.round(spritePx * 0.14) : 0
 
@@ -582,12 +589,12 @@ function CombatantSprite({
             heroAnim === 'lunge' ? (side === 'player' ? 'hero-lunge-right' : 'hero-lunge-left') : ''
           }`}
         >
-          {isHero ? (
+          {heroLook ? (
             <HeroSprite
-              element={heroElement!}
-              gender={heroGender!}
+              element={heroLook.element}
+              gender={heroLook.gender}
               dir="right"
-              walking={heroAnim === 'lunge'}
+              walking={heroAnim === 'lunge' || (c.kind === 'ally' && active && c.alive)}
               px={spritePx}
               className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
             />

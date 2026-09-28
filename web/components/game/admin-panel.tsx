@@ -7,6 +7,7 @@ import { SKILLS, MONSTERS, NPCS, itemById } from '@/lib/mock-data'
 import { PET_DEFS } from '@/lib/pets'
 import { ELEMENT_META } from '@/lib/constants'
 import type { Element, Gender } from '@/lib/types'
+import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
 
 const ELEMENTS: Element[] = ['fire', 'ice', 'earth']
 const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[number]) => boolean }[] = [
@@ -17,7 +18,7 @@ const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[nu
   { key: 'pet', label: '펫 스킬', filter: (s) => s.id.startsWith('pet-') },
 ]
 
-type Section = 'char' | 'skills' | 'items' | 'pets' | 'room' | null
+type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'room' | null
 
 export function AdminPanel() {
   const { state, dispatch } = useGame()
@@ -25,6 +26,7 @@ export function AdminPanel() {
   const [section, setSection] = useState<Section>('char')
   const [levelInput, setLevelInput] = useState(String(state.player.level))
   const [goldInput, setGoldInput] = useState(String(state.player.gold))
+  const [weekInput, setWeekInput] = useState(String(state.calendar.globalWeek))
 
   const testroomMonsters = useMemo(
     () => (state.currentMapId === 'testroom' ? state.fieldMonsters : []),
@@ -78,6 +80,7 @@ export function AdminPanel() {
             ['skills', '스킬'],
             ['items', '아이템'],
             ['pets', '펫'],
+            ['school', '학사'],
             ['room', '테스트룸'],
           ] as [Section, string][]
         ).map(([key, label]) => (
@@ -91,12 +94,12 @@ export function AdminPanel() {
         {section === 'char' && (
           <div className="space-y-3">
             <div>
-              <div className="mb-1 text-white/60">레벨 (1~50)</div>
+              <div className="mb-1 text-white/60">레벨 (1~100)</div>
               <div className="flex gap-1.5">
                 <input
                   type="number"
                   min={1}
-                  max={50}
+                  max={100}
                   value={levelInput}
                   onChange={(e) => setLevelInput(e.target.value)}
                   className="w-16 rounded border border-gold/40 bg-black/40 px-1.5 py-1 text-white"
@@ -230,6 +233,59 @@ export function AdminPanel() {
                   </Button>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {section === 'school' && (
+          <div className="space-y-3">
+            <div className="text-white/70">{calendarLabel(state.calendar)} (전체 {state.calendar.globalWeek}/{TOTAL_WEEKS}주)</div>
+            <div>
+              <div className="mb-1 text-white/60">주차 이동 (1~{TOTAL_WEEKS})</div>
+              <div className="flex gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={TOTAL_WEEKS}
+                  value={weekInput}
+                  onChange={(e) => setWeekInput(e.target.value)}
+                  className="w-20 rounded border border-white/20 bg-black/40 px-2 py-1"
+                />
+                <Button size="sm" onClick={() => dispatch({ type: 'ADMIN_SET_WEEK', week: Number(weekInput) || 1 })}>
+                  이동
+                </Button>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {[1, 13, 25, 37, 49, 97, 145, 181].map((w) => (
+                  <Button key={w} size="sm" variant="outline" onClick={() => dispatch({ type: 'ADMIN_SET_WEEK', week: w })}>
+                    {calendarLabel(w).replace(/ 1주차$/, '')}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <Button size="sm" className="w-full" onClick={() => dispatch({ type: 'ADMIN_FORCE_END_WEEK' })}>
+              이번 주 강제 마감 → 다음 주
+            </Button>
+            <Button size="sm" variant={state.storyFlags.DEBUG_UNLOCK_ALL ? 'default' : 'outline'} className="w-full" onClick={() => dispatch({ type: 'ADMIN_TOGGLE_UNLOCK_ALL' })}>
+              생활 시스템 전체 해금 {state.storyFlags.DEBUG_UNLOCK_ALL ? 'ON' : 'OFF'}
+            </Button>
+            <Button size="sm" className="w-full" onClick={() => dispatch({ type: 'ADMIN_RECRUIT_ALL' })}>
+              동료 전원 합류
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                for (const id of ['herb-mint', 'mush-button', 'flower-dew', 'wood-oak', 'hunt-meat', 'hunt-hide', 'fish-carp', 'sea-kelp', 'ore-iron', 'crystal-mana'])
+                  dispatch({ type: 'ADMIN_GIVE_ITEM', itemId: id, qty: 10 })
+                dispatch({ type: 'ADMIN_GIVE_ITEM', itemId: 'tool-rod-basic', qty: 1 })
+              }}
+            >
+              생활 재료 세트 + 낚싯대 지급
+            </Button>
+            <div className="text-white/50">
+              스토리 플래그 {Object.keys(state.storyFlags).length}개 · 대기 중 스토리 {state.storyQueue.length}개
             </div>
           </div>
         )}

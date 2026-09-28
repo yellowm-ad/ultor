@@ -101,7 +101,35 @@ export interface Skill {
 // ─────────────────────────────────────────────────────────────────────────────
 // 아이템
 // ─────────────────────────────────────────────────────────────────────────────
-export type ItemType = 'weapon' | 'armor' | 'accessory' | 'potion' | 'tool' | 'feed' | 'material'
+export type ItemType =
+  | 'weapon'
+  | 'armor'
+  | 'accessory'
+  | 'potion'
+  | 'tool'
+  | 'feed'
+  | 'material'
+  // 생활 콘텐츠(§학사 PRD 33~38)
+  | 'food' // 요리 — 먹으면 회복 + 식사 버프
+  | 'fish' // 낚시 어획물 — 요리 재료 겸 도감
+  | 'furniture' // 가구 제작 결과물
+  | 'costume' // 코스튬 제작 결과물
+
+/** 생활 재료 분류 태그 — 퀘스트 목표("약초 6개")·레시피·도감에서 개별 id 대신 묶음으로 참조 */
+export type MaterialTag =
+  | 'herb'
+  | 'flower'
+  | 'wood'
+  | 'ore'
+  | 'crystal'
+  | 'mushroom'
+  | 'seafood'
+  | 'meat'
+  | 'hide'
+  | 'bone'
+  | 'claw'
+  | 'core'
+  | 'fish'
 export type EquipSlot = 'weapon' | 'armor' | 'accessory'
 /** 장비 성장 등급(§장비·아이템 PRD). 티어(전직 단계)와 독립적인 별도 축 */
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'unique'
@@ -142,6 +170,17 @@ export interface ItemDef {
   craftable?: boolean
   /** craftable=true 일 때 RecipeDef.id 참조 */
   recipeId?: string
+  /** 생활 재료 분류(채집·사냥·낚시). 퀘스트 목표/도감이 태그로 묶어 센다 */
+  tags?: MaterialTag[]
+  /** 요리(food): 먹은 뒤 N번의 전투 동안 적용되는 식사 버프 */
+  mealBuff?: MealBuffDef
+}
+
+/** 식사 버프 — 스탯 % 가산, 지정 횟수의 전투가 끝나면 소멸 */
+export interface MealBuffDef {
+  label: string
+  statPct: Partial<Record<StatKey, number>> // 0.1 = +10%
+  battles: number
 }
 
 export interface InventorySlot {
@@ -152,17 +191,22 @@ export interface InventorySlot {
 // ─────────────────────────────────────────────────────────────────────────────
 // 제작(크래프팅)
 // ─────────────────────────────────────────────────────────────────────────────
-export type CraftStationKind = 'magic_workbench' | 'alchemy_pot'
+export type CraftStationKind = 'magic_workbench' | 'alchemy_pot' | 'cooking_pot'
+
+/** 제작 카테고리(§학사 PRD 38) — 카테고리마다 해금 시기(ActivityId)가 다르다 */
+export type RecipeCategory = 'equipment' | 'alchemy' | 'cooking' | 'magicTool' | 'furniture' | 'costume'
 
 export interface RecipeDef {
   id: string
   /** 어느 제작대에서 만들 수 있는지(현재는 UI에서 구분 없이 전부 노출) */
   station: CraftStationKind
+  /** 생략 시 'equipment'(기존 장비 레시피 호환) */
+  category?: RecipeCategory
   ingredients: { itemId: string; quantity: number }[]
   outputItemId: string
   outputQuantity: number
   /** 스토리 시스템 연결 전까지는 사용하지 않음 — 구조만 마련 */
-  unlockCondition?: { type: 'regionReached' | 'bossDefeated'; value: string }
+  unlockCondition?: { type: 'regionReached' | 'bossDefeated' | 'flag' | 'course'; value: string }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,6 +274,8 @@ export interface Combatant {
   bonusCrit?: number
   /** 펫 호감도 '헌신' 지원 공격 확률 */
   supportChance?: number
+  /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다 */
+  appearance?: { kind: 'hero'; element: Element; gender: Gender } | { kind: 'npc'; npcId: string }
   alive: boolean
 }
 
@@ -318,13 +364,32 @@ export interface ZoneDef {
 export type MapId =
   | 'village'
   | 'forest'
+  | 'forest-2'
+  | 'forest-3'
   | 'cave'
   | 'mine'
   | 'swamp'
   | 'sea'
+  | 'sea-2'
+  | 'sea-3'
+  | 'sea-cave'
   | 'deepsea'
   | 'atlantis'
   | 'stormhaven'
+  | 'stormhaven-2'
+  | 'stormhaven-3'
+  | 'cloud-rift'
+  | 'thunder-spire'
+  | 'ruins-2'
+  | 'ruins-3'
+  | 'catacomb'
+  | 'snowfield-2'
+  | 'snowfield-3'
+  | 'ice-cave'
+  | 'frozen-lake'
+  | 'volcano-2'
+  | 'volcano-3'
+  | 'lava-cave'
   | 'sky-temple'
   | 'ruins'
   | 'graveyard'
@@ -376,6 +441,8 @@ export interface GameMap {
   bgImage?: string
   /** render:'iso' 일 때: 셀별 지면 타일 종류 */
   tileAt?: (x: number, y: number) => import('./iso').TileKind
+  /** 야생 맵: 이 셀이 길(포탈 연결로)인지 — 몬스터 배치가 길을 피하는 데 사용 */
+  roadAt?: (x: number, y: number) => boolean
   /** render:'iso' 일 때: 건물·자연물 등 배치 오브젝트 */
   props?: import('./iso').PropDef[]
   /** 맵 내부 라벨 구역. 단순 필드 맵은 빈 배열 */
@@ -418,6 +485,8 @@ export interface NpcDef {
   id: string
   name: string
   role: NpcRole
+  /** role:'craftStation' 일 때 이 제작대가 여는 스테이션(생략 시 마도구 작업대) */
+  station?: CraftStationKind
   icon: string
   zoneId: string
   cell: { x: number; y: number }
@@ -486,6 +555,9 @@ export interface BattleState {
   rewardDrops?: string[]
   leveledUp?: boolean
   jobChangedAvailable?: boolean
+  /** 사냥 활동 해금 여부 — 승리 시 계통별 부산물(huntDrops)을 추가로 굴린다 */
+  huntEnabled?: boolean
+  huntDrops?: string[]
 }
 
 export type ScreenId =
@@ -503,6 +575,7 @@ export type ScreenId =
   | 'dialogue'
   | 'craft'
   | 'worldmap'
+  | 'journal' // 학사 수첩 — 주간 미션·학사·도감·관계
 
 export interface GameSettings {
   testMode: boolean
@@ -532,6 +605,156 @@ export interface GameState {
   settings: GameSettings
   toast: string | null
   housing: HousingState
+  // ── 4년제 학사·생활 시스템(§학사 PRD) ──────────────────────────────────────
+  /** 세이브마다 고정 — 주간 퀘스트 시드 등 재현 가능한 랜덤에 쓴다 */
+  playerSeed: number
+  calendar: CalendarState
+  weekly: WeeklyState
+  academics: AcademicState
+  /** 스토리 플래그(§62) — 값은 bool 또는 단계 숫자 */
+  storyFlags: Record<string, boolean | number>
+  /** 재생 대기 중인 스토리 비트 id(lib/story.ts) — StoryOverlay 가 앞에서부터 보여준다 */
+  storyQueue: string[]
+  /** NPC·동료 관계도(§63) */
+  relationships: Record<string, RelationshipState>
+  companions: CompanionRoster
+  life: LifeState
+  collections: CollectionState
+  /** 먹은 요리 버프(한 번에 하나) */
+  mealBuff: { itemId: string; battlesLeft: number } | null
+  /** 낚시 미니게임 진행 중 상태 */
+  fishing: FishingSession | null
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4년제 학사 캘린더 (§3, §65) — 1년 = 1학기·여름방학·2학기·겨울방학 × 12주
+// ─────────────────────────────────────────────────────────────────────────────
+export type TermType = 'semester1' | 'summer' | 'semester2' | 'winter'
+
+export interface CalendarState {
+  /** 1 ~ 192. 학년/학기/주차는 전부 여기서 파생(단일 관리, §82-7) */
+  globalWeek: number
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 주간 퀘스트 (§4~7, §45~49, §66~68)
+// ─────────────────────────────────────────────────────────────────────────────
+export type QuestSlot = 'MAIN' | 'CLASS' | 'COMBAT' | 'LIFE' | 'FREE'
+export type QuestCategory =
+  | 'MAIN'
+  | 'CLASS'
+  | 'COMBAT'
+  | 'GATHER'
+  | 'HUNT'
+  | 'FISH'
+  | 'ALCHEMY'
+  | 'COOK'
+  | 'CRAFT'
+  | 'NPC'
+  | 'EXPLORE'
+  | 'HOUSING'
+
+export type QuestObjectiveType =
+  | 'KILL' // targetId = 몬스터 id | 'family:beast' | 'any'
+  | 'WIN_BATTLE' // targetId = RegionId | 'any'
+  | 'GATHER' // targetId = 아이템 id | 'tag:herb' | 'any'  (채집 노드에서 얻은 것만)
+  | 'HUNT' // targetId = 'tag:meat' 등 — 사냥 부산물 획득
+  | 'FISH' // targetId = 물고기 id | 'any'
+  | 'CRAFT'
+  | 'COOK'
+  | 'ALCHEMY' // targetId = 결과 아이템 id | 'any'
+  | 'TALK' // targetId = NPC id | 'any'
+  | 'VISIT' // targetId = MapId
+  | 'PLACE_FURNITURE'
+
+export interface QuestObjective {
+  type: QuestObjectiveType
+  targetId: string
+  count: number
+  label: string
+}
+
+export type QuestReward =
+  | { type: 'EXP'; amount: number }
+  | { type: 'GOLD'; amount: number }
+  | { type: 'ITEM'; itemId: string; amount: number }
+  | { type: 'COURSE'; amount: number; courseId?: string } // 이번 학기 수업 점수
+  | { type: 'RELATIONSHIP'; npcId: string; amount: number }
+  | { type: 'FLAG'; flag: string; value?: boolean | number }
+
+export interface QuestInstance {
+  instanceId: string
+  templateId: string
+  slot: QuestSlot
+  progress: number[] // objectives 와 같은 길이
+  status: 'active' | 'complete' | 'claimed'
+}
+
+export interface WeeklyState {
+  /** 이 주간 목록이 생성된 globalWeek */
+  week: number
+  quests: QuestInstance[]
+  /** 중복 방지(§6.1) — templateId → 마지막 등장 주 */
+  lastSeen: Record<string, number>
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 학사 (§30~32, §59~61)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface TermRecord {
+  termIndex: number // 0~15
+  courses: { courseId: string; score: number; grade: string; credit: number }[]
+}
+
+export interface AcademicState {
+  /** 이번 학기 과목별 누적 점수(0~100) */
+  courseScore: Record<string, number>
+  totalCredits: number
+  history: TermRecord[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 관계 / 동료 (§63, §75)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface RelationshipState {
+  affinity: number // 0~100
+  /** 마지막으로 대화 보너스를 받은 globalWeek (주 1회) */
+  lastTalkWeek: number
+}
+
+export interface CompanionProgress {
+  level: number
+  exp: number
+  hp: number
+  mp: number
+}
+
+export interface CompanionRoster {
+  /** 합류한 동료 id → 성장 상태 */
+  recruited: Record<string, CompanionProgress>
+  /** 전투에 데려가는 동료(최대 MAX_PARTY_SIZE - 2) */
+  party: string[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 생활 콘텐츠 상태 (§33~37)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface LifeState {
+  /** 채집 노드 키(`${mapId}:${idx}`) → 채집한 시각(ms). 리스폰 시간이 지나면 다시 활성 */
+  gatheredAt: Record<string, number>
+}
+
+export interface CollectionState {
+  fish: Record<string, number>
+  monsters: Record<string, number>
+  gathered: Record<string, number>
+  crafted: Record<string, number>
+}
+
+export interface FishingSession {
+  fishId: string
+  /** 0~1 — 판정 구간이 좁아지는 정도 */
+  difficulty: number
 }
 
 /** 내 개인 공간에 배치한 가구 한 개 */

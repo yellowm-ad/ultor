@@ -19,9 +19,13 @@ import { SettingsScreen } from '@/components/game/settings-screen'
 import { CraftScreen } from '@/components/game/craft-screen'
 import { WorldMapScreen } from '@/components/game/world-map-screen'
 import { Toast } from '@/components/game/toast'
+import { JournalScreen } from '@/components/game/journal-screen'
+import { StoryOverlay } from '@/components/game/story-overlay'
+import { FishingOverlay } from '@/components/game/fishing-overlay'
 
-const OVERLAY_HOTKEYS: Record<string, ScreenId> = { i: 'inventory', c: 'character', p: 'party', m: 'worldmap' }
+const OVERLAY_HOTKEYS: Record<string, ScreenId> = { i: 'inventory', c: 'character', p: 'party', m: 'worldmap', j: 'journal' }
 const CLOSABLE_WITH_ESC = new Set<ScreenId>([
+  'journal',
   'inventory',
   'character',
   'party',
@@ -87,6 +91,9 @@ function GameShell() {
       {state.screen === 'craft' && <CraftScreen />}
       {state.screen === 'settings' && <SettingsScreen />}
       {state.screen === 'worldmap' && <WorldMapScreen />}
+      {state.screen === 'journal' && <JournalScreen />}
+      {state.storyQueue.length > 0 && <StoryOverlay />}
+      {state.fishing && <FishingOverlay />}
     </div>
   )
 }

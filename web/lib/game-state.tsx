@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useMemo, useReducer } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
 import type {
   BattleAction as EngineBattleAction,
   Element,
@@ -19,7 +19,7 @@ import {
 import { MAPS, zoneAt } from '@/lib/maps'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { ITEMS, MONSTERS, NPCS, SKILLS, autoLearnSkillIds, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
-import { applyExp } from '@/lib/exp-table'
+import { applyExp, MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
 import { generateFieldMonsters } from '@/lib/field'
 import { getEffectiveStats } from '@/lib/derived'
@@ -33,6 +33,34 @@ import {
   resolveEnemyTurn,
   tickAtb,
 } from '@/lib/battle-engine'
+import { addToInventory, consumeIngredients, removeFromInventory } from '@/lib/inventory'
+import { ACTIVITY_META, activityUnlockLabel, gatherNodesForMap, isActivityUnlocked, isNearWater, RECIPE_CATEGORY_ACTIVITY } from '@/lib/life'
+import {
+  adminSetWeek,
+  afterBattleDefeat,
+  afterBattleFled,
+  afterBattleVictory,
+  battleStats,
+  claimQuest,
+  dismissStory,
+  eatFood,
+  endWeek,
+  ensureWeek,
+  gatherAt,
+  healCompanions,
+  newGameProgress,
+  partyAllies,
+  recruitCompanion,
+  resolveFishing,
+  setStoryFlag,
+  startFishing,
+  talkTo,
+  togglePartyMember,
+  visitMap,
+  withQuestEvents,
+} from '@/lib/progression'
+import { COMPANIONS } from '@/lib/companions'
+import { mergeSave, writeSave } from '@/lib/save'
 
 export type Action =
   | { type: 'START_GAME'; name: string; element: Element; gender: Gender }
@@ -85,26 +113,22 @@ export type Action =
   | { type: 'ADMIN_SET_ACTIVE_PET'; defId: string }
   | { type: 'ADMIN_HEAL_FULL' }
   | { type: 'ADMIN_RESPAWN_MONSTERS' }
-
-function addToInventory(inv: GameState['inventory'], itemId: string, qty = 1) {
-  const idx = inv.findIndex((s) => s.itemId === itemId)
-  if (idx >= 0) {
-    const copy = [...inv]
-    copy[idx] = { ...copy[idx], qty: copy[idx].qty + qty }
-    return copy
-  }
-  return [...inv, { itemId, qty }]
-}
-
-function removeFromInventory(inv: GameState['inventory'], itemId: string, qty = 1) {
-  const idx = inv.findIndex((s) => s.itemId === itemId)
-  if (idx < 0) return inv
-  const copy = [...inv]
-  const remaining = copy[idx].qty - qty
-  if (remaining <= 0) copy.splice(idx, 1)
-  else copy[idx] = { ...copy[idx], qty: remaining }
-  return copy
-}
+  // ── 4년제 학사·생활·동료 ────────────────────────────────────────────────────
+  | { type: 'LOAD_GAME'; saved: Partial<GameState> }
+  | { type: 'CLAIM_QUEST'; instanceId: string }
+  | { type: 'END_WEEK' }
+  | { type: 'DISMISS_STORY' }
+  | { type: 'SET_FLAG'; flag: string; value?: boolean | number }
+  | { type: 'GATHER'; nodeKey: string }
+  | { type: 'START_FISHING' }
+  | { type: 'FISHING_RESULT'; success: boolean }
+  | { type: 'RECRUIT_COMPANION'; companionId: string }
+  | { type: 'TOGGLE_PARTY_MEMBER'; companionId: string }
+  | { type: 'ADMIN_SET_WEEK'; week: number }
+  | { type: 'ADMIN_FORCE_END_WEEK' }
+  | { type: 'ADMIN_TOGGLE_UNLOCK_ALL' }
+  | { type: 'ADMIN_RECRUIT_ALL' }
+  | { type: 'ADMIN_GIVE_ITEM'; itemId: string; qty: number }
 
 function refreshLearnedSkills(element: string, level: number, tierId: string): string[] {
   return autoLearnSkillIds(element, level, JOB_TIER_ORDER.indexOf(tierId as never))
@@ -135,7 +159,8 @@ function reducer(state: GameState, action: Action): GameState {
       const player = createPlayer(action.name, action.element, action.gender)
       const pet = createStarterPet(action.element)
       const fieldMonsters = generateFieldMonsters(MAPS.village, state.settings.testMode)
-      return {
+      // 새 게임 — 1학년 1학기 1주차부터(주간 퀘스트 생성 + 입학 스토리 비트 큐잉)
+      return newGameProgress({
         ...state,
         player,
         pet,
@@ -149,7 +174,65 @@ function reducer(state: GameState, action: Action): GameState {
         gateOpen: false,
         screen: 'world',
         previousScreen: 'world',
-      }
+      })
+    }
+
+    case 'LOAD_GAME': {
+      const loaded = mergeSave(createInitialGameState(), action.saved)
+      const map = MAPS[loaded.currentMapId] ?? MAPS.village
+      return ensureWeek({
+        ...loaded,
+        currentMapId: map.id,
+        fieldMonsters: generateFieldMonsters(map, loaded.settings.testMode),
+        screen: 'world',
+        previousScreen: 'world',
+        toast: '이어서 시작합니다.',
+      })
+    }
+
+    case 'CLAIM_QUEST':
+      return claimQuest(state, action.instanceId)
+
+    case 'END_WEEK':
+      return endWeek(state)
+
+    case 'DISMISS_STORY':
+      return dismissStory(state)
+
+    case 'SET_FLAG':
+      return setStoryFlag(state, action.flag, action.value ?? true)
+
+    case 'GATHER':
+      return gatherAt(state, action.nodeKey)
+
+    case 'START_FISHING':
+      return state.screen === 'world' && !state.fishing ? startFishing(state) : state
+
+    case 'FISHING_RESULT':
+      return resolveFishing(state, action.success)
+
+    case 'RECRUIT_COMPANION':
+      return recruitCompanion(state, action.companionId)
+
+    case 'TOGGLE_PARTY_MEMBER':
+      return togglePartyMember(state, action.companionId)
+
+    case 'ADMIN_SET_WEEK':
+      return adminSetWeek(state, action.week)
+
+    case 'ADMIN_FORCE_END_WEEK':
+      return endWeek(state, true)
+
+    case 'ADMIN_TOGGLE_UNLOCK_ALL':
+      return { ...state, storyFlags: { ...state.storyFlags, DEBUG_UNLOCK_ALL: !state.storyFlags.DEBUG_UNLOCK_ALL } }
+
+    case 'ADMIN_GIVE_ITEM':
+      return itemById(action.itemId) ? { ...state, inventory: addToInventory(state.inventory, action.itemId, action.qty) } : state
+
+    case 'ADMIN_RECRUIT_ALL': {
+      let next: GameState = { ...state, storyFlags: { ...state.storyFlags, DEBUG_UNLOCK_ALL: true } }
+      for (const c of COMPANIONS) next = recruitCompanion(next, c.id)
+      return { ...next, toast: '모든 동료가 합류했습니다.' }
     }
 
     case 'SET_SCREEN': {
@@ -163,7 +246,9 @@ function reducer(state: GameState, action: Action): GameState {
         state.battle ||
         state.pendingEncounterUid ||
         state.pendingPortalId ||
-        state.gateOpen
+        state.gateOpen ||
+        state.fishing ||
+        state.storyQueue.length > 0
       )
         return state
       const map = MAPS[state.currentMapId]
@@ -296,7 +381,7 @@ function reducer(state: GameState, action: Action): GameState {
       const cell = { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
       if (blockedAt(state, 'personal-space', cell.x, cell.y)) return state
       const placed = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, defId: action.defId, cell }
-      return { ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed] } }
+      return withQuestEvents({ ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed] } }, [{ type: 'PLACE_FURNITURE' }])
     }
 
     case 'HOUSING_REMOVE': {
@@ -305,7 +390,8 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'OPEN_NPC':
-      return { ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'dialogue' }
+      // 대화 = 관계도(주 1회) + TALK 미션 진행
+      return talkTo({ ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'dialogue' }, action.npcId)
 
     case 'OPEN_SHOP':
       return { ...state, activeNpcId: action.npcId, activeShopId: action.npcId, previousScreen: state.screen, screen: 'shop' }
@@ -345,21 +431,28 @@ function reducer(state: GameState, action: Action): GameState {
     case 'CRAFT_ITEM': {
       const recipe = recipeById(action.recipeId)
       if (!recipe) return state
-      const hasAll = recipe.ingredients.every((ing) => {
-        const slot = state.inventory.find((s) => s.itemId === ing.itemId)
-        return (slot?.qty ?? 0) >= ing.quantity
-      })
-      if (!hasAll) return { ...state, toast: '재료가 부족합니다.' }
-      let inventory = state.inventory
-      for (const ing of recipe.ingredients) inventory = removeFromInventory(inventory, ing.itemId, ing.quantity)
-      inventory = addToInventory(inventory, recipe.outputItemId, recipe.outputQuantity)
+      const category = recipe.category ?? 'equipment'
+      const activity = RECIPE_CATEGORY_ACTIVITY[category]
+      if (!isActivityUnlocked(state, activity)) {
+        return { ...state, toast: `${ACTIVITY_META[activity].name}은(는) ${activityUnlockLabel(activity)}에 해금됩니다.` }
+      }
+      const consumed = consumeIngredients(state.inventory, recipe.ingredients)
+      if (!consumed) return { ...state, toast: '재료가 부족합니다.' }
+      const inventory = addToInventory(consumed, recipe.outputItemId, recipe.outputQuantity)
       const output = itemById(recipe.outputItemId)
-      return { ...state, inventory, toast: `${output?.name ?? '아이템'}을(를) 제작했습니다.` }
+      const crafted = { ...state.collections.crafted, [recipe.outputItemId]: (state.collections.crafted[recipe.outputItemId] ?? 0) + recipe.outputQuantity }
+      const evType = category === 'alchemy' ? 'ALCHEMY' : category === 'cooking' ? 'COOK' : 'CRAFT'
+      return withQuestEvents(
+        { ...state, inventory, collections: { ...state.collections, crafted } },
+        [{ type: evType, itemId: recipe.outputItemId, qty: recipe.outputQuantity }],
+        `${output?.name ?? '아이템'}을(를) 제작했습니다.`,
+      )
     }
 
     case 'USE_ITEM_FIELD': {
       const item = itemById(action.itemId)
       const slot = state.inventory.find((s) => s.itemId === action.itemId)
+      if (item?.type === 'food') return eatFood(state, action.itemId)
       if (!item?.useEffect || !slot) return state
 
       if (item.type === 'feed' && item.useEffect.petAffection) {
@@ -417,7 +510,7 @@ function reducer(state: GameState, action: Action): GameState {
       const pet = petMax
         ? { ...state.pet, hp: petMax.maxHp, mp: petMax.maxMp }
         : state.pet
-      return {
+      return healCompanions({
         ...state,
         player: { ...state.player, hp: eff.maxHp, mp: eff.maxMp },
         pet,
@@ -425,7 +518,7 @@ function reducer(state: GameState, action: Action): GameState {
         activeNpcId: null,
         screen: 'world',
         toast: '기숙사에서 충분히 쉬었다. 파티 전원의 HP·MP가 모두 회복되었다.',
-      }
+      })
     }
 
     case 'EQUIP_ITEM': {
@@ -466,7 +559,7 @@ function reducer(state: GameState, action: Action): GameState {
     // 밸런스·검증 없이 즉시 원하는 상태로 만든다 ──────────────────────────────
     case 'ADMIN_ENTER_TESTROOM': {
       const map = MAPS.testroom
-      return {
+      return ensureWeek({
         ...state,
         currentMapId: 'testroom',
         currentZoneId: 'z-testroom',
@@ -478,11 +571,11 @@ function reducer(state: GameState, action: Action): GameState {
         gateOpen: false,
         screen: 'world',
         previousScreen: 'world',
-      }
+      })
     }
 
     case 'ADMIN_SET_LEVEL': {
-      const level = Math.max(1, Math.min(50, Math.round(action.level)))
+      const level = Math.max(1, Math.min(MAX_LEVEL, Math.round(action.level)))
       const stats = computeStatsForLevel(state.player.element, level)
       return {
         ...state,
@@ -580,7 +673,7 @@ function reducer(state: GameState, action: Action): GameState {
       const { battle: resolved, itemConsumed, fled } = resolveAction(state.battle, action.actorUid, action.action)
       let inventory = state.inventory
       if (itemConsumed) inventory = removeFromInventory(inventory, itemConsumed, 1)
-      if (fled) return leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.')
+      if (fled) return afterBattleFled(leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.'), resolved)
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
       return { ...state, battle: next, inventory }
@@ -637,34 +730,38 @@ function reducer(state: GameState, action: Action): GameState {
           affection: clampAffection(state.pet.affection + 2),
         }
 
-        return {
-          ...state,
-          player: {
-            ...state.player,
-            level: expResult.newLevel,
-            exp: expResult.newExp,
-            stats: newStats,
-            hp,
-            mp,
-            learnedSkills,
-            gold: state.player.gold + (state.battle.rewardGold ?? 0),
+        // 동료 성장·사냥 부산물·도감·주간 미션·식사 버프 차감(lib/progression.ts)
+        return afterBattleVictory(
+          {
+            ...state,
+            player: {
+              ...state.player,
+              level: expResult.newLevel,
+              exp: expResult.newExp,
+              stats: newStats,
+              hp,
+              mp,
+              learnedSkills,
+              gold: state.player.gold + (state.battle.rewardGold ?? 0),
+            },
+            pet,
+            ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
+            inventory,
+            fieldMonsters,
+            battle: null,
+            screen: 'world',
+            toast: expResult.leveledUp
+              ? `레벨 업! Lv.${expResult.newLevel}${jobChangedAvailable ? ' — 전직 가능!' : ''}`
+              : null,
           },
-          pet,
-          ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
-          inventory,
-          fieldMonsters,
-          battle: null,
-          screen: 'world',
-          toast: expResult.leveledUp
-            ? `레벨 업! Lv.${expResult.newLevel}${jobChangedAvailable ? ' — 전직 가능!' : ''}`
-            : null,
-        }
+          state.battle,
+        )
       }
 
       const village = MAPS.village
       const respawnPos = village.respawn ?? village.spawn
       const pet = { ...state.pet, hp: Math.max(1, Math.round(state.pet.hp * 0.2)) }
-      return {
+      return afterBattleDefeat({
         ...state,
         player: { ...state.player, hp: 1, mp: Math.max(1, Math.round(state.player.stats.maxMp * 0.2)) },
         pet,
@@ -679,7 +776,7 @@ function reducer(state: GameState, action: Action): GameState {
         battle: null,
         screen: 'world',
         toast: '기절했다... 성역 신전에서 정신을 차렸다.',
-      }
+      }, state.battle)
     }
 
     case 'RESET_GAME':
@@ -697,18 +794,22 @@ function travelThroughPortal(state: GameState, portalId: string): GameState {
   if (!portal) return state
   const destMap = MAPS[portal.to]
   const pos = portal.toSpawn ?? destMap.spawn
-  return {
-    ...state,
-    currentMapId: destMap.id,
-    position: { ...pos },
-    facing: 'down',
-    currentZoneId: zoneAt(destMap, pos.x, pos.y)?.id ?? '',
-    fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode),
-    pendingEncounterUid: null,
-    pendingPortalId: null,
-    gateOpen: false,
-    toast: `${destMap.name}에 도착했다.`,
-  }
+  // 방문 = VISIT 미션 + 첫 진입 스토리 비트
+  return visitMap(
+    {
+      ...state,
+      currentMapId: destMap.id,
+      position: { ...pos },
+      facing: 'down',
+      currentZoneId: zoneAt(destMap, pos.x, pos.y)?.id ?? '',
+      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode),
+      pendingEncounterUid: null,
+      pendingPortalId: null,
+      gateOpen: false,
+      toast: `${destMap.name}에 도착했다.`,
+    },
+    destMap.id,
+  )
 }
 
 function leaveBattle(
@@ -746,8 +847,10 @@ function startBattleFromField(state: GameState, fieldMonsterUid: string): GameSt
     if (pool.length > 0) monsterDefs.push(pool[Math.floor(Math.random() * pool.length)])
   }
 
-  const effectiveStats = getEffectiveStats(state.player)
-  const battle = initBattle(state.player, state.pet, monsterDefs, state.position, fieldMonsterUid, effectiveStats)
+  // 장비 + 식사 버프 반영 스탯, 동료(최대 2명), 사냥 해금 여부
+  const battle = initBattle(state.player, state.pet, monsterDefs, state.position, fieldMonsterUid, battleStats(state), partyAllies(state), {
+    huntEnabled: isActivityUnlocked(state, 'hunting'),
+  })
   return { ...state, previousScreen: state.screen, screen: 'battle', battle }
 }
 
@@ -764,8 +867,16 @@ const GameContext = createContext<{ state: GameState; dispatch: React.Dispatch<A
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialGameState)
   const value = useMemo(() => ({ state, dispatch }), [state])
+  // 자동 저장 — 상태가 1.5초간 멈추면 저장(이동 중 매 프레임 직렬화 방지). 전투 중엔 저장하지 않는다.
+  useEffect(() => {
+    if (state.screen === 'battle' || state.screen === 'title' || state.screen === 'create') return
+    const id = window.setTimeout(() => writeSave(state), 1500)
+    return () => window.clearTimeout(id)
+  }, [state])
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     ;(window as unknown as { __game?: typeof value }).__game = value
+    // 생활 시스템 디버그 — 채집 노드 좌표 등(크롬 자동화 테스트용)
+    ;(window as unknown as { __life?: unknown }).__life = { gatherNodesForMap, isNearWater, MAPS }
   }
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

@@ -1,5 +1,6 @@
 import type { ItemDef, ItemRarity, MonsterDef, NpcDef, RecipeDef, Skill, Stats } from '@/lib/types'
-import { computeStatsForLevel } from '@/lib/constants'
+import { computeStatsForLevel, toLevel100 } from '@/lib/constants'
+import { LIFE_ITEMS, LIFE_RECIPES } from '@/lib/life'
 
 const FIRE = '/images/elements/fire-crest.png'
 const ICE = '/images/elements/ice-crest.png'
@@ -15,44 +16,47 @@ const NEUT = '/images/elements/neutral-crest.png'
 export const SKILLS: Skill[] = [
   // ── 화염계 ────────────────────────────────────────────────────────────────
   { id: 'fire-t1-1', name: '불씨 던지기', element: 'fire', jobTier: 'apprentice', levelRequired: 1, mpCost: 4, power: 1.0, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.2 }, icon: FIRE, description: '작은 불씨를 던져 화염 피해를 입히고 낮은 확률로 화상.' },
-  { id: 'fire-t1-2', name: '온기', element: 'fire', jobTier: 'apprentice', levelRequired: 1, mpCost: 5, power: 0.8, kind: 'heal', targeting: 'self', icon: FIRE, description: '따뜻한 불기운으로 자신의 HP를 회복한다.' },
-  { id: 'fire-t2-1', name: '화염 강타', element: 'fire', jobTier: 'novice', levelRequired: 10, mpCost: 8, power: 1.5, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.35 }, icon: FIRE, description: '압축한 화염으로 적 하나를 강타한다.' },
-  { id: 'fire-t2-2', name: '불의 채찍', element: 'fire', jobTier: 'novice', levelRequired: 10, mpCost: 7, power: 1.2, kind: 'attack', targeting: 'singleEnemy', status: { id: 'bleed', chance: 0.3 }, icon: FIRE, description: '불의 채찍으로 적을 찢어 출혈을 유발한다.' },
-  { id: 'fire-t3-1', name: '불의 고리', element: 'fire', jobTier: 'adept', levelRequired: 20, mpCost: 12, power: 1.6, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.25 }, icon: FIRE, description: '불의 고리를 펼쳐 모든 적을 태운다.' },
-  { id: 'fire-t3-2', name: '발화', element: 'fire', jobTier: 'adept', levelRequired: 20, mpCost: 10, power: 0.2, kind: 'debuff', targeting: 'allEnemies', status: { id: 'burn', chance: 0.6 }, icon: FIRE, description: '적 전체에 불을 붙여 강한 화상을 남긴다.' },
-  { id: 'fire-t4-1', name: '폭염 폭발', element: 'fire', jobTier: 'magus', levelRequired: 30, mpCost: 16, power: 2.3, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.4 }, icon: FIRE, description: '폭발적인 열기로 전장을 휩쓴다.' },
-  { id: 'fire-t4-2', name: '인페르노 낙인', element: 'fire', jobTier: 'magus', levelRequired: 30, mpCost: 15, power: 1.8, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.5 }, icon: FIRE, description: '적에게 불의 낙인을 새겨 극심한 화상과 출혈을 남긴다.' },
-  { id: 'fire-t5-1', name: '멸화의 심판', element: 'fire', jobTier: 'archmagus', levelRequired: 40, mpCost: 24, atbCost: 30, power: 3.3, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.5 }, icon: FIRE, description: '대마도사급 화염 마법으로 전장을 불태운다. 사용 후 후딜이 크다.' },
+  { id: 'fire-t1-2', name: '온기', element: 'fire', jobTier: 'apprentice', levelRequired: 10, mpCost: 5, power: 0.8, kind: 'heal', targeting: 'self', icon: FIRE, description: '따뜻한 불기운으로 자신의 HP를 회복한다.' },
+  { id: 'fire-t2-1', name: '화염 강타', element: 'fire', jobTier: 'novice', levelRequired: 20, mpCost: 8, power: 1.5, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.35 }, icon: FIRE, description: '압축한 화염으로 적 하나를 강타한다.' },
+  { id: 'fire-t2-2', name: '불의 채찍', element: 'fire', jobTier: 'novice', levelRequired: 30, mpCost: 7, power: 1.2, kind: 'attack', targeting: 'singleEnemy', status: { id: 'bleed', chance: 0.3 }, icon: FIRE, description: '불의 채찍으로 적을 찢어 출혈을 유발한다.' },
+  { id: 'fire-t3-1', name: '불의 고리', element: 'fire', jobTier: 'adept', levelRequired: 40, mpCost: 12, power: 1.6, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.25 }, icon: FIRE, description: '불의 고리를 펼쳐 모든 적을 태운다.' },
+  { id: 'fire-t3-2', name: '발화', element: 'fire', jobTier: 'adept', levelRequired: 50, mpCost: 10, power: 0.2, kind: 'debuff', targeting: 'allEnemies', status: { id: 'burn', chance: 0.6 }, icon: FIRE, description: '적 전체에 불을 붙여 강한 화상을 남긴다.' },
+  { id: 'fire-t4-1', name: '폭염 폭발', element: 'fire', jobTier: 'magus', levelRequired: 60, mpCost: 16, power: 2.3, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.4 }, icon: FIRE, description: '폭발적인 열기로 전장을 휩쓴다.' },
+  { id: 'fire-t4-2', name: '인페르노 낙인', element: 'fire', jobTier: 'magus', levelRequired: 70, mpCost: 15, power: 1.8, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.5 }, icon: FIRE, description: '적에게 불의 낙인을 새겨 극심한 화상과 출혈을 남긴다.' },
+  { id: 'fire-t5-1', name: '멸화의 심판', element: 'fire', jobTier: 'archmagus', levelRequired: 80, mpCost: 24, atbCost: 30, power: 3.3, kind: 'attack', targeting: 'allEnemies', status: { id: 'burn', chance: 0.5 }, icon: FIRE, description: '대마도사급 화염 마법으로 전장을 불태운다. 사용 후 후딜이 크다.' },
+  { id: 'fire-t5-2', name: '시간의 불꽃', element: 'fire', jobTier: 'archmagus', levelRequired: 90, mpCost: 28, atbCost: 35, power: 2.8, kind: 'attack', targeting: 'allEnemies', status: { id: 'paralysis', chance: 0.35 }, icon: FIRE, description: '화염계 극의(시간). 멈춘 시간 속에서 타오르는 불꽃이 적 전체를 꿰뚫고 마비시킨다.' },
 
   // ── 얼음 ────────────────────────────────────────────────────────────────
   { id: 'ice-t1-1', name: '서리 화살', element: 'ice', jobTier: 'apprentice', levelRequired: 1, mpCost: 4, power: 1.0, kind: 'attack', targeting: 'singleEnemy', status: { id: 'slow', chance: 0.25 }, icon: ICE, description: '서리 화살을 쏘아 적을 느리게 만든다.' },
-  { id: 'ice-t1-2', name: '얼음 방패', element: 'ice', jobTier: 'apprentice', levelRequired: 1, mpCost: 5, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: ICE, description: '얼음 방패로 자신의 방어력을 크게 높인다.' },
-  { id: 'ice-t2-1', name: '냉기 파동', element: 'ice', jobTier: 'novice', levelRequired: 10, mpCost: 8, power: 1.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'slow', chance: 0.4 }, icon: ICE, description: '냉기 파동으로 적을 얼려 둔화시킨다.' },
-  { id: 'ice-t2-2', name: '빙결 손아귀', element: 'ice', jobTier: 'novice', levelRequired: 10, mpCost: 8, power: 1.1, kind: 'attack', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.3 }, icon: ICE, description: '얼음 손아귀로 적을 붙잡아 마비시킨다.' },
-  { id: 'ice-t3-1', name: '눈보라', element: 'ice', jobTier: 'adept', levelRequired: 20, mpCost: 12, power: 1.5, kind: 'attack', targeting: 'allEnemies', status: { id: 'slow', chance: 0.35 }, icon: ICE, description: '눈보라를 일으켜 모든 적을 둔화시킨다.' },
-  { id: 'ice-t3-2', name: '절대영도', element: 'ice', jobTier: 'adept', levelRequired: 20, mpCost: 12, power: 1.0, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.7 }, icon: ICE, description: '주변 온도를 절대영도로 떨어뜨려 적을 완전히 얼린다.' },
-  { id: 'ice-t4-1', name: '블리자드', element: 'ice', jobTier: 'magus', levelRequired: 30, mpCost: 16, power: 2.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'slow', chance: 0.5 }, icon: ICE, description: '거대한 눈폭풍으로 전장을 뒤덮는다.' },
-  { id: 'ice-t4-2', name: '빙하기', element: 'ice', jobTier: 'magus', levelRequired: 30, mpCost: 17, power: 1.6, kind: 'attack', targeting: 'allEnemies', status: { id: 'paralysis', chance: 0.4 }, icon: ICE, description: '일대를 빙하로 만들어 적들을 얼어붙게 한다.' },
-  { id: 'ice-t5-1', name: '영겁의 빙옥', element: 'ice', jobTier: 'archmagus', levelRequired: 40, mpCost: 24, atbCost: 30, power: 3.0, kind: 'attack', targeting: 'allEnemies', status: { id: 'paralysis', chance: 0.5 }, icon: ICE, description: '영원히 녹지 않는 빙옥에 적 전체를 가둔다.' },
+  { id: 'ice-t1-2', name: '얼음 방패', element: 'ice', jobTier: 'apprentice', levelRequired: 10, mpCost: 5, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: ICE, description: '얼음 방패로 자신의 방어력을 크게 높인다.' },
+  { id: 'ice-t2-1', name: '냉기 파동', element: 'ice', jobTier: 'novice', levelRequired: 20, mpCost: 8, power: 1.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'slow', chance: 0.4 }, icon: ICE, description: '냉기 파동으로 적을 얼려 둔화시킨다.' },
+  { id: 'ice-t2-2', name: '빙결 손아귀', element: 'ice', jobTier: 'novice', levelRequired: 30, mpCost: 8, power: 1.1, kind: 'attack', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.3 }, icon: ICE, description: '얼음 손아귀로 적을 붙잡아 마비시킨다.' },
+  { id: 'ice-t3-1', name: '눈보라', element: 'ice', jobTier: 'adept', levelRequired: 40, mpCost: 12, power: 1.5, kind: 'attack', targeting: 'allEnemies', status: { id: 'slow', chance: 0.35 }, icon: ICE, description: '눈보라를 일으켜 모든 적을 둔화시킨다.' },
+  { id: 'ice-t3-2', name: '절대영도', element: 'ice', jobTier: 'adept', levelRequired: 50, mpCost: 12, power: 1.0, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.7 }, icon: ICE, description: '주변 온도를 절대영도로 떨어뜨려 적을 완전히 얼린다.' },
+  { id: 'ice-t4-1', name: '블리자드', element: 'ice', jobTier: 'magus', levelRequired: 60, mpCost: 16, power: 2.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'slow', chance: 0.5 }, icon: ICE, description: '거대한 눈폭풍으로 전장을 뒤덮는다.' },
+  { id: 'ice-t4-2', name: '빙하기', element: 'ice', jobTier: 'magus', levelRequired: 70, mpCost: 17, power: 1.6, kind: 'attack', targeting: 'allEnemies', status: { id: 'paralysis', chance: 0.4 }, icon: ICE, description: '일대를 빙하로 만들어 적들을 얼어붙게 한다.' },
+  { id: 'ice-t5-1', name: '영겁의 빙옥', element: 'ice', jobTier: 'archmagus', levelRequired: 80, mpCost: 24, atbCost: 30, power: 3.0, kind: 'attack', targeting: 'allEnemies', status: { id: 'paralysis', chance: 0.5 }, icon: ICE, description: '영원히 녹지 않는 빙옥에 적 전체를 가둔다.' },
+  { id: 'ice-t5-2', name: '공간 붕괴', element: 'ice', jobTier: 'archmagus', levelRequired: 90, mpCost: 28, atbCost: 35, power: 2.7, kind: 'attack', targeting: 'allEnemies', status: { id: 'slow', chance: 0.6 }, icon: ICE, description: '빙결계 극의(공간). 전장의 공간을 얼려 부수고 적 전체를 감속시킨다.' },
 
   // ── 대지 ────────────────────────────────────────────────────────────────
   { id: 'earth-t1-1', name: '돌팔매', element: 'earth', jobTier: 'apprentice', levelRequired: 1, mpCost: 3, power: 1.0, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: EARTH, description: '단단한 돌을 던져 물리 피해를 입힌다.' },
-  { id: 'earth-t1-2', name: '단단한 살갗', element: 'earth', jobTier: 'apprentice', levelRequired: 1, mpCost: 5, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: EARTH, description: '피부를 돌처럼 굳혀 방어력을 높인다.' },
-  { id: 'earth-t2-1', name: '대지 강타', element: 'earth', jobTier: 'novice', levelRequired: 10, mpCost: 8, power: 1.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'weaken', chance: 0.3 }, icon: EARTH, description: '땅의 힘을 실어 내려쳐 적을 약화시킨다.' },
-  { id: 'earth-t2-2', name: '모래 수렁', element: 'earth', jobTier: 'novice', levelRequired: 10, mpCost: 7, power: 0.6, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'slow', chance: 0.5 }, icon: EARTH, description: '발밑을 수렁으로 만들어 적을 붙잡는다.' },
-  { id: 'earth-t3-1', name: '철벽 방어', element: 'earth', jobTier: 'adept', levelRequired: 20, mpCost: 10, power: 0, kind: 'buff', targeting: 'allAllies', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: EARTH, description: '아군 전체를 바위 장벽으로 감싼다.' },
-  { id: 'earth-t3-2', name: '최면 가루', element: 'earth', jobTier: 'adept', levelRequired: 20, mpCost: 9, power: 0, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'sleep', chance: 0.65 }, icon: EARTH, description: '최면 가루를 뿌려 적을 잠재운다.' },
-  { id: 'earth-t4-1', name: '지진', element: 'earth', jobTier: 'magus', levelRequired: 30, mpCost: 16, power: 2.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'weaken', chance: 0.4 }, icon: EARTH, description: '대지를 뒤흔들어 모든 적을 강타하고 약화시킨다.' },
-  { id: 'earth-t4-2', name: '석화의 시선', element: 'earth', jobTier: 'magus', levelRequired: 30, mpCost: 16, power: 1.2, kind: 'attack', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.55 }, icon: EARTH, description: '적을 돌로 굳혀 움직임을 봉인한다.' },
-  { id: 'earth-t5-1', name: '대지의 분노', element: 'earth', jobTier: 'archmagus', levelRequired: 40, mpCost: 24, atbCost: 30, power: 3.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'weaken', chance: 0.5 }, icon: EARTH, description: '대지 그 자체의 분노를 적에게 쏟아낸다.' },
+  { id: 'earth-t1-2', name: '단단한 살갗', element: 'earth', jobTier: 'apprentice', levelRequired: 10, mpCost: 5, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: EARTH, description: '피부를 돌처럼 굳혀 방어력을 높인다.' },
+  { id: 'earth-t2-1', name: '대지 강타', element: 'earth', jobTier: 'novice', levelRequired: 20, mpCost: 8, power: 1.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'weaken', chance: 0.3 }, icon: EARTH, description: '땅의 힘을 실어 내려쳐 적을 약화시킨다.' },
+  { id: 'earth-t2-2', name: '모래 수렁', element: 'earth', jobTier: 'novice', levelRequired: 30, mpCost: 7, power: 0.6, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'slow', chance: 0.5 }, icon: EARTH, description: '발밑을 수렁으로 만들어 적을 붙잡는다.' },
+  { id: 'earth-t3-1', name: '철벽 방어', element: 'earth', jobTier: 'adept', levelRequired: 40, mpCost: 10, power: 0, kind: 'buff', targeting: 'allAllies', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: EARTH, description: '아군 전체를 바위 장벽으로 감싼다.' },
+  { id: 'earth-t3-2', name: '최면 가루', element: 'earth', jobTier: 'adept', levelRequired: 50, mpCost: 9, power: 0, kind: 'debuff', targeting: 'singleEnemy', status: { id: 'sleep', chance: 0.65 }, icon: EARTH, description: '최면 가루를 뿌려 적을 잠재운다.' },
+  { id: 'earth-t4-1', name: '지진', element: 'earth', jobTier: 'magus', levelRequired: 60, mpCost: 16, power: 2.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'weaken', chance: 0.4 }, icon: EARTH, description: '대지를 뒤흔들어 모든 적을 강타하고 약화시킨다.' },
+  { id: 'earth-t4-2', name: '석화의 시선', element: 'earth', jobTier: 'magus', levelRequired: 70, mpCost: 16, power: 1.2, kind: 'attack', targeting: 'singleEnemy', status: { id: 'paralysis', chance: 0.55 }, icon: EARTH, description: '적을 돌로 굳혀 움직임을 봉인한다.' },
+  { id: 'earth-t5-1', name: '대지의 분노', element: 'earth', jobTier: 'archmagus', levelRequired: 80, mpCost: 24, atbCost: 30, power: 3.2, kind: 'attack', targeting: 'allEnemies', status: { id: 'weaken', chance: 0.5 }, icon: EARTH, description: '대지 그 자체의 분노를 적에게 쏟아낸다.' },
+  { id: 'earth-t5-2', name: '죽음의 장막', element: 'earth', jobTier: 'archmagus', levelRequired: 90, mpCost: 28, atbCost: 35, power: 2.5, kind: 'attack', targeting: 'allEnemies', status: { id: 'weaken', chance: 0.6 }, icon: EARTH, description: '대지계 극의(죽음). 어둠의 장막이 적 전체를 덮쳐 약화시킨다.' },
 
   // ── 무속성 공용 ─────────────────────────────────────────────────────────
   { id: 'n-focus', name: '정신 집중', element: 'neutral', jobTier: 'apprentice', levelRequired: 1, mpCost: 0, atbCost: 20, power: 0, kind: 'utility', targeting: 'self', restoreMpRatio: 1.0, icon: NEUT, description: '정신을 가다듬어 자신의 MP를 회복한다. (후딜 있음)' },
   { id: 'n-firstaid', name: '응급 처치', element: 'neutral', jobTier: 'apprentice', levelRequired: 1, mpCost: 6, power: 1.2, kind: 'heal', targeting: 'singleAlly', icon: NEUT, description: '아군 하나의 HP를 회복한다.' },
-  { id: 'n-purify', name: '정화', element: 'neutral', jobTier: 'apprentice', levelRequired: 10, mpCost: 8, power: 0, kind: 'utility', targeting: 'singleAlly', cleanse: true, icon: NEUT, description: '아군 하나의 상태이상을 모두 해제한다.' },
-  { id: 'n-rally', name: '전열 정비', element: 'neutral', jobTier: 'apprentice', levelRequired: 20, mpCost: 12, power: 0, kind: 'buff', targeting: 'allAllies', buff: { id: 'rally', magnitude: 0.15, turns: 3 }, icon: NEUT, description: '아군 전체의 공격력·마법공격력을 높인다.' },
-  { id: 'n-laststand', name: '배수의 진', element: 'neutral', jobTier: 'apprentice', levelRequired: 20, mpCost: 10, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'lastStand', magnitude: 0.3, turns: 3 }, icon: NEUT, description: '주는 피해가 크게 늘지만 받는 피해도 늘어난다.' },
-  { id: 'n-revive', name: '소생의 빛', element: 'neutral', jobTier: 'apprentice', levelRequired: 30, mpCost: 20, power: 0, kind: 'heal', targeting: 'singleAlly', reviveHpRatio: 0.5, icon: NEUT, description: '전투불능 아군 하나를 HP 절반으로 되살린다.' },
+  { id: 'n-purify', name: '정화', element: 'neutral', jobTier: 'apprentice', levelRequired: 15, mpCost: 8, power: 0, kind: 'utility', targeting: 'singleAlly', cleanse: true, icon: NEUT, description: '아군 하나의 상태이상을 모두 해제한다.' },
+  { id: 'n-rally', name: '전열 정비', element: 'neutral', jobTier: 'apprentice', levelRequired: 35, mpCost: 12, power: 0, kind: 'buff', targeting: 'allAllies', buff: { id: 'rally', magnitude: 0.15, turns: 3 }, icon: NEUT, description: '아군 전체의 공격력·마법공격력을 높인다.' },
+  { id: 'n-laststand', name: '배수의 진', element: 'neutral', jobTier: 'apprentice', levelRequired: 45, mpCost: 10, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'lastStand', magnitude: 0.3, turns: 3 }, icon: NEUT, description: '주는 피해가 크게 늘지만 받는 피해도 늘어난다.' },
+  { id: 'n-revive', name: '소생의 빛', element: 'neutral', jobTier: 'apprentice', levelRequired: 65, mpCost: 20, power: 0, kind: 'heal', targeting: 'singleAlly', reviveHpRatio: 0.5, icon: NEUT, description: '전투불능 아군 하나를 HP 절반으로 되살린다.' },
 
   // ── 펫: 고유 스킬 ──────────────────────────────────────────────────────
   { id: 'pet-scratch', name: '할퀴기', element: 'neutral', jobTier: 'apprentice', levelRequired: 1, mpCost: 0, power: 0.8, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: NEUT, description: '발톱으로 적을 할퀸다.' },
@@ -417,6 +421,8 @@ export const ITEMS: ItemDef[] = [
   ...ruinsMaterials,
   ...ruinsCraftedAccessories,
   ...ruinsUniqueGear,
+  // 채집·사냥·낚시·요리·연금·마도구·가구·코스튬 (lib/life.ts)
+  ...LIFE_ITEMS,
 ]
 const ITEM_MAP = new Map(ITEMS.map((i) => [i.id, i]))
 export function itemById(id: string): ItemDef | undefined {
@@ -430,6 +436,7 @@ export const RECIPES: RecipeDef[] = [
   {
     id: 'recipe-elixir',
     station: 'alchemy_pot',
+    category: 'alchemy',
     ingredients: [
       { itemId: 'potion-hp-l', quantity: 2 },
       { itemId: 'potion-mp-m', quantity: 2 },
@@ -560,6 +567,8 @@ export const RECIPES: RecipeDef[] = [
     outputItemId: 'acc-giant-king-seal',
     outputQuantity: 1,
   },
+  // 연금술·요리·마도구·가구·코스튬 (lib/life.ts)
+  ...LIFE_RECIPES,
 ]
 const RECIPE_MAP = new Map(RECIPES.map((r) => [r.id, r]))
 export function recipeById(id: string): RecipeDef | undefined {
@@ -581,7 +590,7 @@ function earlyLevelEase(level: number): number {
 }
 
 function mstat(level: number, mult: Partial<Stats> = {}): Stats {
-  const s = computeStatsForLevel('neutral', level)
+  const s = computeStatsForLevel('neutral', toLevel100(level))
   const ease = earlyLevelEase(level)
   const base: Stats = {
     maxHp: Math.round(s.maxHp * 0.62 * ease),
@@ -599,16 +608,16 @@ function mstat(level: number, mult: Partial<Stats> = {}): Stats {
   return base
 }
 
-export const MONSTERS: MonsterDef[] = [
+const MONSTERS_LEGACY: MonsterDef[] = [
   // 에르디아 숲 (권장레벨 저지대 체감 난이도 완화 — 저레벨 잡몹 비중 확대 + 체력 전역 1/3 하향)
   { id: 'mon-field-mouse', name: '들쥐', level: 1, icon: '/images/monsters/raccoon.svg', element: 'neutral', family: 'beast', stats: mstat(1, { maxHp: 0.34, atk: 0.8 }), skills: [], expReward: 8, goldReward: 5, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-forest-fiber', chance: 0.4 }] },
   { id: 'mon-glow-moth', name: '빛날개나방', level: 1, icon: '/images/monsters/bubble.svg', element: 'neutral', family: 'beast', stats: mstat(1, { maxHp: 0.34, spd: 1.2 }), traits: ['swift'], skills: [], expReward: 9, goldReward: 5, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-fairy-dust', chance: 0.3 }] },
-  { id: 'mon-forest-raccoon', name: '숲너구리', level: 2, icon: '/images/monsters/raccoon.svg', element: 'earth', family: 'beast', stats: mstat(2, { maxHp: 0.34 }), skills: [], expReward: 18, goldReward: 12, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.3 }, { itemId: 'feed-any', chance: 0.15 }, { itemId: 'mat-forest-fiber', chance: 0.45 }] },
-  { id: 'mon-thorn-vine', name: '가시덩굴', level: 3, icon: '/images/monsters/vine.svg', element: 'earth', family: 'plant', stats: mstat(3, { maxHp: 0.48, def: 1.3, spd: 0.6 }), traits: ['tank'], skills: [], expReward: 26, goldReward: 15, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.25 }, { itemId: 'mat-thorn-shard', chance: 0.45 }] },
-  { id: 'mon-sprite-green', name: '초록 요정', level: 4, icon: '/images/monsters/bubble.svg', element: 'neutral', family: 'beast', stats: mstat(4, { maxHp: 0.34, spd: 1.4, luck: 1.5 }), traits: ['swift'], skills: [], expReward: 30, goldReward: 22, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-mp-s', chance: 0.3 }, { itemId: 'mat-fairy-dust', chance: 0.35 }] },
-  { id: 'mon-grey-wolf', name: '회색 늑대', level: 5, icon: '/images/monsters/wolf.svg', element: 'ice', family: 'beast', stats: mstat(5, { maxHp: 0.34, atk: 1.2, spd: 1.2 }), traits: ['aggressive'], skills: [], expReward: 38, goldReward: 24, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-wolf-fang', chance: 0.4 }] },
-  { id: 'mon-mush-cap', name: '독버섯 갓', level: 6, icon: '/images/monsters/vine.svg', element: 'earth', family: 'plant', stats: mstat(6, { maxHp: 0.34, matk: 1.4, maxMp: 1.6 }), traits: ['caster'], skills: ['earth-t3-2'], expReward: 46, goldReward: 28, zoneKinds: ['forest'], dropTable: [{ itemId: 'tool-antidote', chance: 0.2 }, { itemId: 'mat-mushroom-spore', chance: 0.45 }] },
-  { id: 'mon-bark-golem', name: '나무 골렘', level: 8, icon: '/images/monsters/dummy.svg', element: 'earth', family: 'construct', stats: mstat(8, { maxHp: 0.54, def: 1.5, spd: 0.6 }), traits: ['tank'], skills: [], expReward: 62, goldReward: 40, zoneKinds: ['forest'], dropTable: [{ itemId: 'robe-t1', chance: 0.1 }, { itemId: 'mat-lifewood-chip', chance: 0.4 }] },
+  { id: 'mon-forest-raccoon', name: '숲너구리', level: 2, icon: '/images/monsters/mon-forest-raccoon.png', element: 'earth', family: 'beast', stats: mstat(2, { maxHp: 0.34 }), skills: [], expReward: 18, goldReward: 12, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.3 }, { itemId: 'feed-any', chance: 0.15 }, { itemId: 'mat-forest-fiber', chance: 0.45 }] },
+  { id: 'mon-thorn-vine', name: '가시덩굴', level: 3, icon: '/images/monsters/mon-thorn-vine.png', element: 'earth', family: 'plant', stats: mstat(3, { maxHp: 0.48, def: 1.3, spd: 0.6 }), traits: ['tank'], skills: [], expReward: 26, goldReward: 15, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.25 }, { itemId: 'mat-thorn-shard', chance: 0.45 }] },
+  { id: 'mon-sprite-green', name: '초록 요정', level: 4, icon: '/images/monsters/mon-sprite-green.png', element: 'neutral', family: 'beast', stats: mstat(4, { maxHp: 0.34, spd: 1.4, luck: 1.5 }), traits: ['swift'], skills: [], expReward: 30, goldReward: 22, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-mp-s', chance: 0.3 }, { itemId: 'mat-fairy-dust', chance: 0.35 }] },
+  { id: 'mon-grey-wolf', name: '회색 늑대', level: 5, icon: '/images/monsters/mon-grey-wolf.png', element: 'ice', family: 'beast', stats: mstat(5, { maxHp: 0.34, atk: 1.2, spd: 1.2 }), traits: ['aggressive'], skills: [], expReward: 38, goldReward: 24, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-wolf-fang', chance: 0.4 }] },
+  { id: 'mon-mush-cap', name: '독버섯 갓', level: 6, icon: '/images/monsters/mon-mush-cap.png', element: 'earth', family: 'plant', stats: mstat(6, { maxHp: 0.34, matk: 1.4, maxMp: 1.6 }), traits: ['caster'], skills: ['earth-t3-2'], expReward: 46, goldReward: 28, zoneKinds: ['forest'], dropTable: [{ itemId: 'tool-antidote', chance: 0.2 }, { itemId: 'mat-mushroom-spore', chance: 0.45 }] },
+  { id: 'mon-bark-golem', name: '나무 골렘', level: 8, icon: '/images/monsters/mon-bark-golem.png', element: 'earth', family: 'construct', stats: mstat(8, { maxHp: 0.54, def: 1.5, spd: 0.6 }), traits: ['tank'], skills: [], expReward: 62, goldReward: 40, zoneKinds: ['forest'], dropTable: [{ itemId: 'robe-t1', chance: 0.1 }, { itemId: 'mat-lifewood-chip', chance: 0.4 }] },
   {
     id: 'mon-thorn-matriarch',
     name: '가시어미',
@@ -642,12 +651,12 @@ export const MONSTERS: MonsterDef[] = [
     dropTable: [{ itemId: 'mat-ancient-heartwood', chance: 1 }, { itemId: 'mat-lifewood-chip', chance: 0.8 }],
   },
   // 스톰헤이븐 해안 (체력 전역 2/3 하향)
-  { id: 'mon-bubble-spirit', name: '물거품 정령', level: 2, icon: '/images/monsters/bubble.svg', element: 'ice', family: 'aquatic', stats: mstat(2, { maxHp: 0.67 }), skills: [], expReward: 17, goldReward: 11, zoneKinds: ['sea'], dropTable: [{ itemId: 'potion-mp-s', chance: 0.25 }, { itemId: 'mat-water-droplet', chance: 0.45 }] },
-  { id: 'mon-crab-soldier', name: '게 껍질병정', level: 3, icon: '/images/monsters/crab.svg', element: 'ice', family: 'aquatic', stats: mstat(3, { def: 1.4, maxHp: 0.8 }), traits: ['tank'], skills: [], expReward: 24, goldReward: 16, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-crab-shell', chance: 0.45 }] },
-  { id: 'mon-shallows-eel', name: '얕은여울 뱀장어', level: 5, icon: '/images/monsters/eel.svg', element: 'ice', family: 'aquatic', stats: mstat(5, { maxHp: 0.67, spd: 1.4 }), traits: ['swift'], skills: [], expReward: 42, goldReward: 26, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-eel-scale', chance: 0.4 }] },
-  { id: 'mon-siren-larva', name: '세이렌 유충', level: 7, icon: '/images/monsters/bubble.svg', element: 'neutral', family: 'aquatic', stats: mstat(7, { maxHp: 0.67, matk: 1.3 }), traits: ['caster'], skills: ['pet-silence-hiss'], expReward: 54, goldReward: 34, zoneKinds: ['sea'], dropTable: [{ itemId: 'acc-amulet-mana', chance: 0.05 }, { itemId: 'mat-siren-scale', chance: 0.35 }] },
-  { id: 'mon-reef-turtle', name: '암초 거북', level: 9, icon: '/images/monsters/crab.svg', element: 'ice', family: 'aquatic', stats: mstat(9, { maxHp: 1.14, def: 1.6, spd: 0.5 }), traits: ['tank'], skills: [], expReward: 70, goldReward: 44, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-reef-fragment', chance: 0.45 }] },
-  { id: 'mon-tide-elemental', name: '밀물 정령', level: 11, icon: '/images/monsters/bubble.svg', element: 'ice', family: 'aquatic', stats: mstat(11, { maxHp: 0.67, matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['ice-t2-1'], expReward: 88, goldReward: 52, zoneKinds: ['sea'], dropTable: [{ itemId: 'wand-ice-t2', chance: 0.06 }, { itemId: 'mat-tide-essence', chance: 0.4 }] },
+  { id: 'mon-bubble-spirit', name: '물거품 정령', level: 2, icon: '/images/monsters/mon-bubble-spirit.png', element: 'ice', family: 'aquatic', stats: mstat(2, { maxHp: 0.67 }), skills: [], expReward: 17, goldReward: 11, zoneKinds: ['sea'], dropTable: [{ itemId: 'potion-mp-s', chance: 0.25 }, { itemId: 'mat-water-droplet', chance: 0.45 }] },
+  { id: 'mon-crab-soldier', name: '게 껍질병정', level: 3, icon: '/images/monsters/mon-crab-soldier.png', element: 'ice', family: 'aquatic', stats: mstat(3, { def: 1.4, maxHp: 0.8 }), traits: ['tank'], skills: [], expReward: 24, goldReward: 16, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-crab-shell', chance: 0.45 }] },
+  { id: 'mon-shallows-eel', name: '얕은여울 뱀장어', level: 5, icon: '/images/monsters/mon-shallows-eel.png', element: 'ice', family: 'aquatic', stats: mstat(5, { maxHp: 0.67, spd: 1.4 }), traits: ['swift'], skills: [], expReward: 42, goldReward: 26, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-eel-scale', chance: 0.4 }] },
+  { id: 'mon-siren-larva', name: '세이렌 유충', level: 7, icon: '/images/monsters/mon-siren-larva.png', element: 'neutral', family: 'aquatic', stats: mstat(7, { maxHp: 0.67, matk: 1.3 }), traits: ['caster'], skills: ['pet-silence-hiss'], expReward: 54, goldReward: 34, zoneKinds: ['sea'], dropTable: [{ itemId: 'acc-amulet-mana', chance: 0.05 }, { itemId: 'mat-siren-scale', chance: 0.35 }] },
+  { id: 'mon-reef-turtle', name: '암초 거북', level: 9, icon: '/images/monsters/mon-reef-turtle.png', element: 'ice', family: 'aquatic', stats: mstat(9, { maxHp: 1.14, def: 1.6, spd: 0.5 }), traits: ['tank'], skills: [], expReward: 70, goldReward: 44, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-reef-fragment', chance: 0.45 }] },
+  { id: 'mon-tide-elemental', name: '밀물 정령', level: 11, icon: '/images/monsters/mon-tide-elemental.png', element: 'ice', family: 'aquatic', stats: mstat(11, { maxHp: 0.67, matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['ice-t2-1'], expReward: 88, goldReward: 52, zoneKinds: ['sea'], dropTable: [{ itemId: 'wand-ice-t2', chance: 0.06 }, { itemId: 'mat-tide-essence', chance: 0.4 }] },
   {
     id: 'mon-jelly-queen',
     name: '해파리 여왕',
@@ -681,17 +690,17 @@ export const MONSTERS: MonsterDef[] = [
     dropTable: [{ itemId: 'mat-reefking-shell', chance: 1 }, { itemId: 'mat-reef-fragment', chance: 0.8 }],
   },
   // 하늘 유적
-  { id: 'mon-ember-imp', name: '잉걸 임프', level: 10, icon: '/images/monsters/raccoon.svg', element: 'fire', family: 'beast', stats: mstat(10, { atk: 1.2, spd: 1.2 }), traits: ['aggressive'], skills: ['fire-t1-1'], expReward: 82, goldReward: 50, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-ember-shard', chance: 0.4 }] },
-  { id: 'mon-ash-hound', name: '잿빛 사냥개', level: 12, icon: '/images/monsters/wolf.svg', element: 'fire', family: 'beast', stats: mstat(12, { spd: 1.5, atk: 1.2 }), traits: ['swift', 'aggressive'], skills: [], expReward: 96, goldReward: 58, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-ash-fang', chance: 0.4 }] },
-  { id: 'mon-bone-archer', name: '해골 궁수', level: 13, icon: '/images/monsters/eel.svg', element: 'neutral', family: 'undead', stats: mstat(13, { atk: 1.3 }), traits: ['caster'], skills: ['fire-t2-2'], expReward: 104, goldReward: 62, zoneKinds: ['ruins'], dropTable: [{ itemId: 'potion-hp-m', chance: 0.2 }, { itemId: 'mat-old-arrowhead', chance: 0.4 }] },
-  { id: 'mon-cursed-armor', name: '저주받은 갑주', level: 15, icon: '/images/monsters/dummy.svg', element: 'earth', family: 'construct', stats: mstat(15, { maxHp: 1.8, def: 1.7, spd: 0.5 }), traits: ['tank'], skills: [], expReward: 122, goldReward: 74, zoneKinds: ['ruins'], dropTable: [{ itemId: 'robe-t3', chance: 0.08 }, { itemId: 'mat-cursed-metal', chance: 0.4 }] },
-  { id: 'mon-wraith', name: '원귀', level: 17, icon: '/images/monsters/bubble.svg', element: 'neutral', family: 'undead', stats: mstat(17, { matk: 1.5, spd: 1.2 }), traits: ['caster'], skills: ['pet-blind-dust'], expReward: 140, goldReward: 84, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-wraith-echo', chance: 0.4 }] },
-  { id: 'mon-dark-acolyte', name: '어둠의 수련생', level: 18, icon: '/images/monsters/vine.svg', element: 'fire', family: 'darkmage', stats: mstat(18, { matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['fire-t2-1'], expReward: 150, goldReward: 90, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t3', chance: 0.05 }, { itemId: 'mat-acolyte-mana-shard', chance: 0.35 }] },
-  { id: 'mon-flame-warden', name: '화염 파수꾼', level: 20, icon: '/images/monsters/dummy.svg', element: 'fire', family: 'construct', stats: mstat(20, { maxHp: 1.9, def: 1.6, matk: 1.3 }), traits: ['tank', 'caster'], skills: ['fire-t3-1'], expReward: 180, goldReward: 110, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t3', chance: 0.12 }, { itemId: 'mat-flame-core', chance: 0.4 }] },
-  { id: 'mon-frost-revenant', name: '서리 망령', level: 22, icon: '/images/monsters/bubble.svg', element: 'ice', family: 'undead', stats: mstat(22, { matk: 1.6, spd: 1.1 }), traits: ['caster'], skills: ['ice-t2-1', 'ice-t2-2'], expReward: 200, goldReward: 122, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-frost-crystal', chance: 0.4 }] },
-  { id: 'mon-dark-mage', name: '흑마법사', level: 25, icon: '/images/monsters/vine.svg', element: 'neutral', family: 'darkmage', stats: mstat(25, { matk: 1.8, maxMp: 1.8 }), traits: ['caster'], skills: ['fire-t3-1', 'ice-t3-1'], expReward: 240, goldReward: 150, zoneKinds: ['ruins'], dropTable: [{ itemId: 'acc-charm-ward', chance: 0.1 }, { itemId: 'mat-dark-ink', chance: 0.35 }] },
-  { id: 'mon-stone-titan', name: '석상 거인', level: 28, icon: '/images/monsters/dummy.svg', element: 'earth', family: 'construct', stats: mstat(28, { maxHp: 2.2, def: 1.9, spd: 0.5, atk: 1.3 }), traits: ['tank'], skills: ['earth-t4-1'], expReward: 300, goldReward: 190, zoneKinds: ['ruins'], rank: 'midBoss', dropTable: [{ itemId: 'robe-t4', chance: 0.1 }, { itemId: 'mat-statue-fragment', chance: 0.8 }] },
-  { id: 'mon-azka-herald', name: '모르스의 전령', level: 32, icon: '/images/monsters/wolf.svg', element: 'fire', family: 'darkmage', stats: mstat(32, { maxHp: 2.4, matk: 2.0, maxMp: 2.0, atk: 1.4 }), traits: ['caster', 'aggressive'], skills: ['fire-t4-1', 'fire-t3-2'], expReward: 420, goldReward: 280, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t4', chance: 0.15 }, { itemId: 'potion-elixir', chance: 0.3 }, { itemId: 'mat-mors-seal', chance: 0.35 }] },
+  { id: 'mon-ember-imp', name: '잉걸 임프', level: 10, icon: '/images/monsters/mon-ember-imp.png', element: 'fire', family: 'beast', stats: mstat(10, { atk: 1.2, spd: 1.2 }), traits: ['aggressive'], skills: ['fire-t1-1'], expReward: 82, goldReward: 50, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-ember-shard', chance: 0.4 }] },
+  { id: 'mon-ash-hound', name: '잿빛 사냥개', level: 12, icon: '/images/monsters/mon-ash-hound.png', element: 'fire', family: 'beast', stats: mstat(12, { spd: 1.5, atk: 1.2 }), traits: ['swift', 'aggressive'], skills: [], expReward: 96, goldReward: 58, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-ash-fang', chance: 0.4 }] },
+  { id: 'mon-bone-archer', name: '해골 궁수', level: 13, icon: '/images/monsters/mon-bone-archer.png', element: 'neutral', family: 'undead', stats: mstat(13, { atk: 1.3 }), traits: ['caster'], skills: ['fire-t2-2'], expReward: 104, goldReward: 62, zoneKinds: ['ruins'], dropTable: [{ itemId: 'potion-hp-m', chance: 0.2 }, { itemId: 'mat-old-arrowhead', chance: 0.4 }] },
+  { id: 'mon-cursed-armor', name: '저주받은 갑주', level: 15, icon: '/images/monsters/mon-cursed-armor.png', element: 'earth', family: 'construct', stats: mstat(15, { maxHp: 1.8, def: 1.7, spd: 0.5 }), traits: ['tank'], skills: [], expReward: 122, goldReward: 74, zoneKinds: ['ruins'], dropTable: [{ itemId: 'robe-t3', chance: 0.08 }, { itemId: 'mat-cursed-metal', chance: 0.4 }] },
+  { id: 'mon-wraith', name: '원귀', level: 17, icon: '/images/monsters/mon-wraith.png', element: 'neutral', family: 'undead', stats: mstat(17, { matk: 1.5, spd: 1.2 }), traits: ['caster'], skills: ['pet-blind-dust'], expReward: 140, goldReward: 84, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-wraith-echo', chance: 0.4 }] },
+  { id: 'mon-dark-acolyte', name: '어둠의 수련생', level: 18, icon: '/images/monsters/mon-dark-acolyte.png', element: 'fire', family: 'darkmage', stats: mstat(18, { matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['fire-t2-1'], expReward: 150, goldReward: 90, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t3', chance: 0.05 }, { itemId: 'mat-acolyte-mana-shard', chance: 0.35 }] },
+  { id: 'mon-flame-warden', name: '화염 파수꾼', level: 20, icon: '/images/monsters/mon-flame-warden.png', element: 'fire', family: 'construct', stats: mstat(20, { maxHp: 1.9, def: 1.6, matk: 1.3 }), traits: ['tank', 'caster'], skills: ['fire-t3-1'], expReward: 180, goldReward: 110, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t3', chance: 0.12 }, { itemId: 'mat-flame-core', chance: 0.4 }] },
+  { id: 'mon-frost-revenant', name: '서리 망령', level: 22, icon: '/images/monsters/mon-frost-revenant.png', element: 'ice', family: 'undead', stats: mstat(22, { matk: 1.6, spd: 1.1 }), traits: ['caster'], skills: ['ice-t2-1', 'ice-t2-2'], expReward: 200, goldReward: 122, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-frost-crystal', chance: 0.4 }] },
+  { id: 'mon-dark-mage', name: '흑마법사', level: 25, icon: '/images/monsters/mon-dark-mage.png', element: 'neutral', family: 'darkmage', stats: mstat(25, { matk: 1.8, maxMp: 1.8 }), traits: ['caster'], skills: ['fire-t3-1', 'ice-t3-1'], expReward: 240, goldReward: 150, zoneKinds: ['ruins'], dropTable: [{ itemId: 'acc-charm-ward', chance: 0.1 }, { itemId: 'mat-dark-ink', chance: 0.35 }] },
+  { id: 'mon-stone-titan', name: '석상 거인', level: 28, icon: '/images/monsters/mon-stone-titan.png', element: 'earth', family: 'construct', stats: mstat(28, { maxHp: 2.2, def: 1.9, spd: 0.5, atk: 1.3 }), traits: ['tank'], skills: ['earth-t4-1'], expReward: 300, goldReward: 190, zoneKinds: ['ruins'], rank: 'midBoss', dropTable: [{ itemId: 'robe-t4', chance: 0.1 }, { itemId: 'mat-statue-fragment', chance: 0.8 }] },
+  { id: 'mon-azka-herald', name: '모르스의 전령', level: 32, icon: '/images/monsters/mon-azka-herald.png', element: 'fire', family: 'darkmage', stats: mstat(32, { maxHp: 2.4, matk: 2.0, maxMp: 2.0, atk: 1.4 }), traits: ['caster', 'aggressive'], skills: ['fire-t4-1', 'fire-t3-2'], expReward: 420, goldReward: 280, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t4', chance: 0.15 }, { itemId: 'potion-elixir', chance: 0.3 }, { itemId: 'mat-mors-seal', chance: 0.35 }] },
   {
     id: 'mon-stone-titan-king',
     name: '석상 거인왕',
@@ -711,6 +720,9 @@ export const MONSTERS: MonsterDef[] = [
   // 테스트몹
   { id: 'mon-training-dummy', name: '훈련용 허수아비', level: 1, icon: '/images/monsters/dummy.svg', element: 'neutral', family: 'test', stats: { maxHp: 30, maxMp: 0, atk: 1, def: 1, matk: 0, mdef: 1, spd: 1, luck: 0 }, skills: [], expReward: 0, goldReward: 0, zoneKinds: ['forest', 'sea', 'ruins'], isTestMonster: true },
 ]
+// 레벨 100 확장 — 위 데이터의 level/mstat 은 기존(50 기준) 값 그대로 두고, 표시·판정 레벨만 새 축으로 옮긴다.
+// (mstat 은 기존 레벨로 스탯을 뽑으므로 computeStatsForLevel 의 환산과 상쇄되도록 toLevel100 을 거쳐 호출)
+export const MONSTERS: MonsterDef[] = MONSTERS_LEGACY.map((m) => ({ ...m, level: toLevel100(m.level) }))
 
 const MONSTER_MAP = new Map(MONSTERS.map((m) => [m.id, m]))
 export function monsterById(id: string): MonsterDef | undefined {
@@ -730,8 +742,11 @@ const NPCS_BASE: NpcDef[] = [
   // ── 별빛 상점가 ──
   { id: 'npc-weapon', name: '대장장이 반', role: 'weaponMerchant', icon: '/images/npc/npc-weapon.png', zoneId: 'z-shops', cell: { x: 39, y: 20 }, greeting: ['속성별 완드, 다 갖춰놨다네. 전직 단계에 맞는 걸로 골라 가시게.'], shopItemIds: [...wands.map((w) => w.id), ...robes.map((r) => r.id), ...hats.map((h) => h.id), ...accessories.map((a) => a.id)] },
   { id: 'npc-potion', name: '약사 셀린', role: 'potionMerchant', icon: '/images/npc/npc-potion.png', zoneId: 'z-shops', cell: { x: 43.2, y: 19.8 }, greeting: ['신선한 물약이 방금 들어왔어요. 통문 밖으로 나가기 전엔 꼭 챙기세요!'], shopItemIds: potions.map((p) => p.id) },
-  { id: 'npc-tool', name: '만물상 토비', role: 'toolMerchant', icon: '/images/npc/npc-tool.png', zoneId: 'z-shops', cell: { x: 46, y: 20.2 }, greeting: ['도구는 다 여기 있습니다. 가속의 모래, 이거 전투에서 꽤 쓸만해요.'], shopItemIds: tools.map((t) => t.id) },
+  { id: 'npc-tool', name: '만물상 토비', role: 'toolMerchant', icon: '/images/npc/npc-tool.png', zoneId: 'z-shops', cell: { x: 46, y: 20.2 }, greeting: ['도구는 다 여기 있습니다. 가속의 모래, 이거 전투에서 꽤 쓸만해요.'], shopItemIds: [...tools.map((t) => t.id), 'tool-rod-basic'] },
   { id: 'npc-tamer', name: '조련사 리코', role: 'petTamer', icon: '/images/npc/npc-tamer.png', zoneId: 'z-shops', cell: { x: 48.2, y: 22.6 }, greeting: ['펫한테 새 재주를 가르쳐 볼까? 먹이도 팔고 있어.', '햇살 농가에서 펫 농장도 준비 중이라던데.'], shopItemIds: feeds.map((f) => f.id) },
+  { id: 'npc-alchemy-pot', name: '연금술 가마', role: 'craftStation', station: 'alchemy_pot', icon: '/images/npc/npc-workbench.png', zoneId: 'z-magic-hall', cell: { x: 6.4, y: 9.2 }, greeting: ['보글보글 끓는 연금술 가마다. 약초와 결정을 넣으면 물약이 된다.'] },
+  // ── 기숙사 마을 — 공동 식당 주방 ──
+  { id: 'npc-kitchen', name: '공동 식당 주방', role: 'craftStation', station: 'cooking_pot', icon: '/images/npc/npc-workbench.png', zoneId: 'z-dorm', cell: { x: 14.0, y: 22.6 }, greeting: ['기숙사 공동 식당 주방. 물고기와 고기, 약초로 든든한 한 끼를 만들 수 있다.'] },
   { id: 'npc-workbench', name: '마도구 작업대', role: 'craftStation', icon: '/images/npc/npc-workbench.png', zoneId: 'z-magic-hall', cell: { x: 4.0, y: 7.0 }, greeting: ['재료만 모아오면 여기서 바로 조합할 수 있다네.', '필드와 보스에게서 얻은 재료를 가져오게.'] },
   // ── 하우징 마을 ──
   { id: 'npc-elder', name: '촌장 헬가', role: 'housing', icon: '/images/npc/npc-elder.png', zoneId: 'z-housing', cell: { x: 42, y: 6.2 }, greeting: ['하우징 마을에 온 걸 환영하네. 집을 짓는 기능은 다음 업데이트에서 만나볼 걸세.', '지친 견습생은 여기서 쉬어 가도 좋네.'] },

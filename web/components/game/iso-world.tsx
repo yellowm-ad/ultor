@@ -9,24 +9,17 @@ import { NPCS, MONSTERS } from '@/lib/mock-data'
 import { wanderState, npcWanderState } from '@/lib/field'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
 import type { TileKind, PropDef } from '@/lib/iso'
-import { renderProp } from '@/components/game/iso-sprites'
 import { FURNITURE_BY_ID } from '@/lib/housing'
+import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 
 const SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
 const PAD_BOTTOM = 60
-const HW = ISO_TILE_W / 2
-const HH = ISO_TILE_H / 2
-
-// 프롭 종류별 대략 높이 (지면 그림자 계산용)
-const H_BY_KIND: Record<string, number> = {
-  hall: 72, dome: 60, cottage: 30, shop: 44, tower: 40, barn: 26, windmill: 46, gate: 56, wall: 22,
-}
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
-/** 라스터(PNG) 프롭 — 발밑 앵커를 원점(0,0)에 맞춰 배치. assets:'raster' 맵에서만 사용 */
+/** 라스터(PNG) 프롭 — 발밑 앵커를 원점(0,0)에 맞춰 배치. 모든 소품은 PixelLab 도트(스프라이트 없는 소품은 그리지 않음) */
 function RasterProp({ p }: { p: PropDef }) {
   const w = p.px?.w
   const h = p.px?.h
@@ -56,12 +49,6 @@ function RasterProp({ p }: { p: PropDef }) {
       }}
     />
   )
-}
-
-const ELEM_SPRITE: Record<string, { robe: string; shade: string; hair: string; accent: string }> = {
-  fire: { robe: '#b5462f', shade: '#7f2e20', hair: '#efe4d2', accent: '#e8641f' },
-  ice: { robe: '#3f7fa6', shade: '#2b566f', hair: '#dfeef6', accent: '#6fc3e6' },
-  earth: { robe: '#6d7a3e', shade: '#4b5528', hair: '#e6ddc4', accent: '#caa246' },
 }
 
 export function IsoWorld({
@@ -147,34 +134,10 @@ export function IsoWorld({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, VW, VH])
 
-  // 건물 지면 그림자 (정적 — 메모)
-  const castShadows = useMemo(() => {
-    const out: React.ReactNode[] = []
-    for (const p of map.props ?? []) {
-      if (p.sprite) continue // 라스터 스프라이트는 그림자를 자체 포함
-      const H = H_BY_KIND[p.kind]
-      if (!H || !p.size) continue
-      const { w, d } = p.size
-      const s = isoToScreen(p.cell.x, p.cell.y)
-      const A = [0, 0]
-      const B = [w * HW, w * HH]
-      const Dp = [-d * HW, d * HH]
-      const Cp = [w * HW - d * HW, w * HH + d * HH]
-      const ox = H * 0.55
-      const oy = H * 0.3
-      const off = (pt: number[]) => [pt[0] + ox, pt[1] + oy]
-      const pts = [A, B, off(B), off(Cp), off(Dp), Dp].map((pt) => pt.join(',')).join(' ')
-      out.push(<polygon key={p.id} transform={`translate(${s.sx},${s.sy})`} points={pts} fill="rgba(58,42,22,0.16)" />)
-    }
-    return out
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map])
-
   // 정적 오브젝트(건물·나무·NPC·포탈) — 깊이정렬 목록
   const staticEntities = useMemo(() => {
     const list: { sortY: number; node: React.ReactNode }[] = []
 
-    const raster = map.assets === 'raster'
     for (const p of map.props ?? []) {
       // 원형 구조물(콜로세움·분수)은 앵커가 중심이라 half 가산 없이 정렬
       const half = p.radial ? 0 : ((p.size?.w ?? 0.4) + (p.size?.d ?? 0.4)) / 2
@@ -183,7 +146,7 @@ export function IsoWorld({
         sortY: p.cell.x + p.cell.y + half,
         node: (
           <g key={p.id} transform={`translate(${s.sx},${s.sy})`}>
-            {raster && p.sprite ? <RasterProp p={p} /> : renderProp(p)}
+            {p.sprite ? <RasterProp p={p} /> : null}
           </g>
         ),
       })
@@ -334,7 +297,6 @@ export function IsoWorld({
   }, [map])
 
   // 플레이어
-  const pe = ELEM_SPRITE[state.player.element] ?? ELEM_SPRITE.fire
   const ps = isoToScreen(state.position.x, state.position.y)
   const playerSortY = state.position.x + state.position.y
   // PixelLab 4등신 스프라이트 시트: 88px 셀, 8열 × 4행.
@@ -399,7 +361,45 @@ export function IsoWorld({
         })
       : []
 
-  const allEntities = [...staticEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities].sort((a, b) => a.sortY - b.sortY)
+  // 채집 지점 — 채집 후 리스폰 전에는 흐리게(그루터기만). 아이콘은 임시 SVG(lib/life.ts GATHER_NODE_META)
+  const gatherNodes = useMemo(() => gatherNodesForMap(map), [map])
+  const now = Date.now()
+  const gatherEntities = gatherNodes.map((n) => {
+    const s = isoToScreen(n.cell.x, n.cell.y)
+    const ready = isNodeReady(state.life, n.key, now)
+    const meta = GATHER_NODE_META[n.kind]
+    const hot = interactId === n.key
+    return {
+      sortY: n.cell.x + n.cell.y,
+      node: (
+        <g
+          key={n.key}
+          transform={`translate(${s.sx},${s.sy})`}
+          style={{ cursor: ready ? 'pointer' : 'default', opacity: ready ? 1 : 0.35 }}
+          onClick={ready ? () => dispatch({ type: 'GATHER', nodeKey: n.key }) : undefined}
+        >
+          <ellipse cx={0} cy={1} rx={12} ry={4} fill="rgba(0,0,0,0.28)" />
+          <image href={meta.icon} x={-16} y={-30} width={32} height={32} style={{ imageRendering: 'pixelated' }} />
+          {ready && (
+            <g style={{ animation: 'portal-pulse 1.8s ease-in-out infinite' }}>
+              <rect x={-1.5} y={-40} width={3} height={3} fill="#fff6c8" />
+              <rect x={9} y={-33} width={2} height={2} fill="#fff6c8" />
+            </g>
+          )}
+          {hot && (
+            <g transform="translate(0,-46)">
+              <rect x={-meta.name.length * 5 - 5} y={-9} width={meta.name.length * 10 + 10} height={14} rx={3} fill="#e0b050" />
+              <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill="#000">
+                {meta.name}
+              </text>
+            </g>
+          )}
+        </g>
+      ),
+    }
+  })
+
+  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities].sort((a, b) => a.sortY - b.sortY)
   const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 
@@ -423,8 +423,6 @@ export function IsoWorld({
         </defs>
         {/* 지면 */}
         <g>{ground}</g>
-        {/* 건물 그림자 */}
-        <g>{castShadows}</g>
         {/* 격자 외곽 */}
         <polygon
           points={`${isoToScreen(0, 0).sx},${isoToScreen(0, 0).sy} ${isoToScreen(VW, 0).sx},${isoToScreen(VW, 0).sy} ${isoToScreen(VW, VH).sx},${isoToScreen(VW, VH).sy} ${isoToScreen(0, VH).sx},${isoToScreen(0, VH).sy}`}

@@ -15,7 +15,9 @@
 // 실측 후 kills()/monExp() 계수만 조정하면 됨(테이블 재계산 로직은 그대로 재사용).
 // ============================================================================
 
-export const MAX_LEVEL = 50
+// 2026-09-28: 레벨 상한 100. 기존 1→50 곡선을 레벨 2개로 쪼갠다 — 새 레벨 L 의 필요치 = 기존 레벨 (L+1)/2 필요치의 절반.
+// 따라서 1→100 총 경험치(=플레이 시간)는 기존 1→50 과 거의 같고, 레벨업 빈도만 두 배가 된다.
+export const MAX_LEVEL = 100
 
 /** 레벨 L에서 다음 레벨까지 필요한 처치 수(완만히 증가) */
 function killsToNextLevel(level: number): number {
@@ -27,10 +29,10 @@ function avgMonsterExpAtLevel(level: number): number {
   return 5.5 * level + 0.2 * level * level
 }
 
-/** 본 게임 레벨(1~49) → 다음 레벨까지 필요 경험치. 인덱스 0 = 레벨1→2 필요치 */
+/** 본 게임 레벨(1~99) → 다음 레벨까지 필요 경험치. 인덱스 0 = 레벨1→2 필요치 */
 export const EXP_TO_NEXT_LEVEL: number[] = Array.from({ length: MAX_LEVEL }, (_, i) => {
-  const gameLevel = i + 1
-  return Math.max(1, Math.round(killsToNextLevel(gameLevel) * avgMonsterExpAtLevel(gameLevel)))
+  const legacy = (i + 2) / 2 // 새 레벨(i+1) → 기존 레벨 환산
+  return Math.max(1, Math.round((killsToNextLevel(legacy) * avgMonsterExpAtLevel(legacy)) / 2))
 })
 
 export function expRequiredForLevel(level: number): number {

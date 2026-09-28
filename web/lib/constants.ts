@@ -12,10 +12,10 @@ export const MONSTERS_PER_CELL = 1 // 200m 정사각형(셀 1칸)당 1마리
 // ────────────────────────────────────────────────────────────────
 export const JOB_TIERS: JobTier[] = [
   { id: 'apprentice', order: 0, name: '견습생', shortName: '견습', minLevel: 1, description: '울토르 마법학교에 갓 입학한 삼원 견습생.' },
-  { id: 'novice', order: 1, name: '수습 마도사', shortName: '수습', minLevel: 10, description: '삼원 기초 학제를 수료한 수습 마도사.' },
-  { id: 'adept', order: 2, name: '정마도사', shortName: '정마도사', minLevel: 20, description: '한 계통을 온전히 다루는 정식 마도사.' },
-  { id: 'magus', order: 3, name: '상급 마도사', shortName: '상급', minLevel: 30, description: '계통의 2차 정수(번개·물·풀)를 각성한 상급 마도사.' },
-  { id: 'archmagus', order: 4, name: '삼원 대현자', shortName: '대현자', minLevel: 40, description: '계통의 극의(빛·우주·어둠)에 도달한 울토르 최고위, 삼원 대현자.' },
+  { id: 'novice', order: 1, name: '수습 마도사', shortName: '수습', minLevel: 20, description: '삼원 기초 학제를 수료한 수습 마도사.' },
+  { id: 'adept', order: 2, name: '정마도사', shortName: '정마도사', minLevel: 40, description: '한 계통을 온전히 다루는 정식 마도사.' },
+  { id: 'magus', order: 3, name: '상급 마도사', shortName: '상급', minLevel: 60, description: '계통의 2차 정수(번개·물·풀)를 각성한 상급 마도사.' },
+  { id: 'archmagus', order: 4, name: '삼원 대현자', shortName: '대현자', minLevel: 80, description: '계통의 극의(빛·우주·어둠)에 도달한 울토르 최고위, 삼원 대현자.' },
 ]
 
 export const JOB_TIER_ORDER: JobTierId[] = ['apprentice', 'novice', 'adept', 'magus', 'archmagus']
@@ -142,7 +142,22 @@ export const STAT_GROWTH_PER_LEVEL: Stats = {
   luck: 0.8,
 }
 
-export function computeStatsForLevel(element: ElementOrNeutral, level: number): Stats {
+/**
+ * 레벨 상한 100 확장(2026-09-28) — 기존 밸런스는 레벨 50 기준으로 잡혀 있었다.
+ * 스탯·몬스터 수치는 그대로 두고 레벨 축만 2배로 늘리기 위해, 새 레벨 L 을 기존 레벨 (L+1)/2 로 환산해 계산한다.
+ *   새 1 → 기존 1,  새 99 → 기존 50,  새 100 → 기존 50.5
+ * 몬스터/지역 권장 레벨 데이터는 toLevel100(기존) = 2·기존 − 1 로 옮겼다.
+ */
+export const MAX_CHARACTER_LEVEL = 100
+export function legacyLevel(level: number): number {
+  return (level + 1) / 2
+}
+export function toLevel100(legacy: number): number {
+  return Math.max(1, legacy * 2 - 1)
+}
+
+export function computeStatsForLevel(element: ElementOrNeutral, levelIn: number): Stats {
+  const level = legacyLevel(levelIn)
   const lean = ELEMENT_META[element].leanStats
   const out = {} as Stats
   ;(Object.keys(BASE_STATS) as (keyof Stats)[]).forEach((key) => {

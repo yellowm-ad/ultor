@@ -8,16 +8,12 @@ import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
 import type { MapId } from '@/lib/types'
+import { REGIONS } from '@/lib/regions'
 import { Modal } from '@/components/ui/modal'
 
+// 지역 목록은 lib/regions.ts 에서 파생 — 맵이 추가돼도 여기 손댈 필요 없음(테스트룸 제외)
 const MAP_GROUPS: { label: string; ids: MapId[] }[] = [
-  { label: '마법학교 마을', ids: ['village'] },
-  { label: '에르디아 숲', ids: ['forest', 'cave', 'mine', 'swamp'] },
-  { label: '바다', ids: ['sea', 'deepsea', 'atlantis', 'atlantis-temple'] },
-  { label: '스톰헤이븐', ids: ['stormhaven', 'sky-temple', 'sky-sanctum'] },
-  { label: '버려진 폐허', ids: ['ruins', 'graveyard', 'temple-ruin', 'ruin-sanctum'] },
-  { label: '루미나 설원', ids: ['snowfield', 'aurora-village', 'aurora-sanctum'] },
-  { label: '화산지대', ids: ['volcano', 'demon-village', 'demon-temple', 'demon-castle'] },
+  ...REGIONS.map((r) => ({ label: r.name, ids: r.maps.filter((m) => m !== 'testroom' && m !== 'personal-space') })),
   { label: '개인 공간', ids: ['personal-space'] },
 ]
 

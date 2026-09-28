@@ -3,6 +3,8 @@ import { computeStatsForLevel, jobTierForLevel, STARTING_GOLD, DEFAULT_SETTINGS 
 import { MAPS } from '@/lib/maps'
 import { autoLearnSkillIds } from '@/lib/mock-data'
 import { createPet, STARTER_PET_BY_ELEMENT } from '@/lib/pets'
+import { createInitialCalendar } from '@/lib/calendar'
+import { createInitialAcademics } from '@/lib/academics'
 
 export function createPlayer(name: string, element: Element, gender: Gender = 'male'): PlayerCharacter {
   const stats = computeStatsForLevel(element, 1)
@@ -85,5 +87,18 @@ export function createInitialGameState(): GameState {
         { id: 'seed-firewood', defId: 'firewood', cell: { x: 12.0, y: 8.3 } },
       ],
     },
+    // ── 4년제 학사·생활 시스템 — START_GAME 에서 시드/주간 퀘스트를 새로 채운다 ──
+    playerSeed: 1,
+    calendar: createInitialCalendar(),
+    weekly: { week: 0, quests: [], lastSeen: {} },
+    academics: createInitialAcademics(),
+    storyFlags: {},
+    storyQueue: [],
+    relationships: {},
+    companions: { recruited: {}, party: [] },
+    life: { gatheredAt: {} },
+    collections: { fish: {}, monsters: {}, gathered: {}, crafted: {} },
+    mealBuff: null,
+    fishing: null,
   }
 }

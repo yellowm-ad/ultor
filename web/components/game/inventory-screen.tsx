@@ -18,7 +18,14 @@ const TABS: { id: ItemType | 'all'; label: string; icon?: string }[] = [
   { id: 'tool', label: '도구', icon: '/images/icons/items/tool.png' },
   { id: 'feed', label: '먹이', icon: '/images/icons/items/feed.png' },
   { id: 'material', label: '재료', icon: '/images/icons/items/material.png' },
+  // 생활 콘텐츠 — 요리/어획물/가구·코스튬(가구 탭에 함께)
+  { id: 'food', label: '요리' },
+  { id: 'fish', label: '물고기' },
+  { id: 'furniture', label: '가구·의상' },
 ]
+
+/** 탭 하나에 여러 타입을 묶어 보여줄 때 */
+const TAB_ALSO: Partial<Record<ItemType, ItemType[]>> = { furniture: ['costume'] }
 
 export function InventoryScreen() {
   const { state, dispatch } = useGame()
@@ -31,10 +38,11 @@ export function InventoryScreen() {
   const slots = state.inventory.filter((s) => {
     const item = itemById(s.itemId)
     if (!item) return false
-    return tab === 'all' || item.type === tab
+    return tab === 'all' || item.type === tab || !!TAB_ALSO[tab]?.includes(item.type)
   })
 
-  const GRID_SIZE = 24
+  // 생활 재료가 늘어 24칸을 넘을 수 있으니 한 줄(6칸) 단위로 늘린다
+  const GRID_SIZE = Math.max(24, Math.ceil(slots.length / 6) * 6)
   const cells = Array.from({ length: GRID_SIZE }, (_, i) => slots[i] ?? null)
   const selectedItem = selected ? itemById(selected) : null
   const selectedSlot = selected ? state.inventory.find((s) => s.itemId === selected) : null
@@ -125,6 +133,11 @@ export function InventoryScreen() {
                 {selectedItem.type === 'potion' && (
                   <Button size="sm" onClick={() => dispatch({ type: 'USE_ITEM_FIELD', itemId: selectedItem.id })}>
                     사용
+                  </Button>
+                )}
+                {selectedItem.type === 'food' && (
+                  <Button size="sm" onClick={() => dispatch({ type: 'USE_ITEM_FIELD', itemId: selectedItem.id })}>
+                    먹기
                   </Button>
                 )}
                 {selectedItem.type === 'feed' && (

@@ -2,8 +2,10 @@
 
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
+import { readSave } from '@/lib/save'
+import { calendarLabel } from '@/lib/calendar'
 
 // 배경 위에 흩뿌릴 낙엽 — 위치·크기·속도·표류폭·색을 미리 고정해 자연스럽게 어긋나게 배치
 const TITLE_LEAVES: { left: string; size: number; dur: string; delay: string; drift: string; color: string }[] = [
@@ -24,11 +26,27 @@ const LEAVE_MS = 420
 export function TitleScreen() {
   const { dispatch } = useGame()
   const [leaving, setLeaving] = useState(false)
+  // 세이브는 브라우저(localStorage)에만 있으므로 마운트 후에 확인(SSR 불일치 방지)
+  const [saveInfo, setSaveInfo] = useState<{ label: string } | null>(null)
+  useEffect(() => {
+    const s = readSave()
+    if (!s?.state) return
+    const st = s.state
+    setSaveInfo({ label: `${st.player?.name ?? ''} · Lv.${st.player?.level ?? 1} · ${calendarLabel(st.calendar?.globalWeek ?? 1)}` })
+  }, [])
 
   const handleStart = () => {
     if (leaving) return
     setLeaving(true)
     window.setTimeout(() => dispatch({ type: 'SET_SCREEN', screen: 'create' }), LEAVE_MS)
+  }
+
+  const handleContinue = () => {
+    if (leaving) return
+    const s = readSave()
+    if (!s) return
+    setLeaving(true)
+    window.setTimeout(() => dispatch({ type: 'LOAD_GAME', saved: s.state }), LEAVE_MS)
   }
 
   return (
@@ -72,9 +90,19 @@ export function TitleScreen() {
             priority
           />
         </div>
+        {saveInfo && (
+          <button type="button" onClick={handleContinue} className="title-start-text title-enter-4 flex flex-col items-center">
+            <span>
+              <span className="title-start-dash" aria-hidden="true">—</span>
+              CONTINUE
+              <span className="title-start-dash" aria-hidden="true">—</span>
+            </span>
+            <span className="text-[11px] font-normal tracking-normal opacity-70">{saveInfo.label}</span>
+          </button>
+        )}
         <button type="button" onClick={handleStart} className="title-start-text title-enter-4">
           <span className="title-start-dash" aria-hidden="true">—</span>
-          GAME START
+          {saveInfo ? 'NEW GAME' : 'GAME START'}
           <span className="title-start-dash" aria-hidden="true">—</span>
         </button>
       </div>
