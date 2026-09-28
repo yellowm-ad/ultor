@@ -103,7 +103,20 @@ export const STORY_BEATS: StoryBeat[] = [
     setFlags: ['CH1_STARTED'],
     lines: [
       { speaker: '', text: '울토르 마법학교의 첫 주가 시작되었다. (스토리 초안 자리 — lib/story.ts 의 STORY_BEATS 에서 수정)' },
-      { speaker: '미르엘 교수', portraitId: 'npc-job-trainer', text: '매주 학사 수첩(J)에서 이번 주 미션을 확인하렴. 필수 1개와 선택 2개를 끝내면 다음 주로 넘어갈 수 있단다.' },
+      { speaker: '미르엘 교수', portraitId: 'npc-job-trainer', text: '방향키(WASD)로 걷고, 사람 곁에서 E를 누르면 이야기를 나눌 수 있단다. 우선 학교 본교 쿼드에 있는 나를 찾아와 주간 보고부터 하렴.' },
+      { speaker: '미르엘 교수', portraitId: 'npc-job-trainer', text: '매주 학사 수첩(J)에서 이번 주 미션을 확인하렴. 필수 1개와 선택 2개의 보상을 받으면 다음 주로 넘어갈 수 있단다.' },
+      { speaker: '미르엘 교수', portraitId: 'npc-job-trainer', text: '야생으로 나갈 땐 통문 주둔지의 군 통문을 이용하고, 파티(P)에서 동기들을 동료로 데려갈 수 있어.' },
+    ],
+  },
+  // ── 온보딩: 첫 야생 진입 — 채집·전투·귀환 안내(튜토리얼, 스토리 확정 후 교체 가능) ──
+  {
+    id: 'TUTORIAL_FIRST_FIELD',
+    arcId: 'CH1_ERDIA',
+    title: '첫 야생 실습',
+    trigger: { type: 'VISIT', mapId: 'forest' },
+    lines: [
+      { speaker: '', text: '반짝이는 풀·버섯·나무 곁에서 E를 누르면 재료를 채집할 수 있다. 채집 지점은 몇 분 뒤 다시 자라난다.' },
+      { speaker: '', text: '몬스터에게 다가가면 전투할지 묻는다. 흙길을 따라가면 다음 구역으로 이어지는 마법진이, 입구엔 마을로 돌아가는 마법진이 있다.' },
     ],
   },
 ]

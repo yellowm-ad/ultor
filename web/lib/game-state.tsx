@@ -138,8 +138,11 @@ const BODY_R = 0.24 // 캐릭터 반경(셀) — 이 만큼 건물 벽에서 떨
 function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number, y: number): boolean {
   const hits = (r: { x0: number; y0: number; x1: number; y1: number }) =>
     x > r.x0 - BODY_R && x < r.x1 + BODY_R && y > r.y0 - BODY_R && y < r.y1 + BODY_R
-  const b = MAPS[mapId].blockers
+  const map = MAPS[mapId]
+  const b = map.blockers
   if (b && b.some(hits)) return true
+  // 야생맵 용암 웅덩이는 밟을 수 없다(물·얼음은 얕은 물가로 보고 통과 허용)
+  if (map.kind === 'field' && map.tileAt?.(x, y) === 'demon-lava') return true
   // 개인 공간 가구 — 플레이어가 배치한 가구도 충돌 처리(정적 blockers 에는 없음)
   if (mapId === 'personal-space') {
     for (const f of state.housing.placed) {

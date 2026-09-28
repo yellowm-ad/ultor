@@ -8,7 +8,10 @@
 
 import type { GameState } from '@/lib/types'
 
-export const SAVE_KEY = 'ultor-save-v1'
+// 버전은 키가 아니라 값(SaveFile.version) 안에 둔다 — 키에 버전을 붙이면 버전이 바뀔 때 옛 세이브를 못 찾는다.
+export const SAVE_KEY = 'ultor-save'
+/** 초기 버전이 쓰던 키 — 읽을 때만 확인해서 새 키로 옮긴다 */
+const LEGACY_KEYS = ['ultor-save-v1']
 const SAVE_VERSION = 1
 
 interface SaveFile {
@@ -50,14 +53,50 @@ export function writeSave(state: GameState): boolean {
 export function readSave(): SaveFile | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(SAVE_KEY)
+    let raw = window.localStorage.getItem(SAVE_KEY)
+    if (!raw) {
+      for (const k of LEGACY_KEYS) {
+        const old = window.localStorage.getItem(k)
+        if (old) {
+          window.localStorage.setItem(SAVE_KEY, old)
+          window.localStorage.removeItem(k)
+          raw = old
+          break
+        }
+      }
+    }
     if (!raw) return null
+    return parseSaveFile(raw)
+  } catch {
+    return null
+  }
+}
+
+/** 세이브 문자열 검증 — 불러오기(파일)에도 같이 쓴다 */
+export function parseSaveFile(raw: string): SaveFile | null {
+  try {
     const file = JSON.parse(raw) as SaveFile
-    if (!file || typeof file !== 'object' || !file.state) return null
+    if (!file || typeof file !== 'object' || !file.state || typeof file.version !== 'number') return null
+    if (file.version > SAVE_VERSION) return null // 더 새 버전 게임에서 만든 세이브
     return file
   } catch {
     return null
   }
+}
+
+/** 백업 파일로 내보내기(JSON 다운로드) — 브라우저 데이터가 지워져도 복구할 수 있게 */
+export function exportSave(state: GameState): boolean {
+  if (typeof window === 'undefined') return false
+  const file: SaveFile = { version: SAVE_VERSION, savedAt: Date.now(), state: strip(state) }
+  const blob = new Blob([JSON.stringify(file)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const d = new Date()
+  a.href = url
+  a.download = `ultor-save-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+  return true
 }
 
 export function hasSave(): boolean {

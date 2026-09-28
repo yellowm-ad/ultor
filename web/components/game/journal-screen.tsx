@@ -5,11 +5,11 @@ import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS } from '@/lib/calendar'
+import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { arcForWeek } from '@/lib/story'
 import { questTemplateById, REQUIRED_OPTIONAL, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
 import { courseById, coursesForWeek, DEPARTMENT_LABEL, GRADUATION_CREDITS, gradeForScore } from '@/lib/academics'
-import { ACTIVITY_META, activityUnlockLabel, isActivityUnlocked, type ActivityId } from '@/lib/life'
+import { ACTIVITY_META, activityUnlockLabel, activityUnlockWeek, isActivityUnlocked, type ActivityId } from '@/lib/life'
 import { ITEMS, itemById, MONSTERS, NPCS } from '@/lib/mock-data'
 import { COMPANIONS } from '@/lib/companions'
 import { regionById } from '@/lib/regions'
@@ -41,6 +41,16 @@ export function JournalScreen() {
           <div className="text-[11px] text-white/60">
             {TERM_META[info.termType].season} · {info.isVacation ? '방학 — 원정 중심' : '학기 — 학교 중심'} · {arc.name}
             {arc.chapter > 0 ? ` (${arc.chapter}장)` : ''} · 무대: {regionById(arc.mainRegion).name}
+          </div>
+          {/* 시간 흐름 안내 — 남은 주와 곧 열릴 생활 시스템 */}
+          <div className="text-[11px] text-gold-soft/90">
+            {TERM_META[info.termType].label} 종료까지 {WEEKS_PER_TERM - info.week + 1}주
+            {(() => {
+              const next = (Object.keys(ACTIVITY_META) as ActivityId[])
+                .filter((a) => activityUnlockWeek(a) > state.calendar.globalWeek)
+                .sort((a, b) => activityUnlockWeek(a) - activityUnlockWeek(b))[0]
+              return next ? ` · 다음 해금: ${ACTIVITY_META[next].name} (${activityUnlockWeek(next) - state.calendar.globalWeek}주 후)` : ''
+            })()}
           </div>
         </div>
         <div className="text-right text-[11px] text-white/60">

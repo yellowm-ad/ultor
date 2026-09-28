@@ -255,7 +255,7 @@ export function gatherNodesForMap(map: GameMap): GatherNode[] {
     const x = 1.5 + rand() * (map.grid.w - 3)
     const y = 1.5 + rand() * (map.grid.h - 3)
     const tile = map.tileAt?.(x, y)
-    if (tile === 'water' || tile === 'sky-cloud' || blocked(x, y)) continue
+    if (tile === 'water' || tile === 'demon-lava' || blocked(x, y)) continue
     if (Math.hypot(x - map.spawn.x, y - map.spawn.y) < 2.5) continue
     if (map.portals.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < 2)) continue
     if (nodes.some((n) => Math.hypot(n.cell.x - x, n.cell.y - y) < 3)) continue
