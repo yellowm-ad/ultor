@@ -1,0 +1,38 @@
+{
+  "name": "ultor-desktop",
+  "version": "0.1.0",
+  "description": "마법학교 울토르 — 데스크톱 실행기 (온라인 주소 방식, 테스트용)",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.ultor.magicschool",
+    "productName": "Ultor",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "build/icon.png"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "Ultor-${version}-portable.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "allowScripts": {
+    "electron@44.4.5": true
+  }
+}
