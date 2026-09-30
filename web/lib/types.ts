@@ -405,6 +405,12 @@ export type MapId =
   | 'ruin-sanctum'
   | 'aurora-sanctum'
   | 'school-hall'
+  | 'class-fire' // 마법학교 화염 수업관
+  | 'class-ice' // 마법학교 빙결 수업관
+  | 'class-earth' // 마법학교 대지 수업관(온실)
+  | 'grand-auditorium' // 마법학교 대강당
+  | 'headmaster-office' // 마법학교 학장실
+  | 'academy-library' // 마법학교 도서관
   | 'personal-space'
   | 'testroom'
 
@@ -445,6 +451,8 @@ export interface GameMap {
   roadAt?: (x: number, y: number) => boolean
   /** render:'iso' 일 때: 건물·자연물 등 배치 오브젝트 */
   props?: import('./iso').PropDef[]
+  /** render:'iso' 일 때: 바닥 위(오브젝트 아래)에 셀 좌표로 그리는 상감 마법진 — 마법학교 홀 등 */
+  floorInlay?: { cx: number; cy: number; r: number; gold: string; blue: string }[]
   /** 맵 내부 라벨 구역. 단순 필드 맵은 빈 배열 */
   zones: ZoneDef[]
   /** 이동 불가 사각형(셀 좌표) — 건물·분수 등. 비면 자유 이동 */

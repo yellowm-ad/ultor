@@ -912,17 +912,307 @@ const SKY_SANCTUM_BLOCKERS = buildBlockers(SKY_SANCTUM_PROPS, roomBlockers(GRAND
 const RUIN_SANCTUM_BLOCKERS = buildBlockers(RUIN_SANCTUM_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
 const AURORA_SANCTUM_BLOCKERS = buildBlockers(AURORA_SANCTUM_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
 
-// 마법학교 본관 대강당(신규) — 아직 세부 장식 없는 뼈대만(다음 패스에서 채움)
-const schoolHallTileAt = (): TileKind => 'plaza'
-// school 벽판은 원래부터 스테인드글라스가 그려져 있어 별도 창문은 넣지 않고 문만 추가
-const SCHOOL_HALL_PROPS: PropDef[] = [
-  ...buildGrandHallWalls(GRAND_WALL_SCHOOL, 3.2, undefined, GRAND_DOOR_SCHOOL),
-  // 세부 장식 — 마을에서 쓰는 동상(기존 에셋)을 중앙에, 램프는 SVG 폴백(양옆)
-  { id: 'schoolhall-statue', kind: 'statue', cell: { x: GRAND_CX, y: 18 }, sprite: '/images/map/props/b_statue.png', px: { w: 86, h: 156 }, size: { w: 0.5, d: 0.5 } },
-  { id: 'schoolhall-lamp-w', kind: 'lamp', cell: { x: GRAND_CX - 6, y: 8 }, size: { w: 0.2, d: 0.2 } },
-  { id: 'schoolhall-lamp-e', kind: 'lamp', cell: { x: GRAND_CX + 6, y: 8 }, size: { w: 0.2, d: 0.2 } },
+// ════════ 마법학교 본관 — 중앙 홀 + 수업관/대강당/학장실/도서관 (참고: 루트 `마법학교 실내.png`) ════════
+// 중앙 홀: 천사상 분수 + 금/청 상감 마법진 바닥 + 카페 테이블·벤치·가로등·배너(참고 이미지 구도).
+// 뒤쪽 두 벽(북=화면 오른쪽 위, 서=왼쪽 위)에 문 6개를 달고, 문 앞 마법진 포탈로 각 실내 맵에 들어간다.
+//   서벽: 화염 / 빙결 / 대지 수업관 · 북벽: 도서관 / 대강당 / 학장실
+// 벽은 평벽을 빈틈없이 이은 뒤 문을 그 앞에 겹쳐 세우고(backdrop 레이어), 소품은 전부 PixelLab 생성(props/academy/).
+const AC = '/images/map/props/academy/'
+type Spr = { s: string; w: number; h: number }
+const acs = (f: string, w: number, h: number): Spr => ({ s: AC + f, w, h })
+const AC_SPR = {
+  fountain: acs('ac_fountain.png', 300, 300),
+  cafe: acs('ac_cafe.png', 78, 90),
+  bench: acs('ac_bench.png', 80, 51),
+  lamp: acs('ac_lamp.png', 41, 176),
+  tree: acs('ac_tree.png', 60, 112),
+  banner: acs('ac_banner.png', 48, 136),
+  doorFire: acs('door_fire.png', 88, 147),
+  doorIce: acs('door_ice.png', 92, 154),
+  doorEarth: acs('door_earth.png', 85, 144),
+  doorHall: acs('door_hall.png', 124, 185),
+  doorOffice: acs('door_office.png', 66, 142),
+  doorLibrary: acs('door_library.png', 95, 146),
+  desk: acs('cl_desk.png', 80, 79),
+  board: acs('cl_board.png', 69, 106),
+  fireAltar: acs('fr_altar.png', 100, 129),
+  brazier: acs('fr_brazier.png', 50, 110),
+  iceAltar: acs('ic_altar.png', 93, 121),
+  iceCrystal: acs('ic_crystal.png', 53, 97),
+  earthTree: acs('ea_tree.png', 134, 169),
+  herbBed: acs('ea_herbs.png', 122, 87),
+  wallFire: acs('wall_fire.png', 64, 160),
+  wallIce: acs('wall_ice.png', 64, 160),
+  wallEarth: acs('wall_earth.png', 64, 160),
+  wallLibrary: acs('wall_library.png', 64, 160),
+  wallOffice: acs('wall_office.png', 64, 160),
+  stage: acs('au_stage.png', 198, 155),
+  pew: acs('au_pew.png', 108, 58),
+  organ: acs('au_organ.png', 92, 159),
+  bigDesk: acs('of_desk.png', 106, 98),
+  globe: acs('of_globe.png', 54, 78),
+  fireplace: acs('of_fireplace.png', 121, 121),
+  perch: acs('of_perch.png', 55, 104),
+  bookshelf: acs('lb_shelf.png', 65, 131),
+  readTable: acs('lb_table.png', 101, 87),
+  orb: acs('lb_orb.png', 64, 112),
+}
+const AC_WALL_M = 1.4 // 벽 선(북 y / 서 x) — 이 안쪽 약 0.5셀까지 이동 불가(벽 뒤로 못 들어가게)
+
+/** 뒤쪽 두 벽 + 문(겹쳐 세움). 문 위치는 북벽 x / 서벽 y 셀 좌표. 전부 backdrop 레이어. */
+function academyWalls(
+  id: string,
+  w: number,
+  h: number,
+  wall: Spr,
+  doors: { side: 'N' | 'W'; at: number; door: Spr; hPx: number }[] = [],
+  wallFw = 3.0,
+): PropDef[] {
+  const m = AC_WALL_M
+  // 셀 하나가 벽 방향으로 화면상 32px(ISO_TILE_W/2) — 이 비율로 늘려야 조각 사이 틈 없이 딱 맞물린다
+  const ppc = 32
+  const run = (len: number) => {
+    const n = Math.max(1, Math.round(len / wallFw))
+    return Array.from({ length: n }, () => plainSeg(wall, len / n, ppc))
+  }
+  const walls = [
+    ...renderWallRun(`${id}-wn`, run(w - m - 0.4), m, m - 0.1, 1),
+    ...renderWallRun(`${id}-ww`, run(h - m - 0.4), m, m - 0.1, -1),
+  ]
+  const doorProps = doors.flatMap((d, i) => {
+    const pxW = d.hPx * (d.door.w / d.door.h)
+    const seg: WallSeg = { fw: pxW / ppc, pxW, pxH: d.hPx, sprite: d.door, feature: true }
+    return renderWallRun(`${id}-door${i}-`, [seg], d.at - seg.fw / 2, m - 0.08, d.side === 'N' ? 1 : -1)
+  })
+  return [...walls, ...doorProps].map((p) => ({ ...p, backdrop: true }))
+}
+
+/** 실내 소품 1개 — 중심 앵커(radial). footprint 반경 r 셀만큼 앵커를 이미지 바닥에서 끌어올린다 */
+function acProp(
+  id: string,
+  sp: Spr,
+  x: number,
+  y: number,
+  r = 0.5,
+  opt: { scale?: number; solid?: boolean; kind?: PropDef['kind']; flip?: boolean } = {},
+): PropDef {
+  const k = opt.scale ?? 1
+  const w = sp.w * k
+  const h = sp.h * k
+  return {
+    id,
+    kind: opt.kind ?? 'statue',
+    cell: { x, y },
+    sprite: sp.s,
+    px: { w, h },
+    anchor: { x: w / 2, y: h - 22 * r * k },
+    radial: true,
+    size: { w: r * 2, d: r * 2 },
+    collide: { w: r * 1.7, d: r * 1.7 },
+    solid: opt.solid ?? true,
+    facing: opt.flip ? 'left' : undefined,
+  }
+}
+
+/** 벽 두께(뒤로 못 들어감) + 앞쪽 두 면 + 남쪽 출구 틈 */
+function academyBlockers(w: number, h: number, props: PropDef[], exitW = 2.4): Blocker[] {
+  const t = AC_WALL_M + 0.5
+  return buildBlockers(
+    props.filter((p) => !p.backdrop),
+    [
+      { x0: 0, y0: 0, x1: w, y1: t },
+      { x0: 0, y0: 0, x1: t, y1: h },
+      { x0: w - 0.4, y0: 0, x1: w, y1: h },
+      { x0: 0, y0: h - 0.4, x1: w / 2 - exitW / 2, y1: h },
+      { x0: w / 2 + exitW / 2, y0: h - 0.4, x1: w, y1: h },
+    ],
+  )
+}
+
+// ── 중앙 홀 ──
+const HALL_W = 34
+const HALL_H = 30
+const HALL_FX = 17.5 // 분수·마법진 중심
+const HALL_FY = 15
+// 문 위치 — 서벽(y): 화염·빙결·대지 / 북벽(x): 도서관·대강당·학장실
+const HALL_DOORS = {
+  fire: { side: 'W' as const, at: 7.5 },
+  ice: { side: 'W' as const, at: 15 },
+  earth: { side: 'W' as const, at: 22.5 },
+  library: { side: 'N' as const, at: 8.5 },
+  auditorium: { side: 'N' as const, at: HALL_FX },
+  office: { side: 'N' as const, at: 26.5 },
+}
+/** 문 앞(홀 안쪽) 셀 — d=1.5 포탈 위치, d=3.4 되돌아올 때 도착 위치 */
+const hallFront = (k: keyof typeof HALL_DOORS, d: number) => {
+  const o = HALL_DOORS[k]
+  return o.side === 'N' ? { x: o.at, y: AC_WALL_M + d } : { x: AC_WALL_M + d, y: o.at }
+}
+const schoolHallTileAt = (): TileKind => 'academy-marble'
+const SCHOOL_HALL_INLAY: GameMap['floorInlay'] = [{ cx: HALL_FX, cy: HALL_FY, r: 8.6, gold: '#c9a24a', blue: '#4f78c8' }]
+const SCHOOL_HALL_PROPS: PropDef[] = (() => {
+  const S = AC_SPR
+  const out: PropDef[] = academyWalls('hall', HALL_W, HALL_H, GRAND_WALL_SCHOOL, [
+    { ...HALL_DOORS.fire, door: S.doorFire, hPx: 150 },
+    { ...HALL_DOORS.ice, door: S.doorIce, hPx: 150 },
+    { ...HALL_DOORS.earth, door: S.doorEarth, hPx: 150 },
+    { ...HALL_DOORS.library, door: S.doorLibrary, hPx: 150 },
+    { ...HALL_DOORS.auditorium, door: S.doorHall, hPx: 220 },
+    { ...HALL_DOORS.office, door: S.doorOffice, hPx: 150 },
+  ])
+  // 천사상 분수 — 앵커는 수반 중심
+  out.push({ ...acProp('hall-fountain', S.fountain, HALL_FX, HALL_FY, 2.9, { kind: 'fountain' }), anchor: { x: 150, y: 214 }, label: '천사의 분수' })
+  // 분수 둘레 가로등 4 + 벤치 4 (마법진 안쪽 링)
+  const ring4 = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+  ring4.forEach(([dx, dy], i) => out.push(acProp(`hall-lamp${i}`, S.lamp, HALL_FX + dx * 5.6, HALL_FY + dy * 5.6, 0.25, { kind: 'lamp' })))
+  const diag4 = [[1, -1], [1, 1], [-1, 1], [-1, -1]]
+  diag4.forEach(([dx, dy], i) => out.push(acProp(`hall-bench${i}`, S.bench, HALL_FX + dx * 3.9, HALL_FY + dy * 3.9, 0.55, { flip: dx * dy > 0 })))
+  // 문마다 양옆 배너 기둥
+  for (const [k, o] of Object.entries(HALL_DOORS)) {
+    const half = k === 'auditorium' ? 3.4 : 2.2
+    for (const s of [-1, 1]) {
+      const c = o.side === 'N' ? { x: o.at + s * half, y: AC_WALL_M + 1.0 } : { x: AC_WALL_M + 1.0, y: o.at + s * half }
+      out.push(acProp(`hall-banner-${k}${s}`, S.banner, c.x, c.y, 0.3))
+    }
+  }
+  // 카페 테라스(동쪽·남서쪽) + 화분 나무 + 외곽 가로등
+  const cafes = [[27.5, 8], [30.5, 12.5], [28, 21.5], [31, 25], [8.5, 25.5], [12.5, 27.2]]
+  cafes.forEach(([x, y], i) => out.push(acProp(`hall-cafe${i}`, S.cafe, x, y, 0.7)))
+  const trees = [[31.8, 4.2], [4.2, 27.8], [31.8, 18], [21.5, 27.6], [4.4, 4.4]]
+  trees.forEach(([x, y], i) => out.push(acProp(`hall-tree${i}`, S.tree, x, y, 0.55)))
+  const outerLamps = [[9.5, 18.5], [25.5, 11.5], [14, 25], [23.5, 24]]
+  outerLamps.forEach(([x, y], i) => out.push(acProp(`hall-lamp-o${i}`, S.lamp, x, y, 0.25, { kind: 'lamp' })))
+  return out
+})()
+const SCHOOL_HALL_BLOCKERS = academyBlockers(HALL_W, HALL_H, SCHOOL_HALL_PROPS, 3)
+
+// ── 수업관(화염·빙결·대지) — 18×16, 칠판·중앙 제단·책상 8개·테마 장식 ──
+const CLASS_W = 18
+const CLASS_H = 16
+const CLASS_CORNERS = [[3.3, 3.3], [14.8, 3.4], [3.3, 13.6], [15, 13.6], [3.3, 8.6]]
+function classroomProps(id: string, wall: Spr, center: PropDef, decor: PropDef[]): PropDef[] {
+  const S = AC_SPR
+  const out = academyWalls(id, CLASS_W, CLASS_H, wall)
+  out.push(acProp(`${id}-board`, S.board, CLASS_W / 2, AC_WALL_M + 1.2, 0.5, { scale: 1.2 }))
+  out.push(center)
+  for (const [i, x] of [4.2, 6.9, 11.1, 13.8].entries()) {
+    for (const [j, y] of [9.4, 11.8].entries()) out.push(acProp(`${id}-desk${i}-${j}`, S.desk, x, y, 0.6))
+  }
+  return [...out, ...decor]
+}
+const CLASS_FIRE_PROPS = classroomProps(
+  'clfire',
+  AC_SPR.wallFire,
+  acProp('clfire-altar', AC_SPR.fireAltar, CLASS_W / 2, 6, 1.0, { scale: 1.1 }),
+  CLASS_CORNERS.map(([x, y], i) => acProp(`clfire-brazier${i}`, AC_SPR.brazier, x, y, 0.35)),
+)
+const CLASS_ICE_PROPS = classroomProps(
+  'clice',
+  AC_SPR.wallIce,
+  acProp('clice-altar', AC_SPR.iceAltar, CLASS_W / 2, 6, 1.0, { scale: 1.1 }),
+  CLASS_CORNERS.map(([x, y], i) => acProp(`clice-crystal${i}`, AC_SPR.iceCrystal, x, y, 0.45, { flip: i % 2 === 1 })),
+)
+const CLASS_EARTH_PROPS = classroomProps('clearth', AC_SPR.wallEarth, acProp('clearth-tree', AC_SPR.earthTree, CLASS_W / 2, 6, 1.3), [
+  acProp('clearth-herb0', AC_SPR.herbBed, 3.4, 5.2, 0.8),
+  acProp('clearth-herb1', AC_SPR.herbBed, 15, 5.2, 0.8, { flip: true }),
+  ...[[3.3, 13.6], [15, 13.6], [3.4, 9.2]].map(([x, y], i) => acProp(`clearth-pot${i}`, AC_SPR.tree, x, y, 0.5)),
+])
+const classTile = (k: TileKind) => (): TileKind => k
+
+// ── 대강당 — 26×22, 무대·파이프오르간·신도석 줄·남색 카펫 통로 ──
+const AUD_W = 26
+const AUD_H = 22
+const audTileAt = (x: number, y: number): TileKind =>
+  x > AUD_W / 2 - 1.6 && x < AUD_W / 2 + 1.6 && y > 7.5 ? 'academy-carpet' : 'academy-marble'
+const AUD_PROPS: PropDef[] = (() => {
+  const S = AC_SPR
+  const out = academyWalls('aud', AUD_W, AUD_H, GRAND_WALL_SCHOOL)
+  out.push({ ...acProp('aud-stage', S.stage, AUD_W / 2, 4.6, 2.2, { scale: 1.3 }), label: '대강당 무대' })
+  out.push(acProp('aud-organ', S.organ, 4.2, 4.2, 1.1))
+  for (const [j, y] of [9.8, 12.3, 14.8, 17.3].entries()) {
+    for (const [i, x] of [AUD_W / 2 - 4.6, AUD_W / 2 + 4.6].entries()) out.push(acProp(`aud-pew${j}-${i}`, S.pew, x, y, 0.8, { scale: 1.15 }))
+  }
+  const lamps = [[3.3, 9], [3.3, 15], [22.8, 9], [22.8, 15]]
+  lamps.forEach(([x, y], i) => out.push(acProp(`aud-lamp${i}`, S.lamp, x, y, 0.25, { kind: 'lamp' })))
+  ;[8.5, 17.5, 21.5].forEach((x, i) => out.push(acProp(`aud-banner${i}`, S.banner, x, AC_WALL_M + 1, 0.3)))
+  return out
+})()
+
+// ── 학장실 — 16×14, 원목 바닥+러그, 대형 책상·벽난로·책장·지구본·불사조 횃대 ──
+const OFF_W = 16
+const OFF_H = 14
+const offTileAt = (x: number, y: number): TileKind => (x > 4.5 && x < 11.5 && y > 4.2 && y < 10.5 ? 'personal-rug' : 'personal-wood')
+const OFF_PROPS: PropDef[] = [
+  ...academyWalls('off', OFF_W, OFF_H, AC_SPR.wallOffice),
+  acProp('off-fireplace', AC_SPR.fireplace, OFF_W / 2, AC_WALL_M + 1.0, 0.8),
+  acProp('off-shelf0', AC_SPR.bookshelf, 4.2, AC_WALL_M + 0.9, 0.6),
+  acProp('off-shelf1', AC_SPR.bookshelf, 11.8, AC_WALL_M + 0.9, 0.6),
+  { ...acProp('off-desk', AC_SPR.bigDesk, OFF_W / 2, 7, 1.0), label: '학장의 책상' },
+  acProp('off-globe', AC_SPR.globe, 13, 8.2, 0.35),
+  acProp('off-perch', AC_SPR.perch, 3.4, 7.6, 0.35),
+  acProp('off-tree', AC_SPR.tree, 13.4, 11.6, 0.5),
 ]
-const SCHOOL_HALL_BLOCKERS = buildBlockers(SCHOOL_HALL_PROPS, roomBlockers(GRAND_ROOM_W, GRAND_ROOM_H, GRAND_DOOR_W))
+
+// ── 도서관 — 22×18, 책장 열·열람 테이블·떠 있는 마도 구체 ──
+const LIB_W = 22
+const LIB_H = 18
+const libTileAt = (x: number): TileKind => (x > LIB_W / 2 - 1.4 && x < LIB_W / 2 + 1.4 ? 'personal-rug' : 'personal-wood')
+const LIB_PROPS: PropDef[] = (() => {
+  const S = AC_SPR
+  const out = academyWalls('lib', LIB_W, LIB_H, S.wallLibrary)
+  ;[4.3, 7.5, 14.5, 17.7].forEach((x, i) => out.push(acProp(`lib-shelf-n${i}`, S.bookshelf, x, AC_WALL_M + 0.9, 0.6)))
+  ;[4.6, 7.6, 14.4, 17.4].forEach((x, i) => out.push(acProp(`lib-shelf-r${i}`, S.bookshelf, x, 7, 0.6)))
+  out.push({ ...acProp('lib-orb', S.orb, LIB_W / 2, 5.2, 0.6), label: '지식의 구체' })
+  const tables = [[6, 11.8], [16, 11.8], [6, 14.6], [16, 14.6]]
+  tables.forEach(([x, y], i) => out.push(acProp(`lib-table${i}`, S.readTable, x, y, 0.9)))
+  ;[3.2, 19].forEach((x, i) => out.push(acProp(`lib-lamp${i}`, S.lamp, x, 3.6, 0.25, { kind: 'lamp' })))
+  return out
+})()
+
+/** 실내 방 맵 공통 — 남쪽 출구 포탈로 홀의 해당 문 앞에 돌아간다 */
+function academyRoomMap(
+  id: MapId,
+  name: string,
+  w: number,
+  h: number,
+  tileAt: (x: number, y: number) => TileKind,
+  props: PropDef[],
+  back: keyof typeof HALL_DOORS,
+): GameMap {
+  return {
+    id,
+    name,
+    kind: 'town',
+    grid: { w, h },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt,
+    props,
+    blockers: academyBlockers(w, h, props),
+    zones: NO_ZONES,
+    spawn: { x: w / 2, y: h - 2.6 },
+    portals: [{ id: `${id}-exit`, cell: { x: w / 2, y: h - 1.1 }, to: 'school-hall', toSpawn: hallFront(back, 3.4), label: '중앙 홀로', kind: 'exit' }],
+  }
+}
+const ACADEMY_ROOMS: Partial<Record<MapId, GameMap>> = {
+  'class-fire': academyRoomMap('class-fire', '화염 수업관', CLASS_W, CLASS_H, classTile('academy-fire'), CLASS_FIRE_PROPS, 'fire'),
+  'class-ice': academyRoomMap('class-ice', '빙결 수업관', CLASS_W, CLASS_H, classTile('academy-ice'), CLASS_ICE_PROPS, 'ice'),
+  'class-earth': academyRoomMap('class-earth', '대지 수업관', CLASS_W, CLASS_H, classTile('academy-earth'), CLASS_EARTH_PROPS, 'earth'),
+  'grand-auditorium': academyRoomMap('grand-auditorium', '대강당', AUD_W, AUD_H, audTileAt, AUD_PROPS, 'auditorium'),
+  'headmaster-office': academyRoomMap('headmaster-office', '학장실', OFF_W, OFF_H, offTileAt, OFF_PROPS, 'office'),
+  'academy-library': academyRoomMap('academy-library', '도서관', LIB_W, LIB_H, libTileAt, LIB_PROPS, 'library'),
+}
+const HALL_ROOM_PORTALS: GameMap['portals'] = (
+  [
+    ['fire', 'class-fire', '화염 수업관'],
+    ['ice', 'class-ice', '빙결 수업관'],
+    ['earth', 'class-earth', '대지 수업관'],
+    ['library', 'academy-library', '도서관'],
+    ['auditorium', 'grand-auditorium', '대강당'],
+    ['office', 'headmaster-office', '학장실'],
+  ] as const
+).map(([k, to, label]) => ({ id: `hall-to-${to}`, cell: hallFront(k, 1.5), to, label, kind: 'portal' as const }))
 
 // ── 관리자 테스트룸 (/admin 전용) — NPC 25종·몬스터 23종을 한 방에 모아 배치 ────
 // field.ts 의 generateFieldMonsters() 가 map.id==='testroom' 을 특수 처리해 그리드로 배치하고,
@@ -967,7 +1257,7 @@ export const MAPS = {
       { id: 'gate-snowfield', cell: { x: 43.5, y: 36.6 }, to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 31 },
       { id: 'gate-volcano', cell: { x: 43.5, y: 36.6 }, to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
       { id: 'personal-space-enter', cell: { x: 42, y: 5 }, to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
-      { id: 'school-hall-enter', cell: { x: 6.9, y: 6.5 }, to: 'school-hall', label: '본관 대강당', kind: 'portal' },
+      { id: 'school-hall-enter', cell: { x: 6.9, y: 6.5 }, to: 'school-hall', label: '마법학교 본관', kind: 'portal' },
     ],
   },
 
@@ -1171,21 +1461,24 @@ export const MAPS = {
   },
   'school-hall': {
     id: 'school-hall',
-    name: '마법학교 본관 대강당',
+    name: '마법학교 중앙 홀',
     kind: 'town',
-    grid: { w: GRAND_ROOM_W, h: GRAND_ROOM_H },
+    grid: { w: HALL_W, h: HALL_H },
     bg: 'school',
     render: 'iso',
     assets: 'raster',
     tileAt: schoolHallTileAt,
     props: SCHOOL_HALL_PROPS,
+    floorInlay: SCHOOL_HALL_INLAY,
     blockers: SCHOOL_HALL_BLOCKERS,
     zones: NO_ZONES,
-    spawn: { ...GRAND_ROOM_SPAWN },
+    spawn: { x: HALL_FX, y: HALL_H - 2.4 },
     portals: [
-      { id: 'school-hall-exit', cell: { ...GRAND_ROOM_EXIT }, to: 'village', toSpawn: { x: 6.9, y: 7.2 }, label: '대강당 밖으로', kind: 'exit' },
+      { id: 'school-hall-exit', cell: { x: HALL_FX, y: HALL_H - 1.0 }, to: 'village', toSpawn: { x: 6.9, y: 7.2 }, label: '본관 밖으로', kind: 'exit' },
+      ...HALL_ROOM_PORTALS,
     ],
   },
+  ...ACADEMY_ROOMS,
   'personal-space': {
     id: 'personal-space',
     name: '내 개인 공간',

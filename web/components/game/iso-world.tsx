@@ -51,6 +51,43 @@ function RasterProp({ p }: { p: PropDef }) {
   )
 }
 
+/**
+ * 바닥 상감 마법진 — 참고 이미지(마법학교 실내.png)의 금/청 라인 원형 문양.
+ * matrix(32,16,-32,16) = isoToScreen 과 같은 투영이라 원·선을 셀 단위로 그리면 바닥에 눕는다.
+ */
+function FloorInlay({ cx, cy, r, gold, blue }: { cx: number; cy: number; r: number; gold: string; blue: string }) {
+  const pt = (a: number, rr: number) => [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr] as const
+  const star = (n: number, rr: number, skip: number) =>
+    Array.from({ length: n }, (_, i) => pt((i * skip * Math.PI * 2) / n - Math.PI / 4, rr).join(',')).join(' ')
+  return (
+    <g transform={`matrix(${ISO_TILE_W / 2},${ISO_TILE_H / 2},${-ISO_TILE_W / 2},${ISO_TILE_H / 2},0,0)`} style={{ pointerEvents: 'none' }}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={blue} strokeOpacity={0.45} strokeWidth={0.55} />
+      <circle cx={cx} cy={cy} r={r + 0.32} fill="none" stroke={gold} strokeWidth={0.09} />
+      <circle cx={cx} cy={cy} r={r - 0.32} fill="none" stroke={gold} strokeWidth={0.07} />
+      <circle cx={cx} cy={cy} r={r * 0.62} fill="none" stroke={gold} strokeWidth={0.08} />
+      <circle cx={cx} cy={cy} r={r * 0.62 - 0.25} fill="none" stroke={blue} strokeOpacity={0.35} strokeWidth={0.3} />
+      {/* 8각 별(두 겹 사각) + 방사선 */}
+      <polygon points={star(8, r - 0.35, 3)} fill={blue} fillOpacity={0.1} stroke={gold} strokeWidth={0.06} />
+      {Array.from({ length: 16 }, (_, i) => {
+        const a = (i / 16) * Math.PI * 2
+        const [x0, y0] = pt(a, r * 0.62)
+        const [x1, y1] = pt(a, i % 2 ? r - 0.32 : r + 0.32)
+        return <line key={i} x1={x0} y1={y0} x2={x1} y2={y1} stroke={gold} strokeOpacity={i % 2 ? 0.45 : 0.8} strokeWidth={0.05} />
+      })}
+      {/* 네 방위 보석 원판 */}
+      {[0, 1, 2, 3].map((i) => {
+        const [x, y] = pt((i * Math.PI) / 2 - Math.PI / 4, r)
+        return (
+          <g key={i}>
+            <circle cx={x} cy={y} r={0.75} fill={blue} fillOpacity={0.55} stroke={gold} strokeWidth={0.08} />
+            <circle cx={x} cy={y} r={0.3} fill="#e9f4ff" fillOpacity={0.8} />
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 export function IsoWorld({
   state,
   dispatch,
@@ -130,6 +167,10 @@ export function IsoWorld({
         )
       }
     }
+    // 상감 마법진(마법학교 홀) — 셀 좌표계를 그대로 쓰도록 아이소 투영 행렬로 변환해 그린다
+    for (const [i, c] of (map.floorInlay ?? []).entries()) {
+      tiles.push(<FloorInlay key={`inlay-${i}`} {...c} />)
+    }
     return tiles
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, VW, VH])
@@ -138,12 +179,14 @@ export function IsoWorld({
   const staticEntities = useMemo(() => {
     const list: { sortY: number; node: React.ReactNode }[] = []
 
+    let backdropOrder = 0
     for (const p of map.props ?? []) {
       // 원형 구조물(콜로세움·분수)은 앵커가 중심이라 half 가산 없이 정렬
       const half = p.radial ? 0 : ((p.size?.w ?? 0.4) + (p.size?.d ?? 0.4)) / 2
       const s = isoToScreen(p.cell.x, p.cell.y)
       list.push({
-        sortY: p.cell.x + p.cell.y + half,
+        // backdrop(방 뒤쪽 벽·문) = 선언 순서대로 맨 뒤 레이어 — 긴 벽 조각이 앞의 플레이어를 덮지 않게
+        sortY: p.backdrop ? -1e6 + backdropOrder++ : p.cell.x + p.cell.y + half,
         node: (
           <g key={p.id} transform={`translate(${s.sx},${s.sy})`}>
             {p.sprite ? <RasterProp p={p} /> : null}

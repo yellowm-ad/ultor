@@ -2,7 +2,7 @@ import sharp from 'sharp'
 import path from 'path'
 import fs from 'fs'
 
-const ROOT = 'C:/Users/saesa/OneDrive/Desktop/게임 개발 파일'
+const ROOT = 'C:/겜 개발 백업/게임 개발 파일'
 const ICON_SHEET = path.join(ROOT, '속성, 아이템 각종 아이콘.png')
 const OUT_BASE = path.join(ROOT, '_master/web/public/images')
 

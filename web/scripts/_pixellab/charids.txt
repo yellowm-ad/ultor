@@ -34,3 +34,5 @@ mon-ancient-bark-golem	41b9c88f-0706-418d-8074-6946fb66d5ad
 mon-jelly-queen	69f5feb1-1935-4f93-b015-e9d51daa4c44
 mon-reef-king	8b30be55-3404-4115-b8b2-3a89e3da1199
 mon-stone-titan-king	09f08196-a2d8-40fd-8ac3-f9b90f19d06b
+mon-field-mouse	e816251c-c806-4e9e-8d88-a566ee712a9e
+mon-glow-moth	6fd6bc21-074f-4b67-a341-4b3a698ff622

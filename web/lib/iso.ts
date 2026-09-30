@@ -62,6 +62,11 @@ export type TileKind =
   | 'personal-wood' // 내 개인 공간 — 픽셀랩 생성 + plaza 마스크로 정합(scripts/mask-fit-tile.mjs)
   | 'personal-rug' // 내 개인 공간 — 중앙 러그, 픽셀랩 생성 + plaza 마스크로 정합(scripts/mask-fit-tile.mjs)
   | 'atlantis-cathedral' // 아틀란티스 대성당 내부 — 픽셀랩 생성 + plaza 마스크로 정합(scripts/mask-fit-tile.mjs)
+  | 'academy-marble' // 마법학교 중앙 홀 — 베이지 석판 (scripts/gen-academy-tiles.mjs)
+  | 'academy-fire' // 화염 수업관 바닥
+  | 'academy-ice' // 빙결 수업관 바닥
+  | 'academy-earth' // 대지 수업관(온실) 바닥
+  | 'academy-carpet' // 대강당 남색 카펫
 
 /**
  * 라스터 모드에서 지면 타일 PNG 경로 (다이메트릭 2:1, 폭 = ISO_TILE_W 배수).
@@ -102,6 +107,11 @@ export const TILE_SPRITES: Partial<Record<TileKind, string>> = {
   'personal-wood': '/images/map/tiles/personal-wood.png',
   'personal-rug': '/images/map/tiles/personal-rug.png',
   'atlantis-cathedral': '/images/map/tiles/atlantis-cathedral.png',
+  'academy-marble': '/images/map/tiles/academy-marble.png',
+  'academy-fire': '/images/map/tiles/academy-fire.png',
+  'academy-ice': '/images/map/tiles/academy-ice.png',
+  'academy-earth': '/images/map/tiles/academy-earth.png',
+  'academy-carpet': '/images/map/tiles/academy-carpet.png',
 }
 
 /** 타일별 상/좌/우 면 색 (좌·우는 살짝 어둡게 해 미세 입체) */
@@ -140,6 +150,11 @@ export const TILE_COLORS: Record<TileKind, { top: string; edge: string }> = {
   'personal-wood': { top: '#5a3a2c', edge: '#3a2419' },
   'personal-rug': { top: '#2d4a34', edge: '#1c3022' },
   'atlantis-cathedral': { top: '#1f5c52', edge: '#123a34' },
+  'academy-marble': { top: '#d9c9a6', edge: '#a8946e' },
+  'academy-fire': { top: '#6b3a2c', edge: '#34180f' },
+  'academy-ice': { top: '#bcd6ea', edge: '#7ea3c2' },
+  'academy-earth': { top: '#6f7a4c', edge: '#3c4428' },
+  'academy-carpet': { top: '#2b407a', edge: '#b89445' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,6 +202,8 @@ export interface PropDef {
   skewYDeg?: number
   /** 벽면 좌우 반전(facing/wall 제외 로직과 무관한 별도 플래그) — 반대쪽 벽에 같은 스프라이트를 거울상으로 재사용할 때 */
   mirrorX?: boolean
+  /** 방 뒤쪽 벽(북/서) 배경 레이어 — 항상 다른 오브젝트·플레이어보다 먼저(뒤에) 그린다. 긴 벽 조각의 깊이정렬 오류 방지 */
+  backdrop?: boolean
   /** 벽면 회전각(도) — 벽돌 결 방향이 다른 벽(서벽 등)에 같은 텍스처를 재사용할 때 90도 돌려서 결을 맞춘다 */
   rotateDeg?: number
   /** 라벨(대형 구조물 위 표시, 선택) */
