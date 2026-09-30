@@ -411,6 +411,7 @@ export type MapId =
   | 'grand-auditorium' // 마법학교 대강당
   | 'headmaster-office' // 마법학교 학장실
   | 'academy-library' // 마법학교 도서관
+  | 'academy-2f' // 마법학교 2층 회랑(중앙 홀 위)
   | 'personal-space'
   | 'testroom'
 
@@ -453,6 +454,14 @@ export interface GameMap {
   props?: import('./iso').PropDef[]
   /** render:'iso' 일 때: 바닥 위(오브젝트 아래)에 셀 좌표로 그리는 상감 마법진 — 마법학교 홀 등 */
   floorInlay?: { cx: number; cy: number; r: number; gold: string; blue: string }[]
+  /** render:'iso' 일 때: 코드로 투영해 그리는 구조물(벽·회랑·계단·기둥·난간) */
+  structures?: import('./iso').IsoStructGroup[]
+  /** 화면 위 여백(px) — 높은 벽 구조물이 잘리지 않게 */
+  padTop?: number
+  /** 화면 아래 여백(px) — 2층에서 내려다보이는 1층 등 */
+  padBottom?: number
+  /** 계단 영역 — 플레이어 높이·깊이정렬 보정 */
+  stairs?: import('./iso').IsoStair[]
   /** 맵 내부 라벨 구역. 단순 필드 맵은 빈 배열 */
   zones: ZoneDef[]
   /** 이동 불가 사각형(셀 좌표) — 건물·분수 등. 비면 자유 이동 */

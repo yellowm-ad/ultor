@@ -61,30 +61,27 @@ export function createInitialGameState(): GameState {
     toast: null,
     housing: {
       editMode: false,
-      // 왼쪽(서벽)=침실, 중앙(러그)=공용 공간, 오른쪽(북벽)=서재+벽난로.
-      // 뒤쪽 꼭짓점(문) 근처만 비우고 벽에서 충분히 떨어뜨려 배치 — lib/maps.ts personalSpaceWalls() 좌표계 기준.
+      // 2026-09-30 리마스터 배치(참고: 루트 `개인 공간 디자인안.png`) — 벽은 맵 끝선(x=0 서벽, y=0 북벽).
+      // 서벽=침실(책장·협탁·캐노피 침대·상자), 북벽=옷장·서재 책상·벽난로, 중앙 러그=원탁+의자 4.
+      // 벽에 붙는 가구는 벽 방향 변형(-w = 서벽용)을 쓴다. id 접두어 'seed2-' — 옛 'seed-' 배치는 로드 시 교체(game-state LOAD_GAME).
       placed: [
-        // 왼쪽 — 침실
-        { id: 'seed-bookshelf', defId: 'bookshelf', cell: { x: 1.7, y: 3.6 } },
-        { id: 'seed-wardrobe', defId: 'wardrobe', cell: { x: 3.6, y: 1.9 } },
-        { id: 'seed-nightstand', defId: 'nightstand', cell: { x: 1.6, y: 4.9 } },
-        { id: 'seed-bed', defId: 'bed', cell: { x: 2.1, y: 6.6 } },
-        { id: 'seed-chest', defId: 'chest', cell: { x: 1.6, y: 8.7 } },
-        { id: 'seed-boots', defId: 'boots', cell: { x: 2.9, y: 8.9 } },
-        // 중앙 — 러그 위 원탁 + 의자 4개. 테이블 쪽을 바라보도록 각자 반대 방향 스프라이트 사용
-        // (테이블 북쪽 자리 → 남향 의자, 남쪽 자리 → 북향 의자, 서쪽 자리 → 동향 의자, 동쪽 자리 → 서향 의자).
-        { id: 'seed-table', defId: 'table', cell: { x: 7, y: 6 } },
-        { id: 'seed-chair-n', defId: 'chair-s', cell: { x: 7, y: 4.9 } },
-        { id: 'seed-chair-s', defId: 'chair-n', cell: { x: 7, y: 7.1 } },
-        { id: 'seed-chair-w', defId: 'chair-e', cell: { x: 5.8, y: 6 } },
-        { id: 'seed-chair-e', defId: 'chair-w', cell: { x: 8.2, y: 6 } },
-        // 오른쪽 — 서재 + 벽난로
-        { id: 'seed-weaponrack', defId: 'weaponrack', cell: { x: 11.7, y: 5.7 } },
-        { id: 'seed-desk', defId: 'desk', cell: { x: 9.6, y: 2.3 } },
-        { id: 'seed-desk-chair', defId: 'chair-n', cell: { x: 9.6, y: 3.4 } },
-        { id: 'seed-bookshelf2', defId: 'bookshelf', cell: { x: 12.5, y: 5.0 } },
-        { id: 'seed-fireplace', defId: 'fireplace', cell: { x: 12.6, y: 7.2 } },
-        { id: 'seed-firewood', defId: 'firewood', cell: { x: 12.0, y: 8.3 } },
+        { id: 'seed2-bookshelf-w', defId: 'bookshelf-w', cell: { x: 0.75, y: 2.4 } },
+        { id: 'seed2-nightstand', defId: 'nightstand', cell: { x: 0.8, y: 3.8 } },
+        { id: 'seed2-bed', defId: 'bed', cell: { x: 1.6, y: 5.2 } },
+        { id: 'seed2-chest-w', defId: 'chest-w', cell: { x: 0.75, y: 7.6 } },
+        { id: 'seed2-boots', defId: 'boots', cell: { x: 1.9, y: 8.6 } },
+        { id: 'seed2-wardrobe', defId: 'wardrobe', cell: { x: 2.4, y: 0.75 } },
+        { id: 'seed2-bookshelf', defId: 'bookshelf', cell: { x: 3.6, y: 0.75 } },
+        { id: 'seed2-desk', defId: 'desk', cell: { x: 7.6, y: 1.0 } },
+        { id: 'seed2-desk-chair', defId: 'chair-n', cell: { x: 7.6, y: 2.0 } },
+        { id: 'seed2-fireplace', defId: 'fireplace', cell: { x: 10.6, y: 0.8 } },
+        { id: 'seed2-firewood', defId: 'firewood', cell: { x: 12.0, y: 1.0 } },
+        { id: 'seed2-weaponrack', defId: 'weaponrack', cell: { x: 12.9, y: 3.0 } },
+        { id: 'seed2-table', defId: 'table', cell: { x: 7, y: 6 } },
+        { id: 'seed2-chair-n', defId: 'chair-s', cell: { x: 7, y: 4.9 } },
+        { id: 'seed2-chair-s', defId: 'chair-n', cell: { x: 7, y: 7.1 } },
+        { id: 'seed2-chair-w', defId: 'chair-e', cell: { x: 5.9, y: 6 } },
+        { id: 'seed2-chair-e', defId: 'chair-w', cell: { x: 8.1, y: 6 } },
       ],
     },
     // ── 4년제 학사·생활 시스템 — START_GAME 에서 시드/주간 퀘스트를 새로 채운다 ──

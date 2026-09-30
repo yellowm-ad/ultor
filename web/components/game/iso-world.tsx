@@ -4,16 +4,16 @@ import { useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
-import { ELEMENT_META } from '@/lib/constants'
 import { NPCS, MONSTERS } from '@/lib/mock-data'
 import { wanderState, npcWanderState } from '@/lib/field'
-import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
+import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
+import { IsoStructNode } from '@/components/game/iso-structures'
 import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 
-const SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
+const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
 const PAD_BOTTOM = 60
 
@@ -118,9 +118,11 @@ export function IsoWorld({
   const { w: VW, h: VH } = map.grid
   const bounds = useMemo(() => isoBounds(VW, VH), [VW, VH])
   const originX = -bounds.minSx
-  const originY = PAD_TOP
+  // 높은 벽(구조물)이 있는 맵은 위 여백을 벽 높이만큼 늘린다
+  const padTop = Math.max(PAD_TOP, map.padTop ?? 0)
+  const originY = padTop
   const worldW = bounds.width
-  const worldH = bounds.height + PAD_TOP + PAD_BOTTOM
+  const worldH = bounds.height + padTop + Math.max(PAD_BOTTOM, map.padBottom ?? 0)
 
   // 지면 (정적 — 메모)
   const ground = useMemo(() => {
@@ -186,12 +188,20 @@ export function IsoWorld({
       const s = isoToScreen(p.cell.x, p.cell.y)
       list.push({
         // backdrop(방 뒤쪽 벽·문) = 선언 순서대로 맨 뒤 레이어 — 긴 벽 조각이 앞의 플레이어를 덮지 않게
-        sortY: p.backdrop ? -1e6 + backdropOrder++ : p.cell.x + p.cell.y + half,
+        sortY: p.backdrop ? -1e6 + (p.backOrder ?? backdropOrder++) : p.cell.x + p.cell.y + half,
         node: (
-          <g key={p.id} transform={`translate(${s.sx},${s.sy})`}>
+          <g key={p.id} transform={`translate(${s.sx},${s.sy - (p.elev ?? 0)})`}>
             {p.sprite ? <RasterProp p={p} /> : null}
           </g>
         ),
+      })
+    }
+
+    // 코드 투영 구조물(벽·회랑·계단·기둥) — back 지정 시 backdrop 레이어, 아니면 sortY 로 깊이정렬
+    for (const g of map.structures ?? []) {
+      list.push({
+        sortY: g.back != null ? -1e6 + g.back : (g.sortY ?? 0),
+        node: <IsoStructNode key={`st-${g.id}`} id={g.id} parts={g.parts} />,
       })
     }
 
@@ -291,7 +301,8 @@ export function IsoWorld({
         if (seen.has(k)) continue
         seen.add(k)
       }
-      const s = isoToScreen(p.cell.x, p.cell.y)
+      const s0 = isoToScreen(p.cell.x, p.cell.y)
+      const s = { sx: s0.sx, sy: s0.sy - stairElevation(map.stairs, p.cell.x, p.cell.y).z }
       const isGate = p.kind === 'gate'
       const c1 = isGate ? '#3f8cff' : p.kind === 'exit' ? '#5fd0ff' : '#8f7bff' // 링
       const c2 = isGate ? '#a9d4ff' : p.kind === 'exit' ? '#bff0ff' : '#d9d0ff' // 코어
@@ -340,8 +351,11 @@ export function IsoWorld({
   }, [map])
 
   // 플레이어
-  const ps = isoToScreen(state.position.x, state.position.y)
-  const playerSortY = state.position.x + state.position.y
+  // 계단 위에서는 높이만큼 띄우고, 깊이정렬은 계단 왼쪽 끝 기준으로 보정(같은 단의 오른쪽 부분에 가려지지 않게)
+  const onStair = stairElevation(map.stairs, state.position.x, state.position.y)
+  const ps0 = isoToScreen(state.position.x, state.position.y)
+  const ps = { sx: ps0.sx, sy: ps0.sy - onStair.z }
+  const playerSortY = onStair.stair ? onStair.stair.x0 + state.position.y + 0.25 : state.position.x + state.position.y
   // PixelLab 4등신 스프라이트 시트: 88px 셀, 8열 × 4행.
   //   row0 = 8방향 회전 (s0 se1 e2 ne3 n4 nw5 w6 sw7), row1/2/3 = south/east/north 걷기 8프레임.
   //   west(좌) 걷기는 east 행(row2)을 좌우 반전.
@@ -384,7 +398,13 @@ export function IsoWorld({
           const def = FURNITURE_BY_ID[f.defId]
           if (!def) return []
           const s = isoToScreen(f.cell.x, f.cell.y)
-          const prop: PropDef = { id: f.id, kind: 'cottage', cell: f.cell, sprite: def.sprite.s, px: { w: def.sprite.w, h: def.sprite.h } }
+          const { w, h, fw, fd } = def.sprite
+          // 아이소 가구: PNG 하단 = footprint 앞 꼭짓점 → 앵커를 footprint 중심까지 끌어올림(8·(fw+fd) px)
+          const prop: PropDef = {
+            id: f.id, kind: 'cottage', cell: f.cell, sprite: def.sprite.s, px: { w, h },
+            anchor: def.iso ? { x: w / 2, y: h - 8 * (fw + fd) } : undefined,
+            facing: def.flip ? 'left' : undefined,
+          }
           const half = (def.sprite.fw + def.sprite.fd) / 2
           return [
             {
@@ -446,6 +466,9 @@ export function IsoWorld({
   const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 
+  // 개발 모드 전용: window.__isoScale 로 카메라 배율을 바꿔 전체 구도를 확인(크롬 자동화 스크린샷용)
+  const devScale = process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' ? (window as unknown as { __isoScale?: number }).__isoScale : undefined
+  const SCALE = devScale ?? BASE_SCALE
   const camX = clamp(viewportSize.w / 2 - (originX + ps.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
   const camY = clamp(viewportSize.h / 2 - (originY + ps.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
@@ -454,7 +477,7 @@ export function IsoWorld({
       <svg
         width={worldW}
         height={worldH}
-        viewBox={`${bounds.minSx} ${-PAD_TOP} ${worldW} ${worldH}`}
+        viewBox={`${bounds.minSx} ${-padTop} ${worldW} ${worldH}`}
         style={{ display: 'block', overflow: 'visible' }}
         shapeRendering="crispEdges"
       >

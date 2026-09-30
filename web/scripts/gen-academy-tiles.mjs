@@ -88,3 +88,13 @@ await write('academy-carpet.png', (x, y) => {
   if ((gu < 0.08 || gv < 0.08) && h2(x, y, 93) < 0.55) c = hex('#b89445')
   return c
 })
+// 개인 공간 — 짙은 호두나무 널빤지(참고: 개인 공간 디자인안.png). u 방향으로 긴 판자 4줄, 판자마다 이음매 위치 다르게
+await write('dorm-plank.png', (x, y) => {
+  const [u, v] = uv(x, y)
+  const row = Math.floor(v * 4)
+  const joint = ((u + row * 0.37) % 1) < 0.025
+  const n = h2(x, y, 101)
+  if ((v * 4) % 1 < 0.06 || joint) return hex('#2a1a12')
+  const base = row % 2 ? '#5a3a26' : '#63412b'
+  return hex(n < 0.12 ? '#4c3120' : n > 0.93 ? '#74503a' : base)
+})

@@ -67,6 +67,8 @@ export type TileKind =
   | 'academy-ice' // 빙결 수업관 바닥
   | 'academy-earth' // 대지 수업관(온실) 바닥
   | 'academy-carpet' // 대강당 남색 카펫
+  | 'dorm-plank' // 개인 공간 짙은 널빤지 (scripts/gen-academy-tiles.mjs)
+  | 'academy-void' // 2층 아트리움(뚫린 곳) — 타일 없이 어둡게, 아래층 구조물이 비쳐 보인다
 
 /**
  * 라스터 모드에서 지면 타일 PNG 경로 (다이메트릭 2:1, 폭 = ISO_TILE_W 배수).
@@ -112,6 +114,7 @@ export const TILE_SPRITES: Partial<Record<TileKind, string>> = {
   'academy-ice': '/images/map/tiles/academy-ice.png',
   'academy-earth': '/images/map/tiles/academy-earth.png',
   'academy-carpet': '/images/map/tiles/academy-carpet.png',
+  'dorm-plank': '/images/map/tiles/dorm-plank.png',
 }
 
 /** 타일별 상/좌/우 면 색 (좌·우는 살짝 어둡게 해 미세 입체) */
@@ -155,6 +158,8 @@ export const TILE_COLORS: Record<TileKind, { top: string; edge: string }> = {
   'academy-ice': { top: '#bcd6ea', edge: '#7ea3c2' },
   'academy-earth': { top: '#6f7a4c', edge: '#3c4428' },
   'academy-carpet': { top: '#2b407a', edge: '#b89445' },
+  'academy-void': { top: '#0d0c12', edge: '#0d0c12' },
+  'dorm-plank': { top: '#5a3a26', edge: '#2a1a12' },
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,6 +207,10 @@ export interface PropDef {
   skewYDeg?: number
   /** 벽면 좌우 반전(facing/wall 제외 로직과 무관한 별도 플래그) — 반대쪽 벽에 같은 스프라이트를 거울상으로 재사용할 때 */
   mirrorX?: boolean
+  /** 바닥에서 띄워 그리는 높이(px) — 2층 회랑 위 소품 등 */
+  elev?: number
+  /** backdrop 레이어 안에서의 명시 순서(작을수록 먼저). 구조물(IsoStructGroup.back)과 같은 축 */
+  backOrder?: number
   /** 방 뒤쪽 벽(북/서) 배경 레이어 — 항상 다른 오브젝트·플레이어보다 먼저(뒤에) 그린다. 긴 벽 조각의 깊이정렬 오류 방지 */
   backdrop?: boolean
   /** 벽면 회전각(도) — 벽돌 결 방향이 다른 벽(서벽 등)에 같은 텍스처를 재사용할 때 90도 돌려서 결을 맞춘다 */
@@ -252,4 +261,76 @@ export function propAABB(
     }
   }
   return { x0: p.cell.x, y0: p.cell.y, x1: p.cell.x + w, y1: p.cell.y + d }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 아이소 구조물 — 벽·회랑 바닥판·계단 단·난간·기둥을 "투영된 평면"으로 정확히 그린다.
+// 모든 면이 바닥 격자 축(x·y)과 평행하도록 코드로 투영하고, 표면은 PixelLab 평면 텍스처를 패턴으로 반복.
+// (정면 스프라이트를 대충 세우는 대신 — 사용자 규칙: 벽은 맵 끝에 높게, 모든 것은 쿼터뷰 축 정합)
+// ─────────────────────────────────────────────────────────────────────────────
+/** 반복 텍스처 — w/h 는 원본 px, scale 은 화면 배율(기본 1.5) */
+export interface IsoTex {
+  src: string
+  w: number
+  h: number
+  scale?: number
+}
+export type IsoPart =
+  /** 수직면. plane 'y' = y 고정(북벽처럼 +y 쪽에서 보임, x 방향으로 뻗음), 'x' = x 고정(서벽처럼 +x 쪽에서 보임) */
+  | {
+      kind: 'face'
+      plane: 'x' | 'y'
+      at: number
+      from: number
+      to: number
+      z0: number
+      z1: number
+      tex?: IsoTex
+      /** 텍스처 대신 한 장 이미지를 면 전체에 붙임(문·창·배너 등) */
+      img?: string
+      /** 0~1 어둡게 — 측면 음영 */
+      shade?: number
+      fill?: string
+      /** 면 전체 불투명도(그늘 오버레이 등) */
+      opacity?: number
+    }
+  /** 수평면(윗면) — z 높이, 텍스처는 cells 셀마다 1회 반복, 또는 img 한 장을 영역에 펼침 */
+  | { kind: 'top'; x0: number; y0: number; x1: number; y1: number; z: number; tex?: IsoTex & { cells?: number }; img?: string; shade?: number; fill?: string; opacity?: number }
+
+export interface IsoStructGroup {
+  id: string
+  parts: IsoPart[]
+  /** 지정 시 backdrop 레이어(항상 플레이어 뒤)에서의 순서. 없으면 sortY 로 깊이정렬 */
+  back?: number
+  sortY?: number
+}
+
+/** 직육면체 — 윗면 + 보이는 두 옆면(+y 면, +x 면) */
+export function isoBox(
+  x0: number, y0: number, x1: number, y1: number, z0: number, z1: number,
+  opt: { top?: IsoTex & { cells?: number }; topFill?: string; side?: IsoTex; sideFill?: string; shadeY?: number; shadeX?: number } = {},
+): IsoPart[] {
+  return [
+    { kind: 'face', plane: 'y', at: y1, from: x0, to: x1, z0, z1, tex: opt.side, fill: opt.sideFill, shade: opt.shadeY ?? 0.12 },
+    { kind: 'face', plane: 'x', at: x1, from: y0, to: y1, z0, z1, tex: opt.side, fill: opt.sideFill, shade: opt.shadeX ?? 0.3 },
+    { kind: 'top', x0, y0, x1, y1, z: z1, tex: opt.top, fill: opt.topFill },
+  ]
+}
+
+/** 계단 — 이 사각형 안에서 플레이어가 y 에 따라 선형으로 올라간다(yBottom→yTop 에서 0→zTop) */
+export interface IsoStair {
+  x0: number
+  x1: number
+  yTop: number
+  yBottom: number
+  zTop: number
+}
+export function stairElevation(stairs: IsoStair[] | undefined, x: number, y: number): { z: number; stair: IsoStair | null } {
+  for (const s of stairs ?? []) {
+    if (x >= s.x0 && x <= s.x1 && y >= s.yTop && y <= s.yBottom) {
+      return { z: (s.zTop * (s.yBottom - y)) / (s.yBottom - s.yTop), stair: s }
+    }
+  }
+  return { z: 0, stair: null }
 }

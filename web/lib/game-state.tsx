@@ -183,7 +183,13 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'LOAD_GAME': {
-      const loaded = mergeSave(createInitialGameState(), action.saved)
+      const fresh = createInitialGameState()
+      const loaded = mergeSave(fresh, action.saved)
+      // 개인 공간 리마스터(2026-09-30): 손대지 않은 옛 초기 배치('seed-' 만)는 새 배치로 교체 — 벽 위치·가구 방향이 바뀜
+      const placed = loaded.housing?.placed ?? []
+      if (placed.length > 0 && placed.every((p) => p.id.startsWith('seed-'))) {
+        loaded.housing = { ...loaded.housing, placed: fresh.housing.placed }
+      }
       const map = MAPS[loaded.currentMapId] ?? MAPS.village
       return ensureWeek({
         ...loaded,
