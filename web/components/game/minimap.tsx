@@ -3,7 +3,6 @@
 import { useMemo } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
-import { ELEMENT_META } from '@/lib/constants'
 import { MONSTERS } from '@/lib/mock-data'
 import { DiamondMark } from '@/components/game/ui-motifs'
 
@@ -74,7 +73,6 @@ export function Minimap() {
   const MARK_PAD = 6
   const fx = (cx: number) => Math.min(w - MARK_PAD, Math.max(MARK_PAD, (cx / map.grid.w) * w))
   const fy = (cy: number) => Math.min(h - MARK_PAD, Math.max(MARK_PAD, (cy / map.grid.h) * h))
-  const elem = ELEMENT_META[state.player.element]
 
   return (
     <div className="minimap-safe title-enter-2 pointer-events-none absolute right-3 top-24 z-30 flex flex-col items-center gap-1 sm:right-4 sm:top-32">
@@ -130,7 +128,7 @@ export function Minimap() {
               top: fy(state.position.y),
               width: 7,
               height: 7,
-              background: elem.color as string,
+              background: 'var(--gold, #e8c46a)',
             }}
           />
         </div>

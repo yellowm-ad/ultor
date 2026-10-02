@@ -6,16 +6,19 @@
 import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { beatById, type HeroRole } from '@/lib/story'
-import { COMPANIONS } from '@/lib/companions'
+import { SCHOOL_NPCS } from '@/lib/companions'
 import type { Gender } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { HeroPortrait, Portrait } from '@/components/game/portrait'
 import { DiamondMark } from '@/components/game/ui-motifs'
 
-/** 삼원 주인공 대사의 실제 화자 — 같은 속성이면 플레이어, 아니면 같은 속성 동기(1학년 학생 동료) */
-function resolveHero(role: HeroRole, player: { name: string; element: string; gender: Gender }): { name: string; element: HeroRole; gender: Gender } {
-  if (player.element === role) return { name: player.name, element: role, gender: player.gender }
-  const c = COMPANIONS.find((x) => x.role === 'student' && x.joinYear === 1 && x.element === role)
+/**
+ * 대화집의 삼원(화염/빙결/대지) 화자 대사 — PRD v2.0 이후 주인공은 고정 속성이 없으므로,
+ * 해당 시트를 쓰는 1학년 동기 학교 NPC(리안·셀라·도란)가 말한다.
+ */
+const ROLE_NPC: Record<HeroRole, string> = { fire: 'comp-rian', ice: 'comp-sella', earth: 'comp-doran' }
+function resolveHero(role: HeroRole): { name: string; element: HeroRole; gender: Gender } {
+  const c = SCHOOL_NPCS.find((x) => x.id === ROLE_NPC[role])
   return { name: c?.name ?? role, element: role, gender: c?.gender ?? 'male' }
 }
 
@@ -31,7 +34,7 @@ export function StoryOverlay() {
   const last = line >= beat.lines.length - 1
   const choosing = last && !!beat.choices?.length
   const next = () => (choosing ? undefined : last ? dispatch({ type: 'DISMISS_STORY' }) : setLine((l) => l + 1))
-  const hero = cur?.hero ? resolveHero(cur.hero, state.player) : null
+  const hero = cur?.hero ? resolveHero(cur.hero) : null
   const speaker = hero ? hero.name : cur?.speaker
   const hasPortrait = !!(hero || cur?.portraitId)
 

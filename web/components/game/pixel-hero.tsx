@@ -10,12 +10,17 @@
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react'
-import type { Element, Gender } from '@/lib/types'
+import type { Gender, SpriteSheet } from '@/lib/types'
 
 export type Facing = 'down' | 'up' | 'left' | 'right'
 
-function sheetSrc(element: Element, gender: Gender) {
-  return `/images/sprites/hero-${element}-${gender}.png`
+function sheetSrc(sheet: SpriteSheet) {
+  return `/images/sprites/${sheet}.png`
+}
+
+/** 주인공 시트 키 — 고정 외형 2종(흑발 금안 · 울토르 교복) */
+export function playerSheet(gender: Gender): SpriteSheet {
+  return `protag-${gender}`
 }
 
 const SHEET_COLS = 8
@@ -31,15 +36,13 @@ const WALK_MS = 115
  * 주인공 스프라이트 — PixelLab 시트를 잘라 방향·걷기 애니메이션.
  */
 export function HeroSprite({
-  element,
-  gender,
+  sheet,
   dir = 'down',
   walking = false,
   px = 64,
   className,
 }: {
-  element: Element
-  gender: Gender
+  sheet: SpriteSheet
   dir?: Facing
   walking?: boolean
   px?: number
@@ -78,7 +81,7 @@ export function HeroSprite({
           width: px,
           height: px,
           transform: flipX ? 'scaleX(-1)' : undefined,
-          backgroundImage: `url(${sheetSrc(element, gender)})`,
+          backgroundImage: `url(${sheetSrc(sheet)})`,
           backgroundSize: `${px * SHEET_COLS}px ${px * SHEET_ROWS}px`,
           backgroundPosition: `-${col * px}px -${row * px}px`,
           imageRendering: 'pixelated',

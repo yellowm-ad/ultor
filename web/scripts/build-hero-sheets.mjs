@@ -33,7 +33,9 @@ const CELL = 88
 const COLS = 8
 const ROWS = 4
 const WALK_ROWS = ['south', 'east', 'north'] // 출력 row 1,2,3
-const CHARS = ['fire-male', 'fire-female', 'ice-male', 'ice-female', 'earth-male', 'earth-female']
+// CHARS=npc-sella 처럼 지정하면 그 폴더만 처리하고 출력 이름도 폴더명 그대로(npc-sella.png)
+const CHARS = process.env.CHARS ? process.env.CHARS.split(',') : ['fire-male', 'fire-female', 'ice-male', 'ice-female', 'earth-male', 'earth-female']
+const outName = (name) => (process.env.CHARS ? `${name}.png` : `hero-${name}.png`)
 const STABILIZE_MAX = 6 // 안정화 보정 최대 픽셀(이상치 프레임이 과하게 튀는 것 방지)
 
 /** 프레임의 불투명 픽셀 bbox 중 top(머리 높이)·cx(좌우 중심)를 구한다. */
@@ -168,6 +170,6 @@ for (const name of CHARS) {
   })
     .composite(layers)
     .png()
-    .toFile(path.join(OUT, `hero-${name}.png`))
-  console.log(`hero-${name}.png  ${COLS * CELL}x${ROWS * CELL}  rows[ ${statuses.join('  ')} ]`)
+    .toFile(path.join(OUT, outName(name)))
+  console.log(`${outName(name)}  ${COLS * CELL}x${ROWS * CELL}  rows[ ${statuses.join('  ')} ]`)
 }

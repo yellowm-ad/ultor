@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button'
 import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { arcForWeek } from '@/lib/story'
 import { questTemplateById, REQUIRED_OPTIONAL, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
-import { courseById, coursesForWeek, DEPARTMENT_LABEL, GRADUATION_CREDITS, gradeForScore } from '@/lib/academics'
+import { courseName, coursesForWeek, DEPARTMENT_LABEL, GRADUATION_CREDITS, gradeForScore, skillScoreThreshold } from '@/lib/academics'
+import { skillById } from '@/lib/mock-data'
 import { ACTIVITY_META, activityUnlockLabel, activityUnlockWeek, isActivityUnlocked, type ActivityId } from '@/lib/life'
 import { ITEMS, itemById, MONSTERS, NPCS } from '@/lib/mock-data'
-import { COMPANIONS } from '@/lib/companions'
+import { SCHOOL_NPCS } from '@/lib/companions'
 import { regionById } from '@/lib/regions'
 import { CheckCircle2, Circle, Lock, Star } from 'lucide-react'
 
@@ -183,7 +184,7 @@ function AcademicTab() {
         {open.length === 0 ? (
           <div className="panel-parchment p-3 text-center text-xs opacity-70">방학 중에는 수업이 없습니다.</div>
         ) : (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {open.map((c) => {
               const score = state.academics.courseScore[c.id] ?? 0
               const g = gradeForScore(score)
@@ -199,12 +200,26 @@ function AcademicTab() {
                   <div className="mt-0.5 text-[10px]">
                     점수 {score}/100 · 예상 {g.grade}
                   </div>
+                  {(c.teachesSkills ?? []).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {(c.teachesSkills ?? []).map((id, i) => {
+                        const need = skillScoreThreshold(c, i)
+                        const got = state.player.learnedSkills.includes(id)
+                        return (
+                          <span key={id} className={`rounded px-1 py-0.5 text-[9px] ${got ? 'bg-[#4f7fbf]/25 font-semibold' : 'bg-black/10 opacity-60'}`} title={skillById(id)?.description}>
+                            {got ? '✔ ' : `${need}점 · `}
+                            {skillById(id)?.name ?? id}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
         )}
-        <p className="mt-1 text-[10px] text-white/50">수업 미션(보상: 수업 점수)으로 점수를 올리면 학기 마지막 주 마감 때 성적과 학점이 정산됩니다.</p>
+        <p className="mt-1 text-[10px] text-white/50">수업 미션(보상: 수업 점수)으로 점수를 올리면 진도에 따라 마법을 배우고, 학기 마지막 주 마감 때 성적과 학점이 정산됩니다. D 이상으로 이수하면 못 배운 마법도 모두 익힙니다.</p>
       </div>
 
       {state.academics.history.length > 0 && (
@@ -214,7 +229,7 @@ function AcademicTab() {
             {state.academics.history.map((h) => (
               <div key={h.termIndex} className="panel-parchment p-2 text-[11px]">
                 <span className="font-semibold">{calendarLabel(h.termIndex * 12 + 1).replace(/ 1주차$/, '')}</span>{' '}
-                {h.courses.map((c) => `${courseById(c.courseId)?.name} ${c.grade}(${c.credit})`).join(' · ')}
+                {h.courses.map((c) => `${courseName(c.courseId)} ${c.grade}(${c.credit})`).join(' · ')}
               </div>
             ))}
           </div>
@@ -294,7 +309,7 @@ function CodexTab() {
 function RelationTab() {
   const { state } = useGame()
   const people = [
-    ...COMPANIONS.map((c) => ({ id: c.id, name: c.name, sub: c.title })),
+    ...SCHOOL_NPCS.map((c) => ({ id: c.id, name: c.name, sub: c.title })),
     ...NPCS.filter((n) => n.role !== 'craftStation' && !n.id.startsWith('tr-')).map((n) => ({ id: n.id, name: n.name, sub: '' })),
   ]
   const known = people.filter((p) => state.relationships[p.id])

@@ -4,39 +4,22 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
-import { HeroSprite } from '@/components/game/pixel-hero'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { DiamondMark } from '@/components/game/ui-motifs'
-import { ELEMENTS, ELEMENT_META, JOB_TIERS } from '@/lib/constants'
-import { SKILLS } from '@/lib/mock-data'
-import type { Element, Gender } from '@/lib/types'
+import { PLAYER_ELEMENTS, ELEMENT_META } from '@/lib/constants'
+import { STARTER_SKILLS } from '@/lib/player-factory'
+import { petDefById, STARTER_PET_IDS } from '@/lib/pets'
+import { skillById } from '@/lib/mock-data'
+import type { Gender } from '@/lib/types'
 
-// 속성×성별 조합별 짧은 성격 소개 — 계통 테마(화염=열정/승부욕, 빙결=냉철/신중, 대지=우직/온화)에
-// 성별별 미세한 결을 얹어 6종 모두 다르게 읽히도록 한다.
-const PERSONALITY: Record<Element, Record<Gender, string>> = {
-  fire: {
-    male: '앞뒤 재지 않고 먼저 뛰어드는 저돌적인 성격. 한번 불붙으면 좀처럼 물러서지 않는다.',
-    female: '승부욕이 남다르고 지는 걸 죽기보다 싫어한다. 자신감 넘치는 태도로 시선을 끈다.',
-  },
-  ice: {
-    male: '감정을 잘 드러내지 않는 차분한 성격이지만, 뒤에서 동료를 세심하게 챙기는 편이다.',
-    female: '냉철하고 분석적인 완벽주의자. 스스로에게 유독 엄격한 잣대를 들이댄다.',
-  },
-  earth: {
-    male: '말보다 행동으로 신뢰를 쌓는 우직한 성격. 든든한 존재감으로 곁을 지킨다.',
-    female: '온화하지만 심지가 굳어 한번 정한 목표는 끝까지 밀어붙이는 뚝심이 있다.',
-  },
-}
+// ============================================================================
+// 주인공 생성(PRD v2.0 §2~3) — 커스터마이징 가능한 단일 주인공.
+//   · 속성은 고르지 않는다(주인공은 고정 속성이 없고, 5속성을 전부 학교 수업으로 배운다).
+//   · 외형은 고정 2종(흑발 금안 · 울토르 교복의 떠돌이 신입생) — 성별만 고른다. 커마는 폐기.
+//   · 예전 주인공 후보 6인은 학교 NPC가 되어 이 화면에서 고를 수 없다.
+// ============================================================================
 
-// 계통별 성장 미리보기(1차/궁극 스킬) — 전직 사다리와 함께 "이 계통을 고르면 이렇게 큰다"를 보여준다
-const SIGNATURE_SKILLS: Record<Element, [string, string]> = {
-  fire: ['fire-t1-1', 'fire-t4-1'],
-  ice: ['ice-t1-1', 'ice-t4-1'],
-  earth: ['earth-t1-1', 'earth-t4-1'],
-}
-
-// ELEMENT_META.color는 `var(--elem-*)` 참조라 문자열에 알파(hex) 접미사를 붙일 수 없다(무효 CSS).
-// 반투명 글로우/그라디언트에서만 실제 16진값이 필요해 여기서 따로 미러링해 둔다.
-const ELEMENT_HEX: Record<Element, string> = { fire: '#e2542a', ice: '#4fb8e6', earth: '#a97c3f' }
+const GOLD = '#e8c46a'
 
 // 인게임 캐릭터 발밑 마법진 — iso-world.tsx 게이트 포탈과 같은 시각 언어(룬 링+회전 다이아) 재사용
 function CreateMagicCircle({ color }: { color: string }) {
@@ -64,14 +47,12 @@ function CreateMagicCircle({ color }: { color: string }) {
 export function CreateScreen() {
   const { dispatch } = useGame()
   const [name, setName] = useState('')
-  const [element, setElement] = useState<Element>('fire')
   const [gender, setGender] = useState<Gender>('male')
-  const meta = ELEMENT_META[element]
+  const [petId, setPetId] = useState<string>(STARTER_PET_IDS[0])
+  const starterSkill = skillById(STARTER_SKILLS[0])
 
   return (
     <div className="create-root screen-fade-in flex h-full w-full flex-col overflow-hidden bg-[#0b0907]">
-      {/* 상단: 마법학교 뒷배경 위에 인게임 캐릭터(도트 스프라이트)가 마법진을 밟고 서있는 모습.
-          좌측엔 원화 삼면도, 우측 상단엔 일러스트를 곁들인다. */}
       <div className="relative min-h-[260px] flex-1 overflow-hidden">
         <div className="title-bg-frame">
           <div className="title-bg" />
@@ -79,100 +60,93 @@ export function CreateScreen() {
         <div className="title-sunrays" />
         <div className="title-vignette" />
 
-        <h1 className="relative z-[2] pt-5 text-center font-display text-2xl text-gold-soft text-shadow-ink">캐릭터 생성</h1>
+        <h1 className="relative z-[2] pt-5 text-center font-display text-2xl text-gold-soft text-shadow-ink">주인공 생성</h1>
 
-        {/* 좌측: 계통 설명 패널 — 성격 소개 + 전직 사다리 + 대표 스킬 미리보기 */}
-        <div className="absolute top-5 left-5 z-[2] hidden w-64 sm:block md:w-72">
-          <div className="panel-glass p-4">
-            <div className="flex items-center gap-2">
-              <Image src={meta.icon} alt={meta.name} width={26} height={26} />
-              <span className="font-display text-base text-shadow-ink" style={{ color: meta.color as string }}>
-                {meta.line}
-              </span>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-foreground/85">{PERSONALITY[element][gender]}</p>
-
-            <div className="mt-3.5 flex items-center gap-1.5 text-[11px] text-gold-soft">
+        {/* 좌측: 주인공 소개 */}
+        <div className="absolute top-5 left-5 z-[2] hidden w-64 sm:block">
+          <div className="panel-glass p-3 text-xs leading-relaxed text-foreground/80">
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] text-gold-soft">
               <DiamondMark size={9} />
-              전직 단계
+              주인공
             </div>
-            <div className="mt-1.5 flex flex-col gap-1">
-              {JOB_TIERS.map((t) => (
-                <div key={t.id} className="flex items-center gap-2 text-[11px] text-foreground/75">
-                  <span
-                    className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
-                    style={{ background: `${ELEMENT_HEX[element]}33`, border: `1px solid ${ELEMENT_HEX[element]}88` }}
-                  >
-                    {t.order + 1}
-                  </span>
-                  <span className="truncate">{t.name}</span>
-                  <span className="ml-auto shrink-0 text-foreground/45">Lv.{t.minLevel}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3.5 flex items-center gap-1.5 text-[11px] text-gold-soft">
-              <DiamondMark size={9} />
-              대표 스킬
-            </div>
-            <div className="mt-1.5 flex flex-col gap-1.5">
-              {SIGNATURE_SKILLS[element].map((skillId) => {
-                const skill = SKILLS.find((s) => s.id === skillId)
-                if (!skill) return null
-                return (
-                  <div key={skillId} className="flex items-center gap-2">
-                    <div
-                      className="portrait-ring flex size-8 shrink-0 items-center justify-center"
-                      style={{ ['--ring-col' as string]: ELEMENT_HEX[element], ['--ring-glow' as string]: `${ELEMENT_HEX[element]}88` }}
-                    >
-                      <Image src={skill.icon} alt="" width={16} height={16} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-semibold">{skill.name}</div>
-                      <div className="truncate text-[10px] text-foreground/55">{skill.description}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            흑발에 금빛 눈을 가진 울토르 마법학교의 신입생. 어디서 왔는지 잘 말하지 않는 떠돌이 같은 분위기를 풍긴다.
+            정해진 속성 없이, 학교에서 배우는 마법과 장비로 자신만의 전투 방식을 만들어 간다.
           </div>
         </div>
 
-        {/* 우측 상단: 일러스트 미리보기 — 키(비율)에 상관없이 전신이 잘리지 않도록 object-contain */}
-        <div className="absolute top-5 right-5 z-[2] w-36 sm:w-40 md:w-44">
-          <div className="create-portrait-frame create-portrait-frame-sm">
-            <Image
-              src={`/images/portraits/hero-${element}-${gender}.png`}
-              alt={`${meta.name} 일러스트`}
-              fill
-              className="object-contain"
-            />
-            <div className="create-portrait-vignette" />
+        {/* 우측: 시작 정보 — 첫 펫 선택 + 학습 안내 */}
+        <div className="absolute top-5 right-5 z-[2] hidden w-60 sm:block">
+          <div className="panel-glass p-3">
+            <div className="flex items-center gap-1.5 text-[11px] text-gold-soft">
+              <DiamondMark size={9} />첫 펫
+            </div>
+            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+              {STARTER_PET_IDS.map((id) => {
+                const d = petDefById(id)!
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setPetId(id)}
+                    className={`flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-[10px] ${petId === id ? 'bg-gold/25 ring-2 ring-gold' : 'bg-white/5 ring-1 ring-white/10'}`}
+                  >
+                    <Image src={d.icon} alt="" width={28} height={28} />
+                    {d.name}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-1 text-[10px] text-foreground/55">펫은 주인공이 전위에 설 때 함께 싸웁니다.</p>
+
+            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-gold-soft">
+              <DiamondMark size={9} />
+              시작 마술
+            </div>
+            {starterSkill && (
+              <div className="mt-1 text-xs">
+                <span className="font-semibold">{starterSkill.name}</span>
+                <span className="ml-1 text-[10px] text-foreground/55">{starterSkill.description}</span>
+              </div>
+            )}
+
+            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-gold-soft">
+              <DiamondMark size={9} />
+              학교에서 배울 마법
+            </div>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {PLAYER_ELEMENTS.map((e) => (
+                <span key={e} className="flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 text-[10px]">
+                  <span style={{ color: ELEMENT_META[e].color }}>●</span>
+                  {ELEMENT_META[e].name}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-foreground/55">
+              불꽃·얼음·대지는 1학년부터, 어둠·빛은 3학년부터. 고정 속성 없이 배운 마법과 장비가 전투 스타일을 만듭니다.
+            </p>
           </div>
-          <p className="text-shadow-ink mt-1.5 text-center text-xs text-muted-foreground">일러스트</p>
         </div>
 
         {/* 인게임 캐릭터 + 마법진 */}
         <div className="absolute inset-x-0 bottom-4 z-[1] flex justify-center">
-          <CreateMagicCircle color={ELEMENT_HEX[element]} />
+          <CreateMagicCircle color={GOLD} />
         </div>
-        <div className="absolute inset-x-0 bottom-11 z-[2] flex justify-center">
+        <div className="absolute inset-x-0 bottom-11 z-[2] flex flex-col items-center">
           <div className="create-hero-idle drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)]">
-            <HeroSprite element={element} gender={gender} px={152} />
+            <HeroSprite sheet={playerSheet(gender)} px={152} />
           </div>
         </div>
       </div>
 
-      {/* 하단: 선택 바 — 넓게 펼쳐 배치, 흑금 고급 프레임 */}
-      <div className="create-select-bar relative z-[3] shrink-0 px-6 py-8 sm:px-14">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-7">
+      {/* 하단: 이름 · 성별 · 시작 */}
+      <div className="create-select-bar relative z-[3] shrink-0 px-6 py-6 sm:px-14">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-5">
           <div>
             <label className="mb-2 block text-sm text-muted-foreground">이름</label>
             <input
               value={name}
               maxLength={10}
               onChange={(e) => setName(e.target.value)}
-              placeholder="견습생의 이름"
+              placeholder="신입생의 이름"
               className="create-name-input w-64 rounded-lg px-5 py-3.5 text-lg outline-none"
             />
           </div>
@@ -194,33 +168,6 @@ export function CreateScreen() {
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-muted-foreground">계통</label>
-            <div className="flex gap-5">
-              {ELEMENTS.map((el) => {
-                const m = ELEMENT_META[el]
-                const hex = ELEMENT_HEX[el]
-                const active = element === el
-                return (
-                  <button key={el} onClick={() => setElement(el)} className="flex flex-col items-center gap-2">
-                    <span
-                      className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-full transition-all"
-                      style={{
-                        background: active ? `radial-gradient(circle at 35% 30%, ${hex}66, ${hex}1a 72%)` : 'rgba(255,255,255,0.05)',
-                        boxShadow: active ? `0 0 0 2px ${hex}, 0 0 18px ${hex}99` : '0 0 0 1px rgba(255,255,255,0.14)',
-                      }}
-                    >
-                      <Image src={m.icon} alt={m.name} width={40} height={40} />
-                    </span>
-                    <span className="text-sm font-semibold" style={active ? { color: m.color } : undefined}>
-                      {m.line}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
           <div className="flex gap-3">
             <Button variant="ghost" size="lg" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
               뒤로
@@ -229,15 +176,12 @@ export function CreateScreen() {
               variant="default"
               size="lg"
               className="px-8 text-base"
-              onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 견습생', element, gender })}
+              onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 신입생', appearance: { gender }, starterPetId: petId })}
             >
-              모험 시작
+              입학하기
             </Button>
           </div>
         </div>
-
-        <p className="mx-auto mt-5 max-w-6xl text-sm leading-relaxed text-muted-foreground">{meta.blurb}</p>
-        <p className="mx-auto mt-1.5 max-w-6xl text-xs text-muted-foreground/60">삼원 상성: 화염계 → 빙결계 → 대지계 → 화염계</p>
       </div>
     </div>
   )

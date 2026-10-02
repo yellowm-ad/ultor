@@ -252,7 +252,7 @@ export function IsoWorld({
   )
   const MD = 58 // 몬스터 도트 표시 크기(일반 몬스터 기준)
   /** 필드에서의 보스 크기 배율 — 일반몹 1배 기준 중간보스 2.1배(3×0.7), 필드보스 4.2배(6×0.7) */
-  const fieldRankScale = (rank?: string) => (rank === 'fieldBoss' ? 4.2 : rank === 'midBoss' ? 2.1 : 1)
+  const fieldRankScale = (rank?: string) => (rank === 'fieldBoss' || rank === 'storyBoss' ? 4.2 : rank === 'miniBoss' ? 2.1 : 1)
   const monsterEntities = visibleMonsters.flatMap((fm) => {
     const def = MONSTERS.find((m) => m.id === fm.monsterId)
     if (!def) return []
@@ -279,7 +279,7 @@ export function IsoWorld({
                 width={def.name.length * 10 + 10}
                 height={14}
                 rx={3}
-                fill={def.isTestMonster ? 'rgba(6,60,30,0.75)' : def.rank === 'fieldBoss' ? 'rgba(120,20,10,0.85)' : def.rank === 'midBoss' ? 'rgba(90,50,10,0.8)' : 'rgba(60,10,10,0.68)'}
+                fill={def.isTestMonster ? 'rgba(6,60,30,0.75)' : def.rank === 'fieldBoss' ? 'rgba(120,20,10,0.85)' : def.rank === 'miniBoss' ? 'rgba(90,50,10,0.8)' : 'rgba(60,10,10,0.68)'}
               />
               <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={def.isTestMonster ? '#a8f0c0' : '#f0c0c0'}>
                 {def.isTestMonster ? 'TEST' : def.name}
@@ -385,7 +385,7 @@ export function IsoWorld({
           overflow="hidden"
           style={{ imageRendering: 'pixelated' }}
         >
-          <image href={`/images/sprites/hero-${state.player.element}-${state.player.gender}.png`} width={704} height={352} />
+          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={352} />
         </svg>
       </g>
     </g>

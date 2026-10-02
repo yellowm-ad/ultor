@@ -2,7 +2,8 @@
 
 import Image from 'next/image'
 import { useGame } from '@/lib/game-state'
-import { ELEMENT_META, JOB_TIERS, jobTierForLevel } from '@/lib/constants'
+import { POSITION_META } from '@/lib/constants'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { petDefById, petStatsForLevel } from '@/lib/pets'
 import { expProgressPercent, MAX_LEVEL } from '@/lib/exp-table'
 import { Sparkles } from 'lucide-react'
@@ -15,21 +16,15 @@ export function Hud() {
   const { player, pet } = state
   const petDef = petDefById(pet.defId)!
   const petMaxHp = petStatsForLevel(petDef, pet.level).maxHp
-  const elem = ELEMENT_META[player.element]
-  const jobTier = JOB_TIERS.find((t) => t.id === player.jobTierId)!
-  const eligible = jobTierForLevel(player.level)
-  const canJobChange = eligible.id !== player.jobTierId
+  const heroPos = state.formation.positions.hero ?? 'front'
 
   return (
     <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
       {/* 좌측: 캐릭터 + 펫 상태 — 박스 없이 초상+바만 화면 위에 직접 떠 있음(원신풍) */}
       <div className="pointer-events-auto flex flex-col gap-2">
         <div className="title-enter-1 flex items-center gap-2.5">
-          <div
-            className="portrait-ring flex size-12 shrink-0 items-center justify-center"
-            style={{ ['--ring-col' as string]: elem.color as string, ['--ring-glow' as string]: `${elem.color}88` }}
-          >
-            <Image src={elem.icon} alt={elem.name} width={26} height={26} />
+          <div className="portrait-ring flex size-12 shrink-0 items-end justify-center overflow-hidden">
+            <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={44} />
           </div>
           <div className="flex w-40 flex-col gap-1 sm:w-48">
             <div className="hud-clean-text hud-clean-label flex items-center gap-1.5 text-[13px]">
@@ -47,8 +42,8 @@ export function Hud() {
             </div>
             <div className="hud-clean-text flex items-center justify-between text-[10px]">
               <span>
-                {jobTier.shortName}
-                {canJobChange && player.level < MAX_LEVEL ? <span className="ml-1 text-gold-soft">· 전직 가능!</span> : null}
+                {POSITION_META[heroPos].label}
+                {player.level >= MAX_LEVEL ? <span className="ml-1 text-gold-soft">· 최고 레벨</span> : null}
               </span>
               <span className="text-gold-soft">{player.gold.toLocaleString()} G</span>
             </div>

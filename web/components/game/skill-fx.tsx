@@ -1,6 +1,9 @@
 'use client'
 
-import type { BattleFx, ElementOrNeutral } from '@/lib/types'
+import type { BattleFx, Element } from '@/lib/types'
+
+/** 연출 색 키 — 속성 없음(null)은 'none' */
+type FxKey = Element | 'none'
 
 // ============================================================================
 // 스킬 모션(VFX) — 참고: 데스크톱 "스킬 모션.png" 연출 가이드(시전준비→발동→대상이동→임팩트→상태효과).
@@ -15,16 +18,19 @@ import type { BattleFx, ElementOrNeutral } from '@/lib/types'
 // 무속성=강림하는 빛기둥) + 화면 비네트 펄스 + (battle-screen.tsx 에서) 화면 흔들림.
 // ============================================================================
 
-const FX_COLORS: Record<ElementOrNeutral, { a: string; b: string }> = {
+const FX_COLORS: Record<FxKey, { a: string; b: string }> = {
   fire: { a: '#ff7a3c', b: '#ffd580' },
   ice: { a: '#7fd0f5', b: '#e6faff' },
   earth: { a: '#c99a52', b: '#8a6a35' },
-  neutral: { a: '#f0e6c0', b: '#ffffff' },
+  dark: { a: '#7b4fc4', b: '#d6b8ff' },
+  light: { a: '#ffe27a', b: '#fffbe6' },
+  wind: { a: '#5fd4a8', b: '#e2fff4' },
+  none: { a: '#f0e6c0', b: '#ffffff' },
 }
 
 // PixelLab 도트 이펙트 스프라이트시트(9프레임) — 절차적 CSS 연출 위에 얹는 실제 픽셀아트 레이어.
 // animate_image 로 생성(불/얼음/대지 임팩트 + 회복 반짝임), 가로 9프레임 시트로 합성됨.
-const PIXEL_BURST_SHEET: Partial<Record<ElementOrNeutral, string>> = {
+const PIXEL_BURST_SHEET: Partial<Record<FxKey, string>> = {
   fire: '/images/battle/vfx/fire_burst.png',
   ice: '/images/battle/vfx/ice_burst.png',
   earth: '/images/battle/vfx/earth_burst.png',
@@ -79,7 +85,8 @@ export function SkillFxLayer({
   posOf: (uid: string) => FxPos | undefined
 }) {
   if (!fx) return null
-  const col = FX_COLORS[fx.element]
+  const fxKey: FxKey = fx.element ?? 'none'
+  const col = FX_COLORS[fxKey]
   const sourcePos = posOf(fx.sourceUid)
   const targetPositions = fx.targetUids.map((uid) => posOf(uid)).filter((p): p is FxPos => !!p)
   const tier = fxTier(fx)
@@ -94,7 +101,7 @@ export function SkillFxLayer({
 
       {fx.archetype === 'magicAttack' &&
         targetPositions.map((tp, i) => (
-          <MagicBolt key={i} from={sourcePos} to={tp} color={col} element={fx.element} aoe={fx.aoe} scale={scale} tier={tier} delay={i * 70} />
+          <MagicBolt key={i} from={sourcePos} to={tp} color={col} element={fxKey} aoe={fx.aoe} scale={scale} tier={tier} delay={i * 70} />
         ))}
 
       {fx.archetype === 'attack' &&
@@ -278,7 +285,7 @@ function LightPillar({ pos, color, delay = 0 }: { pos: FxPos; color: { a: string
 }
 
 /** 궁극기 임팩트 — 충격파 링 2겹 + 노바 코어 + 파티클 + (원소별) 균열/불티/빛기둥 */
-function UltimateBurst({ pos, element, color, delay }: { pos: FxPos; element: ElementOrNeutral; color: { a: string; b: string }; delay: number }) {
+function UltimateBurst({ pos, element, color, delay }: { pos: FxPos; element: FxKey; color: { a: string; b: string }; delay: number }) {
   const shape = element === 'ice' ? 'diamond' : element === 'earth' ? 'hex' : 'star'
   return (
     <>
@@ -286,7 +293,7 @@ function UltimateBurst({ pos, element, color, delay }: { pos: FxPos; element: El
       <ShockwaveRing pos={pos} color={color.b} size={136} delay={delay + 100} />
       <NovaCore pos={pos} colorA={color.a} colorB={color.b} size={80} shape={shape} delay={delay + 40} />
       <ParticleBurst pos={pos} color={color} count={10} radius={72} delay={delay + 50} direction={element === 'fire' ? 'up' : 'radial'} />
-      {element === 'neutral' && <LightPillar pos={pos} color={color} delay={delay} />}
+      {(element === 'none' || element === 'light') && <LightPillar pos={pos} color={color} delay={delay} />}
       {element === 'earth' && <ParticleBurst pos={pos} color={color} count={6} radius={38} delay={delay + 140} direction="up" />}
       {element === 'ice' && <ParticleBurst pos={pos} color={color} count={8} radius={90} delay={delay + 20} direction="radial" />}
     </>
@@ -321,7 +328,7 @@ function MagicBolt({
   from: FxPos | undefined
   to: FxPos
   color: { a: string; b: string }
-  element: ElementOrNeutral
+  element: FxKey
   aoe: boolean
   scale: number
   tier: FxTier

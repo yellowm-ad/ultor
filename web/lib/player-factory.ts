@@ -1,37 +1,46 @@
-import type { Element, GameState, Gender, Pet, PlayerCharacter } from '@/lib/types'
-import { computeStatsForLevel, jobTierForLevel, STARTING_GOLD, DEFAULT_SETTINGS } from '@/lib/constants'
+import type { GameState, Pet, PlayerAppearance, PlayerCharacter } from '@/lib/types'
+import { computeStatsForLevel, STARTING_GOLD, DEFAULT_SETTINGS } from '@/lib/constants'
 import { MAPS } from '@/lib/maps'
-import { autoLearnSkillIds } from '@/lib/mock-data'
-import { createPet, STARTER_PET_BY_ELEMENT } from '@/lib/pets'
+import { createPet, DEFAULT_STARTER_PET } from '@/lib/pets'
 import { createInitialCalendar } from '@/lib/calendar'
 import { createInitialAcademics } from '@/lib/academics'
 
-export function createPlayer(name: string, element: Element, gender: Gender = 'male'): PlayerCharacter {
-  const stats = computeStatsForLevel(element, 1)
-  const jobTier = jobTierForLevel(1)
+/**
+ * 주인공 시작 스킬 — 학교 수업 전에 쓸 수 있는 기본 물리 마술 하나(§사용자 지시 2026-10-02).
+ * 나머지는 전부 수업으로 배운다. 돌팔매 = 대지 물리 마술.
+ */
+export const STARTER_SKILLS = ['earth-basic-1']
+
+/** 주인공 외형 — 커마 없음. 흑발 금안 · 울토르 교복의 남/여 고정 2종(시트 protag-<gender>) */
+export function defaultAppearance(partial: Partial<PlayerAppearance> = {}): PlayerAppearance {
+  return { gender: partial.gender ?? 'male' }
+}
+
+/** 주인공 생성 — 속성은 고르지 않는다(§3.3). 주인공은 고정 속성이 없다. */
+export function createPlayer(name: string, appearance: Partial<PlayerAppearance> = {}): PlayerCharacter {
+  const stats = computeStatsForLevel(1)
   return {
-    name: name || '이름없는 견습생',
-    element,
-    gender,
+    name: name || '이름없는 신입생',
+    appearance: defaultAppearance(appearance),
     level: 1,
     exp: 0,
-    jobTierId: jobTier.id,
     stats,
     hp: stats.maxHp,
     mp: stats.maxMp,
     gold: STARTING_GOLD,
     equipped: {},
-    learnedSkills: autoLearnSkillIds(element, 1, 0),
+    learnedSkills: [...STARTER_SKILLS],
+    equippedSkills: [...STARTER_SKILLS],
   }
 }
 
-export function createStarterPet(element: Element): Pet {
-  return createPet(STARTER_PET_BY_ELEMENT[element], { level: 1, affection: 45 })
+export function createStarterPet(defId: string = DEFAULT_STARTER_PET): Pet {
+  return createPet(defId, { level: 1, affection: 45 })
 }
 
 export function createInitialGameState(): GameState {
-  const player = createPlayer('', 'fire', 'male')
-  const pet = createStarterPet('fire')
+  const player = createPlayer('')
+  const pet = createStarterPet()
   const village = MAPS.village
 
   return {
@@ -93,6 +102,7 @@ export function createInitialGameState(): GameState {
     storyQueue: [],
     relationships: {},
     companions: { recruited: {}, party: [] },
+    formation: { positions: { hero: 'front' } },
     life: { gatheredAt: {} },
     collections: { fish: {}, monsters: {}, gathered: {}, crafted: {} },
     mealBuff: null,

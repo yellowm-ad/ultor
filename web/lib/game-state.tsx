@@ -3,23 +3,17 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
 import type {
   BattleAction as EngineBattleAction,
-  Element,
   EquipSlot,
   GameState,
-  Gender,
+  PlayerAppearance,
+  Position,
   ScreenId,
 } from '@/lib/types'
-import {
-  JOB_TIER_ORDER,
-  MAX_PARTY_SIZE,
-  jobTierForLevel,
-  jobTierAtLeast,
-  computeStatsForLevel,
-} from '@/lib/constants'
+import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
 import { FURNITURE_BY_ID } from '@/lib/housing'
-import { ITEMS, MONSTERS, NPCS, SKILLS, autoLearnSkillIds, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
-import { applyExp, MAX_LEVEL } from '@/lib/exp-table'
+import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
+import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
 import { generateFieldMonsters } from '@/lib/field'
 import { getEffectiveStats } from '@/lib/derived'
@@ -40,31 +34,36 @@ import {
   afterBattleDefeat,
   afterBattleFled,
   afterBattleVictory,
-  battleStats,
+  battleParty,
   claimQuest,
   dismissStory,
   chooseStory,
   eatFood,
   endWeek,
   ensureWeek,
+  ensureParty,
   gatherAt,
+  grantHeroExp,
   healCompanions,
   newGameProgress,
-  partyAllies,
   recruitCompanion,
+  refreshSkills,
   resolveFishing,
+  setMemberPosition,
   setStoryFlag,
   startFishing,
+  swapPartyMember,
   talkTo,
+  toggleEquipSkill,
   togglePartyMember,
   visitMap,
   withQuestEvents,
 } from '@/lib/progression'
-import { COMPANIONS } from '@/lib/companions'
-import { mergeSave, writeSave } from '@/lib/save'
+import { COMBAT_NPCS } from '@/lib/companions'
+import { mergeSave, migrateLoadedState, writeSave } from '@/lib/save'
 
 export type Action =
-  | { type: 'START_GAME'; name: string; element: Element; gender: Gender }
+  | { type: 'START_GAME'; name: string; appearance: Partial<PlayerAppearance>; starterPetId: string }
   | { type: 'SET_SCREEN'; screen: ScreenId }
   | { type: 'MOVE'; dx: number; dy: number }
   | { type: 'OPEN_NPC'; npcId: string }
@@ -80,7 +79,8 @@ export type Action =
   | { type: 'REST' }
   | { type: 'EQUIP_ITEM'; itemId: string; slot: EquipSlot }
   | { type: 'UNEQUIP_ITEM'; slot: EquipSlot }
-  | { type: 'JOB_CHANGE' }
+  | { type: 'TOGGLE_EQUIP_SKILL'; skillId: string }
+  | { type: 'SET_ACTIVE_PET'; defId: string }
   | { type: 'START_BATTLE'; fieldMonsterUid: string }
   | { type: 'ENCOUNTER_FIGHT' }
   | { type: 'ENCOUNTER_FLEE' }
@@ -103,8 +103,6 @@ export type Action =
   // ── 관리자 테스트룸(/admin) 전용 ──────────────────────────────────────────
   | { type: 'ADMIN_ENTER_TESTROOM' }
   | { type: 'ADMIN_SET_LEVEL'; level: number }
-  | { type: 'ADMIN_SET_ELEMENT'; element: Element }
-  | { type: 'ADMIN_SET_GENDER'; gender: Gender }
   | { type: 'ADMIN_TOGGLE_SKILL'; skillId: string }
   | { type: 'ADMIN_LEARN_ALL_SKILLS' }
   | { type: 'ADMIN_CLEAR_SKILLS' }
@@ -126,15 +124,13 @@ export type Action =
   | { type: 'FISHING_RESULT'; success: boolean }
   | { type: 'RECRUIT_COMPANION'; companionId: string }
   | { type: 'TOGGLE_PARTY_MEMBER'; companionId: string }
+  | { type: 'SWAP_PARTY_MEMBER'; slot: number; companionId: string }
+  | { type: 'SET_POSITION'; memberId: string; position: Position }
   | { type: 'ADMIN_SET_WEEK'; week: number }
   | { type: 'ADMIN_FORCE_END_WEEK' }
   | { type: 'ADMIN_TOGGLE_UNLOCK_ALL' }
   | { type: 'ADMIN_RECRUIT_ALL' }
   | { type: 'ADMIN_GIVE_ITEM'; itemId: string; qty: number }
-
-function refreshLearnedSkills(element: string, level: number, tierId: string): string[] {
-  return autoLearnSkillIds(element, level, JOB_TIER_ORDER.indexOf(tierId as never))
-}
 
 const BODY_R = 0.24 // 캐릭터 반경(셀) — 이 만큼 건물 벽에서 떨어져 선다
 function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number, y: number): boolean {
@@ -161,8 +157,8 @@ function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'START_GAME': {
-      const player = createPlayer(action.name, action.element, action.gender)
-      const pet = createStarterPet(action.element)
+      const player = createPlayer(action.name, action.appearance)
+      const pet = createStarterPet(action.starterPetId)
       const fieldMonsters = generateFieldMonsters(MAPS.village, state.settings.testMode)
       // 새 게임 — 1학년 1학기 1주차부터(주간 퀘스트 생성 + 입학 스토리 비트 큐잉)
       return newGameProgress({
@@ -184,7 +180,8 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'LOAD_GAME': {
       const fresh = createInitialGameState()
-      const loaded = mergeSave(fresh, action.saved)
+      // 예전 세이브(고정 속성·전직·Lv50 시절)는 신규 규칙으로 변환한 뒤에만 쓴다
+      const loaded = migrateLoadedState(mergeSave(fresh, action.saved), action.saved)
       // 개인 공간 리마스터(2026-09-30): 손대지 않은 옛 초기 배치('seed-' 만)는 새 배치로 교체 — 벽 위치·가구 방향이 바뀜
       const placed = loaded.housing?.placed ?? []
       if (placed.length > 0 && placed.every((p) => p.id.startsWith('seed-'))) {
@@ -231,6 +228,21 @@ function reducer(state: GameState, action: Action): GameState {
     case 'TOGGLE_PARTY_MEMBER':
       return togglePartyMember(state, action.companionId)
 
+    case 'SWAP_PARTY_MEMBER':
+      return swapPartyMember(state, action.slot, action.companionId)
+
+    case 'SET_POSITION':
+      return setMemberPosition(state, action.memberId, action.position)
+
+    case 'TOGGLE_EQUIP_SKILL':
+      return toggleEquipSkill(state, action.skillId)
+
+    case 'SET_ACTIVE_PET': {
+      const found = state.ownedPets.find((p) => p.defId === action.defId)
+      if (!found) return state
+      return { ...state, pet: found, toast: `${found.nickname}을(를) 데리고 다닙니다. (주인공이 전위일 때 함께 싸웁니다)` }
+    }
+
     case 'ADMIN_SET_WEEK':
       return adminSetWeek(state, action.week)
 
@@ -245,8 +257,8 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'ADMIN_RECRUIT_ALL': {
       let next: GameState = { ...state, storyFlags: { ...state.storyFlags, DEBUG_UNLOCK_ALL: true } }
-      for (const c of COMPANIONS) next = recruitCompanion(next, c.id)
-      return { ...next, toast: '모든 동료가 합류했습니다.' }
+      for (const c of COMBAT_NPCS) next = recruitCompanion(next, c.id)
+      return { ...ensureParty(next), toast: '전투 가능한 학교 NPC 전원이 합류했습니다.' }
     }
 
     case 'SET_SCREEN': {
@@ -304,7 +316,7 @@ function reducer(state: GameState, action: Action): GameState {
       for (const fm of state.fieldMonsters) {
         const rank = monsterById(fm.monsterId)?.rank
         // 보스는 덩치가 큰 만큼 접촉 판정도 넉넉하게(필드보스가 가장 큼, 스프라이트 축소에 맞춰 비례 완화)
-        const radius = rank === 'fieldBoss' ? CONTACT_RADIUS * 1.84 : rank === 'midBoss' ? CONTACT_RADIUS * 1.35 : CONTACT_RADIUS
+        const radius = rank === 'fieldBoss' || rank === 'storyBoss' ? CONTACT_RADIUS * 1.84 : rank === 'miniBoss' ? CONTACT_RADIUS * 1.35 : CONTACT_RADIUS
         const d = Math.hypot(fm.homeCell.x - nx, fm.homeCell.y - ny)
         if (d < radius) {
           touched = fm.uid
@@ -471,7 +483,7 @@ function reducer(state: GameState, action: Action): GameState {
 
       if (item.type === 'feed' && item.useEffect.petAffection) {
         const def = petDefById(state.pet.defId)
-        const liked = item.feedElement === 'neutral' || item.feedElement === def?.element
+        const liked = !item.feedElement || item.feedElement === def?.element
         const gain = liked ? item.useEffect.petAffection : Math.round(item.useEffect.petAffection * 0.5)
         const pet = { ...state.pet, affection: clampAffection(state.pet.affection + gain) }
         return {
@@ -538,8 +550,8 @@ function reducer(state: GameState, action: Action): GameState {
     case 'EQUIP_ITEM': {
       const item = itemById(action.itemId)
       if (!item) return state
-      if (item.requiredJobTier && !jobTierAtLeast(state.player.jobTierId, item.requiredJobTier)) {
-        return { ...state, toast: '전직 단계가 부족하여 착용할 수 없습니다.' }
+      if (item.requiredLevel && state.player.level < item.requiredLevel) {
+        return { ...state, toast: `Lv.${item.requiredLevel} 이상부터 착용할 수 있습니다.` }
       }
       return {
         ...state,
@@ -552,21 +564,6 @@ function reducer(state: GameState, action: Action): GameState {
       const equipped = { ...state.player.equipped }
       delete equipped[action.slot]
       return { ...state, player: { ...state.player, equipped } }
-    }
-
-    case 'JOB_CHANGE': {
-      const eligible = jobTierForLevel(state.player.level)
-      if (eligible.id === state.player.jobTierId) return { ...state, toast: '아직 전직할 수 없습니다.' }
-      const learned = refreshLearnedSkills(state.player.element, state.player.level, eligible.id)
-      return {
-        ...state,
-        player: {
-          ...state.player,
-          jobTierId: eligible.id,
-          learnedSkills: Array.from(new Set([...state.player.learnedSkills, ...learned])),
-        },
-        toast: `${eligible.name}(으)로 전직했습니다!`,
-      }
     }
 
     // ── 관리자 테스트룸(/admin) 전용 액션 — 저장 데이터가 없는 순수 샌드박스이므로
@@ -590,42 +587,35 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'ADMIN_SET_LEVEL': {
       const level = Math.max(1, Math.min(MAX_LEVEL, Math.round(action.level)))
-      const stats = computeStatsForLevel(state.player.element, level)
-      return {
+      const stats = computeStatsForLevel(level)
+      return refreshSkills({
         ...state,
-        player: {
-          ...state.player,
-          level,
-          exp: 0,
-          jobTierId: jobTierForLevel(level).id,
-          stats,
-          hp: stats.maxHp,
-          mp: stats.maxMp,
-        },
-      }
+        player: { ...state.player, level, exp: 0, stats, hp: stats.maxHp, mp: stats.maxMp },
+      })
     }
-
-    case 'ADMIN_SET_ELEMENT': {
-      const stats = computeStatsForLevel(action.element, state.player.level)
-      return { ...state, player: { ...state.player, element: action.element, stats, hp: stats.maxHp, mp: stats.maxMp } }
-    }
-
-    case 'ADMIN_SET_GENDER':
-      return { ...state, player: { ...state.player, gender: action.gender } }
 
     case 'ADMIN_TOGGLE_SKILL': {
       const has = state.player.learnedSkills.includes(action.skillId)
+      if (!has && !isStudentSkill(SKILLS.find((s) => s.id === action.skillId)!)) return state // 펫·모르스 전용은 배울 수 없다
       const learnedSkills = has
         ? state.player.learnedSkills.filter((id) => id !== action.skillId)
         : [...state.player.learnedSkills, action.skillId]
-      return { ...state, player: { ...state.player, learnedSkills } }
+      const equippedSkills = has
+        ? state.player.equippedSkills.filter((id) => id !== action.skillId)
+        : state.player.equippedSkills.length < 8
+          ? [...state.player.equippedSkills, action.skillId]
+          : state.player.equippedSkills
+      return { ...state, player: { ...state.player, learnedSkills, equippedSkills } }
     }
 
-    case 'ADMIN_LEARN_ALL_SKILLS':
-      return { ...state, player: { ...state.player, learnedSkills: SKILLS.map((s) => s.id) } }
+    case 'ADMIN_LEARN_ALL_SKILLS': {
+      // 학생이 배울 수 있는 스킬 전부(바람·펫 전용 제외)
+      const learnedSkills = SKILLS.filter(isStudentSkill).map((s) => s.id)
+      return { ...state, player: { ...state.player, learnedSkills, equippedSkills: learnedSkills.slice(0, 8) } }
+    }
 
     case 'ADMIN_CLEAR_SKILLS':
-      return { ...state, player: { ...state.player, learnedSkills: [] } }
+      return { ...state, player: { ...state.player, learnedSkills: [], equippedSkills: [] } }
 
     case 'ADMIN_GIVE_ALL_ITEMS': {
       const inventory = ITEMS.map((i) => ({ itemId: i.id, qty: i.stackable ? 99 : 1 }))
@@ -711,22 +701,7 @@ function reducer(state: GameState, action: Action): GameState {
       const petC = state.battle.combatants.find((c) => c.uid === 'pet')
 
       if (state.battle.victory) {
-        const expResult = applyExp(state.player.level, state.player.exp, state.battle.rewardExp ?? 0)
-        let newStats = state.player.stats
-        let hp = heroC?.hp ?? state.player.hp
-        let mp = heroC?.mp ?? state.player.mp
-        let learnedSkills = state.player.learnedSkills
-        if (expResult.leveledUp) {
-          newStats = computeStatsForLevel(state.player.element, expResult.newLevel)
-          hp = newStats.maxHp
-          mp = newStats.maxMp
-          learnedSkills = Array.from(
-            new Set([
-              ...learnedSkills,
-              ...refreshLearnedSkills(state.player.element, expResult.newLevel, state.player.jobTierId),
-            ]),
-          )
-        }
+        const prevLevel = state.player.level
         let inventory = state.inventory
         for (const id of state.battle.rewardDrops ?? []) inventory = addToInventory(inventory, id, 1)
 
@@ -734,39 +709,37 @@ function reducer(state: GameState, action: Action): GameState {
           ? updateFieldMonstersAfterVictory(state.fieldMonsters, state.battle.fieldMonsterUid)
           : state.fieldMonsters
 
-        const eligibleTier = jobTierForLevel(expResult.newLevel)
-        const jobChangedAvailable = eligibleTier.id !== state.player.jobTierId
+        // 펫은 실제로 싸웠을 때(주인공 전위)만 HP 반영·호감도 상승
+        const pet = petC
+          ? { ...state.pet, hp: Math.max(1, petC.hp), mp: petC.mp, affection: clampAffection(state.pet.affection + 2) }
+          : state.pet
 
-        const pet = {
-          ...state.pet,
-          hp: Math.max(1, petC?.hp ?? state.pet.hp),
-          mp: petC?.mp ?? state.pet.mp,
-          affection: clampAffection(state.pet.affection + 2),
-        }
-
-        // 동료 성장·사냥 부산물·도감·주간 미션·식사 버프 차감(lib/progression.ts)
-        return afterBattleVictory(
+        // 경험치·레벨업(스탯 갱신 + 레벨 조건 스킬)은 퀘스트 경험치와 같은 경로
+        const leveled = grantHeroExp(
           {
             ...state,
             player: {
               ...state.player,
-              level: expResult.newLevel,
-              exp: expResult.newExp,
-              stats: newStats,
-              hp,
-              mp,
-              learnedSkills,
+              hp: heroC ? Math.max(1, Math.round((heroC.hp / Math.max(1, heroC.stats.maxHp)) * state.player.stats.maxHp)) : state.player.hp,
+              mp: heroC?.mp ?? state.player.mp,
               gold: state.player.gold + (state.battle.rewardGold ?? 0),
             },
+          },
+          state.battle.rewardExp ?? 0,
+        )
+        const newLevel = leveled.player.level
+
+        // 동료 성장·사냥 부산물·도감·주간 미션·식사 버프 차감(lib/progression.ts)
+        return afterBattleVictory(
+          {
+            ...leveled,
             pet,
             ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
             inventory,
             fieldMonsters,
             battle: null,
             screen: 'world',
-            toast: expResult.leveledUp
-              ? `레벨 업! Lv.${expResult.newLevel}${jobChangedAvailable ? ' — 전직 가능!' : ''}`
-              : null,
+            toast: newLevel > prevLevel ? `레벨 업! Lv.${newLevel}` : null,
           },
           state.battle,
         )
@@ -853,19 +826,24 @@ function startBattleFromField(state: GameState, fieldMonsterUid: string): GameSt
   const primaryDef = MONSTERS.find((m) => m.id === fm.monsterId)
   if (!primaryDef) return state
 
+  // 4대4 — 접촉한 몬스터 + 같은 지역 무리(일반 2~4마리 / 보스는 호위 2마리)
   const monsterDefs = [primaryDef]
-  if (!primaryDef.isTestMonster && Math.random() < 0.5) {
+  if (!primaryDef.isTestMonster) {
     const pool = MONSTERS.filter(
-      (m) => !m.isTestMonster && m.zoneKinds.some((k) => primaryDef.zoneKinds.includes(k)),
+      (m) => !m.isTestMonster && !isBossRank(m.rank) && m.zoneKinds.some((k) => primaryDef.zoneKinds.includes(k)),
     )
-    if (pool.length > 0) monsterDefs.push(pool[Math.floor(Math.random() * pool.length)])
+    const extra = isBossRank(primaryDef.rank) ? 2 : 1 + Math.floor(Math.random() * 3)
+    for (let i = 0; i < extra && pool.length > 0 && monsterDefs.length < MAX_ENEMIES; i++) {
+      monsterDefs.push(pool[Math.floor(Math.random() * pool.length)])
+    }
   }
 
-  // 장비 + 식사 버프 반영 스탯, 동료(최대 2명), 사냥 해금 여부
-  const battle = initBattle(state.player, state.pet, monsterDefs, state.position, fieldMonsterUid, battleStats(state), partyAllies(state), {
+  // 핵심 전투원 4명(주인공 + 학교 NPC 3) + 포지션 + 전위 주인의 펫, 사냥 해금 여부
+  const ready = ensureParty(state)
+  const battle = initBattle(battleParty(ready), monsterDefs, state.position, fieldMonsterUid, {
     huntEnabled: isActivityUnlocked(state, 'hunting'),
   })
-  return { ...state, previousScreen: state.screen, screen: 'battle', battle }
+  return { ...ready, previousScreen: state.screen, screen: 'battle', battle }
 }
 
 function updateFieldMonstersAfterVictory(fieldMonsters: GameState['fieldMonsters'], uid: string) {

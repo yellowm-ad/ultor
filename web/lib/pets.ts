@@ -1,8 +1,10 @@
 // ============================================================================
 // 펫 시스템 — 설계: Documents/울토르 시스템 DB.md §6
 // 도감 8종 + 호감도 4구간 + 스킬 훈련.
+// PRD v2.0 §20~22: 펫은 전위 캐릭터에게만 귀속(주인공은 보유 펫 중 1마리 선택, 학교 NPC 는 고정 펫).
+// 레벨 상한 100 — 주인공과 같은 경험치 곡선(lib/exp-table)을 쓴다.
 // ============================================================================
-import type { AffectionTier, Element, Pet, PetDef, Stats } from '@/lib/types'
+import type { AffectionTier, Pet, PetDef, Stats } from '@/lib/types'
 
 const common = (s: Partial<Stats>): Stats => ({
   maxHp: 40,
@@ -111,7 +113,7 @@ export const PET_DEFS: PetDef[] = [
     id: 'pet-wisp',
     name: '하양',
     species: '빛 정령',
-    element: 'neutral',
+    element: 'light',
     icon: '/images/pets/wisp.png',
     rarity: 'special',
     baseStats: common({ maxMp: 40, matk: 7, mdef: 6, spd: 8, luck: 6 }),
@@ -126,7 +128,7 @@ export const PET_DEFS: PetDef[] = [
     id: 'pet-shade',
     name: '그늘',
     species: '그림자 고양이',
-    element: 'neutral',
+    element: 'dark',
     icon: '/images/pets/shade.png',
     rarity: 'special',
     baseStats: common({ atk: 8, matk: 6, spd: 11, luck: 7 }),
@@ -143,18 +145,16 @@ export function petDefById(id: string): PetDef | undefined {
   return PET_DEFS.find((p) => p.id === id)
 }
 
-/** 속성별 스타터 펫 매핑 */
-export const STARTER_PET_BY_ELEMENT: Record<Element, string> = {
-  fire: 'pet-emberling',
-  ice: 'pet-frostkit',
-  earth: 'pet-pebblemole',
-}
+/** 캐릭터 생성 시 고를 수 있는 첫 펫 */
+export const STARTER_PET_IDS = ['pet-emberling', 'pet-frostkit', 'pet-pebblemole'] as const
+export const DEFAULT_STARTER_PET = 'pet-emberling'
+
 
 export function petStatsForLevel(def: PetDef, level: number): Stats {
   const out = { ...def.baseStats }
   ;(Object.keys(out) as (keyof Stats)[]).forEach((k) => {
-    // 레벨 100 확장 — 기존(50 기준) 성장률을 유지하도록 레벨을 환산(constants.legacyLevel)
-    out[k] = Math.max(1, Math.round(def.baseStats[k] + (def.growth[k] ?? 0) * ((level + 1) / 2 - 1)))
+    // Lv.100 성장식(PRD §15)과 같은 형태 — base + growth × (level − 1)
+    out[k] = Math.max(1, Math.round(def.baseStats[k] + (def.growth[k] ?? 0) * (Math.max(1, level) - 1)))
   })
   return out
 }

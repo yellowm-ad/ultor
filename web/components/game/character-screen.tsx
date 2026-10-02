@@ -6,9 +6,9 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { HeroPortrait } from '@/components/game/portrait'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { DiamondMark, rarityGlowStyle } from '@/components/game/ui-motifs'
-import { ELEMENT_META, JOB_TIERS } from '@/lib/constants'
+import { elementColor, elementLabel, POSITION_META, SKILL_LOADOUT_SIZE } from '@/lib/constants'
 import { itemById, SKILLS } from '@/lib/mock-data'
 import { getEffectiveStats } from '@/lib/derived'
 import { expProgressPercent, expRequiredForLevel, MAX_LEVEL } from '@/lib/exp-table'
@@ -33,25 +33,24 @@ export function CharacterScreen() {
   const close = () => dispatch({ type: 'SET_SCREEN', screen: 'world' })
 
   const { player } = state
-  const elem = ELEMENT_META[player.element]
-  const jobTier = JOB_TIERS.find((t) => t.id === player.jobTierId)!
   const effStats = getEffectiveStats(player)
   const learnedSkills = SKILLS.filter((s) => player.learnedSkills.includes(s.id))
+  const heroPos = state.formation.positions.hero ?? 'front'
 
   return (
     <Modal open onClose={close} title="내 정보" widthClass="max-w-2xl">
       <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
         <div className="flex flex-col items-center gap-2">
           <div
-            className="h-32 w-24 overflow-hidden rounded-lg border-2"
-            style={{ borderColor: elem.color as string, background: 'rgba(0,0,0,0.3)' }}
+            className="flex h-32 w-24 items-end justify-center overflow-hidden rounded-lg border-2 border-gold/60"
+            style={{ background: 'rgba(0,0,0,0.3)' }}
           >
-            <HeroPortrait element={player.element} gender={player.gender} className="h-full w-full" />
+            <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={96} />
           </div>
           <div className="text-center">
             <div className="font-display text-lg text-gold-soft">{player.name}</div>
             <div className="text-xs text-muted-foreground">
-              Lv.{player.level} · {jobTier.name} · {elem.line}
+              Lv.{player.level} · {POSITION_META[heroPos].label} · 고정 속성 없음
             </div>
           </div>
           <div className="w-full space-y-1">
@@ -117,31 +116,28 @@ export function CharacterScreen() {
           </div>
 
           <div>
-            <h3 className="mb-1.5 flex items-center gap-1.5 font-display text-sm font-bold text-[#8a6a2c]">
+            <h3 className="mb-1 flex items-center gap-1.5 font-display text-sm font-bold text-[#8a6a2c]">
               <DiamondMark size={11} />
-              습득 스킬 ({jobTier.name})
+              배운 마법 — 전투 장착 {player.equippedSkills.length}/{SKILL_LOADOUT_SIZE}
             </h3>
+            <p className="mb-1.5 text-[10px] opacity-60">마법은 학교 수업으로 배웁니다. 눌러서 전투에 들고 갈 마법을 고르세요.</p>
             <div className="flex flex-wrap gap-1.5">
-              {learnedSkills.length === 0 && <span className="text-xs opacity-50">습득한 스킬이 없습니다.</span>}
-              {learnedSkills.map((s) => (
-                <Badge key={s.id} title={s.description}>
-                  {s.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-1.5 flex items-center gap-1.5 font-display text-sm font-bold text-[#8a6a2c]">
-              <DiamondMark size={11} />
-              전직 단계
-            </h3>
-            <div className="flex flex-wrap gap-1">
-              {JOB_TIERS.map((t) => (
-                <Badge key={t.id} className={t.id === player.jobTierId ? 'border-gold bg-primary-soft text-gold' : 'opacity-40'}>
-                  {t.shortName} Lv.{t.minLevel}
-                </Badge>
-              ))}
+              {learnedSkills.length === 0 && <span className="text-xs opacity-50">배운 마법이 없습니다.</span>}
+              {learnedSkills.map((s) => {
+                const on = player.equippedSkills.includes(s.id)
+                const locked = (s.levelRequired ?? 0) > player.level
+                return (
+                  <button
+                    key={s.id}
+                    title={`${s.description}${locked ? ` (Lv.${s.levelRequired}부터 사용 가능)` : ''}`}
+                    onClick={() => dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id })}
+                    className={`rounded-md border px-2 py-0.5 text-[11px] ${on ? 'border-[#8a6a2c] bg-[#8a6a2c]/20 font-semibold' : 'border-black/15 opacity-60'} ${locked ? 'line-through' : ''}`}
+                  >
+                    <span style={{ color: elementColor(s.element) }}>●</span> {s.name}
+                    <span className="ml-1 text-[9px] opacity-60">{elementLabel(s.element)}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

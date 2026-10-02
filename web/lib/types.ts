@@ -1,26 +1,30 @@
 // ============================================================================
 // 마법학교 울토르 (원작 시스템 복원) — 도메인 타입 정의
-// 설계 기준: Documents/울토르 시스템 DB.md
+// 설계 기준: 「울토르 마법학교 시스템 개편 PRD v2.0」(2026-10-02, 최우선) > 학사·생활·동료 PRD > 울토르 시스템 DB.md
 // 모든 화면/컴포넌트는 이 타입을 기준으로 데이터를 주고받는다.
 // ============================================================================
 
-/** 삼원 상성 순환: 화염계 > 빙결계 > 대지계 > 화염계 */
-export type Element = 'fire' | 'ice' | 'earth'
-export type ElementOrNeutral = Element | 'neutral'
+/**
+ * 전투 속성(§PRD v2.0 §8~9) — 플레이어가 배우는 5속성 + 모르스 전용 유실 속성(바람).
+ *   3원소 핵심 상성: 불꽃 > 얼음 > 대지 > 불꽃 · 어둠/빛은 상성 없이 역할로 차별화 · 바람은 상성표 밖.
+ * 속성이 필요 없는 행동(기본 공격·일반 행동·회복 아이템 등)은 `null` 로 표현한다 — 6번째 원소가 아니다.
+ */
+export type Element = 'fire' | 'ice' | 'earth' | 'dark' | 'light' | 'wind'
+/** 플레이어·일반 NPC·일반 몬스터가 쓸 수 있는 속성(바람 제외) */
+export type PlayerElement = Exclude<Element, 'wind'>
+/** 스킬/전투원 속성 — null = 속성 없음 */
+export type SkillElement = Element | null
 
 export type Gender = 'male' | 'female'
 
-/** 전직 5단계. 요구 레벨 1 / 10 / 20 / 30 / 40 */
-export type JobTierId = 'apprentice' | 'novice' | 'adept' | 'magus' | 'archmagus'
+/**
+ * 4등신 도트 시트 키 = public/images/sprites/<key>.png (8열×4행: 회전 + 정면/측면/후면 걷기).
+ * 예: 'protag-male'(주인공), 'hero-ice-female'(예전 주인공 시트를 쓰는 학교 NPC), 'npc-sella'.
+ */
+export type SpriteSheet = string
 
-export interface JobTier {
-  id: JobTierId
-  order: number // 0~4
-  name: string // 견습 마법사 등
-  shortName: string
-  minLevel: number
-  description: string
-}
+/** 4대4 전투 포지션(§17~19) */
+export type Position = 'front' | 'rear' | 'support'
 
 /** 전투/성장 스탯 */
 export interface Stats {
@@ -50,13 +54,30 @@ export type StatusId =
   | 'slow' // 감속
   | 'weaken' // 약화
 
-export type BuffId = 'defendGuard' | 'ironWall' | 'haste' | 'rally' | 'lastStand' | 'elemUp'
+export type BuffId =
+  | 'defendGuard'
+  | 'ironWall' // 방어·마방 증가
+  | 'haste' // 속도 증가
+  | 'rally' // 공격·마공 증가
+  | 'lastStand'
+  | 'atkUp' // 빛: 공격력 증가
+  | 'defUp' // 빛: 방어력 증가
+  | 'matkUp' // 빛: 마법 공격력 증가
+  | 'mdefUp' // 빛: 마법 방어력 증가
+  | 'stealth' // 어둠: 은신 — 단일 대상 공격의 표적이 되지 않는다(광역은 무시)
 
-/** 전투원에 부착되는 상태이상/버프 인스턴스 */
+/** 어둠 계열 약화 효과(상태이상 9종과 별개, 정화로 함께 지워진다) */
+export type DebuffId =
+  | 'atkDown' // 공격력·마공 감소
+  | 'defDown' // 방어력·마방 감소
+  | 'accDown' // 명중률 감소
+  | 'illusion' // 환술 — 공격 대상 교란 + 명중 저하
+
+/** 전투원에 부착되는 상태이상/버프/약화 인스턴스 */
 export interface ActiveEffect {
   key: string // 인스턴스 고유 id
-  kind: 'status' | 'buff'
-  id: StatusId | BuffId
+  kind: 'status' | 'buff' | 'debuff'
+  id: StatusId | BuffId | DebuffId
   name: string
   turnsLeft: number
   /** 부여 시점의 부여자 마법공격력 — 화상 등 지속피해 계산용 */
@@ -69,7 +90,16 @@ export interface ActiveEffect {
 // 스킬
 // ─────────────────────────────────────────────────────────────────────────────
 export type SkillTargeting = 'singleEnemy' | 'allEnemies' | 'singleAlly' | 'allAllies' | 'self'
-export type SkillKind = 'attack' | 'heal' | 'buff' | 'debuff' | 'utility'
+export type SkillKind =
+  | 'attack'
+  | 'heal'
+  | 'buff'
+  | 'debuff'
+  | 'utility'
+  | 'revive' // 빛: 전투불능 아군 부활
+  | 'stealth' // 어둠: 아군 은신
+  | 'illusion' // 어둠: 환술
+  | 'execute' // 어둠: 일반 몬스터 즉사(보스 피해 0)
 
 export interface SkillStatusRider {
   id: StatusId
@@ -77,12 +107,30 @@ export interface SkillStatusRider {
   turns?: number
 }
 
+/**
+ * 스킬 습득 조건(§23~24) — 전부 만족하면 습득된다. 전직 단계(jobTier)는 폐지.
+ *   course    : 해당 과목의 수업 진도로 배운다(lib/academics.ts teachesSkills)
+ *   level     : 주인공 레벨
+ *   storyFlag : 스토리 플래그
+ *   item      : 아이템(교본) 보유
+ */
+export type LearnRequirement =
+  | { type: 'course'; id: string }
+  | { type: 'level'; level: number }
+  | { type: 'storyFlag'; id: string }
+  | { type: 'item'; id: string }
+
 export interface Skill {
   id: string
   name: string
-  element: ElementOrNeutral
-  jobTier: JobTierId
-  levelRequired: number
+  /** null = 속성 없음 */
+  element: SkillElement
+  /** 이 레벨 미만이면 배웠어도 아직 쓸 수 없다(생략 = 제한 없음) */
+  levelRequired?: number
+  /** 주인공 습득 조건. 생략 = 학교 수업으로 배우지 않는 스킬(펫·몬스터·NPC 전용) */
+  learnRequirements?: LearnRequirement[]
+  /** 습득 주체 — 'pet' 펫 훈련 전용, 'mors' 모르스 전용(바람). 생략 = 학생/NPC/몬스터 공용 */
+  owner?: 'pet' | 'mors'
   mpCost: number
   atbCost?: number // 사용 후 추가 ATB 차감(궁극기 후딜)
   power: number // 위력 배율
@@ -91,9 +139,13 @@ export interface Skill {
   targeting: SkillTargeting
   status?: SkillStatusRider // 부여 상태이상
   buff?: { id: BuffId; magnitude: number; turns: number }
-  cleanse?: boolean // 상태이상 해제
+  /** 어둠 약화 효과 — chance 생략 시 1 */
+  debuff?: { id: DebuffId; magnitude: number; turns: number; chance?: number }
+  cleanse?: boolean // 상태이상·약화 해제
   reviveHpRatio?: number // 부활 스킬
   restoreMpRatio?: number // MP 회복 스킬(배율 * matk)
+  /** 즉사 판정 — 일반 몬스터만, 보스류는 면역 + 피해 0 */
+  execute?: { normalOnly: true; successChance: number; bossDamage: 0 }
   icon: string
   description: string
 }
@@ -143,9 +195,10 @@ export interface ItemDef {
   price: number
   sellPrice: number
   statBonus?: Partial<Stats>
-  requiredJobTier?: JobTierId
-  /** 무기: 이 속성 스킬 위력 +8% */
-  weaponElement?: Element
+  /** 착용 요구 레벨(전직 단계 요구는 폐지) */
+  requiredLevel?: number
+  /** 무기: 이 속성 스킬 위력 +8% (바람 완드는 존재하지 않는다) */
+  weaponElement?: PlayerElement
   /** 상태이상 저항 % (장신구) */
   statusResist?: number
   useEffect?: {
@@ -157,7 +210,8 @@ export interface ItemDef {
     atbBoost?: number // 대상 ATB 즉시 가산
     petAffection?: number // 펫 호감도 증가
   }
-  feedElement?: Element | 'neutral'
+  /** 먹이: 이 속성 펫이 좋아한다. 생략 = 모든 펫이 조금씩 좋아함 */
+  feedElement?: PlayerElement
   stackable: boolean
   maxStack: number
   /** 장비 성장 단계(전직 5단계와 동일 축). 소모품·재료는 생략 가능 */
@@ -210,8 +264,8 @@ export interface RecipeDef {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 펫 (원작: 최대 2마리 동반, 호감도, 스킬 훈련)
-// 본 복원 1차 구현은 활성 슬롯 1마리 + 완전한 도감/호감도/훈련 데이터 모델.
+// 펫 (§20~22) — 파티 최대 2마리, 전위(FRONT) 캐릭터에게만 귀속.
+// 주인공은 보유 펫 중 1마리를 고르고, 학교 NPC 는 각자 고정 펫을 데리고 다닌다.
 // ─────────────────────────────────────────────────────────────────────────────
 export type PetRarity = 'common' | 'rare' | 'special'
 
@@ -226,7 +280,8 @@ export interface PetDef {
   id: string
   name: string
   species: string
-  element: ElementOrNeutral
+  /** null = 속성 없음 */
+  element: SkillElement
   icon: string
   rarity: PetRarity
   baseStats: Stats
@@ -253,6 +308,12 @@ export type AffectionTier = 'unfamiliar' | 'familiar' | 'close' | 'devoted'
 // ─────────────────────────────────────────────────────────────────────────────
 export type CombatantSide = 'player' | 'enemy'
 
+/** 펫 ↔ 주인(전위 캐릭터) 연결(§20). 주인의 position 이 front 가 아니면 전투에 참가할 수 없다 */
+export interface PetLink {
+  petUid: string
+  ownerCombatantUid: string
+}
+
 export interface Combatant {
   uid: string
   side: CombatantSide
@@ -260,7 +321,16 @@ export interface Combatant {
   refId: string
   name: string
   icon: string
-  element: ElementOrNeutral
+  element: SkillElement
+  /** 아군 핵심 전투원의 포지션(펫·몬스터는 없음) */
+  position?: Position
+  /** 펫 — 주인 전투원 uid */
+  ownerUid?: string
+  /** 몬스터 등급 — 즉사 판정·AI 에 사용 */
+  rank?: MonsterRank
+  aiProfile?: AiProfile
+  /** 장착 무기 속성 — 같은 속성 스킬 위력 +8% */
+  weaponElement?: PlayerElement
   level: number
   stats: Stats // 장비 반영 후 기본 스탯. 상태이상/버프는 계산 시점에 적용
   hp: number
@@ -275,7 +345,7 @@ export interface Combatant {
   /** 펫 호감도 '헌신' 지원 공격 확률 */
   supportChance?: number
   /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다 */
-  appearance?: { kind: 'hero'; element: Element; gender: Gender } | { kind: 'npc'; npcId: string }
+  appearance?: { kind: 'hero'; sheet: SpriteSheet } | { kind: 'npc'; npcId: string }
   alive: boolean
 }
 
@@ -297,12 +367,27 @@ export type MonsterFamily =
 
 export type MonsterTrait = 'aggressive' | 'caster' | 'tank' | 'swift' | 'splitOnDeath'
 
+/** 몬스터 등급(§32) — 어둠 즉사는 normal 만 가능 */
+export type MonsterRank = 'normal' | 'elite' | 'miniBoss' | 'fieldBoss' | 'storyBoss'
+
+/**
+ * 전투 AI 표적 성향(§33)
+ *   melee     근접형 — 전위 우선
+ *   healerHunt 힐러 사냥 — 후위(회복 담당) 우선
+ *   support   교란형 — 보조 우선
+ *   finisher  마무리형 — 체력 낮은 대상 우선
+ *   random    무작위
+ * 공통: 은신 대상은 단일 대상 공격의 표적에서 제외(전원 은신이면 예외).
+ */
+export type AiProfile = 'melee' | 'healerHunt' | 'support' | 'finisher' | 'random'
+
 export interface MonsterDef {
   id: string
   name: string
   level: number
   icon: string
-  element: ElementOrNeutral
+  /** null = 속성 없음. wind 는 모르스 전용 */
+  element: SkillElement
   family: MonsterFamily
   stats: Stats
   skills: string[]
@@ -311,8 +396,10 @@ export interface MonsterDef {
   goldReward: number
   dropTable?: { itemId: string; chance: number }[]
   zoneKinds: ZoneKind[]
-  /** 생략 시 'normal'. 중간보스/필드보스는 monstersForZoneKind 랜덤풀에서 제외되고 GameMap.bossSpawns로만 등장한다 */
-  rank?: 'normal' | 'midBoss' | 'fieldBoss' | 'storyBoss'
+  /** 생략 시 'normal'. miniBoss/fieldBoss/storyBoss 는 monstersForZoneKind 랜덤풀에서 제외되고 GameMap.bossSpawns로만 등장한다 */
+  rank?: MonsterRank
+  /** 생략 시 traits 에서 유추(lib/battle-engine aiProfileOf) */
+  aiProfile?: AiProfile
   isTestMonster?: boolean
 }
 
@@ -484,7 +571,7 @@ export interface GameMap {
 }
 
 export type NpcRole =
-  | 'jobTrainer'
+  | 'professor' // 수업 담당 교수(전직 담당관 폐지)
   | 'weaponMerchant'
   | 'potionMerchant'
   | 'toolMerchant'
@@ -522,19 +609,28 @@ export interface FieldMonster {
 // ─────────────────────────────────────────────────────────────────────────────
 // 플레이어 / 게임 상태
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * 주인공 외형 — 커스터마이징은 폐기(2026-10-02). 고정 외형 2종(흑발 금안 · 울토르 교복) 중 성별만 고른다.
+ * 주인공은 고정 속성이 없다.
+ */
+export interface PlayerAppearance {
+  gender: Gender
+}
+
 export interface PlayerCharacter {
   name: string
-  element: Element
-  gender: Gender
+  appearance: PlayerAppearance
   level: number
   exp: number
-  jobTierId: JobTierId
   stats: Stats
   hp: number
   mp: number
   gold: number
   equipped: Partial<Record<EquipSlot, string>>
+  /** 학교 수업·스토리·레벨로 배운 전체 스킬 */
   learnedSkills: string[]
+  /** 전투에 들고 가는 스킬(최대 SKILL_LOADOUT_SIZE) — learnedSkills 의 부분집합 */
+  equippedSkills: string[]
 }
 
 export interface BattleLogEntry {
@@ -548,7 +644,7 @@ export interface BattleFx {
   fxId: string
   sourceUid: string
   targetUids: string[]
-  element: ElementOrNeutral
+  element: SkillElement
   /** 연출 갈래 판정용 — 스킬의 kind 그대로, 기본공격은 'attack', 아이템은 useEffect 기반 별도 태그 */
   archetype: 'attack' | 'magicAttack' | 'heal' | 'buff' | 'debuff' | 'utility' | 'item'
   aoe: boolean
@@ -571,7 +667,8 @@ export interface BattleState {
   rewardGold?: number
   rewardDrops?: string[]
   leveledUp?: boolean
-  jobChangedAvailable?: boolean
+  /** 이번 전투의 펫 귀속(전위 주인만) */
+  petLinks?: PetLink[]
   /** 사냥 활동 해금 여부 — 승리 시 계통별 부산물(huntDrops)을 추가로 굴린다 */
   huntEnabled?: boolean
   huntDrops?: string[]
@@ -586,7 +683,6 @@ export type ScreenId =
   | 'character'
   | 'party'
   | 'shop'
-  | 'jobChange'
   | 'tamer'
   | 'settings'
   | 'dialogue'
@@ -635,6 +731,8 @@ export interface GameState {
   /** NPC·동료 관계도(§63) */
   relationships: Record<string, RelationshipState>
   companions: CompanionRoster
+  /** 4대4 전투 진형 — 파티원별 포지션(§17) */
+  formation: FormationState
   life: LifeState
   collections: CollectionState
   /** 먹은 요리 버프(한 번에 하나) */
@@ -747,10 +845,15 @@ export interface CompanionProgress {
 }
 
 export interface CompanionRoster {
-  /** 합류한 동료 id → 성장 상태 */
+  /** 파티에 합류한 학교 NPC id → 성장 상태 */
   recruited: Record<string, CompanionProgress>
-  /** 전투에 데려가는 동료(최대 MAX_PARTY_SIZE - 2) */
+  /** 전투에 데려가는 학교 NPC(주인공 제외 최대 MAX_PARTY_SIZE - 1 = 3명) */
   party: string[]
+}
+
+/** 진형 — key 는 'hero' 또는 학교 NPC id */
+export interface FormationState {
+  positions: Record<string, Position>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

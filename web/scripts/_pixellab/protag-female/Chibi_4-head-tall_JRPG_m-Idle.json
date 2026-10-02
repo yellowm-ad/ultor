@@ -1,0 +1,69 @@
+{
+  "character": {
+    "id": "43ec8edc-1aea-4fb8-bef7-f3a7a7f128e8",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage cadet, quiet traveling student girl, long straight black hair loosely tied at the back with a small dark ribbon, side bangs, calm golden eyes, deep navy-black magic academy uniform jacket with high collar and thin gold piping, gold three-element school crest on the chest, knee-length coat tails, white blouse with dark ribbon tie, pleated dark skirt with black tights, brown leather strap belt holding a small spellbook at the hip, fingerless dark gloves, sturdy brown travel boots",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Chibi_4-head-tall_JRPG_m-Idle.png",
+    "cell_size": {
+      "width": 88,
+      "height": 88
+    },
+    "sheet_size": {
+      "width": 792,
+      "height": 352
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "0c11941b-d65d-4b28-b614-f652c620f5d1",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "0c11941b-d65d-4b28-b614-f652c620f5d1",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "0c11941b-d65d-4b28-b614-f652c620f5d1",
+        "direction": "north"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-02T05:34:49.543677+00:00"
+}

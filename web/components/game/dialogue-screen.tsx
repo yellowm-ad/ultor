@@ -7,10 +7,11 @@ import { npcWeeklyLine } from '@/lib/npc-weekly-lines'
 import { Button } from '@/components/ui/button'
 import { Portrait } from '@/components/game/portrait'
 import { DiamondMark } from '@/components/game/ui-motifs'
-import { JOB_TIERS, jobTierForLevel } from '@/lib/constants'
+import { coursesForWeek, nextCourseSkill } from '@/lib/academics'
+import { skillById } from '@/lib/mock-data'
 
 const ROLE_LABEL: Record<string, string> = {
-  jobTrainer: '전직 담당관',
+  professor: '교수',
   weaponMerchant: '무기 상인',
   potionMerchant: '물약 상인',
   toolMerchant: '도구 상인',
@@ -39,12 +40,16 @@ export function DialogueScreen() {
 
   const isShopkeeper = ['weaponMerchant', 'potionMerchant', 'toolMerchant'].includes(npc.role)
   const isTamer = npc.role === 'petTamer'
-  const isJobTrainer = npc.role === 'jobTrainer'
+  const isProfessor = npc.role === 'professor'
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'
-  const eligible = jobTierForLevel(state.player.level)
-  const canJobChange = isJobTrainer && eligible.id !== state.player.jobTierId
-  const currentTier = JOB_TIERS.find((t) => t.id === state.player.jobTierId)!
+  // 교수: 이번 학기 수업과 다음에 배울 마법 안내(전직 담당관 폐지 — 마법은 수업으로 배운다)
+  const courseNotes = isProfessor
+    ? coursesForWeek(state.calendar.globalWeek).flatMap((c) => {
+        const nx = nextCourseSkill(c, state.academics.courseScore[c.id] ?? 0)
+        return nx ? [`「${c.name}」 점수 ${nx.needScore} → ${skillById(nx.skillId)?.name ?? nx.skillId}`] : []
+      })
+    : []
   // 이번 주 대사(주간 풀)를 첫 줄로, 이어서 기본 인사
   const weekly = npcWeeklyLine(npc.id, state)
   const lines = weekly ? [weekly, ...npc.greeting] : npc.greeting
@@ -104,24 +109,11 @@ export function DialogueScreen() {
                 </Button>
               )}
 
-              {lastLine && isJobTrainer &&
-                (canJobChange ? (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => {
-                      dispatch({ type: 'JOB_CHANGE' })
-                      close()
-                    }}
-                  >
-                    {eligible.name}(으)로 전직
-                  </Button>
-                ) : (
-                  <span className="self-center text-[11px] text-[#6b5a38]">
-                    현재 {currentTier.name} · 다음 전직 Lv.
-                    {JOB_TIERS.find((t) => t.order === currentTier.order + 1)?.minLevel ?? '-'}
-                  </span>
-                ))}
+              {lastLine && isProfessor && (
+                <span className="self-center text-[11px] text-[#6b5a38]">
+                  {courseNotes.length ? `다음 수업 마법 — ${courseNotes.join(' · ')}` : '이번 학기 수업 마법은 모두 익혔거나 방학입니다.'}
+                </span>
+              )}
 
               <Button variant="ghost" size="sm" onClick={close} className="text-[var(--parchment-foreground)] hover:bg-black/10">
                 닫기

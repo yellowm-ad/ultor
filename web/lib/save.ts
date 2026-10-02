@@ -6,13 +6,19 @@
 // 늘어나도 예전 세이브가 깨지지 않게 한다. 전투 중·오버레이 같은 일시 상태는 저장하지 않는다.
 // ============================================================================
 
-import type { GameState } from '@/lib/types'
+import type { GameState, Gender } from '@/lib/types'
+import { computeStatsForLevel } from '@/lib/constants'
+import { MAX_LEVEL } from '@/lib/exp-table'
+import { defaultAppearance, STARTER_SKILLS } from '@/lib/player-factory'
+import { ensureParty, refreshSkills } from '@/lib/progression'
+import { itemById } from '@/lib/mock-data'
 
 // 버전은 키가 아니라 값(SaveFile.version) 안에 둔다 — 키에 버전을 붙이면 버전이 바뀔 때 옛 세이브를 못 찾는다.
 export const SAVE_KEY = 'ultor-save'
 /** 초기 버전이 쓰던 키 — 읽을 때만 확인해서 새 키로 옮긴다 */
 const LEGACY_KEYS = ['ultor-save-v1']
-const SAVE_VERSION = 1
+/** 2 = PRD v2.0 개편(커마 주인공·5속성·전직 폐지·4대4 포지션) */
+const SAVE_VERSION = 2
 
 interface SaveFile {
   version: number
@@ -125,4 +131,45 @@ export function mergeSave(base: GameState, saved: Partial<GameState>): GameState
     }
   }
   return out as unknown as GameState
+}
+
+/**
+ * 불러온 상태를 PRD v2.0 규칙으로 정리한다(멱등 — 이미 새 형식이어도 안전).
+ *   · 주인공: 고정 속성/전직 필드 제거 → 외형은 성별만(흑발 금안 고정 주인공 protag-<gender>)
+ *   · 스탯: Lv.100 공용 성장식으로 다시 계산
+ *   · 스킬: 전직 자동 습득분을 버리고 수업 이수 기록으로 다시 계산(+ 시작 스킬), 장착 슬롯 재구성
+ *   · 파티: 1학년 동기 자동 합류 + 4인 편성 + 진형 정리
+ *   · 장비: 존재하지 않는 아이템 해제
+ * 이후 런타임은 신규 규칙만 쓴다.
+ */
+export function migrateLoadedState(state: GameState, raw: Partial<GameState>): GameState {
+  const legacy = raw.player as unknown as { element?: string; gender?: Gender; jobTierId?: string; appearance?: unknown } | undefined
+  let player = state.player
+  const wasLegacy = !!legacy && (!legacy.appearance || legacy.jobTierId != null || legacy.element != null)
+  if (wasLegacy) {
+    const { element: _e, gender: _g, jobTierId: _j, ...rest } = player as unknown as Record<string, unknown>
+    player = {
+      ...(rest as unknown as GameState['player']),
+      appearance: defaultAppearance({ gender: legacy?.gender ?? 'male' }),
+      learnedSkills: [...STARTER_SKILLS],
+      equippedSkills: [...STARTER_SKILLS],
+    }
+  }
+  const level = Math.max(1, Math.min(MAX_LEVEL, player.level || 1))
+  const stats = computeStatsForLevel(level)
+  const equipped = { ...player.equipped }
+  for (const [slot, id] of Object.entries(equipped)) if (id && !itemById(id)) delete equipped[slot as keyof typeof equipped]
+  player = {
+    ...player,
+    level,
+    stats,
+    hp: Math.max(1, Math.min(stats.maxHp, player.hp)),
+    mp: Math.max(0, Math.min(stats.maxMp, player.mp)),
+    equipped,
+    learnedSkills: player.learnedSkills ?? [...STARTER_SKILLS],
+    equippedSkills: player.equippedSkills ?? (player.learnedSkills ?? []).slice(0, 8),
+    appearance: defaultAppearance(player.appearance ?? {}),
+  }
+  const formation = state.formation?.positions ? state.formation : { positions: { hero: 'front' as const } }
+  return ensureParty(refreshSkills({ ...state, player, formation }))
 }

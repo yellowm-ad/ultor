@@ -80,7 +80,7 @@ function AdminShell() {
   // 1) 타이틀이면 즉시 기본 캐릭터로 START_GAME
   useEffect(() => {
     if (!booted && state.screen === 'title') {
-      dispatch({ type: 'START_GAME', name: '관리자', element: 'fire', gender: 'female' })
+      dispatch({ type: 'START_GAME', name: '관리자', appearance: {}, starterPetId: 'pet-emberling' })
       setBooted(true)
     }
   }, [booted, state.screen, dispatch])

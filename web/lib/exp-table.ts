@@ -1,43 +1,87 @@
 // ============================================================================
-// 레벨업 필요 경험치 테이블
+// 레벨업 필요 경험치 — Lv.100 곡선(§PRD v2.0 §14)
 //
-// 2026-09 밸런스 패치: 기존엔 메이플스토리 실측 곡선(1→50을 메이플 1→200으로 환산)을
-// 그대로 써서 후반 레벨 하나에 수십억 경험치가 필요한 등 비현실적으로 가팔랐다.
-// "하루 3시간 × 주 7일(주 21시간) 꾸준히 플레이하면 만렙(50) 도달, 초반 30레벨까지는
-// 빠르게" 라는 목표에 맞춰 완전히 새로 설계.
+// 목표 체감:
+//   Lv.1~30   빠른 성장
+//   Lv.31~50  점점 느려짐
+//   Lv.51~80  노력이 필요한 성장
+//   Lv.81~100 한 레벨 올리는 것 자체가 장기 목표
 //
-// 설계 방식: "그 레벨에서 맞는 사냥터 몬스터를 몇 마리 잡아야 다음 레벨이 되는가"를
-// 기준으로 역산했다. kills(L) = 3 + 0.05·L^1.8 (레벨1≈3마리 → 레벨49≈47마리로 완만히
-// 증가), monExp(L) ≈ 5.5·L + 0.2·L² (실제 lib/mock-data.ts 몬스터 expReward 값 회귀
-// 근사치)를 곱해 필요 경험치를 얻는다. 활발한 사냥 페이스(체감 시간당 60~120마리
-// 처치 — 이동·전투·복귀 포함)를 가정하면 전체 1→50 합계(~53만 exp, 총 킬수 ~1,140마리)가
-// 21시간 전후에 맞아떨어진다. 실제 체감 속도는 플레이 패턴에 따라 달라질 수 있으니
-// 실측 후 kills()/monExp() 계수만 조정하면 됨(테이블 재계산 로직은 그대로 재사용).
+// 현재 레벨 L 에서 다음 레벨까지:
+//   L ≤ 30 : 80·L^1.35
+//   L ≤ 50 : C2·L^2.0    (C2 = XP(30) / 30²)
+//   L ≤ 80 : C3·L^2.4    (C3 = C2·50² / 50^2.4)
+//   L > 80 : C4·L^3.0    (C4 = C3·80^2.4 / 80³)
+// 구간 경계에서 값이 이어지도록 계수를 이어 붙인다. 누적 1→100 ≈ 354만 EXP.
+//
+// 몬스터 처치 경험치도 같은 곡선에 맞춰 레벨별로 다시 잡는다(monsterBaseExp) — "그 레벨 사냥터 몬스터를
+// 몇 마리 잡아야 다음 레벨인가"가 Lv1 ≈ 3마리 → Lv30 ≈ 12 → Lv50 ≈ 24 → Lv80 ≈ 60 → Lv99 ≈ 136마리로 늘어난다.
 // ============================================================================
 
-// 2026-09-28: 레벨 상한 100. 기존 1→50 곡선을 레벨 2개로 쪼갠다 — 새 레벨 L 의 필요치 = 기존 레벨 (L+1)/2 필요치의 절반.
-// 따라서 1→100 총 경험치(=플레이 시간)는 기존 1→50 과 거의 같고, 레벨업 빈도만 두 배가 된다.
 export const MAX_LEVEL = 100
 
-/** 레벨 L에서 다음 레벨까지 필요한 처치 수(완만히 증가) */
-function killsToNextLevel(level: number): number {
-  return 3 + 0.05 * Math.pow(level, 1.8)
+const XP30 = Math.round(80 * Math.pow(30, 1.35))
+const C2 = XP30 / (30 * 30)
+const C3 = (C2 * 50 * 50) / Math.pow(50, 2.4)
+const C4 = (C3 * Math.pow(80, 2.4)) / Math.pow(80, 3)
+
+function expToNextRaw(level: number): number {
+  const L = level
+  if (L <= 30) return Math.round(80 * Math.pow(L, 1.35))
+  if (L <= 50) return Math.round(C2 * Math.pow(L, 2.0))
+  if (L <= 80) return Math.round(C3 * Math.pow(L, 2.4))
+  return Math.round(C4 * Math.pow(L, 3.0))
 }
 
-/** 레벨 L대 사냥터 몬스터의 평균 처치 경험치(현재 몬스터 데이터 회귀 근사) */
-function avgMonsterExpAtLevel(level: number): number {
-  return 5.5 * level + 0.2 * level * level
-}
-
-/** 본 게임 레벨(1~99) → 다음 레벨까지 필요 경험치. 인덱스 0 = 레벨1→2 필요치 */
-export const EXP_TO_NEXT_LEVEL: number[] = Array.from({ length: MAX_LEVEL }, (_, i) => {
-  const legacy = (i + 2) / 2 // 새 레벨(i+1) → 기존 레벨 환산
-  return Math.max(1, Math.round((killsToNextLevel(legacy) * avgMonsterExpAtLevel(legacy)) / 2))
-})
+/** 인덱스 0 = 레벨1→2 필요치 … 인덱스 98 = 레벨99→100 */
+export const EXP_TO_NEXT_LEVEL: number[] = Array.from({ length: MAX_LEVEL - 1 }, (_, i) => expToNextRaw(i + 1))
 
 export function expRequiredForLevel(level: number): number {
   if (level < 1 || level >= MAX_LEVEL) return Number.POSITIVE_INFINITY
   return EXP_TO_NEXT_LEVEL[level - 1]
+}
+
+/** 레벨 1 → target 까지 누적 필요 경험치 */
+export function totalExpToReach(target: number): number {
+  let sum = 0
+  for (let l = 1; l < Math.min(target, MAX_LEVEL); l++) sum += EXP_TO_NEXT_LEVEL[l - 1]
+  return sum
+}
+
+// ── 몬스터 경험치 기준값 ──────────────────────────────────────────────────────
+/** 해당 레벨 사냥터에서 다음 레벨까지 잡아야 하는 몬스터 수(체감 설계치) */
+function killsToNextLevel(level: number): number {
+  if (level <= 30) return 3 + 0.3 * level
+  if (level <= 50) return 12 + 0.6 * (level - 30)
+  if (level <= 80) return 24 + 1.2 * (level - 50)
+  return 60 + 4 * (level - 80)
+}
+
+const MONSTER_BASE_EXP: number[] = (() => {
+  const out: number[] = []
+  let best = 0
+  for (let l = 1; l <= MAX_LEVEL; l++) {
+    const v = expToNextRaw(Math.min(l, MAX_LEVEL - 1)) / killsToNextLevel(l)
+    best = Math.max(best, v) // 고레벨 구간에서 값이 꺾이지 않게 단조 증가
+    out.push(best)
+  }
+  return out
+})()
+
+/** 레벨 L(새 100 축) 표준 몬스터 1마리의 처치 경험치 */
+export function monsterBaseExp(level: number): number {
+  const l = Math.max(1, Math.min(MAX_LEVEL, Math.round(level)))
+  return MONSTER_BASE_EXP[l - 1]
+}
+
+/** 옛 50레벨 축 밸런스에서 쓰던 표준 몬스터 경험치(5.5·L + 0.2·L²) — 몬스터별 상대 배율을 보존하는 데 쓴다 */
+export function legacyMonsterBaseExp(legacyLevel: number): number {
+  return 5.5 * legacyLevel + 0.2 * legacyLevel * legacyLevel
+}
+
+/** 퀘스트 EXP 보상 배율 — 같은 보상이 고레벨에서도 의미를 잃지 않도록 표준 몬스터 경험치에 비례 */
+export function questExpMult(level: number): number {
+  return monsterBaseExp(level) / monsterBaseExp(1)
 }
 
 /**

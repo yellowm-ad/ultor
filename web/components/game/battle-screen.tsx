@@ -6,12 +6,13 @@ import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById } from '@/lib/mock-data'
-import { HeroSprite } from '@/components/game/pixel-hero'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
 import { SkillFxLayer, fxTier, type FxPos } from '@/components/game/skill-fx'
 import { DiamondMark } from '@/components/game/ui-motifs'
 import { MAPS } from '@/lib/maps'
-import type { BattleAction, Combatant, ElementOrNeutral, Skill } from '@/lib/types'
+import type { BattleAction, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
+import { POSITION_META } from '@/lib/constants'
 import { FlaskConical, Shield, Sparkles, Swords } from 'lucide-react'
 
 /** 상태이상/버프 뱃지 아이콘 — 데스크톱 "속성, 아이템 각종 아이콘.png" 시트에서 크롭 */
@@ -27,23 +28,32 @@ const STATUS_ICON: Record<string, string> = {
 }
 const BUFF_ICON: Record<string, string> = {
   ironWall: '/images/icons/status/defense.png',
+  defUp: '/images/icons/status/defense.png',
+  mdefUp: '/images/icons/status/defense.png',
+  atkUp: '/images/icons/status/battle.png',
+  matkUp: '/images/icons/status/battle.png',
+  haste: '/images/icons/status/move.png',
+  stealth: '/images/icons/status/detect.png',
   rally: '/images/icons/status/battle.png',
   lastStand: '/images/icons/status/battle.png',
   defendGuard: '/images/icons/status/defense.png',
 }
 
 /** 스킬 젬 버튼 배경색 — skill-fx.tsx 의 FX_COLORS 와 별개로, HUD 버튼 전용으로 가볍게 유지 */
-const GEM_ELEMENT_BG: Record<ElementOrNeutral, string> = {
+const GEM_ELEMENT_BG: Record<Element | 'none', string> = {
   fire: 'linear-gradient(160deg, #6b2b18, #3a140a)',
   ice: 'linear-gradient(160deg, #1c4f66, #0e2a38)',
   earth: 'linear-gradient(160deg, #5a4423, #2f2312)',
-  neutral: 'linear-gradient(160deg, #3a3560, #201c3c)',
+  dark: 'linear-gradient(160deg, #3b2160, #1a0d2e)',
+  light: 'linear-gradient(160deg, #6b5a1c, #3a300c)',
+  wind: 'linear-gradient(160deg, #1f5a48, #0d2e24)',
+  none: 'linear-gradient(160deg, #3a3560, #201c3c)',
 }
 
 /**
- * 4 대 4 진형 슬롯 — 값은 전투원의 **발밑** 좌표(무대 %). 인원 수와 상관없이 고정 자리를 쓰므로
- * 지금(주인공+펫 2명)도 나중에 4명이 들어와도 구도가 흔들리지 않는다.
- * 0·1 = 전열(가운데 쪽), 2·3 = 후열. top 은 숲 배경 판석 바닥(무대 ≈45% 아래) 안에 들어오게 잡았다.
+ * 4 대 4 진형 슬롯 — 값은 전투원의 **발밑** 좌표(무대 %).
+ * 적: 0·1 = 전열(가운데 쪽), 2·3 = 후열. 아군은 포지션별 줄(PLAYER_LANES)에 서고, 펫은 주인 앞에 붙는다.
+ * top 은 숲 배경 판석 바닥(무대 ≈45% 아래) 안에 들어오게 잡았다.
  */
 const FORMATION: Record<'player' | 'enemy', FxPos[]> = {
   player: [
@@ -58,6 +68,26 @@ const FORMATION: Record<'player' | 'enemy', FxPos[]> = {
     { left: 78, top: 52 },
     { left: 84, top: 75 },
   ],
+}
+
+/** 아군 포지션 줄 — 전위는 적 쪽(가운데), 후위는 뒤, 보조는 그 사이. 같은 줄 인원 수에 따라 위아래로 벌린다 */
+const PLAYER_LANES: Record<Position, number> = { front: 36, support: 27, rear: 18 }
+const LANE_TOPS: Record<number, number[]> = { 1: [70], 2: [57, 82] }
+
+function playerFormation(players: Combatant[]): Record<string, FxPos> {
+  const out: Record<string, FxPos> = {}
+  const core = players.filter((c) => c.kind !== 'pet')
+  ;(['front', 'support', 'rear'] as Position[]).forEach((p) => {
+    const lane = core.filter((c) => (c.position ?? 'rear') === p)
+    const tops = LANE_TOPS[lane.length] ?? lane.map((_, i) => 52 + i * 14)
+    // 같은 줄에서 아래쪽(앞)일수록 살짝 가운데로 — 원근감
+    lane.forEach((c, i) => (out[c.uid] = { left: PLAYER_LANES[p] - (tops[i] > 70 ? 4 : 0), top: tops[i] }))
+  })
+  for (const pet of players.filter((c) => c.kind === 'pet')) {
+    const owner = pet.ownerUid ? out[pet.ownerUid] : undefined
+    out[pet.uid] = owner ? { left: owner.left + 8, top: owner.top + 3 } : { left: 44, top: 70 }
+  }
+  return out
 }
 
 /** 발밑 좌표(%) — CombatantSprite 렌더용. 5명 이상이면 후열 뒤로 조금씩 밀어 넣는다. */
@@ -192,7 +222,7 @@ export function BattleScreen() {
 
   const posMap: Record<string, FxPos> = {}
   enemies.forEach((c, i) => { posMap[c.uid] = combatantPos('enemy', i) })
-  players.forEach((c, i) => { posMap[c.uid] = combatantPos('player', i) })
+  Object.assign(posMap, playerFormation(players))
   const fxPosOf = (uid: string) => {
     const p = posMap[uid]
     return p && { left: p.left, top: p.top - FX_BODY_LIFT }
@@ -238,6 +268,10 @@ export function BattleScreen() {
         : pending?.kind === 'item' && pending.needsTarget
           ? 'player'
           : null
+
+  // 부활 스킬·부활 깃털은 쓰러진 아군만 고를 수 있다
+  const reviveTargeting =
+    (pending?.kind === 'skill' && pending.skill.kind === 'revive') || (pending?.kind === 'item' && !!itemById(pending.itemId)?.useEffect?.reviveOnly)
 
   const primaryEnemy = enemies.find((c) => c.alive) ?? enemies[0]
 
@@ -347,10 +381,9 @@ export function BattleScreen() {
             side="player"
             pos={posMap[c.uid]}
             active={actor?.uid === c.uid}
-            targetable={targetableSide === 'player' && c.alive}
+            targetable={targetableSide === 'player' && c.kind !== 'pet' && (reviveTargeting ? !c.alive : c.alive)}
             onClick={() => handleTargetClick(c)}
-            heroGender={c.kind === 'hero' ? state.player.gender : undefined}
-            heroElement={c.kind === 'hero' ? state.player.element : undefined}
+            heroSheet={c.kind === 'hero' ? playerSheet(state.player.appearance.gender) : undefined}
             heroAnim={c.kind === 'hero' ? heroAnim : undefined}
           />
         ))}
@@ -392,7 +425,9 @@ export function BattleScreen() {
                   } flex size-11 items-center justify-center`}
                 >
                   {c.kind === 'hero' ? (
-                    <HeroSprite element={state.player.element} gender={state.player.gender} dir="down" px={34} />
+                    <HeroSprite sheet={playerSheet(state.player.appearance.gender)} dir="down" px={34} />
+                  ) : c.appearance?.kind === 'hero' ? (
+                    <HeroSprite sheet={c.appearance.sheet} dir="down" px={34} />
                   ) : (
                     <Image src={c.icon} alt={c.name} width={22} height={22} />
                   )}
@@ -440,7 +475,7 @@ export function BattleScreen() {
                       setPending({ kind: 'skill', skill: s })
                     }
                   }}
-                  style={{ ['--gem-bg' as string]: GEM_ELEMENT_BG[s.element] }}
+                  style={{ ['--gem-bg' as string]: GEM_ELEMENT_BG[s.element ?? 'none'] }}
                   className="gem-btn flex w-[30%] min-w-16 flex-col items-center gap-0.5 px-1.5 py-1.5 text-white/90"
                 >
                   <Image src={s.icon} alt={s.name} width={22} height={22} />
@@ -486,8 +521,8 @@ export function BattleScreen() {
 function enemyMonsterPx(side: 'player' | 'enemy', refId: string): number {
   if (side !== 'enemy') return 116
   const rank = monsterById(refId)?.rank
-  if (rank === 'fieldBoss') return 182 // 260 × 0.7
-  if (rank === 'midBoss') return 133 // 190 × 0.7
+  if (rank === 'fieldBoss' || rank === 'storyBoss') return 182 // 260 × 0.7
+  if (rank === 'miniBoss') return 133 // 190 × 0.7
   return 116
 }
 
@@ -498,8 +533,7 @@ function CombatantSprite({
   active,
   targetable,
   onClick,
-  heroGender,
-  heroElement,
+  heroSheet,
   heroAnim,
 }: {
   c: Combatant
@@ -508,8 +542,7 @@ function CombatantSprite({
   active: boolean
   targetable: boolean
   onClick: () => void
-  heroGender?: 'male' | 'female'
-  heroElement?: 'fire' | 'ice' | 'earth'
+  heroSheet?: SpriteSheet
   heroAnim?: 'idle' | 'lunge' | 'hit'
 }) {
   // pos = 발밑 좌표. 래퍼 하단 중앙을 그 점에 맞추고, 축소도 발밑 기준으로 해서 바닥에 붙어 있게 한다.
@@ -517,18 +550,20 @@ function CombatantSprite({
   const scale = side === 'enemy' ? 1 : 1.08
   // 4등신 히어로 시트로 그리는 전투원 — 주인공 + 학생 동료(appearance.kind 'hero')
   const heroLook =
-    c.kind === 'hero' && heroElement && heroGender
-      ? { element: heroElement, gender: heroGender }
+    c.kind === 'hero' && heroSheet
+      ? heroSheet
       : c.appearance?.kind === 'hero'
-        ? { element: c.appearance.element, gender: c.appearance.gender }
+        ? c.appearance.sheet
         : null
   const isHero = !!heroLook
-  const spritePx = isHero ? (c.kind === 'hero' ? 150 : 138) : enemyMonsterPx(side, c.refId)
+  const spritePx = isHero ? (c.kind === 'hero' ? 150 : 138) : c.kind === 'pet' ? 84 : enemyMonsterPx(side, c.refId)
   // 히어로 시트 프레임 아래쪽 투명 여백(≈14%)만큼 끌어내려 발이 실제 좌표에 닿게 (크리처는 CreatureSprite groundPad)
   const footPad = isHero ? Math.round(spritePx * 0.14) : 0
 
   const statuses = c.effects.filter((e) => e.kind === 'status')
   const buffs = c.effects.filter((e) => e.kind === 'buff')
+  const debuffs = c.effects.filter((e) => e.kind === 'debuff')
+  const stealthed = buffs.some((e) => e.id === 'stealth')
   const hpPct = (c.hp / Math.max(1, c.stats.maxHp)) * 100
   const statusIcon = (id: string) => STATUS_ICON[id]
   const buffIcon = (id: string) => BUFF_ICON[id]
@@ -546,15 +581,20 @@ function CombatantSprite({
     >
       <button
         onClick={targetable ? onClick : undefined}
-        className={`relative flex flex-col items-center ${targetable ? 'cursor-pointer' : 'cursor-default'} ${!c.alive ? 'opacity-25 grayscale' : ''}`}
+        className={`relative flex flex-col items-center ${targetable ? 'cursor-pointer' : 'cursor-default'} ${!c.alive ? 'opacity-25 grayscale' : stealthed ? 'opacity-50' : ''}`}
       >
         {/* 상태 아이콘 + HP */}
         <div className="mb-0.5 flex flex-col items-center gap-0.5">
-          {(statuses.length > 0 || buffs.length > 0) && (
+          {(statuses.length > 0 || buffs.length > 0 || debuffs.length > 0) && (
             <div className="flex flex-wrap justify-center gap-0.5">
               {statuses.map((e) => (
                 <span key={e.key} className="flex items-center gap-0.5 rounded-full bg-violet-950/85 py-0.5 pl-0.5 pr-1.5 text-[7px] text-violet-100 ring-1 ring-violet-400/50">
                   {statusIcon(e.id) && <Image src={statusIcon(e.id)!} alt="" width={11} height={11} className="rounded-full" />}
+                  {e.name}
+                </span>
+              ))}
+              {debuffs.map((e) => (
+                <span key={e.key} className="flex items-center gap-0.5 rounded-full bg-fuchsia-950/85 py-0.5 px-1.5 text-[7px] text-fuchsia-100 ring-1 ring-fuchsia-400/50">
                   {e.name}
                 </span>
               ))}
@@ -567,6 +607,11 @@ function CombatantSprite({
             </div>
           )}
           <div className="flex items-center gap-1">
+            {c.position && (
+              <span className="rounded bg-black/55 px-1 text-[8px] font-bold text-gold-soft" title={POSITION_META[c.position].bonus}>
+                {POSITION_META[c.position].label}
+              </span>
+            )}
             <span className={`text-[9px] font-bold ${side === 'player' ? 'text-sky-200' : 'text-red-200'} text-shadow-ink`}>
               {c.name}
             </span>
@@ -591,8 +636,7 @@ function CombatantSprite({
         >
           {heroLook ? (
             <HeroSprite
-              element={heroLook.element}
-              gender={heroLook.gender}
+              sheet={heroLook}
               dir="right"
               walking={heroAnim === 'lunge' || (c.kind === 'ally' && active && c.alive)}
               px={spritePx}

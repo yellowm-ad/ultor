@@ -1,0 +1,69 @@
+{
+  "character": {
+    "id": "6a6f1577-1d22-4cba-be8a-68a79c9a5acd",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage cadet, quiet traveling student boy, short tousled black hair, calm golden eyes, deep navy-black magic academy uniform jacket with high collar and thin gold piping, gold three-element school crest on the chest, knee-length coat tails, white shirt with dark ribbon tie, brown leather strap belt holding a small spellbook at the hip, fingerless dark gloves, dark trousers, sturdy brown travel boots",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Chibi_4-head-tall_JRPG_m-Idle.png",
+    "cell_size": {
+      "width": 92,
+      "height": 92
+    },
+    "sheet_size": {
+      "width": 828,
+      "height": 368
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
+        "direction": "north"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-02T05:28:35.220651+00:00"
+}

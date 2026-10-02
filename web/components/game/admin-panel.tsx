@@ -5,17 +5,18 @@ import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { SKILLS, MONSTERS, NPCS, itemById } from '@/lib/mock-data'
 import { PET_DEFS } from '@/lib/pets'
-import { ELEMENT_META } from '@/lib/constants'
-import type { Element, Gender } from '@/lib/types'
+import { POSITION_META } from '@/lib/constants'
 import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
 
-const ELEMENTS: Element[] = ['fire', 'ice', 'earth']
 const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[number]) => boolean }[] = [
-  { key: 'fire', label: '화염계', filter: (s) => s.element === 'fire' && !s.id.startsWith('pet-') },
-  { key: 'ice', label: '빙결계', filter: (s) => s.element === 'ice' && !s.id.startsWith('pet-') },
-  { key: 'earth', label: '대지계', filter: (s) => s.element === 'earth' && !s.id.startsWith('pet-') },
-  { key: 'neutral', label: '무속성 공용', filter: (s) => s.element === 'neutral' && !s.id.startsWith('pet-') },
-  { key: 'pet', label: '펫 스킬', filter: (s) => s.id.startsWith('pet-') },
+  { key: 'fire', label: '불꽃', filter: (s) => s.element === 'fire' && !s.owner },
+  { key: 'ice', label: '얼음', filter: (s) => s.element === 'ice' && !s.owner },
+  { key: 'earth', label: '대지', filter: (s) => s.element === 'earth' && !s.owner },
+  { key: 'dark', label: '어둠', filter: (s) => s.element === 'dark' && !s.owner },
+  { key: 'light', label: '빛', filter: (s) => s.element === 'light' && !s.owner },
+  { key: 'none', label: '속성 없음', filter: (s) => s.element === null && !s.owner },
+  { key: 'wind', label: '바람(모르스 전용 · 습득 불가)', filter: (s) => s.owner === 'mors' },
+  { key: 'pet', label: '펫 스킬(습득 불가)', filter: (s) => s.owner === 'pet' },
 ]
 
 type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'room' | null
@@ -63,14 +64,14 @@ export function AdminPanel() {
       {/* 상태 요약 */}
       <div className="border-b border-gold/20 px-3 py-2 text-[11px] text-white/70">
         <div>
-          {state.player.name || '이름없음'} · Lv.{state.player.level} · {ELEMENT_META[state.player.element].name}계 ·{' '}
-          {state.player.gender === 'male' ? '남' : '여'}
+          {state.player.name || '이름없음'} · Lv.{state.player.level} · {state.player.appearance.gender === 'male' ? '남' : '여'} ·{' '}
+          {POSITION_META[state.formation.positions.hero ?? 'front'].label}
         </div>
         <div>
           HP {state.player.hp}/{state.player.stats.maxHp} · MP {state.player.mp}/{state.player.stats.maxMp} · Gold{' '}
           {state.player.gold}
         </div>
-        <div>스킬 {state.player.learnedSkills.length}개 · 펫 {state.ownedPets.length}마리 · 맵 {state.currentMapId}</div>
+        <div>스킬 {state.player.learnedSkills.length}개(장착 {state.player.equippedSkills.length}) · 펫 {state.ownedPets.length}마리 · 맵 {state.currentMapId}</div>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-gold/20 px-2 py-1.5">
@@ -107,36 +108,6 @@ export function AdminPanel() {
                 <Button size="sm" onClick={() => dispatch({ type: 'ADMIN_SET_LEVEL', level: Number(levelInput) || 1 })}>
                   적용
                 </Button>
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 text-white/60">계통</div>
-              <div className="flex gap-1.5">
-                {ELEMENTS.map((el) => (
-                  <Button
-                    key={el}
-                    size="sm"
-                    variant={state.player.element === el ? 'default' : 'outline'}
-                    onClick={() => dispatch({ type: 'ADMIN_SET_ELEMENT', element: el })}
-                  >
-                    {ELEMENT_META[el].name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="mb-1 text-white/60">성별</div>
-              <div className="flex gap-1.5">
-                {(['male', 'female'] as Gender[]).map((g) => (
-                  <Button
-                    key={g}
-                    size="sm"
-                    variant={state.player.gender === g ? 'default' : 'outline'}
-                    onClick={() => dispatch({ type: 'ADMIN_SET_GENDER', gender: g })}
-                  >
-                    {g === 'male' ? '남' : '여'}
-                  </Button>
-                ))}
               </div>
             </div>
             <div>

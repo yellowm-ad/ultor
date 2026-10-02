@@ -39,6 +39,9 @@
   --color-elem-ice: var(--elem-ice);
   --color-elem-neutral: var(--elem-neutral);
   --color-elem-earth: var(--elem-earth);
+  --color-elem-dark: var(--elem-dark);
+  --color-elem-light: var(--elem-light);
+  --color-elem-wind: var(--elem-wind);
 
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
@@ -97,6 +100,9 @@
   --elem-ice: #4fb8e6;
   --elem-neutral: #c3c6e6;
   --elem-earth: #a97c3f;
+  --elem-dark: #8a5cc8;
+  --elem-light: #f2d36b;
+  --elem-wind: #7fd9b8;
 
   --radius: 0.75rem;
 
