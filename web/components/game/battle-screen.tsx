@@ -1,10 +1,10 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
-import { currentActor } from '@/lib/battle-engine'
+import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById } from '@/lib/mock-data'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
@@ -160,12 +160,14 @@ export function BattleScreen() {
   const [menu, setMenu] = useState<'root' | 'skill' | 'item'>('root')
   const [pending, setPending] = useState<Pending>(null)
   const [heroAnim, setHeroAnim] = useState<'idle' | 'lunge' | 'hit'>('idle')
-  const [auto, setAuto] = useState(false)
+  const [animUid, setAnimUid] = useState<string | null>(null)
   const [shake, setShake] = useState(false)
-  const autoRef = useRef(false)
 
   const actor = battle ? currentActor(battle) : null
-  const isHeroTurn = actor?.kind === 'hero'
+  const auto = !!battle?.auto
+  const companionAuto = !!state.settings.companionAuto
+  // 주인공·파티 동료 턴 = 직접 조작(자동 전투 / 동료 자동이면 AI)
+  const isHeroTurn = !!battle && !!actor && !battle.isOver && awaitsPlayerInput(battle, actor, companionAuto)
   const speed = state.settings.battleAnimSpeed
 
   // 행동 순서(TU) 자동 진행
@@ -191,21 +193,10 @@ export function BattleScreen() {
     return () => clearTimeout(t)
   }, [battle?.lastFx])
 
-  // 자동 전투: 히어로 턴이면 기본 공격 자동 실행
-  useEffect(() => {
-    autoRef.current = auto
-    if (!auto || !battle || battle.isOver || !isHeroTurn || !actor) return
-    const enemies = battle.combatants.filter((c) => c.side === 'enemy' && c.alive)
-    if (enemies.length === 0) return
-    const t = setTimeout(() => {
-      dispatch({ type: 'BATTLE_ACTOR_ACTION', actorUid: actor.uid, action: { type: 'attack', targetUid: enemies[0].uid } })
-      triggerLunge()
-    }, speed === 2 ? 260 : 520)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, battle?.activeUid, isHeroTurn])
+  // 자동 전투는 리듀서(BATTLE_TICK)가 AI 로 처리한다 — battle.auto
 
-  function triggerLunge() {
+  function triggerLunge(uid: string) {
+    setAnimUid(uid)
     setHeroAnim('lunge')
     setTimeout(() => setHeroAnim('idle'), speed === 2 ? 260 : 460)
   }
@@ -230,7 +221,7 @@ export function BattleScreen() {
 
   function submit(action: BattleAction) {
     if (!actor) return
-    if (action.type === 'attack' || action.type === 'skill') triggerLunge()
+    if (action.type === 'attack' || action.type === 'skill') triggerLunge(actor.uid)
     dispatch({ type: 'BATTLE_ACTOR_ACTION', actorUid: actor.uid, action })
     setPending(null)
     setMenu('root')
@@ -254,7 +245,7 @@ export function BattleScreen() {
   const availableSkills = actor ? SKILLS.filter((s) => actor.skills.includes(s.id)) : []
   const availableItems = state.inventory
     .map((slot) => ({ slot, item: itemById(slot.itemId) }))
-    .filter((x) => x.item && (x.item.type === 'potion' || x.item.type === 'tool'))
+    .filter((x) => x.item && (x.item.type === 'potion' || x.item.type === 'tool') && !x.item.useEffect?.grantExp && !!x.item.useEffect)
 
   const targetableSide =
     pending?.kind === 'attack'
@@ -311,10 +302,17 @@ export function BattleScreen() {
 
         <div className="absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2">
           <button
-            onClick={() => setAuto((a) => !a)}
+            onClick={() => dispatch({ type: 'BATTLE_SET_AUTO', auto: !auto })}
             className={`rounded-full border px-3 py-1 text-xs font-display ${auto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-white/30 bg-black/40 text-white/80'}`}
           >
             자동 {auto ? 'ON' : 'OFF'}
+          </button>
+          <button
+            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', settings: { companionAuto: !companionAuto } })}
+            title="동료 턴을 직접 조작할지, AI 에게 맡길지"
+            className={`rounded-full border px-3 py-1 text-xs font-display ${companionAuto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-white/30 bg-black/40 text-white/80'}`}
+          >
+            동료 {companionAuto ? '자동' : '수동'}
           </button>
           <button
             onClick={() => dispatch({ type: 'UPDATE_SETTINGS', settings: { battleAnimSpeed: speed === 2 ? 1 : 2 } })}
@@ -384,7 +382,7 @@ export function BattleScreen() {
             targetable={targetableSide === 'player' && c.kind !== 'pet' && (reviveTargeting ? !c.alive : c.alive)}
             onClick={() => handleTargetClick(c)}
             heroSheet={c.kind === 'hero' ? playerSheet(state.player.appearance.gender) : undefined}
-            heroAnim={c.kind === 'hero' ? heroAnim : undefined}
+            heroAnim={c.uid === animUid ? heroAnim : undefined}
           />
         ))}
         <SkillFxLayer fx={battle.lastFx} posOf={fxPosOf} />
@@ -450,11 +448,15 @@ export function BattleScreen() {
             </div>
           ) : pending ? (
             <div className="flex h-16 flex-col items-center justify-center gap-1 text-center text-xs">
-              <span className="text-gold-soft">대상을 선택하세요</span>
+              <span className="text-gold-soft">{actor?.name} — 대상을 선택하세요</span>
               <Button size="sm" variant="ghost" onClick={() => setPending(null)}>취소</Button>
             </div>
           ) : menu === 'root' ? (
             <div className="battle-root-menu grid grid-cols-2 gap-2">
+              <div className="col-span-2 -mb-1 flex items-center gap-1 text-[11px] font-display text-gold-soft">
+                <DiamondMark size={8} />
+                {actor?.name}의 차례 · Lv.{actor?.level} · MP {actor?.mp}/{actor?.stats.maxMp}
+              </div>
               <RingBtn icon={<Swords className="size-5" />} label="공격" hint="기본 공격" onClick={() => setPending({ kind: 'attack' })} />
               <RingBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`${availableSkills.length}개`} onClick={() => setMenu('skill')} />
               <RingBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`${availableItems.length}개`} onClick={() => setMenu('item')} />
@@ -612,6 +614,11 @@ function CombatantSprite({
                 {POSITION_META[c.position].label}
               </span>
             )}
+            {c.guest && (
+              <span className="rounded bg-violet-900/70 px-1 text-[8px] font-bold text-violet-100" title="임시 합류 NPC — 자동 행동 · 경험치 분배 제외">
+                {c.guest === 'escort' ? '호위' : '동행'}
+              </span>
+            )}
             <span className={`text-[9px] font-bold ${side === 'player' ? 'text-sky-200' : 'text-red-200'} text-shadow-ink`}>
               {c.name}
             </span>
@@ -700,7 +707,11 @@ function BattleResult() {
   return (
     <div className="flex flex-col items-center justify-center gap-1.5 py-1">
       <span className={`font-display text-sm ${battle.victory ? 'text-gold-soft' : 'text-red-300'}`}>
-        {battle.victory ? `승리! EXP +${battle.rewardExp} · Gold +${battle.rewardGold}` : '전투 패배...'}
+        {battle.victory
+          ? (battle.rewardExpShare ?? 0) < (battle.rewardExp ?? 0)
+            ? `승리! EXP +${battle.rewardExpShare}/인 (총 ${battle.rewardExp}) · Gold +${battle.rewardGold}`
+            : `승리! EXP +${battle.rewardExp} (단독) · Gold +${battle.rewardGold}`
+          : '전투 패배...'}
       </span>
       {battle.victory && drops.length > 0 && (
         <div className="flex max-w-xs flex-wrap items-center justify-center gap-1.5">

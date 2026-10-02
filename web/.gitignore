@@ -36,3 +36,4 @@ next-env.d.ts
 # 아이콘/일러 크롭 원본·중간 산출물 (재생성 가능)
 /public/images/npc/_ref/
 /public/images/icons/ui/
+/scripts/_pixellab/class-sheets/

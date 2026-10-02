@@ -1,0 +1,69 @@
+{
+  "character": {
+    "id": "73430d04-6175-4810-9130-c492d4fd115b",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage, young man teaching assistant with very short neat light ice-blue hair (short side-swept bangs, ears visible, nothing below the ears), calm eyes, white long tailcoat academy uniform with gray-blue trim and dark patterned vest, blue ice crystal emblems on shoulders, white belt with silver buckle, pale blue shirt with blue gem brooch, white trousers, white knee-high boots, no ribbons, no cape",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Kael_ice_assistant_v2-Idle.png",
+    "cell_size": {
+      "width": 88,
+      "height": 88
+    },
+    "sheet_size": {
+      "width": 792,
+      "height": 352
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "22874ff2-bb46-4e4f-aeae-0035f8e3bd32",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "22874ff2-bb46-4e4f-aeae-0035f8e3bd32",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "22874ff2-bb46-4e4f-aeae-0035f8e3bd32",
+        "direction": "north"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-02T09:25:14.742242+00:00"
+}

@@ -1,8 +1,9 @@
 // ============================================================================
 // 주간 퀘스트 시스템 (§학사 PRD 4~7, 45~49, 66~68, 72)
 //
-//   매주 = 필수(MAIN) 1개 + 조건부 랜덤 4개(CLASS · COMBAT · LIFE · FREE).
-//   필수 + 선택 2개 이상 보상을 받으면 그 주를 마감하고 다음 주로 넘어갈 수 있다(§5, §66).
+//   [통합 PRD v1.0 §2, §27] 매주 = 필수 수업 1회(lib/curriculum.ts) + 외부활동 후보 5~6개 중 2개 선택 수행.
+//   수업(학기 중) + 외부활동 2개 보상을 받으면 그 주를 마감한다. 방학은 수업 없이 외부활동 2개.
+//   CLASS 카테고리 템플릿은 더 이상 후보로 나오지 않는다(수업 자체가 필수 항목). 스토리 지정 MAIN 은 있으면 추가 필수.
 //
 //   · 템플릿(QUEST_TEMPLATES)은 순수 데이터 — 새 퀘스트는 여기에 한 줄 추가하면 끝(§82-5, 13)
 //   · 생성은 시드 고정(Hash(PlayerSeed + GlobalWeek + Region + StoryProgress), §67):
@@ -24,6 +25,7 @@ import type {
   WeeklyState,
 } from '@/lib/types'
 import { calendarInfo } from '@/lib/calendar'
+import { classForWeek } from '@/lib/curriculum'
 import { arcForWeek, flagsAllOn, MAIN_QUEST_BY_WEEK, STORY_ARCS } from '@/lib/story'
 import { REGIONS, type RegionId } from '@/lib/regions'
 import { isActivityUnlocked, itemMatches, type ActivityId } from '@/lib/life'
@@ -107,7 +109,7 @@ const rel = (npcId: string, amount: number): QuestReward => ({ type: 'RELATIONSH
 // ─────────────────────────────────────────────────────────────────────────────
 export const QUEST_TEMPLATES: QuestTemplate[] = [
   // ── MAIN 기본 일과(주차별 스토리 퀘스트가 없을 때) ─────────────────────────
-  { id: 'MAIN_ROUTINE_SEMESTER', category: 'MAIN', title: '주간 학사 보고', description: '이번 주 수업 일정을 미르엘 교수에게 보고한다.', objectives: [o('TALK', 'npc-job-trainer', 1, '미르엘 교수와 대화')], rewards: [exp(40), gold(60), course(10)], terms: ['semester1', 'semester2'] },
+  { id: 'MAIN_ROUTINE_SEMESTER', category: 'MAIN', title: '주간 학사 보고', description: '이번 주 수업 일정을 에드릭 교수에게 보고한다.', objectives: [o('TALK', 'npc-job-trainer', 1, '에드릭 교수와 대화')], rewards: [exp(40), gold(60), course(10)], terms: ['semester1', 'semester2'] },
   { id: 'MAIN_ROUTINE_VACATION', category: 'MAIN', title: '원정 일지', description: '방학 원정 중 전투 기록을 남긴다.', objectives: [o('WIN_BATTLE', 'any', 3, '전투 승리')], rewards: [exp(80), gold(90)], terms: ['summer', 'winter'] },
 
   // ── CLASS 수업(학기 중에만) ───────────────────────────────────────────────
@@ -187,8 +189,6 @@ function hashSeed(...parts: (number | string)[]): number {
 function reachedRegions(globalWeek: number): Set<RegionId> {
   const out = new Set<RegionId>(['ACADEMY'])
   for (const a of STORY_ARCS) if (a.startWeek <= globalWeek) out.add(a.mainRegion)
-  // 3장은 스톰헤이븐 + 폐허를 함께 연다
-  if (out.has('STORMHAVEN')) out.add('RUINS')
   return out
 }
 
@@ -219,6 +219,8 @@ function weightOf(t: QuestTemplate, state: GenState): number {
   } else if (info.isVacation && t.category === 'CLASS') {
     w = 0
   }
+  // 쉬어가는 주(통합 PRD §48) — 학기 5주차: 강제 전투 없이 생활·대화 비중↑
+  if (isRestWeek(state.calendar.globalWeek)) w *= t.category === 'COMBAT' ? 0.05 : CATEGORY_SLOT[t.category] === 'COMBAT' ? 0.05 : 2.5
   const last = state.weekly.lastSeen[t.id]
   if (last != null && state.calendar.globalWeek - last < 6) w *= 0.5
   return w
@@ -239,7 +241,26 @@ function instanceOf(t: QuestTemplate, slot: QuestSlot, week: number): QuestInsta
   return { instanceId: `${week}-${t.id}`, templateId: t.id, slot, progress: t.objectives.map(() => 0), status: 'active' }
 }
 
-/** 이번 주 퀘스트 5개 생성 — 같은 입력이면 항상 같은 결과 */
+/** 쉬어가는 주 — 학기마다 1회(5주차). 축제·동아리·기숙사 행사 같은 저강도 주간 */
+export function isRestWeek(globalWeek: number): boolean {
+  const info = calendarInfo(globalWeek)
+  return !info.isVacation && info.week === 5
+}
+
+/** 주간 외부활동 후보 수 */
+export const SIDE_CANDIDATES = 5
+
+/** 최근 3주에 같은 카테고리가 몇 번 나왔는가(§29 중복 방지) */
+function recentCategoryCount(state: GenState, cat: QuestCategory): number {
+  let n = 0
+  for (const [id, wk] of Object.entries(state.weekly.lastSeen)) {
+    if (state.calendar.globalWeek - wk > 3) continue
+    if (questTemplateById(id)?.category === cat) n++
+  }
+  return n
+}
+
+/** 이번 주 목록 생성 — 같은 입력이면 항상 같은 결과. 외부활동은 'offered'(후보)로 만들고 플레이어가 2개를 수락한다 */
 export function generateWeeklyQuests(state: GenState): WeeklyState {
   const gw = state.calendar.globalWeek
   const info = calendarInfo(gw)
@@ -248,33 +269,57 @@ export function generateWeeklyQuests(state: GenState): WeeklyState {
   const rand = mulberry32(hashSeed(state.playerSeed, gw, arc.mainRegion, flagCount))
   const reached = reachedRegions(gw)
 
-  // MAIN — 스토리 지정이 있으면 그것, 없으면 학기/방학 기본 일과
-  const mainId = MAIN_QUEST_BY_WEEK[gw] ?? (info.isVacation ? 'MAIN_ROUTINE_VACATION' : 'MAIN_ROUTINE_SEMESTER')
-  const main = questTemplateById(mainId) ?? QUEST_TEMPLATES[0]
-  const quests: QuestInstance[] = [instanceOf(main, 'MAIN', gw)]
-  const used = new Set<string>([main.id])
+  const quests: QuestInstance[] = []
+  const used = new Set<string>()
+  // 스토리가 이 주에 지정한 필수 과제(있을 때만)
+  const storyMain = MAIN_QUEST_BY_WEEK[gw] ? questTemplateById(MAIN_QUEST_BY_WEEK[gw]) : undefined
+  if (storyMain) {
+    quests.push(instanceOf(storyMain, 'MAIN', gw))
+    used.add(storyMain.id)
+  }
 
-  // 방학에는 수업이 없으므로 CLASS 슬롯 대신 전투/생활을 하나 더
-  const slots: QuestSlot[] = info.isVacation ? ['COMBAT', 'LIFE', 'FREE', 'LIFE'] : ['CLASS', 'COMBAT', 'LIFE', 'FREE']
+  // 외부활동 후보 — 전투·생활·자유를 고르게(방학은 하나 더)
+  const slots: QuestSlot[] = info.isVacation
+    ? ['COMBAT', 'LIFE', 'FREE', 'COMBAT', 'LIFE', 'FREE']
+    : isRestWeek(gw)
+      ? ['LIFE', 'FREE', 'LIFE', 'FREE', 'LIFE']
+      : ['COMBAT', 'LIFE', 'FREE', 'LIFE', 'COMBAT']
+  const sideOk = (t: QuestTemplate) => t.category !== 'MAIN' && t.category !== 'CLASS' && !used.has(t.id) && eligible(t, state, reached)
   for (const slot of slots) {
-    const pool = QUEST_TEMPLATES.filter((t) => t.category !== 'MAIN' && CATEGORY_SLOT[t.category] === slot && !used.has(t.id) && eligible(t, state, reached))
-    // 같은 계열(카테고리) 중복 억제(§6.1)
+    const pool = QUEST_TEMPLATES.filter((t) => CATEGORY_SLOT[t.category] === slot && sideOk(t))
     const usedCats = new Set(quests.map((q) => questTemplateById(q.templateId)?.category))
-    const weights = pool.map((t) => weightOf(t, state) * (usedCats.has(t.category) ? 0.3 : 1))
+    const weights = pool.map((t) => weightOf(t, state) * (usedCats.has(t.category) ? 0.3 : 1) * Math.pow(0.6, recentCategoryCount(state, t.category)))
     let chosen = pick(pool, weights, rand)
-    // 슬롯에 맞는 게 없으면(초반 생활 미해금 등) 어느 슬롯이든 남은 것에서
     if (!chosen) {
-      const any = QUEST_TEMPLATES.filter((t) => t.category !== 'MAIN' && !used.has(t.id) && eligible(t, state, reached))
+      const any = QUEST_TEMPLATES.filter(sideOk)
       chosen = pick(any, any.map((t) => weightOf(t, state)), rand)
     }
     if (!chosen) continue
     used.add(chosen.id)
-    quests.push(instanceOf(chosen, slot, gw))
+    quests.push({ ...instanceOf(chosen, slot, gw), status: 'offered' })
   }
 
   const lastSeen = { ...state.weekly.lastSeen }
   for (const q of quests) lastSeen[q.templateId] = gw
-  return { week: gw, quests, lastSeen }
+  return { week: gw, quests, lastSeen, format: 2, classDone: false }
+}
+
+/** 이번 주 수락한(진행/완료/수령) 외부활동 수 */
+export function acceptedSideCount(weekly: WeeklyState): number {
+  return weekly.quests.filter((q) => q.slot !== 'MAIN' && q.status !== 'offered').length
+}
+
+/** 외부활동 수락 — 최대 REQUIRED_OPTIONAL 개 */
+export function acceptSideQuest(weekly: WeeklyState, instanceId: string): { weekly: WeeklyState; error?: string } {
+  const q = weekly.quests.find((x) => x.instanceId === instanceId)
+  if (!q || q.status !== 'offered') return { weekly }
+  if (acceptedSideCount(weekly) >= REQUIRED_OPTIONAL) return { weekly, error: `외부활동은 한 주에 ${REQUIRED_OPTIONAL}개까지 수락할 수 있습니다.` }
+  return { weekly: { ...weekly, quests: weekly.quests.map((x) => (x.instanceId === instanceId ? { ...x, status: 'active' as const } : x)) } }
+}
+
+/** 수락 취소(완료 전만) */
+export function dropSideQuest(weekly: WeeklyState, instanceId: string): WeeklyState {
+  return { ...weekly, quests: weekly.quests.map((x) => (x.instanceId === instanceId && x.status === 'active' ? { ...x, status: 'offered' as const, progress: x.progress.map(() => 0) } : x)) }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -353,10 +398,13 @@ export function applyQuestEvents(weekly: WeeklyState, events: QuestEvent[]): { w
   return { weekly: w, completed }
 }
 
-export function weekCompletion(weekly: WeeklyState): { mainDone: boolean; optionalDone: number; canEnd: boolean } {
-  const mainDone = weekly.quests.some((q) => q.slot === 'MAIN' && q.status === 'claimed')
+export function weekCompletion(weekly: WeeklyState): { classRequired: boolean; classDone: boolean; mainDone: boolean; optionalDone: number; canEnd: boolean } {
+  const classRequired = classForWeek(weekly.week) != null
+  const classDone = !classRequired || !!weekly.classDone
+  const hasMain = weekly.quests.some((q) => q.slot === 'MAIN')
+  const mainDone = !hasMain || weekly.quests.some((q) => q.slot === 'MAIN' && q.status === 'claimed')
   const optionalDone = weekly.quests.filter((q) => q.slot !== 'MAIN' && q.status === 'claimed').length
-  return { mainDone, optionalDone, canEnd: mainDone && optionalDone >= REQUIRED_OPTIONAL }
+  return { classRequired, classDone, mainDone, optionalDone, canEnd: classDone && mainDone && optionalDone >= REQUIRED_OPTIONAL }
 }
 
 export function regionIds(): RegionId[] {

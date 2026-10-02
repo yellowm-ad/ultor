@@ -5,9 +5,11 @@
 
 import type { BattleState, GameState, MapId, Position, Stats } from '@/lib/types'
 import { calendarInfo, calendarLabel, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
-import { beatsFor, type StoryTrigger } from '@/lib/story'
-import { applyQuestEvents, generateWeeklyQuests, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
-import { addCourseScore, settleTerm, skillsFromCourses } from '@/lib/academics'
+import { beatById, beatsFor, STORY_CYCLE, type StoryTrigger } from '@/lib/story'
+import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
+import { addCourseScore, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
+import { classForWeek, classGrade, classMetaFor, examGames, GRADE_REWARD, MASTERY_LABEL, masteryLevel, professorById, type MiniGameType } from '@/lib/curriculum'
+import { mulberry32 } from '@/lib/rng'
 import {
   ACTIVITY_META,
   activityUnlockWeek,
@@ -19,13 +21,25 @@ import {
   rollGather,
   type ActivityId,
 } from '@/lib/life'
-import { canRecruit, combatantFromCompanion, COMBAT_NPCS, companionStats, COMPANION_SLOTS, createCompanionProgress, npcPetCombatant, schoolNpcById } from '@/lib/companions'
+import {
+  canRecruit,
+  combatantFromCompanion,
+  combatantFromGuest,
+  COMBAT_NPCS,
+  companionStats,
+  COMPANION_SLOTS,
+  createCompanionProgress,
+  createGuestMember,
+  guestNpcById,
+  guestStats,
+  schoolNpcById,
+} from '@/lib/companions'
 import { addToInventory, hasItem, removeFromInventory } from '@/lib/inventory'
 import { applyExp, questExpMult } from '@/lib/exp-table'
 import { getEffectiveStats } from '@/lib/derived'
 import { itemById, monsterById, SKILLS } from '@/lib/mock-data'
-import { computeStatsForLevel, formationError, FORMATION_LIMITS, SKILL_LOADOUT_SIZE } from '@/lib/constants'
-import { combatantFromPet, combatantFromPlayer, type PartyMemberInput } from '@/lib/battle-engine'
+import { computeStatsForLevel, expSharePerMember, formationError, FORMATION_LIMITS, MAX_GUESTS, SKILL_LOADOUT_SIZE } from '@/lib/constants'
+import { combatantFromPet, combatantFromPlayer, expShareMemberCount, type PartyMemberInput } from '@/lib/battle-engine'
 import { petDefById } from '@/lib/pets'
 import { MAPS } from '@/lib/maps'
 import { regionOfMap } from '@/lib/regions'
@@ -87,7 +101,7 @@ export function withQuestEvents(state: GameState, events: QuestEvent[], toast?: 
 /** 현재 globalWeek 의 주간 퀘스트가 없으면 생성하고 WEEK_START 비트를 큐잉 */
 export function ensureWeek(state: GameState): GameState {
   const gw = state.calendar.globalWeek
-  if (state.weekly.week === gw) return state
+  if (state.weekly.week === gw && state.weekly.format === 2) return state
   const weekly = generateWeeklyQuests(state)
   return queueBeats({ ...state, weekly }, (t) => t.type === 'WEEK_START' && t.week === gw)
 }
@@ -98,8 +112,9 @@ export function newGameProgress(state: GameState): GameState {
     ...state,
     playerSeed,
     calendar: { globalWeek: 1 },
-    weekly: { week: 0, quests: [], lastSeen: {} },
-    academics: { courseScore: {}, totalCredits: 0, history: [] },
+    weekly: { week: 0, quests: [], lastSeen: {}, format: 2 },
+    academics: { courseScore: {}, totalCredits: 0, history: [], mastery: {}, classLog: [] },
+    classScene: null,
     storyFlags: {},
     storyQueue: [],
     relationships: {},
@@ -164,20 +179,182 @@ export function claimQuest(state: GameState, instanceId: string): GameState {
   return { ...next, toast: `「${t.title}」 보상 — ${parts.join(', ')}` }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 외부활동 수락/취소(통합 PRD §27)
+// ─────────────────────────────────────────────────────────────────────────────
+export function acceptQuest(state: GameState, instanceId: string): GameState {
+  const r = acceptSideQuest(state.weekly, instanceId)
+  if (r.error) return { ...state, toast: r.error }
+  return { ...state, weekly: r.weekly }
+}
+export function dropQuest(state: GameState, instanceId: string): GameState {
+  return { ...state, weekly: dropSideQuest(state.weekly, instanceId) }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 수업 장면(통합 PRD §2.1, §14~22) — 교실 착석 → 5초 강의 → 미니게임 → 수업 종료 → 평가
+// ─────────────────────────────────────────────────────────────────────────────
+/** 교실 안 플레이어 자리 — 앞줄 가운데 책상 뒤(칠판을 향해) */
+export function classSeatFor(room: MapId): { x: number; y: number } {
+  if (room === 'practice-lab') return { x: 10.5, y: 11.1 }
+  if (room === 'practice-lab-adv') return { x: 11, y: 14.2 }
+  return { x: 10.4, y: 9.5 }
+}
+
+/** test = 관리자 미니게임 테스트(주간 수업 완료 여부 무시, 지정 게임으로) */
+export function startClass(state: GameState, test?: { game: MiniGameType }): GameState {
+  if (state.classScene) return state
+  const gw = state.calendar.globalWeek
+  const wc = classForWeek(gw) ?? (test ? { kind: 'lecture' as const, courseId: 'FIRE_101', courseIds: ['FIRE_101'], label: '테스트 수업' } : null)
+  if (!wc) return { ...state, toast: '방학에는 수업이 없습니다.' }
+  if (state.weekly.classDone && !test) return { ...state, toast: '이번 주 수업은 이미 들었습니다.' }
+  const meta = classMetaFor(wc.courseId)
+  const seed = (state.playerSeed ^ (gw * 2654435761)) >>> 0
+  const rand = mulberry32(seed)
+  const games: MiniGameType[] =
+    test ? [test.game] : wc.kind === 'midterm' || wc.kind === 'final' ? examGames(wc.kind, wc.courseIds, rand) : [meta.games[Math.floor(rand() * meta.games.length)]]
+  const seat = classSeatFor(meta.room)
+  return {
+    ...state,
+    classScene: {
+      courseId: wc.courseId,
+      courseIds: wc.courseIds,
+      kind: wc.kind,
+      label: wc.label,
+      professorId: meta.professorId,
+      room: meta.room,
+      games,
+      index: 0,
+      scores: [],
+      phase: 'lecture',
+      seed,
+      returnTo: { mapId: state.currentMapId, position: { ...state.position } },
+    },
+    currentMapId: meta.room,
+    position: seat,
+    facing: 'up',
+    fieldMonsters: [],
+    pendingEncounterUid: null,
+    pendingPortalId: null,
+    screen: 'world',
+    toast: null,
+  }
+}
+
+export function classBeginGames(state: GameState): GameState {
+  if (!state.classScene || state.classScene.phase !== 'lecture') return state
+  return { ...state, classScene: { ...state.classScene, phase: 'game' } }
+}
+
+/** 미니게임 하나 끝 — 마지막이면 정산(보상 즉시 지급)하고 결과 단계로 */
+export function classGameDone(state: GameState, score: number, label: string): GameState {
+  const sc = state.classScene
+  if (!sc || sc.phase !== 'game') return state
+  const scores = [...sc.scores, { type: sc.games[sc.index], score: Math.max(0, Math.min(100, Math.round(score))), label }]
+  if (sc.index + 1 < sc.games.length) return { ...state, classScene: { ...sc, scores, index: sc.index + 1 } }
+  return settleClass({ ...state, classScene: { ...sc, scores } })
+}
+
+function settleClass(state: GameState): GameState {
+  const sc = state.classScene!
+  const gw = state.calendar.globalWeek
+  const info = calendarInfo(gw)
+  const score = Math.round(sc.scores.reduce((a, b) => a + b.score, 0) / Math.max(1, sc.scores.length))
+  const grade = classGrade(score)
+  const R = GRADE_REWARD[grade]
+  const isExam = sc.kind === 'midterm' || sc.kind === 'final'
+  const meta = classMetaFor(sc.courseId)
+  const lines: string[] = []
+  let next: GameState = state
+
+  // 과목 점수(스킬 습득 진도) — 시험은 이번 학기 전 과목에 80%씩
+  let academics = next.academics
+  for (const id of sc.courseIds) {
+    const amt = isExam ? Math.round(R.course * 0.8) : R.course
+    academics = addCourseScore(academics, gw, amt, id)
+  }
+  lines.push(isExam ? `학기 전 과목 수업 점수 +${Math.round(R.course * 0.8)}` : `${courseName(sc.courseId)} 수업 점수 +${R.course}`)
+  // 분야 숙련도
+  const fields = Array.from(new Set(sc.courseIds.map((id) => classMetaFor(id).field)))
+  const mastery = { ...(academics.mastery ?? {}) }
+  for (const f of fields) {
+    const before = masteryLevel(mastery[f] ?? 0).level
+    mastery[f] = (mastery[f] ?? 0) + (isExam ? Math.round(R.mastery * 1.2) : R.mastery)
+    const after = masteryLevel(mastery[f]).level
+    lines.push(`${MASTERY_LABEL[f]} 숙련도 +${isExam ? Math.round(R.mastery * 1.2) : R.mastery}${after > before ? ` (Lv.${after} 달성!)` : ''}`)
+  }
+  const classLog = [...(academics.classLog ?? []), { week: gw, courseId: sc.courseId, kind: sc.kind, games: sc.scores.map((x) => ({ type: x.type, score: x.score })), score, grade }].slice(-200)
+  academics = { ...academics, mastery, classLog }
+  next = { ...next, academics, weekly: { ...next.weekly, classDone: true } }
+
+  // EXP · 골드 · 교수 관계도
+  const mult = yearRewardMult(gw)
+  const exp = Math.round(R.exp * mult * questExpMult(next.player.level) * (isExam ? 1.5 : 1))
+  const gold = Math.round(R.gold * mult * (isExam ? 1.5 : 1))
+  const prevLv = next.player.level
+  next = grantHeroExp({ ...next, player: { ...next.player, gold: next.player.gold + gold } }, exp)
+  lines.push(`EXP +${exp}${next.player.level > prevLv ? ` · 레벨 업! Lv.${next.player.level}` : ''}`, `골드 +${gold}`)
+  const prof = professorById(meta.professorId)
+  if (prof && R.affinity > 0) {
+    next = addAffinity(next, prof.npcId, R.affinity)
+    lines.push(`${prof.name} 관계도 +${R.affinity}`)
+  }
+  // 시험 통과 플래그(§34) — 낙제해도 스토리는 막히지 않는다
+  if (isExam && grade !== 'D') next = setStoryFlag(next, `${sc.kind === 'midterm' ? 'MIDTERM' : 'FINAL'}_Y${info.year}${info.termType === 'semester1' ? 'S1' : 'S2'}_PASSED`)
+  // 새 스킬
+  const before = next.player.learnedSkills.length
+  next = refreshSkills(next)
+  const learned = next.player.learnedSkills.slice(before)
+  if (learned.length) lines.push(`새 마법 습득: ${skillNames(learned)}`)
+  return { ...next, classScene: { ...sc, phase: 'result', result: { score, grade, lines } } }
+}
+
+/** 평가창 '다음' — 원래 있던 곳으로 돌아간다 */
+export function finishClass(state: GameState): GameState {
+  const sc = state.classScene
+  if (!sc) return state
+  if (sc.phase !== 'result') return { ...state, classScene: null, currentMapId: sc.returnTo.mapId, position: { ...sc.returnTo.position } }
+  const back = MAPS[sc.returnTo.mapId] ? sc.returnTo : { mapId: 'school-hall' as MapId, position: { x: 24, y: 30 } }
+  return {
+    ...state,
+    classScene: null,
+    currentMapId: back.mapId,
+    position: { ...back.position },
+    facing: 'down',
+    toast: `${sc.label} 수업을 마쳤다 — 평가 ${sc.result?.grade ?? '-'}`,
+  }
+}
+
 /** 주 마감 → 다음 주. force = 관리자/테스트 모드 강제 진행 */
 export function endWeek(state: GameState, force = false): GameState {
   const gw = state.calendar.globalWeek
-  if (!force && !weekCompletion(state.weekly).canEnd) {
-    return { ...state, toast: '필수 미션과 선택 미션 2개의 보상을 받아야 다음 주로 넘어갈 수 있습니다.' }
+  const wc = weekCompletion(state.weekly)
+  if (!force && !wc.canEnd) {
+    return { ...state, toast: wc.classDone ? '외부활동 2개의 보상을 받아야 이번 주를 마칠 수 있습니다.' : '이번 주 수업을 먼저 들어야 합니다. (학사 수첩 → 수업 참석)' }
   }
   if (gw >= TOTAL_WEEKS) return { ...state, toast: '4학년 겨울방학 — 마지막 주입니다. (후일담 구간)' }
-  let next = queueBeats(state, (t) => t.type === 'WEEK_END' && t.week === gw)
   const info = calendarInfo(gw)
   const msgs: string[] = []
+  // 주간 보상(§1) — 학년 배율
+  const mult = yearRewardMult(gw)
+  const wExp = Math.round(30 * mult * questExpMult(state.player.level))
+  const wGold = Math.round(80 * mult)
+  let next = grantHeroExp({ ...state, player: { ...state.player, gold: state.player.gold + wGold } }, wExp)
+  msgs.push(`주간 보상 EXP ${wExp} · ${wGold}G`)
+  next = queueBeats(next, (t) => t.type === 'WEEK_END' && t.week === gw)
+  // 3주 메인스토리 슬롯(§3) — 주차를 소비하지 않고 보상 직후 재생
+  if (info.week % 3 === 0) {
+    next = queueBeats(next, (t) => t.type === 'STORY_SLOT' && t.week === gw)
+    const fixed = STORY_CYCLE[gw]
+    if (fixed && beatById(fixed) && !next.storyFlags[`beat:${fixed}`] && !next.storyQueue.includes(fixed)) next = { ...next, storyQueue: [...next.storyQueue, fixed] }
+  }
   if (info.week === WEEKS_PER_TERM) {
     const settled = settleTerm(next.academics, gw)
     next = { ...next, academics: settled.academics }
     if (settled.summary) msgs.push(settled.summary)
+    // 과목 이수 플래그(통합 PRD §34) — D 이상(학점 획득)이면 COURSE_<과목>_PASSED
+    const rec = settled.academics.history[settled.academics.history.length - 1]
+    for (const c of rec?.courses ?? []) if (c.credit > 0) next = setStoryFlag(next, `COURSE_${c.courseId}_PASSED`)
   }
   const ngw = gw + 1
   next = { ...next, calendar: { globalWeek: ngw } }
@@ -357,9 +534,10 @@ export function battleStats(state: GameState): Stats {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 파티 · 진형 · 펫 귀속 (PRD v2.0 §16~20)
-//   핵심 전투원 = 주인공 + 학교 NPC 3명. 펫은 전위 캐릭터에게만 귀속.
-//   주인공은 보유 펫 중 1마리(state.pet), NPC 는 각자 고정 펫.
+// 파티 · 진형 · 펫 (PRD v2.0 §16~20, 2026-10-02 개편)
+//   진형 6칸(전위 2 · 후위 2 · 지원 2) + 펫 고정 1칸.
+//   파티 = 주인공 + 학교 NPC 0~3명(솔로 가능). 남는 2칸은 임시 합류 NPC(호위·동행).
+//   펫은 주인공만(보유 펫 중 1마리, state.pet) — 포지션과 무관하게 고정 펫 슬롯으로 참가.
 // ─────────────────────────────────────────────────────────────────────────────
 export function recruitCompanion(state: GameState, id: string): GameState {
   const def = schoolNpcById(id)
@@ -372,16 +550,19 @@ export function recruitCompanion(state: GameState, id: string): GameState {
   return { ...next, toast: `${def.name}이(가) 파티에 합류했다!` }
 }
 
-/** 파티 편성 — 파티에 없으면 넣고(빈 자리가 있을 때), 있으면 뺀다(대기 동료가 있어야 4인 유지) */
+/** 파티 편성 — 파티에 없으면 넣고(빈 자리가 있을 때), 있으면 뺀다(동료 0명 = 솔로도 허용) */
+/** 동료가 쓸 수 있는 자리 — 4칸 중 주인공·임시 NPC 를 뺀 나머지 */
+export function companionSlotsFor(state: Pick<GameState, 'companions'>): number {
+  return Math.max(0, COMPANION_SLOTS - (state.companions.guests ?? []).length)
+}
+
 export function togglePartyMember(state: GameState, id: string): GameState {
   if (!state.companions.recruited[id]) return state
   const inParty = state.companions.party.includes(id)
   if (inParty) {
-    const bench = Object.keys(state.companions.recruited).filter((x) => !state.companions.party.includes(x))
-    if (bench.length === 0) return { ...state, toast: '4인 편성을 유지해야 합니다. 대기 중인 동료와 교체하세요.' }
     return normalizeFormation({ ...state, companions: { ...state.companions, party: state.companions.party.filter((p) => p !== id) } })
   }
-  if (state.companions.party.length >= COMPANION_SLOTS) return { ...state, toast: `동료는 최대 ${COMPANION_SLOTS}명입니다. 교체할 자리를 먼저 고르세요.` }
+  if (state.companions.party.length >= companionSlotsFor(state)) return { ...state, toast: `동료 자리가 없습니다(4대4 — 임시 동행 NPC 포함). 교체할 자리를 먼저 고르세요.` }
   return normalizeFormation({ ...state, companions: { ...state.companions, party: [...state.companions.party, id] } })
 }
 
@@ -400,14 +581,47 @@ export function swapPartyMember(state: GameState, slot: number, id: string): Gam
   return normalizeFormation({ ...state, companions: { ...state.companions, party: party.slice(0, COMPANION_SLOTS) }, formation: { positions } })
 }
 
-/** 파티원 id 목록(주인공 'hero' 포함, 최대 4) */
+/** 파티원 id 목록(주인공 'hero' 포함, 최대 4) — 경험치·조작 대상 */
 export function partyMemberIds(state: Pick<GameState, 'companions'>): string[] {
   return ['hero', ...state.companions.party.slice(0, COMPANION_SLOTS)]
 }
 
-/** 포지션 변경 — 인원 제한(전위 1~2 · 후위 1~2 · 보조 0~1)을 어기면 거절 */
+/** 진형에 서는 전원(파티 + 임시 NPC, 최대 6) */
+export function formationMemberIds(state: Pick<GameState, 'companions'>): string[] {
+  return [...partyMemberIds(state), ...(state.companions.guests ?? []).slice(0, MAX_GUESTS).map((g) => g.id)].slice(0, COMPANION_SLOTS + 1)
+}
+
+/** 전위 동료에게 펫 붙이기/떼기(defId=null) — 주인공 펫·다른 동료 펫과 중복 불가, 전위만 */
+export function setMemberPet(state: GameState, memberId: string, defId: string | null): GameState {
+  if (memberId === 'hero') {
+    if (!defId) return state
+    const found = state.ownedPets.find((p) => p.defId === defId)
+    if (!found) return state
+    const pets = { ...(state.formation.pets ?? {}) }
+    for (const k of Object.keys(pets)) if (pets[k] === defId) delete pets[k]
+    return { ...state, pet: found, formation: { ...state.formation, pets } }
+  }
+  const pets = { ...(state.formation.pets ?? {}) }
+  if (!defId) {
+    delete pets[memberId]
+    return { ...state, formation: { ...state.formation, pets } }
+  }
+  if ((state.formation.positions[memberId] ?? 'rear') !== 'front') return { ...state, toast: '펫은 전위 캐릭터만 데리고 갈 수 있습니다.' }
+  if (!state.ownedPets.some((p) => p.defId === defId)) return state
+  if (state.pet.defId === defId) return { ...state, toast: '주인공이 데리고 있는 펫입니다.' }
+  for (const k of Object.keys(pets)) if (pets[k] === defId) delete pets[k]
+  pets[memberId] = defId
+  return { ...state, formation: { ...state.formation, pets } }
+}
+
+function defaultPositionOf(id: string): Position {
+  if (id === 'hero') return 'front'
+  return schoolNpcById(id)?.combat?.defaultPosition ?? guestNpcById(id)?.defaultPosition ?? 'rear'
+}
+
+/** 포지션 변경 — 인원 제한(전위 1~2 · 후위 0~1 · 보조 0~1)을 어기면 거절 */
 export function setMemberPosition(state: GameState, memberId: string, position: Position): GameState {
-  const ids = partyMemberIds(state)
+  const ids = formationMemberIds(state)
   if (!ids.includes(memberId)) return state
   const positions = { ...state.formation.positions, [memberId]: position }
   const err = formationError(ids.map((id) => positions[id] ?? 'rear'))
@@ -416,15 +630,13 @@ export function setMemberPosition(state: GameState, memberId: string, position: 
 }
 
 /**
- * 진형 정리 — 파티원 모두에게 포지션을 주고 인원 제한을 맞춘다.
- * 기존 배치를 최대한 유지하고, 넘치는 자리는 남는 자리로 옮긴다.
+ * 진형 정리 — 진형 인원 모두에게 포지션을 주고 인원 제한을 맞춘다.
+ * 기존 배치를 최대한 유지하고, 넘치는 자리는 남는 자리로 옮긴다(뒤에 들어온 인원부터 밀려난다).
  */
 export function normalizeFormation(state: GameState): GameState {
-  const ids = partyMemberIds(state)
+  const ids = formationMemberIds(state)
   const positions: Record<string, Position> = {}
-  for (const id of ids) {
-    positions[id] = state.formation.positions[id] ?? (id === 'hero' ? 'front' : schoolNpcById(id)?.combat?.defaultPosition ?? 'rear')
-  }
+  for (const id of ids) positions[id] = state.formation.positions[id] ?? defaultPositionOf(id)
   const order: Position[] = ['front', 'rear', 'support']
   const count = () => {
     const c: Record<Position, number> = { front: 0, rear: 0, support: 0 }
@@ -438,44 +650,60 @@ export function normalizeFormation(state: GameState): GameState {
       positions[mover] = order.find((q) => q !== p && count()[q] < FORMATION_LIMITS[q].max) ?? 'rear'
     }
   }
-  // 2) 최소치 미달(전위 1명 이상 · 2인 이상이면 후위 1명 이상) → 여유 있는 자리에서 데려온다
-  const mins: Position[] = ids.length >= 2 ? ['front', 'rear'] : ['front']
-  for (const p of mins) {
-    if (count()[p] >= FORMATION_LIMITS[p].min) continue
-    const donor = order.filter((q) => q !== p).sort((a, b) => count()[b] - count()[a])[0]
-    const mover = [...ids].reverse().find((id) => positions[id] === donor && id !== 'hero') ?? ids.find((id) => positions[id] === donor)
-    if (mover) positions[mover] = p
+  // 2) 전위가 비었으면 → 주인공을 전위로(전위가 0명이었으니 넘칠 일은 없다)
+  if (count().front < FORMATION_LIMITS.front.min && ids.length > 0) positions.hero = 'front'
+  // 3) 펫 — 전위 동료에게만, 보유 중이고 주인공 펫과 겹치지 않는 것만 남긴다
+  const pets: Record<string, string> = {}
+  for (const [id, def] of Object.entries(state.formation.pets ?? {})) {
+    if (positions[id] === 'front' && id !== 'hero' && state.ownedPets.some((p) => p.defId === def) && def !== state.pet.defId) pets[id] = def
   }
-  return { ...state, formation: { positions } }
+  return { ...state, formation: { positions, pets } }
 }
 
 /**
- * 파티 보장 — 합류 가능한 1학년 동기를 자동 합류시키고, 빈 자리는 대기 동료로 채운다(4인 유지).
+ * 파티 보장 — 합류 가능한 1학년 동기를 자동 합류(합류 순간에만 파티에 넣는다).
+ * 플레이어가 동료를 빼서 솔로/소수로 다니는 선택은 그대로 존중한다(빈 자리를 다시 채우지 않음).
  */
 export function ensureParty(state: GameState): GameState {
   let next = state
   for (const def of COMBAT_NPCS) {
     if (!def.starter || next.companions.recruited[def.id]) continue
     if (!canRecruit(next, def).ok) continue
+    const party = next.companions.party.length < COMPANION_SLOTS ? [...next.companions.party, def.id] : next.companions.party
     next = {
       ...next,
-      companions: { ...next.companions, recruited: { ...next.companions.recruited, [def.id]: createCompanionProgress(def, next.player.level) } },
+      companions: { ...next.companions, party, recruited: { ...next.companions.recruited, [def.id]: createCompanionProgress(def, next.player.level) } },
     }
   }
-  const party = next.companions.party.filter((id) => !!next.companions.recruited[id] && !!schoolNpcById(id)?.combat)
-  for (const id of Object.keys(next.companions.recruited)) {
-    if (party.length >= COMPANION_SLOTS) break
-    if (!party.includes(id) && schoolNpcById(id)?.combat) party.push(id)
-  }
-  return normalizeFormation({ ...next, companions: { ...next.companions, party } })
+  const guests = (next.companions.guests ?? []).filter((g) => !!guestNpcById(g.id)).slice(0, MAX_GUESTS)
+  // 4대4 — 동료 + 임시 NPC ≤ 3
+  const party = next.companions.party.filter((id) => !!next.companions.recruited[id] && !!schoolNpcById(id)?.combat).slice(0, Math.max(0, COMPANION_SLOTS - guests.length))
+  return normalizeFormation({ ...next, companions: { ...next.companions, party, guests } })
+}
+
+// ── 임시 합류 NPC(호위 대상·임시 동행) — 스토리/퀘스트에서 호출 ────────────────
+export function addGuest(state: GameState, id: string): GameState {
+  const def = guestNpcById(id)
+  const guests = state.companions.guests ?? []
+  if (!def || guests.some((g) => g.id === id)) return state
+  if (guests.length >= MAX_GUESTS) return { ...state, toast: `임시 합류 자리는 최대 ${MAX_GUESTS}명입니다.` }
+  if (state.companions.party.length + guests.length >= COMPANION_SLOTS) return { ...state, toast: '4대4 자리가 꽉 찼습니다 — 동료 한 명을 빼야 합류할 수 있습니다.' }
+  const next = normalizeFormation({ ...state, companions: { ...state.companions, guests: [...guests, createGuestMember(def, state.player.level)] } })
+  return { ...next, toast: `${def.name}이(가) ${def.role === 'escort' ? '호위 대상으로' : '임시로'} 동행한다.` }
+}
+
+export function removeGuest(state: GameState, id: string): GameState {
+  const guests = (state.companions.guests ?? []).filter((g) => g.id !== id)
+  const positions = { ...state.formation.positions }
+  delete positions[id]
+  return normalizeFormation({ ...state, companions: { ...state.companions, guests }, formation: { positions } })
 }
 
 /**
- * 전투 파티 구성 — 핵심 전투원 + 포지션 + 펫(주인공 = 선택 펫, NPC = 고정 펫).
- * 펫은 battle-engine.initBattle 에서 주인이 전위일 때만 실제로 참가한다.
+ * 전투 진형 구성 — 주인공(+고정 펫) · 파티 동료 · 임시 NPC 와 각자의 포지션.
  */
 export function battleParty(state: GameState): PartyMemberInput[] {
-  const pos = (id: string): Position => state.formation.positions[id] ?? 'rear'
+  const pos = (id: string): Position => state.formation.positions[id] ?? defaultPositionOf(id)
   const weapon = state.player.equipped.weapon ? itemById(state.player.equipped.weapon)?.weaponElement : undefined
   const hero = combatantFromPlayer(state.player, battleStats(state), weapon)
   const heroPet = petDefById(state.pet.defId) ? combatantFromPet(state.pet, 'hero') : null
@@ -485,7 +713,13 @@ export function battleParty(state: GameState): PartyMemberInput[] {
     const prog = state.companions.recruited[id]
     if (!def?.combat || !prog) continue
     const c = combatantFromCompanion(def, prog)
-    members.push({ combatant: c, position: pos(id), pet: npcPetCombatant(def, prog.level, c.uid) })
+    const petDef = state.formation.pets?.[id]
+    const owned = petDef ? state.ownedPets.find((p) => p.defId === petDef) : undefined
+    members.push({ combatant: c, position: pos(id), pet: owned && petDefById(owned.defId) ? combatantFromPet(owned, c.uid, `pet-${id}`) : null })
+  }
+  for (const g of (state.companions.guests ?? []).slice(0, MAX_GUESTS)) {
+    const def = guestNpcById(g.id)
+    if (def) members.push({ combatant: combatantFromGuest(def, g), position: pos(g.id) })
   }
   return members
 }
@@ -494,7 +728,7 @@ export function battleParty(state: GameState): PartyMemberInput[] {
 function syncCompanionsFromBattle(state: GameState, battle: BattleState, ratioOnDefeat?: number): GameState {
   const recruited = { ...state.companions.recruited }
   for (const c of battle.combatants) {
-    if (c.kind !== 'ally') continue
+    if (c.kind !== 'ally' || c.guest) continue
     const prog = recruited[c.refId]
     const def = schoolNpcById(c.refId)
     if (!prog || !def) continue
@@ -503,7 +737,16 @@ function syncCompanionsFromBattle(state: GameState, battle: BattleState, ratioOn
     const hp = Math.max(1, Math.min(baseMax, Math.round(baseMax * ratio)))
     recruited[c.refId] = { ...prog, hp, mp: c.mp }
   }
-  return { ...state, companions: { ...state.companions, recruited } }
+  // 임시 NPC HP/MP — 호위 임무가 여러 전투에 걸쳐 이어지므로 남긴다
+  const guests = (state.companions.guests ?? []).map((g) => {
+    const c = battle.combatants.find((x) => x.guest && x.refId === g.id)
+    const def = guestNpcById(g.id)
+    if (!c || !def) return g
+    const baseMax = guestStats(def, g.level).maxHp
+    const ratio = ratioOnDefeat != null ? ratioOnDefeat : c.hp / Math.max(1, c.stats.maxHp)
+    return { ...g, hp: Math.max(1, Math.min(baseMax, Math.round(baseMax * ratio))), mp: c.mp }
+  })
+  return { ...state, companions: { ...state.companions, recruited, guests } }
 }
 
 export function healCompanions(state: GameState): GameState {
@@ -514,7 +757,13 @@ export function healCompanions(state: GameState): GameState {
     const s = companionStats(def, prog.level)
     recruited[id] = { ...prog, hp: s.maxHp, mp: s.maxMp }
   }
-  return { ...state, companions: { ...state.companions, recruited } }
+  const guests = (state.companions.guests ?? []).map((g) => {
+    const def = guestNpcById(g.id)
+    if (!def) return g
+    const s = guestStats(def, g.level)
+    return { ...g, hp: s.maxHp, mp: s.maxMp }
+  })
+  return { ...state, companions: { ...state.companions, recruited, guests } }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -531,32 +780,69 @@ export function grantHeroExp(state: GameState, amount: number): GameState {
   })
 }
 
+/** 이번 전투의 1인당 경험치(주인공·동료·펫 공통) */
+export function battleExpShare(battle: BattleState): number {
+  return battle.rewardExpShare ?? expSharePerMember(battle.rewardExp ?? 0, expShareMemberCount(battle.combatants))
+}
+
+/** 동료 경험치 지급(전투 분배·마력캔디 공용) — 레벨업 시 HP/MP 가득 */
+export function grantCompanionExp(state: GameState, id: string, amount: number): { state: GameState; leveledTo: number | null } {
+  const prog = state.companions.recruited[id]
+  const def = schoolNpcById(id)
+  if (!prog || !def || amount <= 0) return { state, leveledTo: null }
+  const r = applyExp(prog.level, prog.exp, amount)
+  const next = r.leveledUp
+    ? (() => {
+        const s = companionStats(def, r.newLevel)
+        return { level: r.newLevel, exp: r.newExp, hp: s.maxHp, mp: s.maxMp }
+      })()
+    : { ...prog, exp: r.newExp }
+  return {
+    state: { ...state, companions: { ...state.companions, recruited: { ...state.companions.recruited, [id]: next } } },
+    leveledTo: r.leveledUp ? r.newLevel : null,
+  }
+}
+
+/** 마력캔디 — 주인공('hero') 또는 합류한 동료에게 경험치. 필드 전용 */
+export function useExpCandy(state: GameState, itemId: string, targetId: string): GameState {
+  const item = itemById(itemId)
+  const amount = item?.useEffect?.grantExp ?? 0
+  if (!item || amount <= 0 || !hasItem(state.inventory, itemId)) return state
+  const inventory = removeFromInventory(state.inventory, itemId, 1)
+  if (targetId === 'hero') {
+    const prev = state.player.level
+    const next = grantHeroExp({ ...state, inventory }, amount)
+    const lv = next.player.level > prev ? ` 레벨 업! Lv.${next.player.level}` : ''
+    return { ...next, toast: `${item.name}을(를) 먹었다 — 경험치 +${amount}.${lv}` }
+  }
+  const def = schoolNpcById(targetId)
+  if (!def || !state.companions.recruited[targetId]) return state
+  const r = grantCompanionExp({ ...state, inventory }, targetId, amount)
+  const lv = r.leveledTo ? ` 레벨 업! Lv.${r.leveledTo}` : ''
+  return { ...addAffinity(r.state, targetId, 1), toast: `${def.name}이(가) ${item.name}을(를) 먹었다 — 경험치 +${amount}.${lv}` }
+}
+
+/** 주인공 경험치는 리듀서(BATTLE_END_CONTINUE)가 battleExpShare 로 먼저 지급한 뒤 이 함수를 부른다 */
 export function afterBattleVictory(state: GameState, battle: BattleState): GameState {
   let next = syncCompanionsFromBattle(state, battle)
-  const expGain = battle.rewardExp ?? 0
-  // 동료 경험치 — 주인공과 같은 양(파티에 있던 동료만)
-  const recruited = { ...next.companions.recruited }
+  const share = battleExpShare(battle)
+  // 동료 경험치 — 이번 전투에 출전한 파티 동료가 1인당 몫을 받는다(임시 NPC 제외)
+  const levelUps: string[] = []
   for (const c of battle.combatants) {
-    if (c.kind !== 'ally' || !recruited[c.refId]) continue
-    const prog = recruited[c.refId]
-    const r = applyExp(prog.level, prog.exp, expGain)
-    if (r.leveledUp) {
-      const def = schoolNpcById(c.refId)!
-      const s = companionStats(def, r.newLevel)
-      recruited[c.refId] = { level: r.newLevel, exp: r.newExp, hp: s.maxHp, mp: s.maxMp }
-    } else {
-      recruited[c.refId] = { ...prog, exp: r.newExp }
-    }
-    next = addAffinity(next, c.refId, 1)
+    if (c.kind !== 'ally' || c.guest || !next.companions.recruited[c.refId]) continue
+    const r = grantCompanionExp(next, c.refId, share)
+    next = addAffinity(r.state, c.refId, 1)
+    if (r.leveledTo) levelUps.push(`${c.name} Lv.${r.leveledTo}`)
   }
-  next = { ...next, companions: { ...next.companions, recruited } }
+  if (levelUps.length) next = { ...next, toast: joinToast(next.toast, `동료 레벨 업! ${levelUps.join(', ')}`) }
 
-  // 펫 경험치 — 이번 전투에 실제로 참가했을 때(주인공이 전위)만(§20, §22)
-  const heroPetFought = battle.combatants.some((c) => c.uid === 'pet')
-  const petR = applyExp(next.pet.level, next.pet.exp, heroPetFought ? expGain : 0)
-  if (heroPetFought && (petR.newLevel !== next.pet.level || petR.newExp !== next.pet.exp)) {
-    const pet = { ...next.pet, level: petR.newLevel, exp: petR.newExp }
-    next = { ...next, pet, ownedPets: next.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)) }
+  // 펫 경험치 — 이번 전투에 참가한 펫(전위 주인) 각각 1인 몫(나누는 인원에는 포함되지 않음)
+  for (const pc of battle.combatants.filter((c) => c.kind === 'pet')) {
+    const owned = next.ownedPets.find((p) => p.defId === pc.refId)
+    if (!owned) continue
+    const r = applyExp(owned.level, owned.exp, share)
+    const upd = { ...owned, level: r.newLevel, exp: r.newExp, hp: Math.max(1, pc.hp), mp: pc.mp }
+    next = { ...next, ownedPets: next.ownedPets.map((p) => (p.defId === upd.defId ? upd : p)), pet: next.pet.defId === upd.defId ? { ...next.pet, level: upd.level, exp: upd.exp } : next.pet }
   }
 
   // 사냥 부산물

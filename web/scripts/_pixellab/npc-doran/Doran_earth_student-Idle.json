@@ -1,0 +1,69 @@
+{
+  "character": {
+    "id": "05bde3bf-bd27-4613-a7cd-1c428c783395",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage cadet, young man with neat short brown hair parted to the side and brown eyes, calm gentle face, black double-breasted military-style academy uniform jacket with bronze trim and green crystal earth embroidery, brown vest, white shirt collar with black cravat, dark belt, black trousers, black leather shoes, earth magic student",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Doran_earth_student-Idle.png",
+    "cell_size": {
+      "width": 88,
+      "height": 88
+    },
+    "sheet_size": {
+      "width": 792,
+      "height": 352
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "dcf50f0e-9e96-4cf9-886f-e0023c65f4ee",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "dcf50f0e-9e96-4cf9-886f-e0023c65f4ee",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "dcf50f0e-9e96-4cf9-886f-e0023c65f4ee",
+        "direction": "north"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-02T09:21:03.611039+00:00"
+}

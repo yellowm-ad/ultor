@@ -20,7 +20,7 @@ import { globalWeekOf as W } from '@/lib/calendar'
 // ── 화자 헬퍼 ──────────────────────────────────────────────────────────────────
 const N = (text: string): StoryLine => ({ speaker: '', text })
 const npc = (speaker: string, portraitId?: string) => (text: string): StoryLine => ({ speaker, portraitId, text })
-const MIREL = npc('미르엘 교수', 'npc-job-trainer')
+const MIREL = npc('미르엘 교수', 'npc-mirel')
 const OWEN = npc('사서 오웬', 'npc-librarian')
 const VAN = npc('대장장이 반', 'npc-weapon')
 const CELINE = npc('약사 셀린', 'npc-potion')

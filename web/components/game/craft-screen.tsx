@@ -13,7 +13,7 @@ import { activityUnlockLabel, isActivityUnlocked, RECIPE_CATEGORY_ACTIVITY, RECI
 import { ingredientLabel, ownedFor } from '@/lib/inventory'
 import { Hammer, Lock } from 'lucide-react'
 
-const CATEGORIES: RecipeCategory[] = ['equipment', 'alchemy', 'cooking', 'magicTool', 'furniture', 'costume']
+const CATEGORIES: RecipeCategory[] = ['equipment', 'candy', 'alchemy', 'cooking', 'magicTool', 'furniture', 'costume']
 
 const STATION_LABEL: Record<CraftStationKind, string> = {
   magic_workbench: '마도구 작업대',

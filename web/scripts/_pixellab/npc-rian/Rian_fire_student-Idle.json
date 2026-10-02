@@ -1,0 +1,69 @@
+{
+  "character": {
+    "id": "4d9eabc7-939b-40ed-b14a-02b1c8c36b4a",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage cadet, young man with messy fluffy orange hair and amber eyes, black double-breasted military-style academy uniform jacket with orange and gold flame embroidery trim, flame crest on back, white shirt collar with black cravat and small gold brooch, dark belt, black trousers, black leather shoes, fire magic student",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "Rian_fire_student-Idle.png",
+    "cell_size": {
+      "width": 92,
+      "height": 92
+    },
+    "sheet_size": {
+      "width": 828,
+      "height": 368
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "42151ddc-6eb0-43ff-b637-9ecc2910893b",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "42151ddc-6eb0-43ff-b637-9ecc2910893b",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "42151ddc-6eb0-43ff-b637-9ecc2910893b",
+        "direction": "north"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-02T09:21:00.446397+00:00"
+}

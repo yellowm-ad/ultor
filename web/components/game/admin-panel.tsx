@@ -5,6 +5,8 @@ import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { SKILLS, MONSTERS, NPCS, itemById } from '@/lib/mock-data'
 import { PET_DEFS } from '@/lib/pets'
+import { GUEST_NPCS } from '@/lib/companions'
+import { MINIGAME_META } from '@/lib/curriculum'
 import { POSITION_META } from '@/lib/constants'
 import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
 
@@ -242,6 +244,34 @@ export function AdminPanel() {
             </Button>
             <Button size="sm" className="w-full" onClick={() => dispatch({ type: 'ADMIN_RECRUIT_ALL' })}>
               동료 전원 합류
+            </Button>
+            {/* 수업 미니게임 테스트(이번 주 수업 완료 여부 무시) */}
+            <div className="grid grid-cols-3 gap-1">
+              {(['quiz', 'rhythm', 'chant', 'draw', 'alchemy'] as const).map((g) => (
+                <Button key={g} size="sm" variant="outline" onClick={() => dispatch({ type: 'ADMIN_CLASS_TEST', game: g })}>
+                  {MINIGAME_META[g].name}
+                </Button>
+              ))}
+            </div>
+            {/* 임시 합류 NPC(호위·동행) 테스트 */}
+            {GUEST_NPCS.map((g) => {
+              const on = (state.companions.guests ?? []).some((x) => x.id === g.id)
+              return (
+                <Button
+                  key={g.id}
+                  size="sm"
+                  variant={on ? 'default' : 'outline'}
+                  className="w-full"
+                  onClick={() => dispatch({ type: on ? 'REMOVE_GUEST' : 'ADD_GUEST', guestId: g.id })}
+                >
+                  {g.role === 'escort' ? '호위' : '동행'} NPC [{g.name}] {on ? '해제' : '합류'}
+                </Button>
+              )
+            })}
+            <Button size="sm" variant="outline" className="w-full" onClick={() => {
+              for (const id of ['candy-mana-s', 'candy-mana', 'candy-mana-l']) dispatch({ type: 'ADMIN_GIVE_ITEM', itemId: id, qty: 10 })
+            }}>
+              마력캔디 3종 ×10
             </Button>
             <Button
               size="sm"

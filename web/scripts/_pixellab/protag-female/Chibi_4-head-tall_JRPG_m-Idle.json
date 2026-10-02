@@ -18,7 +18,7 @@
     },
     "sheet_size": {
       "width": 792,
-      "height": 352
+      "height": 704
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -61,9 +61,41 @@
         "animation": "Walking",
         "animation_group_id": "0c11941b-d65d-4b28-b614-f652c620f5d1",
         "direction": "north"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Run",
+        "animation_group_id": "76c64cdf-0c54-4d6a-9b64-2c41553310e7",
+        "direction": "south"
+      },
+      {
+        "row": 5,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Run",
+        "animation_group_id": "76c64cdf-0c54-4d6a-9b64-2c41553310e7",
+        "direction": "east"
+      },
+      {
+        "row": 6,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Run",
+        "animation_group_id": "76c64cdf-0c54-4d6a-9b64-2c41553310e7",
+        "direction": "north"
+      },
+      {
+        "row": 7,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "WalkSouthFix",
+        "animation_group_id": "f9371e03-ea90-4835-8979-12a04dc5b99e",
+        "direction": "south"
       }
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-10-02T05:34:49.543677+00:00"
+  "export_date": "2026-10-02T12:48:02.413004+00:00"
 }

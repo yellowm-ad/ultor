@@ -1,0 +1,19 @@
+# 수업 장면 배우 — id	charId	animName	direction   (build-class-sheets.mjs)
+# 교수(강의 · 남쪽=학생 쪽)
+prof-mirel	f59c7232-a759-4244-bc4d-0441afbf9403	Lecture	south
+prof-kael	73430d04-6175-4810-9130-c492d4fd115b	Lecture	south
+prof-ignis	eb3da356-34a4-4320-8483-fc337d2ebdbf	Lecture	south
+prof-terra	d3a860de-05c9-46a8-a0ba-4b85794e244e	Lecture	south
+prof-noella	3855e917-b646-4999-acb8-fcd8610103a7	Lecture	south
+prof-lumen	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Lecture	south
+prof-owen	643d1585-a12f-403e-9bda-881a0dfd26dc	Lecture	south
+prof-selin	699883ef-d29d-4d73-b13f-5e003f1b3f35	Lecture	south
+prof-ban	8984f73d-dc57-4e13-b8fc-8ea6faf76391	Lecture	south
+prof-edric	d9c915d3-c5be-4443-adf0-edbfeb114034	Lecture	south
+# 학생(경청 · 북쪽=칠판 쪽) — 교복 통일 짜바리 6종
+student-m1	66aa97ca-06c5-4f72-9265-6b2297821657	Listen	north
+student-m2	d520a0b6-00f3-4112-84a6-b13cb9a9de69	Listen	north
+student-m3	e7fb98ba-7b72-447e-86b2-f21bd9eaae70	Listen	north
+student-f1	c4d59bf0-484c-43e5-9873-25bafa26a1d5	Listen	north
+student-f2	466ba554-4226-4ab5-ac25-f97b4f334cea	Listen	north
+student-f3	ef5c0c1f-16bd-4d6b-ad8a-30c6b611b856	Listen	north

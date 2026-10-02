@@ -30,7 +30,7 @@ import type {
   SkillElement,
   Stats,
 } from '@/lib/types'
-import { ATB, MAX_ENEMIES, MAX_PARTY_SIZE, MORS_MONSTER_ID, POSITION_BONUS, elementMultiplier } from '@/lib/constants'
+import { ATB, MAX_ACTIVE_PETS, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
 import { MONSTERS, itemById, skillById } from '@/lib/mock-data'
 import { rollHuntDrops } from '@/lib/life'
 import { testMonsterExpReward } from '@/lib/exp-table'
@@ -94,7 +94,7 @@ export function combatantFromPlayer(player: PlayerCharacter, effectiveStats?: St
   }
 }
 
-export function combatantFromPet(pet: Pet, ownerUid: string): Combatant {
+export function combatantFromPet(pet: Pet, ownerUid: string, uid = 'pet'): Combatant {
   const def = petDefById(pet.defId)!
   const raw = petStatsForLevel(def, pet.level)
   const tier = affectionTier(pet.affection)
@@ -104,7 +104,7 @@ export function combatantFromPet(pet: Pet, ownerUid: string): Combatant {
     stats[k] = Math.max(1, Math.round(stats[k] * meta.statMult))
   })
   return {
-    uid: 'pet',
+    uid,
     side: 'player',
     kind: 'pet',
     refId: pet.defId,
@@ -159,11 +159,11 @@ export function combatantFromMonster(def: MonsterDef): Combatant {
   }
 }
 
-/** 포지션 적용 — 보조는 최대 HP +10%(현재 HP 도 같은 비율로) */
+/** 포지션 적용 — 전위는 최대 HP +10%(현재 HP 도 같은 비율로) */
 export function applyPosition(c: Combatant, position: Position): Combatant {
-  if (position !== 'support') return { ...c, position }
-  const maxHp = Math.round(c.stats.maxHp * POSITION_BONUS.supportMaxHp)
-  const hp = c.alive ? Math.min(maxHp, Math.round(c.hp * POSITION_BONUS.supportMaxHp)) : c.hp
+  if (position !== 'front') return { ...c, position }
+  const maxHp = Math.round(c.stats.maxHp * POSITION_BONUS.frontMaxHp)
+  const hp = c.alive ? Math.min(maxHp, Math.round(c.hp * POSITION_BONUS.frontMaxHp)) : c.hp
   return { ...c, position, stats: { ...c.stats, maxHp }, hp }
 }
 
@@ -172,13 +172,13 @@ export function applyPosition(c: Combatant, position: Position): Combatant {
 export interface PartyMemberInput {
   combatant: Combatant // 포지션 미적용 상태
   position: Position
-  /** 이 캐릭터가 데려가는 펫(전위일 때만 실제로 참가) */
+  /** 이 캐릭터가 데려가는 펫 — 전위일 때만 실제로 참가 */
   pet?: Combatant | null
 }
 
 /**
- * 전투 시작. party = 핵심 전투원(주인공 포함, 최대 4) — 포지션과 펫을 함께 넘긴다.
- * 펫은 주인이 전위일 때만 PetLink 로 묶여 참가하고, 아니면 이번 전투에서 빠진다(§20).
+ * 전투 시작. party = 진형 6칸의 전투원(주인공 + 동료 최대 3 + 임시 NPC 최대 2) — 포지션과 펫을 함께 넘긴다.
+ * 펫은 진형과 별개인 고정 펫 슬롯으로 주인과 PetLink 로 묶여 참가한다.
  */
 export function initBattle(
   party: PartyMemberInput[],
@@ -187,11 +187,13 @@ export function initBattle(
   fieldMonsterUid?: string,
   opts: { huntEnabled?: boolean } = {},
 ): BattleState {
-  const core = party.slice(0, MAX_PARTY_SIZE).map((m) => applyPosition(m.combatant, m.position))
+  const members = party.slice(0, MAX_PARTY_SIZE + MAX_GUESTS)
+  const core = members.map((m) => applyPosition(m.combatant, m.position))
   const petLinks: PetLink[] = []
   const pets: Combatant[] = []
-  party.slice(0, MAX_PARTY_SIZE).forEach((m) => {
-    if (!m.pet || m.position !== 'front') return
+  // 펫은 전위 캐릭터만, 전투당 최대 2마리(통합 PRD §26)
+  members.forEach((m) => {
+    if (!m.pet || m.position !== 'front' || pets.length >= MAX_ACTIVE_PETS) return
     const owner = core.find((c) => c.uid === m.combatant.uid)!
     pets.push({ ...m.pet, ownerUid: owner.uid })
     petLinks.push({ petUid: m.pet.uid, ownerCombatantUid: owner.uid })
@@ -221,6 +223,22 @@ export function initBattle(
 export function validPetLink(battle: BattleState, link: PetLink): boolean {
   const owner = battle.combatants.find((c) => c.uid === link.ownerCombatantUid)
   return !!owner && owner.position === 'front'
+}
+
+/** 플레이어가 직접 조작하는 전투원 — 주인공 + 파티 동료(임시 NPC·펫 제외) */
+export function isPlayerControlled(c: Combatant): boolean {
+  return c.side === 'player' && (c.kind === 'hero' || (c.kind === 'ally' && !c.guest))
+}
+
+/** 이 전투원의 턴에 사용자 입력을 기다려야 하는가(자동 전투 · 동료 자동 설정 반영) */
+export function awaitsPlayerInput(battle: BattleState, actor: Combatant, companionAuto?: boolean): boolean {
+  if (battle.auto || !isPlayerControlled(actor)) return false
+  return actor.kind === 'hero' || !companionAuto
+}
+
+/** 경험치 분배 대상(주인공 + 파티 동료) 수 */
+export function expShareMemberCount(combatants: Combatant[]): number {
+  return combatants.filter(isPlayerControlled).length
 }
 
 // ─── ATB 충전 ────────────────────────────────────────────────────────────────
@@ -295,7 +313,7 @@ function dealtMult(c: Combatant): number {
   let m = 1
   const ls = c.effects.find((e) => e.kind === 'buff' && e.id === 'lastStand')
   if (ls) m *= 1 + (ls.magnitude ?? 0.3)
-  if (c.position === 'front') m *= POSITION_BONUS.frontDamage // 전위: 주는 피해 +10%
+  if (c.position === 'rear') m *= POSITION_BONUS.rearDamage // 후위: 공격력·마법공격력 +10%
   return m
 }
 function takenMult(c: Combatant): number {
@@ -304,11 +322,12 @@ function takenMult(c: Combatant): number {
   if (ls) m *= 1 + 0.5 * (ls.magnitude ?? 0.3) // 받는 피해 증가는 절반 폭
   const guard = c.effects.find((e) => e.kind === 'buff' && e.id === 'defendGuard')
   if (guard) m *= 1 - (guard.magnitude ?? 0.5)
+  if (c.position === 'front') m *= POSITION_BONUS.frontTaken // 전위: 받는 피해 -5%
   return m
 }
-/** 후위: 주는 회복량 +10% */
+/** 보조: 주는 회복량 +10% */
 function healMult(c: Combatant): number {
-  return c.position === 'rear' ? POSITION_BONUS.rearHealing : 1
+  return c.position === 'support' ? POSITION_BONUS.supportHealing : 1
 }
 
 /** 장착 무기와 같은 속성 스킬 위력 +8%(§29) */
@@ -598,14 +617,16 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
       case 'buff':
       case 'stealth': {
         const targets = allyTargets().filter((t) => t.alive)
+        // 보조: 버프 효율 +10%
+        const buffMult = actor.position === 'support' ? POSITION_BONUS.supportBuff : 1
         for (const t of targets) {
           if (!skill.buff) continue
           const existing = t.effects.find((e) => e.kind === 'buff' && e.id === skill.buff!.id)
           if (existing) {
             existing.turnsLeft = Math.max(existing.turnsLeft, skill.buff.turns)
-            existing.magnitude = Math.max(existing.magnitude ?? 0, skill.buff.magnitude)
+            existing.magnitude = Math.max(existing.magnitude ?? 0, skill.buff.magnitude * buffMult)
           } else {
-            t.effects.push({ key: nextUid('eff'), kind: 'buff', id: skill.buff.id, name: skill.name, turnsLeft: skill.buff.turns, magnitude: skill.buff.magnitude })
+            t.effects.push({ key: nextUid('eff'), kind: 'buff', id: skill.buff.id, name: skill.name, turnsLeft: skill.buff.turns, magnitude: skill.buff.magnitude * buffMult })
           }
         }
         const who = targets.length === 1 && targets[0].uid !== actor.uid ? ` ${targets[0].name}에게` : ''
@@ -782,7 +803,7 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
 export function resolveEnemyTurn(battle: BattleState, actorUid: string): BattleState {
   const actor = battle.combatants.find((c) => c.uid === actorUid)
   if (!actor) return battle
-  // 펫은 주인이 전위에 있을 때만 행동(§20) — 귀속이 깨졌으면 대기
+  // 펫은 주인이 전투에 있을 때만 행동 — 귀속이 깨졌으면 대기
   if (actor.kind === 'pet') {
     const link = battle.petLinks?.find((l) => l.petUid === actor.uid)
     if (!link || !validPetLink(battle, link)) return battle
@@ -811,8 +832,8 @@ export function advanceTurn(battle: BattleState): BattleState {
 
 export function checkBattleEnd(battle: BattleState): BattleState {
   const enemiesAlive = aliveEnemies(battle.combatants).length > 0
-  // 펫만 남으면 패배 — 핵심 전투원 기준
-  const playersAlive = alivePlayers(battle.combatants).some((c) => c.kind !== 'pet')
+  // 펫·임시 NPC 만 남으면 패배 — 주인공 + 파티 동료 기준
+  const playersAlive = alivePlayers(battle.combatants).some(isPlayerControlled)
   if (enemiesAlive && playersAlive) return battle
 
   const entries = [...battle.log]
@@ -835,10 +856,12 @@ export function checkBattleEnd(battle: BattleState): BattleState {
         if (battle.huntEnabled) huntDrops.push(...rollHuntDrops(def.family))
       }
     }
-    log(entries, `전투에서 승리했다! 경험치 ${expTotal}, 골드 ${goldTotal} 획득!`, 'system')
+    const members = expShareMemberCount(battle.combatants)
+    const share = expSharePerMember(expTotal, members)
+    log(entries, members > 1 ? `전투에서 승리했다! 경험치 ${expTotal} (${members}명 분배 · 1인당 ${share}), 골드 ${goldTotal} 획득!` : `전투에서 승리했다! 경험치 ${expTotal} (단독 전투 · 전부 획득), 골드 ${goldTotal} 획득!`, 'system')
     if (drops.length) log(entries, `획득: ${drops.map((id) => itemById(id)?.name ?? id).join(', ')}`, 'system')
     if (huntDrops.length) log(entries, `사냥 부산물: ${huntDrops.map((id) => itemById(id)?.name ?? id).join(', ')}`, 'system')
-    return { ...battle, isOver: true, victory: true, log: entries, rewardExp: expTotal, rewardGold: goldTotal, rewardDrops: drops, huntDrops }
+    return { ...battle, isOver: true, victory: true, log: entries, rewardExp: expTotal, rewardExpShare: share, rewardGold: goldTotal, rewardDrops: drops, huntDrops }
   }
 
   log(entries, `파티가 쓰러졌다... 마법학교로 후송된다.`, 'system')

@@ -6,7 +6,24 @@ import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, ATLANTIS_PROPS, ATLANTIS_BLOC
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
 import { HALL_W, HALL_H, HALL_CX, STAIR, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, hallTileAt, hall2TileAt, hallStairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
-import type { HallDoorKey } from '@/lib/academy-hall'
+import type { HallDoorKey, HallExt } from '@/lib/academy-hall'
+import {
+  GALLERY_STAIR,
+  GALLERY_STAIR_CX,
+  GALLERY_WALL_SKIP,
+  YEAR2_DOOR_X,
+  galleryStair,
+  galleryStairBlockers,
+  galleryWallDecals,
+  buildUpperFloor,
+  upperPortals,
+  upperRoomReturn,
+  upperTileAt,
+  UF_W,
+  UF_H,
+  UF_PAD_TOP,
+  UF_SPAWN,
+} from '@/lib/academy-upper'
 import { ACADEMY_ROOM_DEFS, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from '@/lib/academy-rooms'
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
@@ -623,8 +640,18 @@ const personalSpaceTileAt = (cx: number, cy: number): TileKind =>
 
 // ════════ 마법학교 본관 — 중앙 홀(1층)·2층 회랑(lib/academy-hall.ts) + 실내 6실(lib/academy-rooms.ts) ════════
 // 사용자 규칙: 벽은 맵 끝선에 높게, 가구는 쿼터뷰(아이소) 정합 — 두 파일 머리말 참고.
-const HALL1 = buildHallFloor1()
-const HALL2 = buildHallFloor2()
+// 2층 회랑 확장(2학년 교실 문 · 동쪽 끝 3층 계단) — lib/academy-upper.ts
+const HALL_EXT: HallExt = {
+  wallDecals: galleryWallDecals,
+  wallSkip: GALLERY_WALL_SKIP,
+  // 1층 맵에선 회랑 위 장식(뒤쪽 레이어), 2층 맵에선 플레이어와 깊이 정렬(올라설 수 있음)
+  structures: (zb) => galleryStair(zb).map((g, i) => (zb === 0 ? { ...g, back: 300 + i } : g)),
+  blockers: galleryStairBlockers(),
+}
+const HALL1 = buildHallFloor1(HALL_EXT)
+const HALL2 = buildHallFloor2(HALL_EXT)
+const UF3 = buildUpperFloor(3)
+const UF4 = buildUpperFloor(4)
 /** 대강당 문 앞(2층 회랑) */
 const AUD_DOOR_FRONT = { x: HALL_CX, y: 1.3 }
 
@@ -633,6 +660,7 @@ function academyRoomMap(key: AcademyRoomKey): GameMap {
   const { id, name, def } = ACADEMY_ROOM_DEFS[key]
   const { w, h } = def
   const toAud = key === 'auditorium'
+  const upper = upperRoomReturn(key)
   return {
     id,
     name,
@@ -646,15 +674,17 @@ function academyRoomMap(key: AcademyRoomKey): GameMap {
     structures: def.structures,
     padTop: ROOM_PAD_TOP,
     blockers: buildBlockers(def.props, roomBlockersAc(w, h)),
-    zones: NO_ZONES,
+    // 학장실은 미르엘 교수가 머무는 구역(NPC zoneId 매칭용)
+    // 방마다 구역 하나(NPC zoneId 매칭용) — 학장실은 예전 id 유지
+    zones: [key === 'office' ? z('z-headmaster-office', 'school', '학장실', 0, 0, w, h, '#5b6bd6', '울토르 학장실. 미르엘 교수가 서류와 마법서 사이를 오간다.') : z(`z-${id}`, 'school', name, 0, 0, w, h, '#5b6bd6', name)],
     spawn: { x: w / 2, y: h - 2.2 },
     portals: [
       {
         id: `${id}-exit`,
         cell: { x: w / 2, y: h - 0.8 },
-        to: toAud ? 'academy-2f' : 'school-hall',
-        toSpawn: toAud ? { x: AUD_DOOR_FRONT.x, y: 2.5 } : hallDoorFront(key as HallDoorKey, 3.2),
-        label: toAud ? '2층 회랑으로' : '중앙 홀로',
+        to: upper ? upper.to : toAud ? 'academy-2f' : 'school-hall',
+        toSpawn: upper ? upper.spawn : toAud ? { x: AUD_DOOR_FRONT.x, y: 2.5 } : hallDoorFront(key as HallDoorKey, 3.2),
+        label: upper ? upper.label : toAud ? '2층 회랑으로' : '중앙 홀로',
         kind: 'exit',
       },
     ],
@@ -969,12 +999,51 @@ export const MAPS = {
     padTop: HALL_PAD_TOP - FLOOR2,
     padBottom: HALL2_PAD_BOTTOM,
     blockers: buildBlockers(HALL2.props, HALL2.blockers),
+    stairs: [{ ...GALLERY_STAIR }],
     zones: NO_ZONES,
     spawn: { x: HALL_CX, y: 2.5 },
     portals: [
       { id: '2f-to-hall', cell: { x: HALL_CX, y: 3.5 }, to: 'school-hall', toSpawn: { x: HALL_CX, y: STAIR.yTop + 1.8 }, label: '1층으로', kind: 'exit' },
       { id: '2f-to-auditorium', cell: { ...AUD_DOOR_FRONT }, to: 'grand-auditorium', label: '대강당', kind: 'portal' },
+      { id: '2f-to-class-year2', cell: { x: YEAR2_DOOR_X, y: 1.3 }, to: 'class-year2', label: '2학년 교실', kind: 'portal' },
+      { id: '2f-to-3f', cell: { x: GALLERY_STAIR_CX, y: GALLERY_STAIR.yTop + 0.6 }, to: 'academy-3f', toSpawn: { ...UF_SPAWN }, label: '3층으로', kind: 'portal' },
     ],
+  },
+  'academy-3f': {
+    id: 'academy-3f',
+    name: '마법학교 3층',
+    kind: 'town',
+    grid: { w: UF_W, h: UF_H },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: upperTileAt,
+    props: UF3.props,
+    structures: UF3.structures,
+    stairs: UF3.stairs,
+    padTop: UF_PAD_TOP,
+    blockers: buildBlockers(UF3.props, UF3.blockers),
+    zones: NO_ZONES,
+    spawn: { ...UF_SPAWN },
+    portals: upperPortals(3, ACADEMY_ROOM_DEFS),
+  },
+  'academy-4f': {
+    id: 'academy-4f',
+    name: '마법학교 4층',
+    kind: 'town',
+    grid: { w: UF_W, h: UF_H },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: upperTileAt,
+    props: UF4.props,
+    structures: UF4.structures,
+    stairs: UF4.stairs,
+    padTop: UF_PAD_TOP,
+    blockers: buildBlockers(UF4.props, UF4.blockers),
+    zones: NO_ZONES,
+    spawn: { ...UF_SPAWN },
+    portals: upperPortals(4, ACADEMY_ROOM_DEFS),
   },
   ...ACADEMY_ROOMS,
   'personal-space': {

@@ -24,7 +24,6 @@ export function playerSheet(gender: Gender): SpriteSheet {
 }
 
 const SHEET_COLS = 8
-const SHEET_ROWS = 4
 /** 4방향 → row 0 회전 컬럼 (PixelLab 방향 순서 기준) */
 const DIR_COL: Record<Facing, number> = { down: 0, right: 2, up: 4, left: 6 }
 /** 4방향 → 걷기 행. left 는 right(row2) 를 좌우 반전. */
@@ -82,7 +81,8 @@ export function HeroSprite({
           height: px,
           transform: flipX ? 'scaleX(-1)' : undefined,
           backgroundImage: `url(${sheetSrc(sheet)})`,
-          backgroundSize: `${px * SHEET_COLS}px ${px * SHEET_ROWS}px`,
+          // 높이 auto — 주인공 시트는 달리기 3행이 더 붙어 7행(그 외 4행)
+          backgroundSize: `${px * SHEET_COLS}px auto`,
           backgroundPosition: `-${col * px}px -${row * px}px`,
           imageRendering: 'pixelated',
         }}

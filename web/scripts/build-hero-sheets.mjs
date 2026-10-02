@@ -116,6 +116,9 @@ for (const name of CHARS) {
     if (!/^walking$/i.test(String(r.animation || ''))) continue
     if (r.direction && !(r.direction in walkRowsByDir)) walkRowsByDir[r.direction] = r
   }
+  // 정면 걷기 재생성본(WalkSouthFix) — 원본 south 걷기가 어색했던 캐릭터는 이걸 우선 쓴다(2026-10-02 주인공 남/여)
+  const southFix = meta.rows.find((r) => r.type === 'animation' && /^walk_?south_?fix$/i.test(String(r.animation || '')) && r.direction === 'south')
+  if (southFix) walkRowsByDir['south'] = southFix
   const southWalk = walkRowsByDir['south'] || null
 
   // 소스 PNG 의 한 셀을 잘라 88px 셀 중앙에 얹는다.
@@ -165,11 +168,30 @@ for (const name of CHARS) {
     statuses.push(`${outRow}:${label}`)
   }
 
+  // ── row 4..6: south / east / north 달리기(애니 이름 "Run") — 있을 때만 시트를 7행으로 늘린다(주인공 Shift 달리기) ──
+  const runRowsByDir = {}
+  for (const r of meta.rows) if (r.type === 'animation' && /^run$/i.test(String(r.animation || '')) && r.direction) runRowsByDir[r.direction] = r
+  let rows = ROWS
+  if (Object.keys(runRowsByDir).length) {
+    rows = ROWS + WALK_ROWS.length
+    for (let ri = 0; ri < WALK_ROWS.length; ri++) {
+      const src = runRowsByDir[WALK_ROWS[ri]] || runRowsByDir.south
+      if (!src) continue
+      const fc = src.frame_count || COLS
+      const start = fc > COLS ? 1 : 0
+      const rawFrames = []
+      for (let c = 0; c < COLS; c++) rawFrames.push(await grab(src.row, Math.min(start + c, fc - 1)))
+      const stable = await stabilizeRow(rawFrames, inCell, inCell)
+      for (let c = 0; c < COLS; c++) layers.push({ input: stable[c], left: c * CELL, top: (ROWS + ri) * CELL })
+      statuses.push(`${ROWS + ri}:run-${WALK_ROWS[ri]}`)
+    }
+  }
+
   await sharp({
-    create: { width: COLS * CELL, height: ROWS * CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    create: { width: COLS * CELL, height: rows * CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })
     .composite(layers)
     .png()
     .toFile(path.join(OUT, outName(name)))
-  console.log(`${outName(name)}  ${COLS * CELL}x${ROWS * CELL}  rows[ ${statuses.join('  ')} ]`)
+  console.log(`${outName(name)}  ${COLS * CELL}x${rows * CELL}  rows[ ${statuses.join('  ')} ]`)
 }

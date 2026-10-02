@@ -20,6 +20,7 @@ import { CraftScreen } from '@/components/game/craft-screen'
 import { WorldMapScreen } from '@/components/game/world-map-screen'
 import { Toast } from '@/components/game/toast'
 import { JournalScreen } from '@/components/game/journal-screen'
+import { ClassSceneOverlay } from '@/components/game/class-scene'
 import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
 
@@ -94,6 +95,7 @@ function GameShell() {
       {state.screen === 'journal' && <JournalScreen />}
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}
+      {state.classScene && <ClassSceneOverlay />}
     </div>
   )
 }

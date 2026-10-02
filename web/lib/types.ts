@@ -209,6 +209,8 @@ export interface ItemDef {
     cureStatus?: boolean
     atbBoost?: number // 대상 ATB 즉시 가산
     petAffection?: number // 펫 호감도 증가
+    /** 마력캔디 — 먹은 캐릭터(주인공·동료)에게 경험치. 필드 전용(전투 중 사용 불가) */
+    grantExp?: number
   }
   /** 먹이: 이 속성 펫이 좋아한다. 생략 = 모든 펫이 조금씩 좋아함 */
   feedElement?: PlayerElement
@@ -248,7 +250,7 @@ export interface InventorySlot {
 export type CraftStationKind = 'magic_workbench' | 'alchemy_pot' | 'cooking_pot'
 
 /** 제작 카테고리(§학사 PRD 38) — 카테고리마다 해금 시기(ActivityId)가 다르다 */
-export type RecipeCategory = 'equipment' | 'alchemy' | 'cooking' | 'magicTool' | 'furniture' | 'costume'
+export type RecipeCategory = 'equipment' | 'alchemy' | 'cooking' | 'magicTool' | 'furniture' | 'costume' | 'candy'
 
 export interface RecipeDef {
   id: string
@@ -264,8 +266,8 @@ export interface RecipeDef {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 펫 (§20~22) — 파티 최대 2마리, 전위(FRONT) 캐릭터에게만 귀속.
-// 주인공은 보유 펫 중 1마리를 고르고, 학교 NPC 는 각자 고정 펫을 데리고 다닌다.
+// 펫 (§20~22) — 주인공 전용 고정 펫 슬롯 1칸(포지션 무관). 동료 NPC 는 펫이 없다.
+// 펫 레벨은 전투 경험치 1인 몫을 따로 받아 성장한다.
 // ─────────────────────────────────────────────────────────────────────────────
 export type PetRarity = 'common' | 'rare' | 'special'
 
@@ -344,6 +346,8 @@ export interface Combatant {
   bonusCrit?: number
   /** 펫 호감도 '헌신' 지원 공격 확률 */
   supportChance?: number
+  /** 임시 합류 NPC(호위 대상 'escort' · 임시 동행 'guest') — 조작 불가 자동 행동, 경험치 분배 제외 */
+  guest?: 'escort' | 'guest'
   /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다 */
   appearance?: { kind: 'hero'; sheet: SpriteSheet } | { kind: 'npc'; npcId: string }
   alive: boolean
@@ -499,6 +503,13 @@ export type MapId =
   | 'headmaster-office' // 마법학교 학장실
   | 'academy-library' // 마법학교 도서관
   | 'academy-2f' // 마법학교 2층 회랑(중앙 홀 위)
+  | 'academy-3f' // 마법학교 3층 복도(3학년·어둠/빛·실습실·교수 연구실)
+  | 'academy-4f' // 마법학교 4층 복도(4학년·고등 실습실·교수 회의실·교수 연구실)
+  | 'class-year2' | 'class-year3' | 'class-year4' // 학년 교실
+  | 'class-dark' | 'class-light' // 어둠 · 빛 수업관
+  | 'practice-lab' | 'practice-lab-adv' // 마법 실습실 · 고등 마법 실습실
+  | 'council-room' // 교수 회의실
+  | 'lab-fire' | 'lab-ice' | 'lab-earth' | 'lab-dark' | 'lab-light' // 교수 연구실
   | 'personal-space'
   | 'testroom'
 
@@ -596,6 +607,10 @@ export interface NpcDef {
   cell: { x: number; y: number }
   greeting: string[]
   shopItemIds?: string[]
+  /** 배회 반경(셀) 직접 지정 — 생략 시 role 기준(flavor 2 · 기능형 0.4) */
+  roam?: number
+  /** 다른 NPC 의 걷기 시트를 빌려 쓸 때(전용 에셋 전 교수진 등) — `<spriteId>-walk.png` */
+  spriteId?: string
 }
 
 export interface FieldMonster {
@@ -664,10 +679,14 @@ export interface BattleState {
   originCell: { x: number; y: number }
   fieldMonsterUid?: string
   rewardExp?: number
+  /** 경험치 분배 — 핵심 전투원(주인공+동료) 1인당 몫. 펫도 같은 몫을 따로 받는다 */
+  rewardExpShare?: number
   rewardGold?: number
   rewardDrops?: string[]
   leveledUp?: boolean
-  /** 이번 전투의 펫 귀속(전위 주인만) */
+  /** 자동 전투 — 켜면 주인공·동료 모두 AI 가 행동 */
+  auto?: boolean
+  /** 이번 전투의 펫 귀속(주인공 펫 고정 슬롯) */
   petLinks?: PetLink[]
   /** 사냥 활동 해금 여부 — 승리 시 계통별 부산물(huntDrops)을 추가로 굴린다 */
   huntEnabled?: boolean
@@ -695,6 +714,8 @@ export interface GameSettings {
   bgmVolume: number
   sfxVolume: number
   battleAnimSpeed: 1 | 2
+  /** true = 동료는 AI 자동 행동, false(기본) = 동료 턴에도 직접 조작 */
+  companionAuto?: boolean
 }
 
 export interface GameState {
@@ -739,6 +760,8 @@ export interface GameState {
   mealBuff: { itemId: string; battlesLeft: number } | null
   /** 낚시 미니게임 진행 중 상태 */
   fishing: FishingSession | null
+  /** 진행 중인 수업 장면(저장 안 함) */
+  classScene?: ClassSceneState | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -802,7 +825,8 @@ export interface QuestInstance {
   templateId: string
   slot: QuestSlot
   progress: number[] // objectives 와 같은 길이
-  status: 'active' | 'complete' | 'claimed'
+  /** offered = 이번 주 후보(수락 전) — 통합 PRD §27: 후보 중 2개를 골라 수행 */
+  status: 'offered' | 'active' | 'complete' | 'claimed'
 }
 
 export interface WeeklyState {
@@ -811,6 +835,40 @@ export interface WeeklyState {
   quests: QuestInstance[]
   /** 중복 방지(§6.1) — templateId → 마지막 등장 주 */
   lastSeen: Record<string, number>
+  /** 주간 구조 버전 — 2 = 수업 1 + 외부활동 2(통합 PRD). 없으면 예전 구조라 다시 생성 */
+  format?: number
+  /** 이번 주 필수 수업을 마쳤는가 */
+  classDone?: boolean
+}
+
+/** 수업 1회 결과(§37) */
+export interface ClassResultRec {
+  week: number
+  courseId: string
+  kind: 'lecture' | 'practice' | 'midterm' | 'final'
+  games: { type: string; score: number }[]
+  score: number
+  grade: 'S' | 'A' | 'B' | 'C' | 'D'
+}
+
+/** 수업 장면(교실 착석 → 강의 → 미니게임 → 수업 종료) — 저장하지 않는 진행 상태 */
+export interface ClassSceneState {
+  courseId: string
+  courseIds: string[]
+  kind: ClassResultRec['kind']
+  label: string
+  professorId: string
+  room: MapId
+  games: string[]
+  index: number
+  scores: { type: string; score: number; label: string }[]
+  phase: 'lecture' | 'game' | 'result'
+  /** 강의 끝 — 교수 머리 위 느낌표 */
+  alert?: boolean
+  seed: number
+  returnTo: { mapId: MapId; position: { x: number; y: number } }
+  /** 결과창 표시용(정산 후 채움) */
+  result?: { score: number; grade: ClassResultRec['grade']; lines: string[] }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -826,6 +884,10 @@ export interface AcademicState {
   courseScore: Record<string, number>
   totalCredits: number
   history: TermRecord[]
+  /** 분야 숙련도 누적치(통합 PRD §14 — 마법학/전투학/연금·생활/제작/교양) */
+  mastery?: Record<string, number>
+  /** 수업 결과 기록(최근 것이 뒤) */
+  classLog?: ClassResultRec[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -847,13 +909,24 @@ export interface CompanionProgress {
 export interface CompanionRoster {
   /** 파티에 합류한 학교 NPC id → 성장 상태 */
   recruited: Record<string, CompanionProgress>
-  /** 전투에 데려가는 학교 NPC(주인공 제외 최대 MAX_PARTY_SIZE - 1 = 3명) */
+  /** 전투에 데려가는 학교 NPC(주인공 제외 최대 MAX_PARTY_SIZE - 1 = 3명, 0명 = 솔로) */
   party: string[]
+  /** 임시 합류 NPC(호위 임무 대상·임시 동행) — 진형의 남는 2자리를 쓴다 */
+  guests?: GuestMember[]
+}
+
+export interface GuestMember {
+  id: string // GUEST_NPCS id
+  level: number
+  hp: number
+  mp: number
 }
 
 /** 진형 — key 는 'hero' 또는 학교 NPC id */
 export interface FormationState {
   positions: Record<string, Position>
+  /** 전위 동료에게 붙인 펫(동료 id → 보유 펫 defId). 주인공 펫은 state.pet(전위일 때만 동행) — 통합 PRD §26 */
+  pets?: Record<string, string>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

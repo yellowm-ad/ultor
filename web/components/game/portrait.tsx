@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Element, Gender } from '@/lib/types'
 
 // ============================================================================
@@ -22,7 +22,12 @@ export function Portrait({ id, className }: { id: string; className?: string }) 
   const [idx, setIdx] = useState(0)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  // id 가 "바뀔 때만" 초기화 — 마운트 직후에도 리셋하면, 캐시된 이미지의 onLoad 가 effect 보다 먼저 와서
+  // ready 가 다시 false 로 덮여 대화창을 다시 열면 초상화가 비어 보였다.
+  const prevId = useRef(id)
   useEffect(() => {
+    if (prevId.current === id) return
+    prevId.current = id
     setIdx(0)
     setReady(false)
     setFailed(false)

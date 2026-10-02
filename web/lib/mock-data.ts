@@ -814,7 +814,16 @@ export function monstersForZoneKind(kind: string): MonsterDef[] {
 // ============================================================================
 const NPCS_BASE: NpcDef[] = [
   // ── 학교 지구 (마법동) ──
-  { id: 'npc-job-trainer', name: '미르엘 교수', role: 'professor', icon: '/images/npc/npc-job-trainer.png', zoneId: 'z-magic-hall', cell: { x: 7, y: 7.5 }, greeting: ['어서 오렴. 나는 학사를 맡고 있는 미르엘이란다.', '불꽃·얼음·대지는 1학년부터, 어둠과 빛은 3학년이 되면 배울 수 있지. 수업을 성실히 들으면 마법은 저절로 따라온단다.'] },
+  // 학사 담당 일반 교수(2026-10-02: 예전 '미르엘 교수' 도트 → 이름만 변경. 미르엘은 학장실 npc-mirel 로 분리)
+  { id: 'npc-job-trainer', name: '에드릭 교수', role: 'professor', icon: '/images/npc/npc-job-trainer.png', zoneId: 'z-magic-hall', cell: { x: 7, y: 7.5 }, greeting: ['어서 오렴. 나는 학사를 맡고 있는 에드릭이란다.', '불꽃·얼음·대지는 1학년부터, 어둠과 빛은 3학년이 되면 배울 수 있지. 수업을 성실히 들으면 마법은 저절로 따라온단다.'] },
+  // 미르엘 교수 — 2026-10-02 삼면도 기반 PixelLab 도트(학장실 배회). 걷기 시트 npc-mirel-walk.png
+  { id: 'npc-mirel', name: '미르엘 교수', role: 'professor', roam: 2.2, icon: '/images/npc/npc-mirel.png', zoneId: 'z-headmaster-office', cell: { x: 7.5, y: 9.4 }, greeting: ['어서 오너라. 학장실까지 찾아오다니, 무슨 일이지?', '배운 것을 무엇을 위해 쓸지는… 언젠가 스스로 정해야 한다.'] },
+  // ── 교수진(통합 PRD §15) — 전용 에셋 전까지 기존 NPC 도트(spriteId) 재사용, 각자 연구실에서 배회 ──
+  { id: 'prof-ignis', name: '이그니스 교수', role: 'professor', roam: 1.6, spriteId: 'npc-priest', icon: '/images/npc/npc-priest.png', zoneId: 'z-lab-fire', cell: { x: 9.5, y: 8.4 }, greeting: ['불은 망설이는 자를 먼저 태운다네.', '화염 수업에서 박자를 놓치지 말게.'] },
+  { id: 'prof-kael', name: '카엘 조교', role: 'professor', roam: 1.6, spriteId: 'npc-kael', icon: '/images/npc/npc-kael.png', zoneId: 'z-lab-ice', cell: { x: 9.5, y: 8.4 }, greeting: ['…무슨 일이지. 보고서라면 책상 위에.', '빙결은 정확함이 전부다.'] },
+  { id: 'prof-terra', name: '테라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-elder', icon: '/images/npc/npc-elder.png', zoneId: 'z-lab-earth', cell: { x: 9.5, y: 8.4 }, greeting: ['어서 오렴. 화분에 물 좀 같이 줄래?', '땅은 서두르지 않는단다.'] },
+  { id: 'prof-noella', name: '노엘라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-abandoned-scholar', icon: '/images/npc/npc-abandoned-scholar.png', zoneId: 'z-lab-dark', cell: { x: 9.5, y: 8.4 }, greeting: ['어둠을 무서워하는 건 당연해. 모르니까.', '3학년이 되면 내 수업에서 보자.'] },
+  { id: 'prof-lumen', name: '루멘 교수', role: 'professor', roam: 1.6, spriteId: 'npc-saint', icon: '/images/npc/npc-saint.png', zoneId: 'z-lab-light', cell: { x: 9.5, y: 8.4 }, greeting: ['빛은 나누면 줄지 않는 마법이에요.', '다친 곳은 없나요?'] },
   { id: 'npc-librarian', name: '사서 오웬', role: 'flavor', icon: '/images/npc/npc-librarian.png', zoneId: 'z-magic-hall', cell: { x: 9, y: 9.6 }, greeting: ['마법동 도서관에는 아직 정리 중인 마법서가 많단다. 조용히 둘러보렴.', '연금술동과 마도구동도 둘러보면 좋을 게야.'] },
   // ── 별빛 상점가 ──
   { id: 'npc-weapon', name: '대장장이 반', role: 'weaponMerchant', icon: '/images/npc/npc-weapon.png', zoneId: 'z-shops', cell: { x: 39, y: 20 }, greeting: ['다섯 속성 완드, 다 갖춰놨다네. 레벨에 맞는 걸로 골라 가시게.'], shopItemIds: [...wands.map((w) => w.id), ...robes.map((r) => r.id), ...hats.map((h) => h.id), ...accessories.map((a) => a.id)] },

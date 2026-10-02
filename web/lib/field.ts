@@ -197,6 +197,7 @@ const NPC_STATIC_ROLES = new Set(['craftStation'])
 /** NPC 배회 반경(그리드 셀) — 자기 발밑 넓이(~1셀)의 16배 면적 ≈ 선형 4배 → flavor는 반경 2셀. */
 export function npcWanderRadius(npc: NpcDef): number {
   if (NPC_STATIC_ROLES.has(npc.role)) return 0
+  if (npc.roam != null) return npc.roam
   return NPC_FULL_ROAM_ROLES.has(npc.role) ? 2.0 : 0.4
 }
 

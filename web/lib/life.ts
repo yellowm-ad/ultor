@@ -67,6 +67,7 @@ export const RECIPE_CATEGORY_ACTIVITY: Record<RecipeCategory, ActivityId> = {
   magicTool: 'magicTool',
   furniture: 'furniture',
   costume: 'costume',
+  candy: 'crafting', // 마력캔디 — 기본 제작과 같은 시기(1학년 2학기)에 열린다
 }
 
 export const RECIPE_CATEGORY_LABEL: Record<RecipeCategory, string> = {
@@ -76,6 +77,7 @@ export const RECIPE_CATEGORY_LABEL: Record<RecipeCategory, string> = {
   magicTool: '마도구',
   furniture: '가구',
   costume: '코스튬',
+  candy: '마력캔디',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +161,10 @@ const foodItems: ItemDef[] = [
 
 /** 연금술·마도구·가구·코스튬 결과물 */
 const craftedLifeItems: ItemDef[] = [
+  // 마력캔디 — 주인공·동료가 먹으면 경험치(필드 전용, 전투 중 사용 불가)
+  { id: 'candy-mana-s', name: '작은 마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana-s'), description: '마력이 응축된 작은 사탕. 주인공이나 동료가 먹으면 경험치 +400.', price: 0, sellPrice: 20, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 400 } },
+  { id: 'candy-mana', name: '마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana'), description: '마력 결정을 녹여 굳힌 사탕. 주인공이나 동료가 먹으면 경험치 +4,000.', price: 0, sellPrice: 120, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 4000 } },
+  { id: 'candy-mana-l', name: '진한 마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana-l'), description: '희귀 촉매로 농축한 사탕. 주인공이나 동료가 먹으면 경험치 +40,000.', price: 0, sellPrice: 900, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 40000 } },
   { id: 'alch-catalyst', name: '희귀 촉매', type: 'material', icon: LIFE_ICON('alch-catalyst'), description: '고급 연금술과 마도구 제작에 쓰이는 촉매.', price: 0, sellPrice: 80, stackable: true, maxStack: 30, shopBuyable: false, tags: ['core'] },
   { id: 'alch-tonic', name: '전투 강장제', type: 'potion', icon: LIFE_ICON('alch-tonic'), description: '대상의 ATB를 즉시 35 채우고 HP 30 회복.', price: 0, sellPrice: 30, stackable: true, maxStack: 20, useEffect: { atbBoost: 35, healHp: 30 } },
   { id: 'tool-rod-basic', name: '견습생 낚싯대', type: 'tool', icon: LIFE_ICON('tool-rod-basic'), description: '물가에서 E(상호작용)로 낚시를 할 수 있다. 가방에 있기만 하면 된다.', price: 120, sellPrice: 30, stackable: false, maxStack: 1 },
@@ -386,6 +392,10 @@ export function rollHuntDrops(family: MonsterFamily, rand = Math.random): string
 // 신규 레시피 — 재료 itemId 가 'tag:herb' 처럼 태그면 그 태그의 아무 재료나 소모
 // ─────────────────────────────────────────────────────────────────────────────
 export const LIFE_RECIPES: RecipeDef[] = [
+  // ── 마력캔디(제작대) ──
+  { id: 'candy-mana-s', station: 'magic_workbench', category: 'candy', ingredients: [{ itemId: 'tag:flower', quantity: 2 }, { itemId: 'tag:crystal', quantity: 1 }], outputItemId: 'candy-mana-s', outputQuantity: 2 },
+  { id: 'candy-mana', station: 'magic_workbench', category: 'candy', ingredients: [{ itemId: 'candy-mana-s', quantity: 3 }, { itemId: 'crystal-mana', quantity: 2 }, { itemId: 'mush-glow', quantity: 1 }], outputItemId: 'candy-mana', outputQuantity: 1 },
+  { id: 'candy-mana-l', station: 'magic_workbench', category: 'candy', ingredients: [{ itemId: 'candy-mana', quantity: 3 }, { itemId: 'alch-catalyst', quantity: 1 }, { itemId: 'sea-pearl', quantity: 1 }], outputItemId: 'candy-mana-l', outputQuantity: 1 },
   // 연금술 (연금술동 가마)
   { id: 'alch-hp-s', station: 'alchemy_pot', category: 'alchemy', ingredients: [{ itemId: 'tag:herb', quantity: 2 }], outputItemId: 'potion-hp-s', outputQuantity: 2 },
   { id: 'alch-mp-s', station: 'alchemy_pot', category: 'alchemy', ingredients: [{ itemId: 'tag:flower', quantity: 2 }, { itemId: 'tag:herb', quantity: 1 }], outputItemId: 'potion-mp-s', outputQuantity: 2 },

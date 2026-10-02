@@ -12,6 +12,7 @@ import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
+import { professorSpot, useClassActorEntities } from '@/components/game/class-actors'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -93,21 +94,24 @@ export function IsoWorld({
   dispatch,
   viewportSize,
   moving,
+  running = false,
   interactId,
 }: {
   state: GameState
   dispatch: Dispatch<Action>
   viewportSize: { w: number; h: number }
   moving: boolean
+  /** Shift 달리기 — 달리기 행(4/5/6) + 빠른 프레임 */
+  running?: boolean
   interactId: string | null
 }) {
   const map = MAPS[state.currentMapId]
   const [heroFrame, setHeroFrame] = useState(0)
   useEffect(() => {
     if (!moving) { setHeroFrame(0); return }
-    const id = setInterval(() => setHeroFrame((f) => (f + 1) % 8), 115)
+    const id = setInterval(() => setHeroFrame((f) => (f + 1) % 8), running ? 75 : 115)
     return () => clearInterval(id)
-  }, [moving])
+  }, [moving, running])
 
   // 필드 몬스터 배회 애니메이션 시각(視刻) — 10fps 면 충분히 자연스럽다
   const [wanderT, setWanderT] = useState(0)
@@ -213,6 +217,8 @@ export function IsoWorld({
   // NPC — 홈 셀(npc.cell) 주변을 배회(npcWanderPosition, 몬스터와 동일한 시간기반 리사주 곡선).
   // wanderT 마다 위치 재계산되므로 static 메모 밖(몬스터와 동일 패턴)에 둔다.
   const mapNpcsForRoam = useMemo(() => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId)), [map])
+  // 수업 장면 — 책상마다 학생, 칠판 앞 교수(lib/curriculum · components/game/class-actors)
+  const classEntities = useClassActorEntities(state, map)
   const ND = 74 // NPC 도트 스프라이트 표시 크기
   const npcEntities = mapNpcsForRoam.map((npc) => {
     const { pos, facing: dir, moving } = npcWanderState(npc, wanderT, map.blockers)
@@ -228,7 +234,7 @@ export function IsoWorld({
         >
           <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
           <foreignObject x={-ND / 2} y={-ND + 7} width={ND} height={ND} style={{ overflow: 'visible' }}>
-            <NpcSprite npcId={`${npc.id}-walk`} fallbackSrc={npc.icon} dir={dir} walking={moving} px={ND} />
+            <NpcSprite npcId={`${npc.spriteId ?? npc.id}-walk`} fallbackSrc={npc.icon} dir={dir} walking={moving} px={ND} />
           </foreignObject>
           <g transform="translate(0,-58)">
             <rect x={-npc.name.length * 5 - 5} y={-9} width={npc.name.length * 10 + 10} height={14} rx={3} fill={interactId === npc.id ? '#e0b050' : 'rgba(10,8,16,0.68)'} />
@@ -361,11 +367,12 @@ export function IsoWorld({
   //   west(좌) 걷기는 east 행(row2)을 좌우 반전.
   const DIR_COL: Record<string, number> = { down: 0, right: 2, up: 4, left: 6 }
   const WALK_ROW: Record<string, number> = { down: 1, right: 2, left: 2, up: 3 }
+  const RUN_ROW: Record<string, number> = { down: 4, right: 5, left: 5, up: 6 }
   const facing = state.facing
   let heroCol: number
   let heroRow = 0
   if (moving && WALK_ROW[facing] != null) {
-    heroRow = WALK_ROW[facing]
+    heroRow = (running ? RUN_ROW : WALK_ROW)[facing]
     heroCol = heroFrame % 8
   } else {
     heroCol = DIR_COL[facing] ?? 0
@@ -385,7 +392,7 @@ export function IsoWorld({
           overflow="hidden"
           style={{ imageRendering: 'pixelated' }}
         >
-          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={352} />
+          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={616} />
         </svg>
       </g>
     </g>
@@ -462,15 +469,19 @@ export function IsoWorld({
     }
   })
 
-  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities].sort((a, b) => a.sortY - b.sortY)
+  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
   const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 
   // 개발 모드 전용: window.__isoScale 로 카메라 배율을 바꿔 전체 구도를 확인(크롬 자동화 스크린샷용)
   const devScale = process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' ? (window as unknown as { __isoScale?: number }).__isoScale : undefined
   const SCALE = devScale ?? BASE_SCALE
-  const camX = clamp(viewportSize.w / 2 - (originX + ps.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
-  const camY = clamp(viewportSize.h / 2 - (originY + ps.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
+  // 수업 중엔 카메라를 플레이어와 교수 사이(조금 위)로 — 강의 말풍선·느낌표가 레터박스에 가리지 않게
+  const inClass = !!state.classScene && state.classScene.room === map.id
+  const profFocus = inClass ? isoToScreen(professorSpot(map).x, professorSpot(map).y) : null
+  const focus = profFocus ? { sx: (ps.sx + profFocus.sx) / 2, sy: (ps.sy + profFocus.sy) / 2 - 40 } : ps
+  const camX = clamp(viewportSize.w / 2 - (originX + focus.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
+  const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
   return (
     <div className="absolute left-0 top-0" style={{ transform: `translate3d(${camX}px, ${camY}px, 0) scale(${SCALE})`, transformOrigin: '0 0', willChange: 'transform' }}>
@@ -500,8 +511,8 @@ export function IsoWorld({
         {behind}
         {playerNode}
         {front}
-        {/* 마법진 포탈 — 건물보다 위에 그려 클릭 보장 */}
-        {portalNodes}
+        {/* 마법진 포탈 — 건물보다 위에 그려 클릭 보장(수업 중엔 숨김) */}
+        {!inClass && portalNodes}
       </svg>
     </div>
   )

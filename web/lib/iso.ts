@@ -67,6 +67,8 @@ export type TileKind =
   | 'academy-ice' // 빙결 수업관 바닥
   | 'academy-earth' // 대지 수업관(온실) 바닥
   | 'academy-carpet' // 대강당 남색 카펫
+  | 'academy-dark' // 어둠 수업관·연구실 바닥
+  | 'academy-light' // 빛 수업관·연구실 바닥
   | 'dorm-plank' // 개인 공간 짙은 널빤지 (scripts/gen-academy-tiles.mjs)
   | 'academy-void' // 2층 아트리움(뚫린 곳) — 타일 없이 어둡게, 아래층 구조물이 비쳐 보인다
 
@@ -114,6 +116,8 @@ export const TILE_SPRITES: Partial<Record<TileKind, string>> = {
   'academy-ice': '/images/map/tiles/academy-ice.png',
   'academy-earth': '/images/map/tiles/academy-earth.png',
   'academy-carpet': '/images/map/tiles/academy-carpet.png',
+  'academy-dark': '/images/map/tiles/academy-dark.png',
+  'academy-light': '/images/map/tiles/academy-light.png',
   'dorm-plank': '/images/map/tiles/dorm-plank.png',
 }
 
@@ -158,6 +162,8 @@ export const TILE_COLORS: Record<TileKind, { top: string; edge: string }> = {
   'academy-ice': { top: '#bcd6ea', edge: '#7ea3c2' },
   'academy-earth': { top: '#6f7a4c', edge: '#3c4428' },
   'academy-carpet': { top: '#2b407a', edge: '#b89445' },
+  'academy-dark': { top: '#2c2238', edge: '#120d18' },
+  'academy-light': { top: '#ece4cf', edge: '#c9b98a' },
   'academy-void': { top: '#0d0c12', edge: '#0d0c12' },
   'dorm-plank': { top: '#5a3a26', edge: '#2a1a12' },
 }

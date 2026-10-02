@@ -38,8 +38,11 @@ function strip(state: GameState): Partial<GameState> {
     activeShopId: _as,
     fishing: _f,
     fieldMonsters: _fm,
+    classScene: _cs,
     ...rest
   } = state
+  // 수업 도중 저장되면 교실이 아니라 수업 들어가기 전 자리로(수업은 다시 듣게 된다)
+  if (state.classScene) return { ...rest, currentMapId: state.classScene.returnTo.mapId, position: { ...state.classScene.returnTo.position } }
   return { ...rest, screen: 'world', previousScreen: 'world' }
 }
 

@@ -20,6 +20,7 @@ import { getEffectiveStats } from '@/lib/derived'
 import { canTrain, clampAffection, createPet, petDefById, petStatsForLevel, PET_DEFS } from '@/lib/pets'
 import {
   advanceTurn,
+  awaitsPlayerInput,
   checkBattleEnd,
   currentActor,
   initBattle,
@@ -34,6 +35,15 @@ import {
   afterBattleDefeat,
   afterBattleFled,
   afterBattleVictory,
+  acceptQuest,
+  addGuest,
+  classBeginGames,
+  classGameDone,
+  dropQuest,
+  finishClass,
+  setMemberPet,
+  startClass,
+  battleExpShare,
   battleParty,
   claimQuest,
   dismissStory,
@@ -48,6 +58,7 @@ import {
   newGameProgress,
   recruitCompanion,
   refreshSkills,
+  removeGuest,
   resolveFishing,
   setMemberPosition,
   setStoryFlag,
@@ -56,6 +67,7 @@ import {
   talkTo,
   toggleEquipSkill,
   togglePartyMember,
+  useExpCandy,
   visitMap,
   withQuestEvents,
 } from '@/lib/progression'
@@ -126,6 +138,20 @@ export type Action =
   | { type: 'TOGGLE_PARTY_MEMBER'; companionId: string }
   | { type: 'SWAP_PARTY_MEMBER'; slot: number; companionId: string }
   | { type: 'SET_POSITION'; memberId: string; position: Position }
+  | { type: 'USE_EXP_CANDY'; itemId: string; targetId: string }
+  | { type: 'ADD_GUEST'; guestId: string }
+  | { type: 'REMOVE_GUEST'; guestId: string }
+  | { type: 'BATTLE_SET_AUTO'; auto: boolean }
+  | { type: 'ACCEPT_QUEST'; instanceId: string }
+  | { type: 'SET_MEMBER_PET'; memberId: string; defId: string | null }
+  | { type: 'DROP_QUEST'; instanceId: string }
+  | { type: 'START_CLASS' }
+  | { type: 'ADMIN_CLASS_TEST'; game: 'quiz' | 'rhythm' | 'chant' | 'draw' | 'alchemy' }
+  | { type: 'CLASS_ALERT' }
+  | { type: 'CLASS_BEGIN_GAMES' }
+  | { type: 'CLASS_GAME_DONE'; score: number; label: string }
+  | { type: 'CLASS_GIVE_ITEMS'; items: { itemId: string; qty: number }[] }
+  | { type: 'CLASS_FINISH' }
   | { type: 'ADMIN_SET_WEEK'; week: number }
   | { type: 'ADMIN_FORCE_END_WEEK' }
   | { type: 'ADMIN_TOGGLE_UNLOCK_ALL' }
@@ -201,6 +227,40 @@ function reducer(state: GameState, action: Action): GameState {
     case 'CLAIM_QUEST':
       return claimQuest(state, action.instanceId)
 
+    case 'ACCEPT_QUEST':
+      return acceptQuest(state, action.instanceId)
+
+    case 'SET_MEMBER_PET':
+      return setMemberPet(state, action.memberId, action.defId)
+
+    case 'DROP_QUEST':
+      return dropQuest(state, action.instanceId)
+
+    // ── 수업(통합 PRD §2.1) ──
+    case 'START_CLASS':
+      return startClass(state)
+
+    case 'ADMIN_CLASS_TEST':
+      return startClass(state, { game: action.game })
+
+    case 'CLASS_ALERT':
+      return state.classScene ? { ...state, classScene: { ...state.classScene, alert: true } } : state
+
+    case 'CLASS_BEGIN_GAMES':
+      return classBeginGames(state)
+
+    case 'CLASS_GAME_DONE':
+      return classGameDone(state, action.score, action.label)
+
+    case 'CLASS_GIVE_ITEMS': {
+      let inventory = state.inventory
+      for (const it of action.items) if (itemById(it.itemId)) inventory = addToInventory(inventory, it.itemId, it.qty)
+      return { ...state, inventory }
+    }
+
+    case 'CLASS_FINISH':
+      return finishClass(state)
+
     case 'END_WEEK':
       return endWeek(state)
 
@@ -234,13 +294,25 @@ function reducer(state: GameState, action: Action): GameState {
     case 'SET_POSITION':
       return setMemberPosition(state, action.memberId, action.position)
 
+    case 'USE_EXP_CANDY':
+      return useExpCandy(state, action.itemId, action.targetId)
+
+    case 'ADD_GUEST':
+      return addGuest(state, action.guestId)
+
+    case 'REMOVE_GUEST':
+      return removeGuest(state, action.guestId)
+
+    case 'BATTLE_SET_AUTO':
+      return state.battle ? { ...state, battle: { ...state.battle, auto: action.auto } } : state
+
     case 'TOGGLE_EQUIP_SKILL':
       return toggleEquipSkill(state, action.skillId)
 
     case 'SET_ACTIVE_PET': {
       const found = state.ownedPets.find((p) => p.defId === action.defId)
       if (!found) return state
-      return { ...state, pet: found, toast: `${found.nickname}을(를) 데리고 다닙니다. (주인공이 전위일 때 함께 싸웁니다)` }
+      return { ...state, pet: found, toast: `${found.nickname}을(를) 데리고 다닙니다. (고정 펫 슬롯으로 함께 싸웁니다)` }
     }
 
     case 'ADMIN_SET_WEEK':
@@ -268,6 +340,7 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'MOVE': {
       if (
+        state.classScene ||
         state.screen !== 'world' ||
         state.battle ||
         state.pendingEncounterUid ||
@@ -371,6 +444,7 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, gateOpen: false }
 
     case 'USE_PORTAL':
+      if (state.classScene) return state
       return travelThroughPortal(state, action.portalId)
 
     case 'PORTAL_CONFIRM':
@@ -416,6 +490,7 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case 'OPEN_NPC':
+      if (state.classScene) return state
       // 대화 = 관계도(주 1회) + TALK 미션 진행
       return talkTo({ ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'dialogue' }, action.npcId)
 
@@ -480,6 +555,7 @@ function reducer(state: GameState, action: Action): GameState {
       const slot = state.inventory.find((s) => s.itemId === action.itemId)
       if (item?.type === 'food') return eatFood(state, action.itemId)
       if (!item?.useEffect || !slot) return state
+      if (item.useEffect.grantExp) return { ...state, toast: '마력캔디는 가방에서 먹일 캐릭터를 골라 사용하세요.' }
 
       if (item.type === 'feed' && item.useEffect.petAffection) {
         const def = petDefById(state.pet.defId)
@@ -688,7 +764,8 @@ function reducer(state: GameState, action: Action): GameState {
       if (!state.battle.activeUid) return { ...state, battle: tickAtb(state.battle) }
       const actor = currentActor(state.battle)
       if (!actor) return { ...state, battle: { ...state.battle, activeUid: null } }
-      if (actor.kind === 'hero') return state
+      // 주인공·파티 동료 턴은 사용자 입력 대기(자동 전투/동료 자동 설정이면 AI 가 대신 행동)
+      if (awaitsPlayerInput(state.battle, actor, state.settings.companionAuto)) return state
       const resolved = resolveEnemyTurn(state.battle, actor.uid)
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
@@ -725,7 +802,7 @@ function reducer(state: GameState, action: Action): GameState {
               gold: state.player.gold + (state.battle.rewardGold ?? 0),
             },
           },
-          state.battle.rewardExp ?? 0,
+          battleExpShare(state.battle), // 파티 인원수로 나눈 1인 몫
         )
         const newLevel = leveled.player.level
 

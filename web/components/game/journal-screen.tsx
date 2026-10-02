@@ -6,8 +6,12 @@ import { useGame } from '@/lib/game-state'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
-import { arcForWeek } from '@/lib/story'
-import { questTemplateById, REQUIRED_OPTIONAL, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
+import { academicTitle, arcForWeek } from '@/lib/story'
+import { acceptedSideCount, isRestWeek, questTemplateById, REQUIRED_OPTIONAL, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
+import { classForWeek, classMetaFor, MASTERY_LABEL, masteryLevel, MINIGAME_META, professorById, type MasteryField } from '@/lib/curriculum'
+import { isStoryWeek } from '@/lib/story'
+import { MAPS } from '@/lib/maps'
+import type { QuestInstance } from '@/lib/types'
 import { courseName, coursesForWeek, DEPARTMENT_LABEL, GRADUATION_CREDITS, gradeForScore, skillScoreThreshold } from '@/lib/academics'
 import { skillById } from '@/lib/mock-data'
 import { ACTIVITY_META, activityUnlockLabel, activityUnlockWeek, isActivityUnlocked, type ActivityId } from '@/lib/life'
@@ -40,8 +44,7 @@ export function JournalScreen() {
         <div>
           <div className="font-display text-base text-gold-soft">{calendarLabel(state.calendar)}</div>
           <div className="text-[11px] text-white/60">
-            {TERM_META[info.termType].season} · {info.isVacation ? '방학 — 원정 중심' : '학기 — 학교 중심'} · {arc.name}
-            {arc.chapter > 0 ? ` (${arc.chapter}장)` : ''} · 무대: {regionById(arc.mainRegion).name}
+            {TERM_META[info.termType].season} · {info.isVacation ? '방학 — 원정 중심' : '학기 — 학교 중심'} · {academicTitle(state.calendar.globalWeek)} · 이번 학기 이야기: {arc.name} · 무대: {regionById(arc.mainRegion).name}
           </div>
           {/* 시간 흐름 안내 — 남은 주와 곧 열릴 생활 시스템 */}
           <div className="text-[11px] text-gold-soft/90">
@@ -92,74 +95,139 @@ export function JournalScreen() {
 
 function WeekTab() {
   const { state, dispatch } = useGame()
-  const { mainDone, optionalDone, canEnd } = weekCompletion(state.weekly)
+  const { classRequired, classDone, mainDone, optionalDone, canEnd } = weekCompletion(state.weekly)
   const mult = yearRewardMult(state.calendar.globalWeek)
+  const wc = classForWeek(state.calendar.globalWeek)
+  const meta = wc ? classMetaFor(wc.courseId) : null
+  const prof = meta ? professorById(meta.professorId) : null
+  const accepted = acceptedSideCount(state.weekly)
+  const storyWeek = isStoryWeek(state.calendar.globalWeek)
+  const lastClass = (state.academics.classLog ?? []).filter((c) => c.week === state.calendar.globalWeek).slice(-1)[0]
+  const sides = state.weekly.quests.filter((q) => q.slot !== 'MAIN')
+  const mains = state.weekly.quests.filter((q) => q.slot === 'MAIN')
   return (
     <div className="space-y-2">
-      {state.weekly.quests.length === 0 && <div className="panel-parchment p-4 text-center text-sm opacity-70">이번 주 미션이 아직 없습니다.</div>}
-      {state.weekly.quests.map((q) => {
-        const t = questTemplateById(q.templateId)
-        if (!t) return null
-        const isMain = q.slot === 'MAIN'
-        return (
-          <div key={q.instanceId} className={`panel-parchment p-3 ${isMain ? 'ring-2 ring-gold/70' : ''} ${q.status === 'claimed' ? 'opacity-60' : ''}`}>
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  {isMain && <Star className="size-3.5 fill-current text-[#b0791f]" />}
-                  <span className="rounded bg-black/10 px-1.5 text-[10px]">{SLOT_LABEL[q.slot]}</span>
-                  {t.title}
-                </div>
-                <div className="text-[11px] opacity-70">{t.description}</div>
+      {/* ① 필수 수업 */}
+      <div className={`panel-parchment p-3 ring-2 ${classDone ? 'ring-emerald-600/50 opacity-80' : 'ring-gold/70'}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-sm font-semibold">
+              <Star className="size-3.5 fill-current text-[#b0791f]" />
+              <span className="rounded bg-black/10 px-1.5 text-[10px]">필수 수업</span>
+              {wc ? wc.label : '방학 — 수업 없음'}
+            </div>
+            {wc && meta && (
+              <div className="text-[11px] opacity-70">
+                {prof?.name} · {MAPS[meta.room]?.name ?? meta.room} · 미니게임: {Array.from(new Set(meta.games)).map((g) => MINIGAME_META[g].name).join(' / ')}
+                {(wc.kind === 'midterm' || wc.kind === 'final') && ' — 시험은 미니게임 여러 개로 종합 평가'}
               </div>
-              {q.status === 'complete' && (
-                <Button size="sm" onClick={() => dispatch({ type: 'CLAIM_QUEST', instanceId: q.instanceId })}>
-                  보상 받기
-                </Button>
-              )}
-              {q.status === 'claimed' && <span className="shrink-0 text-[11px] font-semibold text-emerald-700">완료</span>}
-            </div>
-            <div className="mt-1.5 space-y-0.5">
-              {t.objectives.map((ob, i) => {
-                const p = q.progress[i] ?? 0
-                const done = p >= ob.count
-                return (
-                  <div key={i} className="flex items-center gap-1.5 text-[11px]">
-                    {done ? <CheckCircle2 className="size-3.5 text-emerald-700" /> : <Circle className="size-3.5 opacity-50" />}
-                    {ob.label} {Math.min(p, ob.count)}/{ob.count}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-1 text-[10px] opacity-60">
-              보상:{' '}
-              {t.rewards
-                .map((r) =>
-                  r.type === 'EXP'
-                    ? `EXP ${Math.round(r.amount * mult)}`
-                    : r.type === 'GOLD'
-                      ? `${Math.round(r.amount * mult)}G`
-                      : r.type === 'ITEM'
-                        ? `${itemById(r.itemId)?.name ?? r.itemId} x${r.amount}`
-                        : r.type === 'COURSE'
-                          ? `수업 점수 +${r.amount}`
-                          : r.type === 'RELATIONSHIP'
-                            ? `관계도 +${r.amount}`
-                            : '스토리',
-                )
-                .join(' · ')}
-            </div>
+            )}
+            {!wc && <div className="text-[11px] opacity-70">방학에는 수업 대신 외부활동(지역 원정) 2개로 한 주가 끝납니다.</div>}
           </div>
-        )
-      })}
+          {wc && !classDone && (
+            <Button size="sm" onClick={() => dispatch({ type: 'START_CLASS' })}>
+              수업 참석
+            </Button>
+          )}
+          {wc && classDone && <span className="shrink-0 text-[11px] font-semibold text-emerald-700">수료{lastClass ? ` · ${lastClass.grade}` : ''}</span>}
+        </div>
+      </div>
+
+      {/* 스토리 지정 필수 과제(있을 때만) */}
+      {mains.map((q) => (
+        <QuestCard key={q.instanceId} q={q} mult={mult} />
+      ))}
+
+      {/* ② 외부활동 — 후보 중 2개 수락 */}
+      <div className="flex items-center justify-between px-1 pt-1 text-xs font-display text-gold-soft">
+        <span>외부활동 — 후보 중 {REQUIRED_OPTIONAL}개를 골라 수행{isRestWeek(state.calendar.globalWeek) && ' · 🎐 쉬어가는 주(축제·동아리·생활 중심)'}</span>
+        <span className="text-[11px] text-white/70">
+          수락 {accepted}/{REQUIRED_OPTIONAL}
+        </span>
+      </div>
+      {sides.map((q) => (
+        <QuestCard key={q.instanceId} q={q} mult={mult} canAccept={accepted < REQUIRED_OPTIONAL} />
+      ))}
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-xs text-white/80">
         <span>
-          필수 {mainDone ? '✔' : '✘'} · 선택 {optionalDone}/{REQUIRED_OPTIONAL} — 필수와 선택 {REQUIRED_OPTIONAL}개의 보상을 받으면 주를 마감할 수 있어요.
+          수업 {classRequired ? (classDone ? '✔' : '✘') : '—'} · 외부활동 {optionalDone}/{REQUIRED_OPTIONAL}
+          {mains.length > 0 && ` · 스토리 과제 ${mainDone ? '✔' : '✘'}`}
+          {storyWeek && <span className="ml-1 text-gold-soft">· 이번 주를 마치면 메인스토리가 진행됩니다</span>}
         </span>
         <Button size="sm" disabled={!canEnd} onClick={() => dispatch({ type: 'END_WEEK' })}>
-          다음 주로
+          이번 주 마치기
         </Button>
+      </div>
+    </div>
+  )
+}
+
+function QuestCard({ q, mult, canAccept }: { q: QuestInstance; mult: number; canAccept?: boolean }) {
+  const { dispatch } = useGame()
+  const t = questTemplateById(q.templateId)
+  if (!t) return null
+  const isMain = q.slot === 'MAIN'
+  const offered = q.status === 'offered'
+  return (
+    <div className={`panel-parchment p-3 ${isMain ? 'ring-2 ring-gold/70' : ''} ${q.status === 'claimed' ? 'opacity-60' : ''} ${offered ? 'opacity-85' : ''}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <span className="rounded bg-black/10 px-1.5 text-[10px]">{isMain ? '스토리' : SLOT_LABEL[q.slot]}</span>
+            {t.title}
+          </div>
+          <div className="text-[11px] opacity-70">{t.description}</div>
+        </div>
+        {offered && (
+          <Button size="sm" variant="parchment" disabled={!canAccept} onClick={() => dispatch({ type: 'ACCEPT_QUEST', instanceId: q.instanceId })}>
+            수락
+          </Button>
+        )}
+        {q.status === 'active' && !isMain && (
+          <button className="shrink-0 text-[10px] underline opacity-60" onClick={() => dispatch({ type: 'DROP_QUEST', instanceId: q.instanceId })}>
+            포기
+          </button>
+        )}
+        {q.status === 'complete' && (
+          <Button size="sm" onClick={() => dispatch({ type: 'CLAIM_QUEST', instanceId: q.instanceId })}>
+            보상 받기
+          </Button>
+        )}
+        {q.status === 'claimed' && <span className="shrink-0 text-[11px] font-semibold text-emerald-700">완료</span>}
+      </div>
+      {!offered && (
+        <div className="mt-1.5 space-y-0.5">
+          {t.objectives.map((ob, i) => {
+            const p = q.progress[i] ?? 0
+            const done = p >= ob.count
+            return (
+              <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                {done ? <CheckCircle2 className="size-3.5 text-emerald-700" /> : <Circle className="size-3.5 opacity-50" />}
+                {ob.label} {Math.min(p, ob.count)}/{ob.count}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div className="mt-1 text-[10px] opacity-60">
+        {offered && `목표: ${t.objectives.map((o) => `${o.label} ${o.count}`).join(', ')} · `}
+        보상:{' '}
+        {t.rewards
+          .map((r) =>
+            r.type === 'EXP'
+              ? `EXP ${Math.round(r.amount * mult)}`
+              : r.type === 'GOLD'
+                ? `${Math.round(r.amount * mult)}G`
+                : r.type === 'ITEM'
+                  ? `${itemById(r.itemId)?.name ?? r.itemId} x${r.amount}`
+                  : r.type === 'COURSE'
+                    ? `수업 점수 +${r.amount}`
+                    : r.type === 'RELATIONSHIP'
+                      ? `관계도 +${r.amount}`
+                      : '스토리',
+          )
+          .join(' · ')}
       </div>
     </div>
   )
@@ -176,6 +244,26 @@ function AcademicTab() {
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-black/15">
           <div className="h-full bg-[#b0791f]" style={{ width: `${Math.min(100, (state.academics.totalCredits / GRADUATION_CREDITS) * 100)}%` }} />
+        </div>
+        {/* 졸업 요건(통합 PRD §32) — 메인스토리를 끝내면 시스템상 자연스럽게 충족된다 */}
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
+          {[
+            ['필수 학점', state.academics.totalCredits >= GRADUATION_CREDITS],
+            ['핵심 마법 과목(3원소 기초) 이수', ['FIRE_101', 'ICE_101', 'EARTH_101'].every((id) => state.storyFlags[`COURSE_${id}_PASSED`])],
+            ['현장실습(실전 탐사 I) 이수', !!state.storyFlags.COURSE_FIELD_101_PASSED],
+            ['졸업 프로젝트', !!state.storyFlags.GRADUATION_PROJECT_DONE || !!state.storyFlags.MORS_DEFEATED],
+          ].map(([label, ok]) => (
+            <span key={label as string}>
+              {ok ? '✔' : '○'} {label as string}
+            </span>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+          {Object.entries(state.academics.mastery ?? {}).map(([f, xp]) => (
+            <span key={f} className="rounded bg-black/10 px-1.5 py-0.5">
+              {MASTERY_LABEL[f as MasteryField]} 숙련 Lv.{masteryLevel(xp).level}
+            </span>
+          ))}
         </div>
       </div>
 

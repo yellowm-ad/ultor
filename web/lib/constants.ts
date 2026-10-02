@@ -181,34 +181,42 @@ export const ATB = {
 // ────────────────────────────────────────────────────────────────
 // 4대4 전투 · 포지션(§16~20)
 // ────────────────────────────────────────────────────────────────
-/** 아군 핵심 전투원 수(주인공 + 학교 NPC 3). 펫은 여기에 포함되지 않는 부속 유닛 */
+/** 4대4 — 아군 전투원 4명(주인공 + 동료/임시 NPC 최대 3). 펫은 여기에 포함되지 않는다(통합 PRD §25) */
 export const MAX_PARTY_SIZE = 4
+/** 임시 합류 NPC(호위 대상·임시 동행) — 4칸 중 남는 자리를 쓴다(동료 수 + 임시 NPC ≤ 3) */
+export const MAX_GUESTS = 2
 /** 적 최대 수 */
 export const MAX_ENEMIES = 4
-/** 파티 등록 펫 최대 수 — 전위가 최대 2명이라 자연히 지켜진다 */
+/** 펫 — 전위 캐릭터만 1마리씩 동행, 전투당 최대 2마리(전위 2명일 때)(통합 PRD §26) */
 export const MAX_ACTIVE_PETS = 2
 /** 전투에 들고 가는 스킬 슬롯 수 */
 export const SKILL_LOADOUT_SIZE = 8
 
 export const POSITIONS: Position[] = ['front', 'rear', 'support']
 
+// 통합 PRD §25 — 포지션 보너스는 캐릭터의 속성을 바꾸지 않는다
 export const POSITION_META: Record<Position, { label: string; short: string; bonus: string; role: string }> = {
-  front: { label: '전위', short: '전', bonus: '주는 피해 +10% · 펫 동행 가능', role: '메인 딜러 · 근접 · 펫 운용' },
-  rear: { label: '후위', short: '후', bonus: '주는 회복량 +10%', role: '힐러 · 원거리 마법 · 안정적인 공격' },
-  support: { label: '보조', short: '보', bonus: '최대 HP +10%', role: '버퍼 · 디버퍼 · 제어 · 생존 보조' },
+  front: { label: '전위', short: '전', bonus: '최대 HP +10% · 받는 피해 -5% · 펫 동행', role: '탱커 · 근접 · 펫 운용' },
+  rear: { label: '후위', short: '후', bonus: '공격력·마법공격력 +10%', role: '원거리 · 마법 딜러' },
+  support: { label: '보조', short: '보', bonus: '회복량·버프 효율 +10%', role: '힐러 · 버퍼 · 디버퍼 · 상태이상 해제' },
 }
 
-/** 포지션 보너스(§18~19) — 해당 캐릭터에게만 적용 */
+/** 포지션 보너스 — 해당 캐릭터에게만 적용 */
 export const POSITION_BONUS = {
-  frontDamage: 1.1,
-  rearHealing: 1.1,
-  supportMaxHp: 1.1,
+  frontMaxHp: 1.1,
+  frontTaken: 0.95,
+  rearDamage: 1.1,
+  supportHealing: 1.1,
+  supportBuff: 1.1,
 }
 
-/** 포지션별 인원 제한(§17) — 4명 기준. 합계는 파티 인원과 같아야 한다 */
+/**
+ * 4대4 기본 슬롯(§25): 전위 2 · 후위 1 · 보조 1.
+ * 솔로/소수 파티도 가능해야 하므로 최소 인원은 "전위 1명"만 요구한다.
+ */
 export const FORMATION_LIMITS: Record<Position, { min: number; max: number }> = {
   front: { min: 1, max: 2 },
-  rear: { min: 1, max: 2 },
+  rear: { min: 0, max: 1 },
   support: { min: 0, max: 1 },
 }
 
@@ -221,15 +229,25 @@ export function countPositions(positions: Position[]): Record<Position, number> 
 /** 진형 검증 — 문제가 없으면 null, 있으면 사유 */
 export function formationError(positions: Position[]): string | null {
   const c = countPositions(positions)
-  // 인원이 4명 미만(관리자 샌드박스 등)이면 최소 인원 조건은 가능한 만큼만 본다
-  const n = positions.length
   for (const p of POSITIONS) {
-    const { min, max } = FORMATION_LIMITS[p]
-    if (c[p] > max) return `${POSITION_META[p].label}는 최대 ${max}명까지 설 수 있습니다.`
-    if (n >= MAX_PARTY_SIZE && c[p] < min) return `${POSITION_META[p].label}에 최소 ${min}명이 필요합니다.`
+    if (c[p] > FORMATION_LIMITS[p].max) return `${POSITION_META[p].label}는 최대 ${FORMATION_LIMITS[p].max}명까지 설 수 있습니다.`
   }
-  if (n > 0 && c.front === 0) return '전위에 최소 1명이 필요합니다.'
+  if (positions.length > 0 && c.front < FORMATION_LIMITS.front.min) return '전위에 최소 1명이 필요합니다.'
   return null
+}
+
+// ────────────────────────────────────────────────────────────────
+// 경험치 분배 — 혼자면 빨리 크고(대신 전투가 어렵다), 동료가 많으면 전투는 쉽지만 성장이 더디다.
+//   전체 경험치 = 처치 경험치 × (1 + 0.1 × (인원-1))  → 인원수로 나눈다.
+//   1인 100% · 2인 각 55% · 3인 각 40% · 4인 각 32.5%
+//   임시 NPC(호위·동행)는 분배 대상이 아니고, 펫은 1인 몫을 따로 받는다(나누는 인원에 포함 안 됨).
+// ────────────────────────────────────────────────────────────────
+export const PARTY_EXP_BONUS_PER_MEMBER = 0.1
+
+export function expSharePerMember(totalExp: number, memberCount: number): number {
+  if (totalExp <= 0) return 0
+  const n = Math.max(1, memberCount)
+  return Math.max(1, Math.round((totalExp * (1 + PARTY_EXP_BONUS_PER_MEMBER * (n - 1))) / n))
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -237,6 +255,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   bgmVolume: 60,
   sfxVolume: 80,
   battleAnimSpeed: 1,
+  companionAuto: false,
 }
 
 export const STARTING_GOLD = 500

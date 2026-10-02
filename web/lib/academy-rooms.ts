@@ -31,6 +31,12 @@ export const ROOM_SPR = {
   earthTree: spr('ea_tree.png', 134, 169, P),
   globe: spr('of_globe.png', 54, 78, P),
   perch: spr('of_perch.png', 55, 104, P),
+  // 2026-10-02 상층 교실·실습실·회의실(PixelLab pixflux isometric)
+  darkAltar: spr('iso_darkaltar.png', 86, 104),
+  lightAltar: spr('iso_lightaltar.png', 74, 119),
+  labTable: spr('iso_labtable.png', 100, 85),
+  cauldron: spr('iso_cauldron.png', 86, 90),
+  confTable: spr('iso_conftable.png', 154, 114),
 }
 
 /** 방 테마 벽판(64×160 등) — 한 장 높이가 곧 벽 높이가 되도록 배율 */
@@ -76,13 +82,13 @@ type RoomDef = { props: PropDef[]; structures: IsoStructGroup[]; w: number; h: n
 // ── 수업관 3종 — 17×15, 북벽 칠판 · 중앙 제단 · 칠판을 향한 책상 8개 ──
 const CW = 17
 const CH = 15
-function classroom(id: string, t: IsoTex, tile: TileKind, center: PropDef, decor: PropDef[]): RoomDef {
+function classroom(id: string, t: IsoTex, tile: TileKind, center: PropDef, decor: PropDef[], o: { decals?: IsoPart[]; height?: number } = {}): RoomDef {
   const R = ROOM_SPR
   const props: PropDef[] = [isoProp(`${id}-board`, R.board, CW / 2, 1.4, 0.8, { scale: 1.15 }), center]
   for (const [i, x] of [3.8, 6.6, 10.4, 13.2].entries()) {
     for (const [j, y] of [8.6, 11.2].entries()) props.push(isoProp(`${id}-desk${i}-${j}`, R.desk, x, y, 0.7))
   }
-  return { w: CW, h: CH, tileAt: () => tile, structures: roomWalls(id, CW, CH, t), props: [...props, ...decor] }
+  return { w: CW, h: CH, tileAt: () => tile, structures: roomWalls(id, CW, CH, t, o.decals, o.height), props: [...props, ...decor] }
 }
 const corners = (id: string, sp: Spr, r: number) =>
   [[1.6, 1.6], [CW - 1.6, 1.6], [1.6, 7.2], [1.6, CH - 1.8], [CW - 1.4, CH - 1.8]].map(([x, y], i) => isoProp(`${id}${i}`, sp, x, y, r))
@@ -160,7 +166,127 @@ const LIBRARY: RoomDef = {
   ],
 }
 
-export type AcademyRoomKey = 'fire' | 'ice' | 'earth' | 'auditorium' | 'office' | 'library'
+
+// ════════ 상층(2~4층) — 학년 교실 · 어둠/빛 수업관 · 실습실 · 교수 회의실 · 교수 연구실 (2026-10-02) ════════
+// 벽은 본관 석벽(tex_wall) 또는 속성 벽판, 가구는 전부 isometric(기존 + PixelLab 신규 5종).
+const TEXW: IsoTex = { src: A + 'tex_wall.png', w: 64, h: 64, scale: 1.5 }
+/** 본관 석벽 방의 창 — 북벽/서벽 전체에 일정 간격(칠판 등 가리는 자리는 skipX) */
+function stoneDecals(w: number, h: number, skipX: number[] = []): IsoPart[] {
+  const out: IsoPart[] = []
+  for (let x = 3; x < w - 1; x += 4.5) if (!skipX.some((sx) => Math.abs(sx - x) < 2.2)) out.push(decal('y', x, 200, 120, HALL_SPR.window))
+  for (let y = 3.5; y < h - 1; y += 4.5) out.push(decal('x', y, 200, 120, HALL_SPR.window))
+  return out
+}
+
+// ── 학년 교실(2·3·4학년) — 수업관과 같은 칠판·책상 배치, 바닥만 학년별로 ──
+function yearClass(n: 2 | 3 | 4, tile: TileKind): RoomDef {
+  const id = `cly${n}`
+  return classroom(id, TEXW, tile, isoProp(`${id}-orb`, HALL_SPR.orb, CW / 2, 4.6, 0.5), [
+    isoProp(`${id}-case0`, R.bookcase, 1.4, 5.2, 0.8),
+    isoProp(`${id}-case1`, R.bookcase, 1.4, 9.6, 0.8),
+    isoProp(`${id}-shelf`, HALL_SPR.shelf, CW - 3, 1.0, 0.6, { flip: true }),
+    ...[[CW - 1.4, CH - 1.8], [1.6, CH - 1.8]].map(([x, y], i) => isoProp(`${id}-plant${i}`, HALL_SPR.plant, x, y, 0.5)),
+    ...[[CW - 1.4, 5], [CW - 1.4, 10]].map(([x, y], i) => isoProp(`${id}-lamp${i}`, HALL_SPR.lamp, x, y, 0.3)),
+  ], { decals: stoneDecals(CW, CH, [CW / 2]), height: ROOM_WALL_H })
+}
+const Y2 = yearClass(2, 'academy-marble')
+const Y3 = yearClass(3, 'dorm-plank')
+const Y4 = yearClass(4, 'academy-carpet')
+
+// ── 어둠 · 빛 수업관 — 3학년부터. 속성 벽판(PixelLab Pro) + 속성 제단 ──
+const DARK = classroom('cldark', wallTex('wall_dark.png', 64, 160, 2.25), 'academy-dark', isoProp('cldark-altar', R.darkAltar, CW / 2, 4.8, 0.9, { scale: 1.15 }), corners('cldark-orb', HALL_SPR.orb, 0.5))
+const LIGHT = classroom('cllight', wallTex('wall_light.png', 64, 160, 2.25), 'academy-light', isoProp('cllight-altar', R.lightAltar, CW / 2, 4.8, 0.9, { scale: 1.15 }), corners('cllight-lamp', HALL_SPR.lamp, 0.3))
+
+// ── 마법 실습실(3층) — 20×16, 실험 작업대 6 · 가마솥 2 · 약초 선반 ──
+const PW = 20
+const PH = 16
+const PRACTICE: RoomDef = (() => {
+  const props: PropDef[] = [
+    isoProp('pr-board', R.board, PW / 2, 1.4, 0.8, { scale: 1.15 }),
+    isoProp('pr-shelf0', HALL_SPR.shelf, 4, 1.0, 0.6, { flip: true }),
+    isoProp('pr-shelf1', HALL_SPR.shelf, PW - 4, 1.0, 0.6, { flip: true }),
+    isoProp('pr-herb0', R.herbs, 1.8, 5, 0.8, { flip: true }),
+    isoProp('pr-herb1', R.herbs, 1.8, 10, 0.8, { flip: true }),
+    isoProp('pr-cauldron0', R.cauldron, 4, PH - 2.4, 0.9),
+    isoProp('pr-cauldron1', R.cauldron, PW - 3, PH - 2.4, 0.9),
+  ]
+  for (const [i, x] of [6, 10.5, 15].entries()) for (const [j, y] of [6, 10].entries()) props.push(isoProp(`pr-table${i}-${j}`, R.labTable, x, y, 1.0))
+  return { w: PW, h: PH, tileAt: () => 'academy-marble', structures: roomWalls('pr', PW, PH, TEXW, stoneDecals(PW, PH, [PW / 2]), ROOM_WALL_H), props }
+})()
+
+// ── 고등 마법 실습실(4층) — 22×18, 가운데 5속성 제단 원형 배치 · 마력 공명구 · 가마솥 · 작업대 ──
+const GW = 22
+const GH = 18
+const PRACTICE_ADV: RoomDef = (() => {
+  const cx = GW / 2
+  const cy = 8.5
+  const ring: [Spr, number][] = [[R.fireAltar, 0.9], [R.iceAltar, 0.9], [R.earthTree, 1.3], [R.darkAltar, 0.9], [R.lightAltar, 0.9]]
+  const props: PropDef[] = ring.map(([sp, r], i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / ring.length
+    return isoProp(`pa-altar${i}`, sp, cx + Math.cos(a) * 4.6, cy + Math.sin(a) * 4.0, r, { scale: sp === R.earthTree ? 0.8 : 1 })
+  })
+  props.push({ ...isoProp('pa-orb', HALL_SPR.orb, cx, cy, 0.5), label: '마력 공명구' })
+  ;[[2.4, 3], [GW - 2.4, 3], [2.4, GH - 2.4], [GW - 2.4, GH - 2.4]].forEach(([x, y], i) => props.push(isoProp(`pa-cauldron${i}`, R.cauldron, x, y, 0.9)))
+  ;[[6.5, GH - 2.2], [GW - 6.5, GH - 2.2]].forEach(([x, y], i) => props.push(isoProp(`pa-table${i}`, R.labTable, x, y, 1.0)))
+  return {
+    w: GW,
+    h: GH,
+    tileAt: (x, y) => (Math.hypot(x - cx, (y - cy) * 1.1) < 6.2 ? 'academy-carpet' : 'academy-marble'),
+    structures: roomWalls('pa', GW, GH, TEXW, stoneDecals(GW, GH), ROOM_WALL_H),
+    props,
+  }
+})()
+
+// ── 교수 회의실(4층) — 18×14, 긴 회의 탁자 · 벽난로 · 책장 ──
+const MW = 18
+const MH = 14
+const COUNCIL: RoomDef = {
+  w: MW,
+  h: MH,
+  tileAt: (x, y) => (x > 3 && x < MW - 3 && y > 3.6 && y < MH - 2.4 ? 'academy-carpet' : 'dorm-plank'),
+  structures: roomWalls('mt', MW, MH, TEXW, stoneDecals(MW, MH, [MW / 2]), ROOM_WALL_H),
+  props: [
+    { ...isoProp('mt-table', R.confTable, MW / 2, 7.8, 2.8, { scale: 1.5 }), label: '교수 회의 탁자' },
+    isoProp('mt-fireplace', R.fireplace, MW / 2, 1.2, 0.9, { flip: true }),
+    isoProp('mt-case0', R.bookcase, 1.4, 4.6, 0.8),
+    isoProp('mt-case1', R.bookcase, 1.4, 9.2, 0.8),
+    isoProp('mt-shelf0', HALL_SPR.shelf, 4, 1.0, 0.6, { flip: true }),
+    isoProp('mt-shelf1', HALL_SPR.shelf, MW - 4, 1.0, 0.6, { flip: true }),
+    isoProp('mt-globe', R.globe, MW - 2, MH - 2.2, 0.35),
+    isoProp('mt-plant', HALL_SPR.plant, 2, MH - 2, 0.5),
+  ],
+}
+
+// ── 교수 연구실 5종(화염·빙결·대지·어둠·빛) — 14×12, 연구 책상 · 책장 · 속성 소품 ──
+const LW2 = 14
+const LH2 = 12
+function professorLab(id: string, t: IsoTex, tile: TileKind, keyProp: PropDef): RoomDef {
+  return {
+    w: LW2,
+    h: LH2,
+    tileAt: () => tile,
+    structures: roomWalls(id, LW2, LH2, t),
+    props: [
+      { ...isoProp(`${id}-desk`, R.bigDesk, LW2 / 2, 6, 1.1), label: '연구 책상' },
+      isoProp(`${id}-case0`, R.bookcase, 3.4, 1.0, 0.8, { flip: true }),
+      isoProp(`${id}-case1`, R.bookcase, LW2 - 3.4, 1.0, 0.8, { flip: true }),
+      isoProp(`${id}-shelf`, HALL_SPR.shelf, 1.0, 5, 0.6),
+      keyProp,
+      isoProp(`${id}-globe`, R.globe, LW2 - 2, LH2 - 2.4, 0.35),
+      isoProp(`${id}-plant`, HALL_SPR.plant, 1.8, LH2 - 2, 0.5),
+    ],
+  }
+}
+const LAB_FIRE = professorLab('lbfire', wallTex('wall_fire.png', 64, 160, 2.25), 'academy-fire', isoProp('lbfire-k', R.brazier, LW2 - 2, 4.5, 0.35))
+const LAB_ICE = professorLab('lbice', wallTex('wall_ice.png', 64, 160, 2.25), 'academy-ice', isoProp('lbice-k', R.iceCrystal, LW2 - 2, 4.5, 0.45))
+const LAB_EARTH = professorLab('lbearth', wallTex('wall_earth.png', 64, 160, 2.25), 'academy-earth', isoProp('lbearth-k', R.herbs, LW2 - 2.2, 4.5, 0.8))
+const LAB_DARK = professorLab('lbdark', wallTex('wall_dark.png', 64, 160, 2.25), 'academy-dark', isoProp('lbdark-k', R.darkAltar, LW2 - 2.2, 4.5, 0.9, { scale: 0.8 }))
+const LAB_LIGHT = professorLab('lblight', wallTex('wall_light.png', 64, 160, 2.25), 'academy-light', isoProp('lblight-k', R.lightAltar, LW2 - 2.2, 4.5, 0.9, { scale: 0.8 }))
+
+export type AcademyRoomKey =
+  | 'fire' | 'ice' | 'earth' | 'auditorium' | 'office' | 'library'
+  | 'year2' | 'year3' | 'year4' | 'dark' | 'light' | 'practice' | 'practiceAdv' | 'council'
+  | 'labFire' | 'labIce' | 'labEarth' | 'labDark' | 'labLight'
 export const ACADEMY_ROOM_DEFS: Record<AcademyRoomKey, { id: MapId; name: string; def: RoomDef }> = {
   fire: { id: 'class-fire', name: '화염 수업관', def: FIRE },
   ice: { id: 'class-ice', name: '빙결 수업관', def: ICE },
@@ -168,6 +294,19 @@ export const ACADEMY_ROOM_DEFS: Record<AcademyRoomKey, { id: MapId; name: string
   auditorium: { id: 'grand-auditorium', name: '대강당', def: AUD },
   office: { id: 'headmaster-office', name: '학장실', def: OFFICE },
   library: { id: 'academy-library', name: '도서관', def: LIBRARY },
+  year2: { id: 'class-year2', name: '2학년 교실', def: Y2 },
+  year3: { id: 'class-year3', name: '3학년 교실', def: Y3 },
+  year4: { id: 'class-year4', name: '4학년 교실', def: Y4 },
+  dark: { id: 'class-dark', name: '어둠 수업관', def: DARK },
+  light: { id: 'class-light', name: '빛 수업관', def: LIGHT },
+  practice: { id: 'practice-lab', name: '마법 실습실', def: PRACTICE },
+  practiceAdv: { id: 'practice-lab-adv', name: '고등 마법 실습실', def: PRACTICE_ADV },
+  council: { id: 'council-room', name: '교수 회의실', def: COUNCIL },
+  labFire: { id: 'lab-fire', name: '화염 교수 연구실', def: LAB_FIRE },
+  labIce: { id: 'lab-ice', name: '빙결 교수 연구실', def: LAB_ICE },
+  labEarth: { id: 'lab-earth', name: '대지 교수 연구실', def: LAB_EARTH },
+  labDark: { id: 'lab-dark', name: '어둠 교수 연구실', def: LAB_DARK },
+  labLight: { id: 'lab-light', name: '빛 교수 연구실', def: LAB_LIGHT },
 }
 export const ROOM_PAD_TOP = ROOM_WALL_H + 60
 export { roomBlockers }

@@ -15,7 +15,7 @@ type Spr = { s: string; w: number; h: number }
 const A = '/images/map/academy/'
 const P = '/images/map/props/academy/' // 이전 패스 에셋(문 정면도 등 — 벽면에 평면으로 붙이는 용도라 규칙 위배 아님)
 const tex = (f: string, w: number, h: number, scale = 1.5): IsoTex => ({ src: A + f, w, h, scale })
-const T = {
+export const HALL_TEX = {
   wall: tex('tex_wall.png', 64, 64, 1.5),
   rail: tex('tex_rail.png', 64, 40, 1.0),
   cornice: tex('tex_cornice.png', 64, 32, 0.9),
@@ -24,6 +24,7 @@ const T = {
   marble: { ...tex('tex_marble.png', 32, 32), cells: 2 },
   carpet: { ...tex('tex_carpet.png', 16, 16), cells: 0.5 },
 }
+const T = HALL_TEX
 const spr = (f: string, w: number, h: number, dir = A): Spr => ({ s: dir + f, w, h })
 export const HALL_SPR = {
   bench: spr('iso_bench.png', 93, 72),
@@ -46,6 +47,25 @@ export const HALL_SPR = {
   doorHall: spr('door_hall.png', 124, 185, P),
   doorOffice: spr('door_office.png', 66, 142, P),
   doorLibrary: spr('door_library.png', 95, 146, P),
+  // 2026-10-02 상층(2~4층) 문·계단 아치 — PixelLab pixflux 정면도(벽면에 투영해 붙임)
+  doorClass: spr('door_class.png', 90, 152, P),
+  doorLab: spr('door_lab.png', 94, 150, P),
+  doorDark: spr('door_dark.png', 78, 147, P),
+  doorLight: spr('door_light.png', 80, 146, P),
+  doorMeeting: spr('door_meeting.png', 112, 153, P),
+  archStair: spr('arch_stair.png', 95, 161, P),
+}
+
+/** 2층 회랑 확장(2학년 교실 문·3층 계단 — lib/academy-upper.ts)을 maps.ts 가 주입한다(순환 import 방지) */
+export interface HallExt {
+  /** 2층 벽 추가 문·아치(zBase 기준) */
+  wallDecals: (zBase: number) => IsoPart[]
+  /** 2층 벽 창·배너를 비울 x 구간 */
+  wallSkip: [number, number][]
+  /** 회랑 위 추가 구조물(계단 등) */
+  structures: (zBase: number) => IsoStructGroup[]
+  /** 2층 맵 추가 충돌 */
+  blockers: Blocker[]
 }
 
 // ── 치수 ──
@@ -86,7 +106,7 @@ function wallDecal(plane: 'x' | 'y', at: number, hPx: number, z0: number, sp: Sp
 }
 
 /** 뒤쪽 두 벽(맵 끝선) + 1층 회랑 아래 그늘 + 문/창/배너 */
-function backWalls(zBase: number, doors: WallDoor[], zFrom = zBase): IsoStructGroup[] {
+function backWalls(zBase: number, doors: WallDoor[], zFrom = zBase, ext?: HallExt): IsoStructGroup[] {
   // zFrom: 벽을 그리기 시작할 높이(2층 맵은 회랑 바닥 z=0 부터 — 그 아래는 회랑 바닥에 가려짐)
   const parts: IsoPart[] = [
     { kind: 'face', plane: 'y', at: 0, from: 0, to: HALL_W, z0: zFrom, z1: WALL_Z + zBase, tex: T.wall },
@@ -97,10 +117,11 @@ function backWalls(zBase: number, doors: WallDoor[], zFrom = zBase): IsoStructGr
   ]
   const decals: IsoPart[] = []
   // 2층 벽 — 높은 스테인드글라스 창과 배너를 번갈아(양 벽 전체 길이)
+  const skipped = (x: number) => (ext?.wallSkip ?? []).some(([a, b]) => x + 0.8 > a && x - 0.8 < b)
   for (let x = 4; x < HALL_W - 1; x += 5) {
     if (Math.abs(x + 1 - HALL_CX) < 4) continue // 대강당 문 자리 비움
-    decals.push(wallDecal('y', x, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
-    decals.push(wallDecal('y', x + 2.5, 150, zBase + FLOOR2 + 150, HALL_SPR.banner))
+    if (!skipped(x)) decals.push(wallDecal('y', x, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
+    if (!skipped(x + 2.5)) decals.push(wallDecal('y', x + 2.5, 150, zBase + FLOOR2 + 150, HALL_SPR.banner))
   }
   for (let y = 5; y < HALL_H - 1; y += 5) {
     decals.push(wallDecal('x', y, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
@@ -108,6 +129,7 @@ function backWalls(zBase: number, doors: WallDoor[], zFrom = zBase): IsoStructGr
   }
   // 1층 문 + 문 위 배너(회랑 바닥판에 가리지 않을 높이까지)
   for (const d of doors) decals.push(wallDecal(d.plane, d.at, d.h, zBase + (d.z0 ?? 0), d.sp))
+  if (ext) decals.push(...ext.wallDecals(zBase))
   // wallDecal 의 at:0 은 벽면(x=0 / y=0) — plane 그대로
   return [{ id: `walls${zBase}`, back: 0, parts: [...parts, ...decals] }]
 }
@@ -230,13 +252,14 @@ function hallFurniture(): PropDef[] {
 }
 
 /** 2층 회랑 위 소품 — 1층 맵에선 elev 로 띄우고 backdrop, 2층 맵에선 바닥에 그대로 */
-function galleryFurniture(onFloor2: boolean): PropDef[] {
+function galleryFurniture(onFloor2: boolean, ext?: HallExt): PropDef[] {
   const S = HALL_SPR
   const e = onFloor2 ? undefined : FLOOR2
   const b = (n: number) => (onFloor2 ? undefined : 200 + n)
   const out: PropDef[] = []
   // 북쪽 회랑 — 벽에 붙은 책장(책 면이 +y), 대강당 문 양옆 비움
-  for (const x of [3, 6, 9, 12, 15, 32, 35, 38]) out.push(isoProp(`g-shelf-n${x}`, S.shelf, x, 1.0, 0.6, { elev: e, back: b(x), flip: true }))
+  const blockedX = (x: number) => (ext?.wallSkip ?? []).some(([a, b]) => x > a - 0.4 && x < b + 0.4)
+  for (const x of [3, 6, 9, 12, 15, 32, 35, 38].filter((x) => !blockedX(x))) out.push(isoProp(`g-shelf-n${x}`, S.shelf, x, 1.0, 0.6, { elev: e, back: b(x), flip: true }))
   // 서쪽 회랑 — 벽에 붙은 책장(책 면이 +x)
   for (const y of [8, 11, 14, 22, 25, 28, 31]) out.push(isoProp(`g-shelf-w${y}`, S.shelf, 1.0, y, 0.6, { elev: e, back: b(y + 50) }))
   // 회랑 벤치·화분
@@ -267,12 +290,12 @@ function galleryShade(zb: number): IsoStructGroup {
   return { id: `gal-shade${zb}`, back: 1, parts }
 }
 
-export function buildHallFloor1(): { props: PropDef[]; structures: IsoStructGroup[]; blockers: Blocker[] } {
+export function buildHallFloor1(ext?: HallExt): { props: PropDef[]; structures: IsoStructGroup[]; blockers: Blocker[] } {
   const doors: WallDoor[] = floor1Doors()
   // 2층 벽 정면(계단 위) 대강당 대문 — 1층 맵에선 장식(입장은 2층에서)
   doors.push({ plane: 'y', at: HALL_CX, sp: HALL_SPR.doorHall, h: 240, z0: FLOOR2 })
-  const structures = [...backWalls(0, doors), galleryShade(0), mosaic(0), ...gallerySlab(0), galleryRails(0), ...pillars(0), ...grandStair(0)]
-  const props = [...hallFurniture(), ...galleryFurniture(false)]
+  const structures = [...backWalls(0, doors, 0, ext), galleryShade(0), mosaic(0), ...gallerySlab(0), galleryRails(0), ...pillars(0), ...grandStair(0), ...(ext?.structures(0) ?? [])]
+  const props = [...hallFurniture(), ...galleryFurniture(false, ext)]
   const t = 0.5
   const blockers: Blocker[] = [
     { x0: 0, y0: 0, x1: HALL_W, y1: t }, // 북벽
@@ -298,7 +321,7 @@ export function buildHallFloor1(): { props: PropDef[]; structures: IsoStructGrou
 
 // ── 2층 맵(회랑) — 가운데는 뚫린 아트리움, 1층이 FLOOR2 아래로 내려다보인다 ──
 export const hall2TileAt = (x: number, y: number): TileKind => (x < GAL || y < GAL ? 'academy-marble' : 'academy-void')
-export function buildHallFloor2(): { props: PropDef[]; structures: IsoStructGroup[]; blockers: Blocker[] } {
+export function buildHallFloor2(ext?: HallExt): { props: PropDef[]; structures: IsoStructGroup[]; blockers: Blocker[] } {
   const zb = -FLOOR2 // 1층 기준 구조물을 FLOOR2 만큼 내려 그린다
   // 그리기 순서(backdrop): 벽(0) → 1층 모자이크(5) → 1층 기둥·계단(10+깊이) → 분수(60) → 회랑 처마(110) → 난간(400)
   const below: IsoStructGroup[] = [
@@ -309,7 +332,7 @@ export function buildHallFloor2(): { props: PropDef[]; structures: IsoStructGrou
     ...[...pillars(zb), ...grandStair(zb)].map((g) => ({ ...g, back: 10 + (g.sortY ?? 0) / 100 })),
   ]
   // 벽은 1층 바닥부터 전부(기둥 사이로 1층 문이 보이게) — 회랑 바닥(z=0)은 아래에서 구조물로 다시 덮는다
-  const walls = backWalls(zb, [...floor1Doors(), { plane: 'y', at: HALL_CX, sp: HALL_SPR.doorHall, h: 240, z0: FLOOR2 }])
+  const walls = backWalls(zb, [...floor1Doors(), { plane: 'y', at: HALL_CX, sp: HALL_SPR.doorHall, h: 240, z0: FLOOR2 }], zb, ext)
   // 회랑 바닥판 윗면(z=0)까지 구조물로 — 아래층 벽 하단을 덮어 가린다
   const slab = gallerySlab(zb)
   const rails = galleryRails(zb)
@@ -318,7 +341,7 @@ export function buildHallFloor2(): { props: PropDef[]; structures: IsoStructGrou
   const f1 = hallFurniture()
     .filter((p) => p.id !== 'hall-fountain')
     .map((p) => ({ ...p, id: `f1-${p.id}`, elev: -FLOOR2, solid: false, backdrop: true, backOrder: 60 + (p.cell.x + p.cell.y) / 100, label: undefined }))
-  const props = [fountain, ...f1, ...galleryFurniture(true)]
+  const props = [fountain, ...f1, ...galleryFurniture(true, ext)]
   const blockers: Blocker[] = [
     { x0: 0, y0: 0, x1: HALL_W, y1: 0.5 },
     { x0: 0, y0: 0, x1: 0.5, y1: HALL_H },
@@ -326,8 +349,9 @@ export function buildHallFloor2(): { props: PropDef[]; structures: IsoStructGrou
     { x0: 0, y0: HALL_H - 0.3, x1: GAL, y1: HALL_H },
     // 아트리움(뚫린 곳) 전체 — 1층으로는 계단 위 포탈로 내려간다
     { x0: GAL - 0.1, y0: GAL - 0.1, x1: HALL_W, y1: HALL_H },
+    ...(ext?.blockers ?? []),
   ]
-  return { props, structures: [...walls, ...below, ...slab, rails], blockers }
+  return { props, structures: [...walls, ...below, ...slab, rails, ...(ext?.structures(zb) ?? [])], blockers }
 }
 
 export const HALL_PAD_TOP = WALL_Z + 60

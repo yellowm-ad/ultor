@@ -13,12 +13,15 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, Shiel
 
 // 전 맵이 아이소 도트 엔진(iso-world.tsx)으로 렌더된다 — 옛 CSS 그라디언트/일러스트 렌더 경로는 제거됨(2026-09-28)
 const MOVE_SPEED = 4.3 // 초당 이동 셀 수
+/** Shift 달리기 — 이동속도 2배 */
+const RUN_MULT = 2
 
 export function WorldScreen() {
   const { state, dispatch } = useGame()
   const viewportRef = useRef<HTMLDivElement>(null)
   const [viewportSize, setViewportSize] = useState({ w: 960, h: 640 })
   const [moving, setMoving] = useState(false)
+  const [running, setRunning] = useState(false)
   const pressedKeys = useRef<Set<string>>(new Set())
   const lastTime = useRef<number | null>(null)
 
@@ -68,10 +71,13 @@ export function WorldScreen() {
       if (keys.has('arrowleft') || keys.has('a')) dx -= 1
       if (keys.has('arrowright') || keys.has('d')) dx += 1
       const isMoving = dx !== 0 || dy !== 0
+      const isRunning = isMoving && keys.has('shift')
       setMoving((prev) => (prev === isMoving ? prev : isMoving))
+      setRunning((prev) => (prev === isRunning ? prev : isRunning))
       if (isMoving) {
         const len = Math.hypot(dx, dy) || 1
-        dispatch({ type: 'MOVE', dx: (dx / len) * MOVE_SPEED * dt, dy: (dy / len) * MOVE_SPEED * dt })
+        const sp = MOVE_SPEED * (isRunning ? RUN_MULT : 1)
+        dispatch({ type: 'MOVE', dx: (dx / len) * sp * dt, dy: (dy / len) * sp * dt })
       }
     }
     raf = requestAnimationFrame(tick)
@@ -156,6 +162,7 @@ export function WorldScreen() {
       dispatch={dispatch}
       viewportSize={viewportSize}
       moving={moving}
+      running={running}
       interactId={interactTarget?.id ?? nearNode?.key ?? null}
     />
     {/* 골든아워 따뜻한 앰비언트 */}

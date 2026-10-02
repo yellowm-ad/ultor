@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { itemById } from '@/lib/mock-data'
+import { schoolNpcById } from '@/lib/companions'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { DiamondMark, rarityGlowStyle } from '@/components/game/ui-motifs'
@@ -130,10 +131,24 @@ export function InventoryScreen() {
                     장착
                   </Button>
                 )}
-                {selectedItem.type === 'potion' && (
+                {selectedItem.type === 'potion' && !selectedItem.useEffect?.grantExp && (
                   <Button size="sm" onClick={() => dispatch({ type: 'USE_ITEM_FIELD', itemId: selectedItem.id })}>
                     사용
                   </Button>
+                )}
+                {/* 마력캔디 — 먹일 캐릭터 선택(주인공 + 합류한 동료) */}
+                {!!selectedItem.useEffect?.grantExp && (
+                  <div className="flex w-full flex-wrap gap-1">
+                    <span className="w-full text-[10px] opacity-70">누구에게 먹일까?</span>
+                    <Button size="sm" onClick={() => dispatch({ type: 'USE_EXP_CANDY', itemId: selectedItem.id, targetId: 'hero' })}>
+                      {state.player.name || '주인공'} Lv.{state.player.level}
+                    </Button>
+                    {Object.entries(state.companions.recruited).map(([id, prog]) => (
+                      <Button key={id} size="sm" variant="parchment" onClick={() => dispatch({ type: 'USE_EXP_CANDY', itemId: selectedItem.id, targetId: id })}>
+                        {schoolNpcById(id)?.name ?? id} Lv.{prog.level}
+                      </Button>
+                    ))}
+                  </div>
                 )}
                 {selectedItem.type === 'food' && (
                   <Button size="sm" onClick={() => dispatch({ type: 'USE_ITEM_FIELD', itemId: selectedItem.id })}>

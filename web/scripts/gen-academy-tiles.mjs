@@ -79,6 +79,10 @@ await write('academy-fire.png', slab({ base: '#6b3a2c', dark: '#5a2f24', light: 
 await write('academy-ice.png', slab({ base: '#bcd6ea', dark: '#a8c6de', light: '#d4e7f5', seam: '#7ea3c2', edge: '#6a90b0', hi: '#f0f8ff', seed: 71, speck: { p: 0.025, c: '#ffffff' }, speck2: { p: 0.006, c: '#7fe0ff' } }))
 // 대지 수업관(온실) — 이끼 낀 녹갈색 판석
 await write('academy-earth.png', slab({ base: '#6f7a4c', dark: '#5e6840', light: '#808c5a', seam: '#3c4428', edge: '#30371f', hi: '#96a36c', seed: 81, speck: { p: 0.04, c: '#4f7a36' }, speck2: { p: 0.008, c: '#d8c060' } }))
+// 어둠 수업관 — 흑자색 흑요석 판석 + 보랏빛 룬 가루
+await write('academy-dark.png', slab({ base: '#2c2238', dark: '#241c2e', light: '#372b46', seam: '#120d18', edge: '#0c0910', hi: '#4a3a5e', seed: 111, speck: { p: 0.014, c: '#a26bff' }, speck2: { p: 0.006, c: '#5a3f80' } }))
+// 빛 수업관 — 흰 대리석 + 금빛 반짝임
+await write('academy-light.png', slab({ base: '#ece4cf', dark: '#ddd3b8', light: '#f6f0de', seam: '#c9b98a', edge: '#b3a170', hi: '#fffaf0', seed: 121, speck: { p: 0.02, c: '#f2cf5a' }, speck2: { p: 0.006, c: '#ffffff' } }))
 // 대강당 — 남색 카펫(금실 무늬)
 await write('academy-carpet.png', (x, y) => {
   const [u, v] = uv(x, y)
