@@ -8,9 +8,8 @@ import { useGame } from '@/lib/game-state'
 import { beatById, type HeroRole } from '@/lib/story'
 import { SCHOOL_NPCS } from '@/lib/companions'
 import type { Gender } from '@/lib/types'
-import { Button } from '@/components/ui/button'
 import { HeroPortrait, Portrait } from '@/components/game/portrait'
-import { DiamondMark } from '@/components/game/ui-motifs'
+import { DialogueBox } from '@/components/game/dialogue-box'
 
 /**
  * 대화집의 삼원(화염/빙결/대지) 화자 대사 — PRD v2.0 이후 주인공은 고정 속성이 없으므로,
@@ -38,40 +37,31 @@ export function StoryOverlay() {
   const speaker = hero ? hero.name : cur?.speaker
   const hasPortrait = !!(hero || cur?.portraitId)
 
+  // ▶▶ — 선택지가 있으면 선택지 줄로, 없으면 비트를 끝낸다
+  const skip = () => (beat.choices?.length ? setLine(beat.lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
+
   return (
-    <div className="pointer-events-auto absolute inset-0 z-[45] flex items-end justify-center bg-black/55 p-3 sm:p-6" onClick={next}>
-      <div className="relative w-full max-w-3xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-2 text-center font-display text-sm text-gold-soft text-shadow-ink">— {beat.title} —</div>
-        <div className="flex items-stretch">
-          {hasPortrait && (
-            <div className="relative w-28 shrink-0 overflow-hidden rounded-l-xl border-y-[3px] border-l-[3px] border-gold sm:w-36">
-              {hero ? <HeroPortrait element={hero.element} gender={hero.gender} className="h-full w-full" /> : <Portrait id={cur!.portraitId!} className="h-full w-full" />}
-            </div>
-          )}
-          <div className={`panel-parchment relative flex-1 p-4 pt-5 ${hasPortrait ? '' : 'rounded-xl'}`} style={hasPortrait ? { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 } : undefined}>
-            {speaker && (
-              <div className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-full border-2 border-gold bg-gradient-to-b from-[#241f17] to-[#100d09] px-3 py-1 font-display text-sm text-gold-soft text-shadow-ink shadow-md">
-                <DiamondMark size={10} />
-                {speaker}
-              </div>
-            )}
-            <p className={`min-h-16 pt-1 text-sm leading-relaxed text-[var(--parchment-foreground)] ${speaker ? '' : 'italic'}`}>{cur?.text}</p>
-            <div className="mt-3 flex flex-wrap justify-end gap-2">
-              {choosing ? (
-                beat.choices!.map((c) => (
-                  <Button key={c.label} variant="default" size="sm" onClick={() => dispatch({ type: 'STORY_CHOICE', setFlags: c.setFlags })}>
-                    {c.label}
-                  </Button>
-                ))
-              ) : (
-                <Button variant="parchment" size="sm" onClick={next}>
-                  {last ? '닫기' : '▼ 다음'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DialogueBox
+      zClass="z-[45]"
+      title={beat.title}
+      speaker={speaker}
+      italic={!speaker}
+      portrait={
+        hasPortrait ? hero ? <HeroPortrait element={hero.element} gender={hero.gender} className="h-full w-full" /> : <Portrait id={cur!.portraitId!} className="h-full w-full" /> : undefined
+      }
+      text={cur?.text ?? ''}
+      canAdvance={!choosing}
+      onAdvance={next}
+      onSkip={choosing ? undefined : skip}
+      actions={
+        choosing
+          ? beat.choices!.map((c) => (
+              <button key={c.label} type="button" className="dlg-btn" onClick={() => dispatch({ type: 'STORY_CHOICE', setFlags: c.setFlags })}>
+                {c.label}
+              </button>
+            ))
+          : null
+      }
+    />
   )
 }

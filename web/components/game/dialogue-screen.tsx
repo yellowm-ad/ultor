@@ -4,9 +4,8 @@ import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { npcById } from '@/lib/mock-data'
 import { npcWeeklyLine } from '@/lib/npc-weekly-lines'
-import { Button } from '@/components/ui/button'
 import { Portrait } from '@/components/game/portrait'
-import { DiamondMark } from '@/components/game/ui-motifs'
+import { DialogueBox } from '@/components/game/dialogue-box'
 import { coursesForWeek, nextCourseSkill } from '@/lib/academics'
 import { skillById } from '@/lib/mock-data'
 
@@ -55,73 +54,55 @@ export function DialogueScreen() {
   const lines = weekly ? [weekly, ...npc.greeting] : npc.greeting
   const lastLine = lineIdx >= lines.length - 1
 
+  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor
+  // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
+  const canAdvance = !lastLine || !hasActions
+  const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
+
   return (
-    <div className="pointer-events-auto absolute inset-0 z-40 flex items-end justify-center bg-black/50 p-3 sm:p-6">
-      {/* RPG 대화창 — 참고자료처럼 아이보리 양피지 본문 + 남색·금 이름표 */}
-      <div className="relative w-full max-w-3xl">
-        <div className="flex items-stretch gap-0">
-          {/* 초상화 */}
-          <div className="relative w-28 shrink-0 overflow-hidden rounded-l-xl border-y-[3px] border-l-[3px] border-gold sm:w-40">
-            <Portrait id={npc.id} className="h-full w-full" />
-          </div>
-
-          {/* 본문 */}
-          <div
-            className="panel-parchment relative flex-1 p-4 pt-5"
-            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-          >
-            <div className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-full border-2 border-gold bg-gradient-to-b from-[#241f17] to-[#100d09] px-3 py-1 font-display text-sm text-gold-soft text-shadow-ink shadow-md">
-              <DiamondMark size={10} />
-              {npc.name}
-              <span className="text-[10px] font-normal text-white/60">{ROLE_LABEL[npc.role]}</span>
-            </div>
-
-            <p className="min-h-16 pt-1 text-sm leading-relaxed text-[var(--parchment-foreground)]">{lines[lineIdx]}</p>
-
-            <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-              {!lastLine && (
-                <Button variant="parchment" size="sm" onClick={() => setLineIdx((i) => Math.min(lines.length - 1, i + 1))}>
-                  ▼ 다음
-                </Button>
-              )}
-
-              {lastLine && (isShopkeeper || isTamer) && (
-                <Button variant="default" size="sm" onClick={() => dispatch({ type: 'OPEN_SHOP', npcId: npc.id })}>
-                  {isTamer ? '먹이 상점' : '상점 열기'}
-                </Button>
-              )}
-
-              {lastLine && isTamer && (
-                <Button variant="default" size="sm" onClick={() => dispatch({ type: 'OPEN_TAMER', npcId: npc.id })}>
-                  펫 훈련
-                </Button>
-              )}
-
-              {lastLine && isCraftStation && (
-                <Button variant="default" size="sm" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: npc.id })}>
-                  제작하기
-                </Button>
-              )}
-
-              {lastLine && isElder && (
-                <Button variant="default" size="sm" onClick={() => dispatch({ type: 'REST' })}>
-                  휴식하기 (파티 전원 회복)
-                </Button>
-              )}
-
-              {lastLine && isProfessor && (
-                <span className="self-center text-[11px] text-[#6b5a38]">
-                  {courseNotes.length ? `다음 수업 마법 — ${courseNotes.join(' · ')}` : '이번 학기 수업 마법은 모두 익혔거나 방학입니다.'}
-                </span>
-              )}
-
-              <Button variant="ghost" size="sm" onClick={close} className="text-[var(--parchment-foreground)] hover:bg-black/10">
-                닫기
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DialogueBox
+      speaker={npc.name}
+      role={ROLE_LABEL[npc.role]}
+      portrait={<Portrait id={npc.id} className="h-full w-full" />}
+      text={lines[lineIdx]}
+      canAdvance={canAdvance}
+      onAdvance={advance}
+      onSkip={lastLine ? undefined : () => setLineIdx(lines.length - 1)}
+      onClose={close}
+      actions={
+        lastLine && hasActions ? (
+          <>
+            {isProfessor && (
+              <span className="dlg-note">
+                {courseNotes.length ? `다음 수업 마법 — ${courseNotes.join(' · ')}` : '이번 학기 수업 마법은 모두 익혔거나 방학입니다.'}
+              </span>
+            )}
+            {(isShopkeeper || isTamer) && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_SHOP', npcId: npc.id })}>
+                {isTamer ? '먹이 상점' : '상점 열기'}
+              </button>
+            )}
+            {isTamer && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_TAMER', npcId: npc.id })}>
+                펫 훈련
+              </button>
+            )}
+            {isCraftStation && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: npc.id })}>
+                제작하기
+              </button>
+            )}
+            {isElder && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'REST' })}>
+                휴식하기 (파티 전원 회복)
+              </button>
+            )}
+            <button type="button" className="dlg-btn is-quiet" onClick={close}>
+              닫기
+            </button>
+          </>
+        ) : null
+      }
+    />
   )
 }

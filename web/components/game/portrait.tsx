@@ -45,6 +45,10 @@ export function Portrait({ id, className }: { id: string; className?: string }) 
           key={src}
           src={src}
           alt=""
+          // 하이드레이션 전에 이미 로드가 끝난 이미지는 onLoad 가 다시 오지 않아 계속 숨겨져 있었다 — 붙는 순간 확인
+          ref={(el) => {
+            if (el && !ready && el.complete && el.naturalWidth > 0) setReady(true)
+          }}
           onLoad={(e) => setReady((e.target as HTMLImageElement).naturalWidth > 0)}
           onError={() => {
             if (idx < candidates.length - 1) setIdx(idx + 1)

@@ -1,0 +1,312 @@
+/* ============================================================================
+   대화창(components/game/dialogue-box.tsx) — 「대화 UI 수정안.png」 참고 (2026-10-03)
+   아이보리 본문 + 깎은 모서리 이중 금테 + 장미색 리본 이름표 + 초상 액자
+   ============================================================================ */
+.dlg-root {
+  --dlg-ivory-1: #fdfbf6;
+  --dlg-ivory-2: #f1ece2;
+  --dlg-gold: #c4a46a;
+  --dlg-gold-hi: #f3e6c2;
+  --dlg-gold-lo: #9a7d47;
+  --dlg-ink: #3b3843;
+  --dlg-rose-1: #d98aa0;
+  --dlg-rose-2: #b85a76;
+  --dlg-cut: 22px;
+  /* 초상 액자 크기(모바일) — 아래 미디어쿼리에서 키운다 */
+  --dlg-pw: 106px;
+  --dlg-ph: 132px;
+  /* 화면 전체를 덮지 않고 아래쪽만 살짝 어둡게 — 배경(마을·교실)이 보이도록 */
+  background: linear-gradient(to top, rgba(10, 8, 16, 0.55) 0%, rgba(10, 8, 16, 0.18) 38%, transparent 62%);
+  cursor: pointer;
+  animation: dlg-fade 0.18s ease-out both;
+}
+@media (min-width: 640px) {
+  .dlg-root { --dlg-pw: 164px; --dlg-ph: 204px; }
+}
+@keyframes dlg-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.dlg-wrap { animation: dlg-rise 0.24s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes dlg-rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+/* 초상 액자가 본문 왼쪽을 절반쯤 덮는다 */
+.dlg-wrap.has-portrait { padding-left: calc(var(--dlg-pw) * 0.62); }
+
+/* 깎은 모서리 다각형 — --c 만큼 네 귀퉁이를 자른다 */
+.dlg-frame, .dlg-panel, .dlg-panel::before, .dlg-panel::after,
+.dlg-portrait-frame, .dlg-portrait-mat, .dlg-portrait-line, .dlg-portrait-img {
+  clip-path: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)),
+    calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c));
+}
+/* 바깥 금테(2px) */
+.dlg-frame {
+  --c: var(--dlg-cut);
+  padding: 2px;
+  background: linear-gradient(160deg, var(--dlg-gold-hi) 0%, var(--dlg-gold) 35%, var(--dlg-gold-lo) 70%, var(--dlg-gold) 100%);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35));
+}
+.dlg-panel {
+  --c: calc(var(--dlg-cut) - 1px);
+  position: relative;
+  min-height: 132px;
+  padding: 28px 30px 20px 30px;
+  background: linear-gradient(180deg, var(--dlg-ivory-1) 0%, var(--dlg-ivory-2) 100%);
+}
+@media (min-width: 640px) { .dlg-panel { min-height: 160px; padding: 32px 44px 22px 40px; } }
+.dlg-wrap.has-portrait .dlg-panel { padding-left: calc(var(--dlg-pw) * 0.38 + 22px); }
+/* 안쪽 가는 금선(바깥에서 6px 안) */
+.dlg-panel::before {
+  --c: calc(var(--dlg-cut) - 6px);
+  content: '';
+  position: absolute;
+  inset: 6px;
+  background: linear-gradient(160deg, #e3d0a4, #c9ae79 50%, #e3d0a4);
+  pointer-events: none;
+}
+.dlg-panel::after {
+  --c: calc(var(--dlg-cut) - 6.5px);
+  content: '';
+  position: absolute;
+  inset: 7px;
+  /* 은은한 마름모 격자 */
+  background:
+    repeating-linear-gradient(45deg, rgba(160, 140, 110, 0.05) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(-45deg, rgba(160, 140, 110, 0.05) 0 1px, transparent 1px 26px),
+    radial-gradient(120% 90% at 0% 0%, rgba(255, 255, 255, 0.9), transparent 55%),
+    linear-gradient(180deg, var(--dlg-ivory-1) 0%, var(--dlg-ivory-2) 100%);
+  pointer-events: none;
+}
+.dlg-panel > * { position: relative; z-index: 1; }
+
+.dlg-watermark {
+  position: absolute !important;
+  right: 3%;
+  top: 50%;
+  width: 170px;
+  height: 170px;
+  transform: translateY(-50%);
+  color: #b9a888;
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.dlg-text {
+  min-height: 3.6em;
+  font-size: 14.5px;
+  line-height: 1.85;
+  letter-spacing: -0.005em;
+  color: var(--dlg-ink);
+  white-space: pre-line;
+  word-break: keep-all;
+}
+@media (min-width: 640px) { .dlg-text { font-size: 16px; } }
+
+.dlg-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 8px; padding-right: 26px; }
+.dlg-actions:empty { margin-top: 0; }
+
+/* 선택지·액션 버튼 — 아이보리 위에서 튀지 않는 남색/금 */
+.dlg-btn {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  color: #fdf6e4;
+  background: linear-gradient(180deg, #2f281e, #15110c);
+  border: 1.5px solid var(--dlg-gold);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 4px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 0.08s, filter 0.12s;
+}
+.dlg-btn:hover { filter: brightness(1.15); }
+.dlg-btn:active { transform: translateY(1px); }
+.dlg-btn.is-quiet { color: #6c6150; background: transparent; border-color: rgba(156, 130, 80, 0.45); box-shadow: none; }
+.dlg-btn.is-quiet:hover { background: rgba(156, 130, 80, 0.1); filter: none; }
+.dlg-note { font-size: 11.5px; color: #7a6a4c; margin-right: auto; }
+
+/* 다음 표시 — 글자는 줄바꿈·잘림 없이 한 줄 고정 */
+.dlg-next {
+  position: absolute !important;
+  right: 20px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  white-space: nowrap;
+  line-height: 1;
+  color: #3e3a52;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.dlg-next-label { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; opacity: 0.7; }
+.dlg-next-icon { width: 20px; height: 20px; flex: none; animation: dlg-bob 1s ease-in-out infinite; }
+.dlg-next:focus-visible { outline: 2px solid var(--dlg-gold); outline-offset: 2px; border-radius: 6px; }
+@keyframes dlg-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+/* 오른쪽 가장자리 반짝임 + 우상단 모서리 장식 */
+.dlg-edge-spark {
+  position: absolute;
+  right: -9px;
+  top: 34%;
+  width: 22px;
+  height: 22px;
+  color: #fffaf0;
+  filter: drop-shadow(0 0 1px var(--dlg-gold-lo)) drop-shadow(0 0 4px rgba(255, 240, 200, 0.8));
+  pointer-events: none;
+}
+.dlg-corner-tr {
+  position: absolute;
+  right: 6px;
+  top: -9px;
+  width: 64px;
+  height: 18px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--dlg-gold), var(--dlg-gold)) right 14px top 8px / 40px 1.5px no-repeat,
+    radial-gradient(circle, var(--dlg-gold-hi) 0 2.5px, var(--dlg-gold-lo) 3px 3.5px, transparent 4px) right 4px top 4px / 10px 10px no-repeat;
+}
+
+/* 리본 이름표 */
+.dlg-name {
+  position: absolute;
+  z-index: 3;
+  top: -17px;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 28px 0 6px;
+  color: #fff;
+  font-family: var(--font-display);
+  background: linear-gradient(180deg, var(--dlg-rose-1) 0%, var(--dlg-rose-2) 100%);
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 0 100%);
+  filter: drop-shadow(0 2px 3px rgba(80, 20, 40, 0.3));
+  pointer-events: none;
+}
+.dlg-wrap.has-portrait .dlg-name { left: calc(var(--dlg-pw) + 10px); }
+/* 리본 안쪽 금 실선 */
+.dlg-name::after {
+  content: '';
+  position: absolute;
+  inset: 3px 10px 3px 3px;
+  border-top: 1px solid rgba(255, 236, 200, 0.7);
+  border-bottom: 1px solid rgba(255, 236, 200, 0.7);
+  pointer-events: none;
+}
+.dlg-name-emblem {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 240, 220, 0.9);
+  background: radial-gradient(circle at 35% 30%, #f6c9d5, var(--dlg-rose-2));
+}
+.dlg-name-emblem svg { width: 14px; height: 14px; }
+.dlg-name-text { font-size: 17px; letter-spacing: 0.04em; text-shadow: 0 1px 2px rgba(90, 20, 45, 0.45); }
+.dlg-name-role { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+
+/* 초상 액자 — 본문과 같은 깎은 모서리. 얼굴(머리 위쪽 포함)이 잘리지 않도록
+   둥근 아치 대신 직사각 + 넉넉한 아이보리 매트, 이미지는 위쪽 기준으로 맞춘다. */
+.dlg-portrait {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  width: var(--dlg-pw);
+  height: var(--dlg-ph);
+  pointer-events: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
+}
+.dlg-portrait-frame { /* 바깥 금테 */
+  --c: 16px;
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  background: linear-gradient(160deg, var(--dlg-gold-hi), var(--dlg-gold) 40%, var(--dlg-gold-lo) 80%, var(--dlg-gold));
+}
+.dlg-portrait-mat { /* 아이보리 매트 */
+  --c: 15px;
+  position: relative;
+  height: 100%;
+  padding: 6px;
+  background: linear-gradient(180deg, var(--dlg-ivory-1), var(--dlg-ivory-2));
+}
+@media (min-width: 640px) { .dlg-portrait-mat { padding: 8px; } }
+.dlg-portrait-line { /* 매트 안쪽 가는 금선 */
+  --c: 10px;
+  height: 100%;
+  padding: 1.5px;
+  background: linear-gradient(160deg, #e3d0a4, #b9995e 50%, #e3d0a4);
+}
+.dlg-portrait-img {
+  --c: 9px;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(180deg, #3a3548, #1d1a26);
+}
+.dlg-portrait-img > * { display: block !important; width: 100%; height: 100%; }
+/* 위쪽 기준 정렬 — 머리끝·얼굴이 잘리지 않게(아래쪽 옷만 잘린다) */
+.dlg-portrait-img img { object-position: 50% 0% !important; }
+.dlg-portrait-img::after { /* 아래쪽만 살짝 그늘 */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(40, 30, 50, 0.22), transparent 30%);
+  pointer-events: none;
+}
+.dlg-star {
+  position: absolute;
+  left: -22px;
+  bottom: -20px;
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+@media (min-width: 640px) { .dlg-star { left: -28px; bottom: -26px; width: 64px; height: 64px; image-rendering: pixelated; } }
+
+/* 대화창 위 오른쪽 툴바(장 제목 + AUTO / ▶▶ / 닫기) — 이름표(-17px)보다 위로 띄운다 */
+.dlg-toolbar {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 26px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dlg-ctl {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #f4efe4;
+  background: radial-gradient(circle at 35% 30%, #3a3126, #120f0b);
+  border: 2px solid rgba(220, 205, 170, 0.75);
+  box-shadow: 0 0 0 2px rgba(10, 8, 6, 0.6), 0 3px 8px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.08s;
+}
+.dlg-ctl:hover { filter: brightness(1.2); }
+.dlg-ctl:active { transform: scale(0.95); }
+.dlg-ctl.is-on { color: #2a2233; background: radial-gradient(circle at 35% 30%, #fbefc9, #d4b06a); border-color: #fff4d6; }
+
+.dlg-chapter {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: #f6ecd2;
+  background: rgba(16, 13, 9, 0.65);
+  border: 1px solid rgba(220, 200, 150, 0.5);
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+  margin-right: 4px;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dlg-root, .dlg-wrap, .dlg-next-icon { animation: none; }
+}

@@ -3,9 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
-import { Modal } from '@/components/ui/modal'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
+import { Bar, GameWindow, HeadPill, menuIcon, Ribbon } from '@/components/game/game-window'
 import { countPositions, expSharePerMember, FORMATION_LIMITS, MAX_GUESTS, MAX_PARTY_SIZE, POSITION_META, POSITIONS } from '@/lib/constants'
 import { AFFECTION_TIER_META, affectionTier, petDefById, petStatsForLevel } from '@/lib/pets'
 import { canRecruit, COMBAT_NPCS, COMPANION_SLOTS, companionStats, guestNpcById, guestStats, schoolNpcById, type SchoolNpc } from '@/lib/companions'
@@ -23,13 +21,13 @@ function NpcFace({ def, px = 56 }: { def: SchoolNpc; px?: number }) {
 function PositionPicker({ memberId, value }: { memberId: string; value: Position }) {
   const { dispatch } = useGame()
   return (
-    <div className="flex gap-0.5">
+    <div className="pos-pick">
       {POSITIONS.map((p) => (
         <button
           key={p}
           title={`${POSITION_META[p].label} — ${POSITION_META[p].bonus}`}
           onClick={() => dispatch({ type: 'SET_POSITION', memberId, position: p })}
-          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${value === p ? 'bg-gold text-ink' : 'bg-black/15 opacity-70 hover:opacity-100'}`}
+          className={value === p ? 'is-on' : ''}
         >
           {POSITION_META[p].label}
         </button>
@@ -43,7 +41,7 @@ function PetPicker() {
   const { state, dispatch } = useGame()
   return (
     <select
-      className="w-full rounded border border-black/20 bg-white/60 px-1 py-0.5 text-[10px]"
+      className="w-full rounded border border-[#c8b48a] bg-white/70 px-1.5 py-1 text-[11.5px]"
       value={state.pet.defId}
       onChange={(e) => dispatch({ type: 'SET_MEMBER_PET', memberId: 'hero', defId: e.target.value || null })}
     >
@@ -78,10 +76,12 @@ export function PartyScreen() {
   const sharePct = expSharePerMember(100, partyCount)
 
   return (
-    <Modal open onClose={close} title={`파티 편성 (${partyCount}/${MAX_PARTY_SIZE})`} widthClass="max-w-3xl">
+    <GameWindow title="파티" subtitle="PARTY" onClose={close} tall cols width={1000} height={600} headerExtra={<HeadPill icon={'/images/icons/hud/party.png'}>편성 <b>{partyCount}</b>/{MAX_PARTY_SIZE}</HeadPill>}>
+      <div className="gw-cols party-cols">
+      <section className="gw-scroll min-h-0 pr-1">
       {/* 성장 vs 전투 안정성 안내 */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-black/25 px-2.5 py-1.5 text-[11px]">
-        <span className="font-display text-gold-soft">경험치 분배</span>
+      <div className="gw-panel is-pad mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 !py-2.5 text-[12px]">
+        <span className="gw-pill is-gold">경험치 분배</span>
         <span>
           {partyCount === 1 ? '단독 전투 — 경험치 100% 획득 (성장 빠름 · 전투 어려움)' : `${partyCount}인 파티 — 1인당 ${sharePct}% (전투 안정 · 성장 더딤)`}
         </span>
@@ -90,7 +90,7 @@ export function PartyScreen() {
 
       {/* 핵심 전투원 — 주인공 + 동료 최대 3 */}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <div className="panel-parchment flex flex-col items-center gap-1.5 p-2.5">
+        <div className="gw-panel party-card">
           <div className="flex h-14 items-end justify-center overflow-hidden">
             <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={56} />
           </div>
@@ -111,7 +111,7 @@ export function PartyScreen() {
               <button
                 key={i}
                 onClick={() => setSwapSlot(swapping ? null : i)}
-                className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed p-2.5 text-white/60 ${swapping ? 'border-gold bg-gold/10' : 'border-gold/40'}`}
+                className={`party-empty ${swapping ? 'is-on' : ''}`}
               >
                 <div className="text-center text-[10px]">빈 자리 — 명단에서 선택</div>
               </button>
@@ -119,7 +119,7 @@ export function PartyScreen() {
           }
           const s = companionStats(def, prog.level)
           return (
-            <div key={i} className={`panel-parchment flex flex-col items-center gap-1 p-2.5 ${swapping ? 'ring-2 ring-gold' : ''}`}>
+            <div key={i} className={`gw-panel party-card ${swapping ? 'ring-2 ring-gold' : ''}`}>
               <div className="flex h-14 items-end justify-center overflow-hidden">
                 <NpcFace def={def} />
               </div>
@@ -131,13 +131,13 @@ export function PartyScreen() {
               <PositionPicker memberId={def.id} value={pos(def.id)} />
               <div className="mt-0.5 flex gap-1">
                 {bench.length > 0 && (
-                  <Button size="sm" variant="parchment" className="h-6 px-2 text-[10px]" onClick={() => setSwapSlot(swapping ? null : i)}>
+                  <button type="button" className="gw-btn is-quiet is-sm" onClick={() => setSwapSlot(swapping ? null : i)}>
                     {swapping ? '취소' : '교체'}
-                  </Button>
+                  </button>
                 )}
-                <Button size="sm" variant="parchment" className="h-6 px-2 text-[10px]" onClick={() => dispatch({ type: 'TOGGLE_PARTY_MEMBER', companionId: def.id })}>
+                <button type="button" className="gw-btn is-quiet is-sm" onClick={() => dispatch({ type: 'TOGGLE_PARTY_MEMBER', companionId: def.id })}>
                   빼기
-                </Button>
+                </button>
               </div>
             </div>
           )
@@ -146,7 +146,7 @@ export function PartyScreen() {
 
       {/* 펫 고정 슬롯 + 임시 합류 NPC 2칸 */}
       <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        <div className="panel-parchment flex items-center gap-2 p-2.5">
+        <div className="gw-panel flex items-center gap-2 p-2.5">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/15">
             {petDef && <Image src={petDef.icon} alt="" width={28} height={28} />}
           </div>
@@ -167,7 +167,7 @@ export function PartyScreen() {
           }
           const s = guestStats(def, g.level)
           return (
-            <div key={i} className="panel-parchment flex items-center gap-2 p-2.5 ring-1 ring-violet-400/60">
+            <div key={i} className="gw-panel flex items-center gap-2 p-2.5 ring-1 ring-violet-400/60">
               <div className="flex h-12 w-10 shrink-0 items-end justify-center overflow-hidden">
                 <HeroSprite sheet={def.sprite} dir="down" px={44} />
               </div>
@@ -200,7 +200,7 @@ export function PartyScreen() {
       </div>
 
       {/* 주인공 펫 선택 */}
-      <div className="mt-3 mb-1 text-xs font-display text-gold-soft">보유 펫 — 주인공 펫 선택</div>
+      <div className="mt-3 mb-1.5 text-[13px] font-display text-[#f3e6c2]">보유 펫 — 주인공 펫 선택</div>
       <div className="flex flex-wrap gap-2">
         {state.ownedPets.map((p) => {
           const d = petDefById(p.defId)
@@ -210,7 +210,7 @@ export function PartyScreen() {
             <button
               key={p.defId}
               onClick={() => dispatch({ type: 'SET_ACTIVE_PET', defId: p.defId })}
-              className={`panel-parchment flex items-center gap-1.5 px-2 py-1 text-[11px] ${active ? 'ring-2 ring-gold' : 'opacity-75'}`}
+              className={`gw-panel flex items-center gap-1.5 px-2 py-1 text-[11px] ${active ? 'ring-2 ring-gold' : 'opacity-75'}`}
             >
               <Image src={d.icon} alt="" width={20} height={20} />
               {p.nickname} Lv.{p.level}
@@ -225,18 +225,25 @@ export function PartyScreen() {
         </div>
       )}
 
+      <p className="gw-note mt-3">
+        진형은 전위 2 · 후위 2 · 보조 2, 총 6자리 중 최대 4인(주인공 + 3)이 골라 섭니다. 펫은 주인공만 데리고 다니며, 주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸웁니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
+        동료는 전투에서 직접 조작하며(전투 화면 &lsquo;동료 수동/자동&rsquo;), 각자 레벨이 있어 승리 경험치를 나눠 받습니다. 동료를 모두 빼고 혼자 다닐 수도 있습니다. 합류 조건은 임시값입니다.
+      </p>
+      </section>
+
       {/* 동료 명단 */}
-      <div className="mt-4 mb-1 text-xs font-display text-gold-soft">
-        동료 명단 {swapSlot != null && <span className="text-[10px] font-normal text-white/70">— {swapSlot + 1}번 자리에 넣을 동료를 고르세요</span>}
+      <aside className="gw-panel is-flex is-pad">
+      <div className="mb-2 font-display text-[14px] font-bold text-[#3b3843]">
+        동료 명단 {swapSlot != null && <span className="text-[11px] font-normal text-[#8a6a2c]">— {swapSlot + 1}번 자리에 넣을 동료를 고르세요</span>}
       </div>
-      <div className="grid max-h-[30vh] grid-cols-1 gap-2 overflow-y-auto pr-1 scrollbar-thin sm:grid-cols-2">
+      <div className="gw-scroll is-fill flex flex-col gap-2 pr-1">
         {COMBAT_NPCS.map((def) => {
           const prog = companions.recruited[def.id]
           const inParty = companions.party.includes(def.id)
           const check = canRecruit(state, def)
           const aff = state.relationships[def.id]?.affinity ?? 0
           return (
-            <div key={def.id} className={`panel-parchment flex items-center gap-2.5 p-2.5 ${!prog && !check.ok ? 'opacity-60' : ''}`}>
+            <div key={def.id} className={`gw-row !cursor-default ${!prog && !check.ok ? 'is-dim' : ''}`}>
               <div className="flex h-12 w-12 shrink-0 items-end justify-center overflow-hidden">
                 <NpcFace def={def} px={48} />
               </div>
@@ -255,25 +262,25 @@ export function PartyScreen() {
                 )}
               </div>
               {!prog ? (
-                <Button size="sm" disabled={!check.ok} onClick={() => dispatch({ type: 'RECRUIT_COMPANION', companionId: def.id })} title={check.reason}>
+                <button type="button" className="gw-btn is-gold is-sm" disabled={!check.ok} onClick={() => dispatch({ type: 'RECRUIT_COMPANION', companionId: def.id })} title={check.reason}>
                   {check.ok ? '합류' : check.reason}
-                </Button>
+                </button>
               ) : inParty ? (
-                <span className="text-[10px] text-gold-soft">출전 중</span>
+                <span className="text-[11px] font-bold text-[#8a6a2c]">출전 중</span>
               ) : swapSlot != null ? (
-                <Button
-                  size="sm"
+                <button type="button"
+                  className="gw-btn is-gold is-sm"
                   onClick={() => {
                     dispatch({ type: 'SWAP_PARTY_MEMBER', slot: swapSlot, companionId: def.id })
                     setSwapSlot(null)
                   }}
                 >
                   이 자리에
-                </Button>
+                </button>
               ) : companions.party.length < COMPANION_SLOTS - guests.length ? (
-                <Button size="sm" onClick={() => dispatch({ type: 'TOGGLE_PARTY_MEMBER', companionId: def.id })}>
+                <button type="button" className="gw-btn is-gold is-sm" onClick={() => dispatch({ type: 'TOGGLE_PARTY_MEMBER', companionId: def.id })}>
                   편성
-                </Button>
+                </button>
               ) : (
                 <span className="text-[10px] opacity-60">대기</span>
               )}
@@ -282,27 +289,18 @@ export function PartyScreen() {
         })}
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        진형은 전위 2 · 후위 2 · 보조 2, 총 6자리 중 최대 4인(주인공 + 3)이 골라 섭니다. 펫은 주인공만 데리고 다니며, 주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸웁니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
-        동료는 전투에서 직접 조작하며(전투 화면 &lsquo;동료 수동/자동&rsquo;), 각자 레벨이 있어 승리 경험치를 나눠 받습니다. 동료를 모두 빼고 혼자 다닐 수도 있습니다. 합류 조건은 임시값입니다.
-      </p>
-
-      <div className="mt-3 flex justify-end">
-        <Button variant="ghost" onClick={close}>
-          닫기
-        </Button>
+      </aside>
       </div>
-    </Modal>
+    </GameWindow>
   )
 }
 
 function Bars({ hp, mp, exp }: { hp: number; mp: number; exp?: number }) {
-  const clamp = (v: number) => Math.max(0, Math.min(1, Number.isFinite(v) ? v : 0)) * 100
   return (
     <div className="w-full space-y-1">
-      <Progress value={clamp(hp)} barClassName="bg-hp" className="h-1.5 w-full" />
-      <Progress value={clamp(mp)} barClassName="bg-mp" className="h-1.5 w-full" />
-      {exp != null && <Progress value={clamp(exp)} barClassName="bg-gold" className="h-1 w-full" />}
+      <Bar kind="hp" value={hp * 100} />
+      <Bar kind="mp" value={mp * 100} />
+      {exp != null && <Bar kind="exp" value={exp * 100} />}
     </div>
   )
 }

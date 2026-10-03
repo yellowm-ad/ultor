@@ -70,9 +70,9 @@ export function Hud() {
       {/* 우측: 아이콘 메뉴 — 박스 버튼 대신 순수 아이콘 */}
       <div className="pointer-events-auto title-enter-3 flex flex-col items-end gap-2">
         <div className="flex gap-3 sm:gap-3.5">
-          <MenuIcon src="/images/icons/hud/journal.svg" label="수첩" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'journal' })} />
+          <MenuIcon src="/images/icons/menu/hud-journal.png" label="수첩" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'journal' })} />
           <MenuIcon src="/images/icons/hud/backpack.png" label="가방" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'inventory' })} />
-          <MenuIcon src="/images/npc/npc-workbench.png" label="제작" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: 'npc-workbench' })} />
+          <MenuIcon src="/images/icons/menu/hud-craft.png" label="제작" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: 'npc-workbench' })} />
           <MenuIcon src="/images/icons/hud/character.png" label="정보" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'character' })} />
           <MenuIcon src="/images/icons/hud/party.png" label="파티" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'party' })} />
           <MenuIcon src="/images/icons/hud/settings.png" label="설정" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })} />

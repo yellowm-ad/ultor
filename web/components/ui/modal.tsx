@@ -1,10 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { DiamondMark } from '@/components/game/ui-motifs'
+import { GameWindow } from '@/components/game/game-window'
 
 interface ModalProps {
   open: boolean
@@ -15,27 +12,13 @@ interface ModalProps {
   widthClass?: string
 }
 
-export function Modal({ open, onClose, title, children, className, widthClass = 'max-w-xl' }: ModalProps) {
+/** 남은 범용 모달(지도 등)도 공용 게임 창 틀(검은 머리띠 + 금테)로 보여 준다 */
+export function Modal({ open, onClose, title, children, widthClass = 'max-w-xl' }: ModalProps) {
   if (!open) return null
+  const size = /4xl|5xl|6xl/.test(widthClass) ? 'lg' : /2xl|3xl/.test(widthClass) ? 'md' : 'sm'
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div
-        className={cn('panel-royal w-full max-h-[85vh] overflow-y-auto scrollbar-thin p-4', widthClass, className)}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {title && (
-          <div className="mb-3 flex items-center justify-between border-b border-gold/30 pb-2">
-            <h2 className="flex items-center gap-2 font-display text-lg text-gold-soft text-shadow-ink">
-              <DiamondMark size={13} />
-              {title}
-            </h2>
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
-              <X className="size-4" />
-            </Button>
-          </div>
-        )}
-        {children}
-      </div>
-    </div>
+    <GameWindow title={title ?? ''} onClose={onClose} size={size}>
+      {children}
+    </GameWindow>
   )
 }

@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './dialogue.css';
+@import './game-window.css';
+@import './inventory.css';
+@import './screens.css';
 
 @theme inline {
   --color-background: var(--background);
