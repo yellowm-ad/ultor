@@ -837,7 +837,7 @@ const NPCS_BASE: NpcDef[] = [
   // ── 하우징 마을 ──
   { id: 'npc-elder', name: '촌장 헬가', role: 'housing', icon: '/images/npc/npc-elder.png', zoneId: 'z-housing', cell: { x: 42, y: 6.2 }, greeting: ['하우징 마을에 온 걸 환영하네. 집을 짓는 기능은 다음 업데이트에서 만나볼 걸세.', '지친 견습생은 여기서 쉬어 가도 좋네.'] },
   // ── 수련의 광장 ──
-  { id: 'npc-arena', name: '투기장장 그로먼', role: 'arenaMaster', icon: '/images/npc/npc-arena.png', zoneId: 'z-plaza', cell: { x: 26.5, y: 20.5 }, greeting: ['콜로세움 대전은 준비 중이다! 조금만 기다려다오.'] },
+  { id: 'npc-arena', name: '투기장장 그로먼', role: 'arenaMaster', icon: '/images/npc/npc-arena.png', zoneId: 'z-plaza', cell: { x: 30.6, y: 24.0 }, greeting: ['콜로세움 대전은 준비 중이다! 조금만 기다려다오.'] },
   // ── 통문 주둔지 ──
   { id: 'npc-guard', name: '경비대장 로한', role: 'guard', icon: '/images/npc/npc-guard.png', zoneId: 'z-barracks', cell: { x: 43.5, y: 34 }, greeting: ['야생으로 나가려면 저 군 통문을 통해야 한다.', '숲은 견습생도 견딜 만하지만, 폐허와 화산지대는 준비가 단단히 되어 있어야 살아 돌아온다.'] },
   // ── 성역 신전 ──

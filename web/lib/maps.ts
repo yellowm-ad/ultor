@@ -87,7 +87,7 @@ function z(
 }
 
 // ── 메인 마을 (52 × 40) — 아이소메트릭 도트 엔진 ────────────────────────────
-// 3×3 지구를 넓게: [학교 쿼드·중앙 광장·하우징] / [기숙사·콜로세움+공원·상점가]
+// 3×3 지구를 넓게: [학교 쿼드·중앙 광장·하우징] / [기숙사·중앙 대도서관+공원·상점가]
 //                 / [대성당 성역·햇살 농가·통문 주둔지]
 // 대로는 폭 3셀, 외곽 순환로 2.5셀. 지구 사이는 넉넉한 녹지 완충.
 const VILLAGE_ZONES: ZoneDef[] = [
@@ -95,8 +95,9 @@ const VILLAGE_ZONES: ZoneDef[] = [
   z('z-quad', 'plaza', '중앙 대광장', 20, 2, 33, 13, '#8891b5', '분수와 동상이 선 마을 심장부. 사방으로 대로가 뻗는다.'),
   z('z-housing', 'village', '하우징 마을', 36, 2, 50, 13, '#6fae5d', '지붕색이 제각각인 저층 주거 블록과 뒷마당 정원.'),
   z('z-dorm', 'village', '기숙사 마을', 2, 16, 17, 25, '#5a9a6a', '견습생 기숙사와 공동 식당.'),
-  z('z-plaza', 'colosseum', '수련의 투기장', 20, 16, 33, 25, '#c9622b', '계단식 관중석의 원형 투기장. 파티 대전이 준비 중이다.'),
-  z('z-park', 'park', '마로니에 공원', 20, 25, 33, 28, '#4e9c4a', '투기장과 농가 사이의 녹지 완충대.'),
+  // 옛 '수련의 투기장' 자리(2026-10-03 교체) — 구역 id 는 그대로 둔다(NPC·퀘스트 참조 보존)
+  z('z-plaza', 'school', '중앙 대도서관', 20, 16, 33, 25, '#7a5cc4', '울토르 마법학교 중앙 대도서관. 시계탑 아래 수만 권의 마법서가 잠들어 있다.'),
+  z('z-park', 'park', '마로니에 공원', 20, 25, 33, 28, '#4e9c4a', '대도서관과 농가 사이의 녹지 완충대.'),
   z('z-shops', 'shopStreet', '별빛 상점가', 36, 16, 50, 25, '#d9a441', '길게 늘어선 상가 — 무기·물약·도구·펫, 시장 회관과 여관, 길드홀.'),
   z('z-temple', 'temple', '성역 대성당', 2, 27, 17, 38, '#d8c98a', '돔 대성당과 종탑·회랑·성직자 숙소가 앞광장을 감싼다.'),
   z('z-farm', 'farm', '햇살 농가', 20, 28, 33, 38, '#c9a44a', '너른 밭이랑과 헛간·풍차·농가.'),
@@ -106,7 +107,9 @@ const VILLAGE_ZONES: ZoneDef[] = [
 const VW = 52
 const VH = 40
 const FOUNTAIN = { x: 26.5, y: 7.5 }
-const COLOSSEUM = { x: 26.5, y: 20.5 }
+const LIBRARY = { x: 26.5, y: 20.5 }
+/** 대도서관 앞마당 포석(건물 기단 + 둘레) — 셀 공간 사각형 */
+const onLibraryCourt = (x: number, y: number) => Math.abs(x - LIBRARY.x) < 4.4 && Math.abs(y - LIBRARY.y) < 3.7
 const TEMPLE_YARD = { x: 9.5, y: 32 } // 대성당 앞광장 중심
 
 // 대로 축(지구 경계) — 폭 3셀
@@ -121,8 +124,8 @@ const between = (v: number, r: { a: number; b: number }) => v > r.a && v < r.b
 function villageTileAt(x: number, y: number): TileKind {
   // 외곽 순환 보도 (2.5셀 폭)
   if (x < 2.5 || x > VW - 2.5 || y < 2.5 || y > VH - 2.5) return 'path'
-  // 콜로세움 모래 바닥 (구조물 반경과 맞춤)
-  if (Math.hypot(x - COLOSSEUM.x, y - COLOSSEUM.y) < 5.6) return 'sand'
+  // 중앙 대도서관 앞마당 포석
+  if (onLibraryCourt(x, y)) return 'plaza'
   // 중앙 대광장 (세로로 약간 눌린 타원 포석)
   const df = Math.hypot(x - FOUNTAIN.x, (y - FOUNTAIN.y) * 1.15)
   if (df < 7.4) return 'plaza'
@@ -143,10 +146,10 @@ function villageTileAt(x: number, y: number): TileKind {
   if (x > AV_R.a && x < VW - 2.5 && Math.abs(y - 20.5) < 1.5) return 'path'
   // 대성당 진입로 (외곽 순환로 → 앞광장)
   if (Math.abs(x - TEMPLE_YARD.x) < 1.5 && y > ST_S.a) return 'path'
-  // 마로니에 공원 잔디 — 투기장 남측, 농가 위까지 넉넉히 (밝은 잔디)
+  // 마로니에 공원 잔디 — 대도서관 남측, 농가 위까지 넉넉히 (밝은 잔디)
   if (
     x > 19.8 && x < 33 && y > ST_S.b && y < 32.6 &&
-    Math.hypot(x - COLOSSEUM.x, y - COLOSSEUM.y) >= 5.6
+    !onLibraryCourt(x, y)
   )
     return 'grass'
   // 공원 산책로 (동서, 공원 한가운데)
@@ -205,6 +208,8 @@ const BUILDING_SPRITE: Record<string, Rs> = {
   'b-arti': B_('b_hall_small', 157, 178, 79, 100),
   'b-auditorium': B_('b_hall_small', 157, 178, 79, 100),
   'b-library': B_('b_hall_small', 157, 178, 79, 100),
+  // 중앙 대도서관(PixelLab Pro, 사용자 디자인 시안 기반) — 앵커 = 기단 다이아몬드 중심(radial)
+  'b-grand-library': B_('b_grand_library', 384, 320, 192, 208),
   'b-commons': B_('b_hall_small', 157, 178, 79, 100),
   'b-clock': B_('b_clocktower', 83, 195, 42, 153),
   'b-belltower': B_('b_belltower', 90, 236, 45, 191),
@@ -302,10 +307,11 @@ function villageProps(): PropDef[] {
   )
   P.push({ id: 'b-commons', kind: 'hall', cell: { x: 12.4, y: 19.0 }, size: { w: 3.0, d: 2.4 }, label: '공동 식당' })
 
-  // ════════ 수련의 투기장 (x20–33, y16–25) ════════
+  // ════════ 중앙 대도서관 (x20–33, y16–25) — 옛 수련의 투기장 자리 ════════
+  // 기단 6.3×5.7셀(그림 실측). 충돌은 건물 몸체만 — 앞 계단·화단 쪽은 걸어서 다가갈 수 있게
   P.push({
-    id: 'b-colosseum', kind: 'colosseum', cell: { x: COLOSSEUM.x, y: COLOSSEUM.y },
-    size: { w: 5.0, d: 5.0 }, collide: { w: 8.0, d: 7.6 }, label: '수련의 투기장',
+    id: 'b-grand-library', kind: 'hall', cell: { x: LIBRARY.x, y: LIBRARY.y }, radial: true,
+    size: { w: 6.3, d: 5.7 }, collide: { w: 5.2, d: 4.4 }, label: '중앙 대도서관',
   })
 
   // ════════ 별빛 상점가 (x36–50, y16–25) — 아케이드(y≈20.5) 양옆 상가 + 노점 ════════
@@ -403,7 +409,6 @@ function villageProps(): PropDef[] {
   const onPlaza = (x: number, y: number) =>
     Math.hypot(x - FOUNTAIN.x, (y - FOUNTAIN.y) * 1.15) < 7.4 ||
     Math.hypot((x - TEMPLE_YARD.x) * 1.1, y - TEMPLE_YARD.y) < 4.8
-  const onSand = (x: number, y: number) => Math.hypot(x - COLOSSEUM.x, y - COLOSSEUM.y) < 5.6
   const onRoad = (x: number, y: number) =>
     x < 2.5 || x > VW - 2.5 || y < 2.5 || y > VH - 2.5 ||
     between(x, AV_L) || between(x, AV_R) || between(y, ST_N) || between(y, ST_S) ||
@@ -417,7 +422,7 @@ function villageProps(): PropDef[] {
     // 정확한 footprint 로 자동 처리 — 예전엔 반경 1.9 짜리 과도한 제외구역이라 근처 벤치까지
     // 전부 조용히 걸러내던 문제가 있었음.
   const place = (id: string, kind: PropDef['kind'], x: number, y: number, extra: Partial<PropDef> = {}) => {
-    if (blocked(x, y) || onRoad(x, y) || onPlaza(x, y) || onSand(x, y)) return
+    if (blocked(x, y) || onRoad(x, y) || onPlaza(x, y) || onLibraryCourt(x, y)) return
     P.push({ id, kind, cell: { x, y }, ...extra })
   }
 
@@ -452,7 +457,7 @@ function villageProps(): PropDef[] {
     if (!blocked(x, y) && !onRoad(x, y)) P.push({ id: `be-tp${i}`, kind: 'bench', cell: { x, y }, variant: v })
   })
 
-  // ── 가로등 — 대로 양편(4셀 간격) + 광장·투기장·앞광장·의전대로 둘레 ──
+  // ── 가로등 — 대로 양편(4셀 간격) + 광장·대도서관 앞마당·앞광장·의전대로 둘레 ──
   const lamps: [number, number][] = []
   for (const ex of [AV_L.a - 0.6, AV_L.b + 0.6, AV_R.a - 0.6, AV_R.b + 0.6])
     for (let y = 4; y <= 37; y += 4.2) lamps.push([ex, y])
@@ -460,8 +465,7 @@ function villageProps(): PropDef[] {
     for (let x = 4; x <= 49; x += 4.4) lamps.push([x, ey])
   for (let a = 0; a < 8; a++)
     lamps.push([FOUNTAIN.x + Math.cos((a / 8) * 6.283) * 8.4, FOUNTAIN.y + Math.sin((a / 8) * 6.283) * 7.2])
-  for (let a = 0; a < 6; a++)
-    lamps.push([COLOSSEUM.x + Math.cos((a / 6) * 6.283 + 0.5) * 6.6, COLOSSEUM.y + Math.sin((a / 6) * 6.283 + 0.5) * 6.4])
+  for (const [dx, dy] of [[-5.9, -4.5], [5.9, -4.5], [-5.9, 4.5], [5.9, 4.5]] as const) lamps.push([LIBRARY.x + dx, LIBRARY.y + dy])
   for (let y = 29; y <= 36; y += 3) { lamps.push([GATE_WAY.a - 0.6, y]); lamps.push([GATE_WAY.b + 0.6, y]) }
   for (let a = 0; a < 6; a++)
     lamps.push([TEMPLE_YARD.x + Math.cos((a / 6) * 6.283) * 5.2, TEMPLE_YARD.y + Math.sin((a / 6) * 6.283) * 4.8])
@@ -479,12 +483,12 @@ function villageProps(): PropDef[] {
   place('bn2', 'banner', GATE_WAY.a - 0.7, ST_S.b + 0.6, { variant: '#b64430' })
   place('bn3', 'banner', GATE_WAY.b + 0.7, ST_S.b + 0.6, { variant: '#b64430' })
 
-  // ── 벤치 — 분수 둘레 / 아케이드 / 투기장. variant l|r = 아이소 축 방향 ──
+  // ── 벤치 — 분수 둘레 / 아케이드 / 대도서관 앞마당. variant l|r = 아이소 축 방향 ──
   // (과거 좌표들이 진입로/대로 판정 경계에 딱 걸쳐 onRoad()에 은근슬쩍 걸러지던 문제 —
   // 분수 진입로 폭 ±2.2, 아케이드 폭 ±1.5, 대로 AV_L/AV_R 과 확실히 떨어지도록 여유를 둠)
   const benchSpots: [number, number, 'l' | 'r'][] = [
     [36.2, 22.2, 'l'], [43.5, 22.2, 'r'], [48.0, 22.2, 'l'], // 아케이드(북측은 상가 건물과 겹쳐 전부 남측으로)
-    [COLOSSEUM.x - 5.2, COLOSSEUM.y - 3.2, 'r'], [COLOSSEUM.x + 5.2, COLOSSEUM.y + 3.2, 'l'], // 투기장 대각 코너(동서는 대로에 걸림)
+    [LIBRARY.x - 4.6, LIBRARY.y + 3.3, 'r'], [LIBRARY.x + 4.6, LIBRARY.y - 3.3, 'l'], // 대도서관 앞마당 모서리
   ]
   benchSpots.forEach(([x, y, v], i) => {
     if (!blocked(x, y) && !onRoad(x, y)) P.push({ id: `be${i + 4}`, kind: 'bench', cell: { x, y }, variant: v })
@@ -548,7 +552,7 @@ function villageProps(): PropDef[] {
     [12.5, 22.5, 'c'], [7.0, 15.5, 'g'], [3.5, 22.0, 'a'], // 기숙사
     [21.5, 35.0, 'o'], [31.6, 36.0, 'g'], // 농가 구석
     [48.0, 20.5, 'c'], [48.5, 30.0, 'g'], // 상점가·주둔지 동편
-    [COLOSSEUM.x - 7.5, COLOSSEUM.y - 5, 'b'], [COLOSSEUM.x + 7.5, COLOSSEUM.y - 5, 'b'],
+    [LIBRARY.x - 7.5, LIBRARY.y - 5, 'b'], [LIBRARY.x + 7.5, LIBRARY.y - 5, 'b'],
     // 마로니에 공원 — 밤나무 가로수 밀집. 산책로 y29.9 위·아래 2열 + 양 끝 큰나무
     [20.6, 28.3, 'c'], [23.0, 28.3, 'a'], [25.4, 28.3, 'c'], [28.0, 28.3, 'a'], [30.4, 28.3, 'c'], [32.3, 28.4, 'a'],
     [20.6, 31.7, 'a'], [23.6, 31.8, 'c'], [29.4, 31.8, 'c'], [32.4, 31.7, 'a'],
@@ -556,7 +560,7 @@ function villageProps(): PropDef[] {
   ]
   trees.push(...clusters)
   trees.forEach(([x, y, v], i) => {
-    if (!blocked(x, y, 0.6) && !onRoad(x, y) && !onPlaza(x, y) && !onSand(x, y))
+    if (!blocked(x, y, 0.6) && !onRoad(x, y) && !onPlaza(x, y) && !onLibraryCourt(x, y))
       P.push({ id: `t${i}`, kind: 'tree', cell: { x, y }, variant: v })
   })
   // 공원 중앙 정자(연주대) + 산책로변 쓰레기통

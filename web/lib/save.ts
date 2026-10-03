@@ -14,13 +14,17 @@ import { ensureParty, refreshSkills } from '@/lib/progression'
 import { itemById } from '@/lib/mock-data'
 
 // 버전은 키가 아니라 값(SaveFile.version) 안에 둔다 — 키에 버전을 붙이면 버전이 바뀔 때 옛 세이브를 못 찾는다.
-export const SAVE_KEY = 'ultor-save'
-/** 초기 버전이 쓰던 키 — 읽을 때만 확인해서 새 키로 옮긴다 */
-const LEGACY_KEYS = ['ultor-save-v1']
+/** 세이브 슬롯 수(타이틀 CONTINUE · 설정 저장 화면) */
+export const SAVE_SLOTS = 4
+const slotKey = (slot: number) => `ultor-save-${slot}`
+/** 지금 플레이 중인 슬롯 — 자동 저장 대상. 타이틀에서 고른 슬롯 / 설정에서 마지막으로 저장한 슬롯 */
+const ACTIVE_KEY = 'ultor-save-active'
+/** 슬롯 도입 전 단일 세이브 키 — 읽을 때 1번 슬롯으로 옮긴다 */
+const LEGACY_KEYS = ['ultor-save', 'ultor-save-v1']
 /** 2 = PRD v2.0 개편(커마 주인공·5속성·전직 폐지·4대4 포지션) */
 const SAVE_VERSION = 2
 
-interface SaveFile {
+export interface SaveFile {
   version: number
   savedAt: number
   state: Partial<GameState>
@@ -46,39 +50,89 @@ function strip(state: GameState): Partial<GameState> {
   return { ...rest, screen: 'world', previousScreen: 'world' }
 }
 
-export function writeSave(state: GameState): boolean {
-  if (typeof window === 'undefined') return false
+function storage(): Storage | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+/** 옛 단일 세이브 → 1번 슬롯(1번이 비어 있을 때만). 한 번 옮기면 옛 키는 지운다 */
+function migrateLegacy(ls: Storage) {
+  for (const k of LEGACY_KEYS) {
+    const old = ls.getItem(k)
+    if (!old) continue
+    if (!ls.getItem(slotKey(1))) {
+      ls.setItem(slotKey(1), old)
+      if (!ls.getItem(ACTIVE_KEY)) ls.setItem(ACTIVE_KEY, '1')
+    }
+    ls.removeItem(k)
+  }
+}
+
+export function getActiveSlot(): number | null {
+  const ls = storage()
+  if (!ls) return null
+  try {
+    migrateLegacy(ls)
+    const n = Number(ls.getItem(ACTIVE_KEY))
+    return n >= 1 && n <= SAVE_SLOTS ? n : null
+  } catch {
+    return null
+  }
+}
+
+/** null = 자동 저장 끔(새 게임인데 빈 슬롯이 없을 때 — 설정에서 직접 저장하면 그 슬롯이 활성화된다) */
+export function setActiveSlot(slot: number | null) {
+  const ls = storage()
+  if (!ls) return
+  try {
+    if (slot == null) ls.removeItem(ACTIVE_KEY)
+    else ls.setItem(ACTIVE_KEY, String(slot))
+  } catch {
+    // 저장소 접근 불가 — 무시
+  }
+}
+
+/** 세이브 쓰기. slot 을 안 주면 활성 슬롯(자동 저장)에, 활성 슬롯이 없으면 저장하지 않는다 */
+export function writeSave(state: GameState, slot?: number): boolean {
+  const ls = storage()
+  if (!ls) return false
   // 타이틀/캐릭터 생성 단계는 아직 게임이 시작되지 않은 상태
   if (state.screen === 'title' || state.screen === 'create') return false
+  const target = slot ?? getActiveSlot()
+  if (!target) return false
   try {
     const file: SaveFile = { version: SAVE_VERSION, savedAt: Date.now(), state: strip(state) }
-    window.localStorage.setItem(SAVE_KEY, JSON.stringify(file))
+    ls.setItem(slotKey(target), JSON.stringify(file))
     return true
   } catch {
     return false
   }
 }
 
-export function readSave(): SaveFile | null {
-  if (typeof window === 'undefined') return null
+export function readSave(slot: number): SaveFile | null {
+  const ls = storage()
+  if (!ls) return null
   try {
-    let raw = window.localStorage.getItem(SAVE_KEY)
-    if (!raw) {
-      for (const k of LEGACY_KEYS) {
-        const old = window.localStorage.getItem(k)
-        if (old) {
-          window.localStorage.setItem(SAVE_KEY, old)
-          window.localStorage.removeItem(k)
-          raw = old
-          break
-        }
-      }
-    }
-    if (!raw) return null
-    return parseSaveFile(raw)
+    migrateLegacy(ls)
+    const raw = ls.getItem(slotKey(slot))
+    return raw ? parseSaveFile(raw) : null
   } catch {
     return null
   }
+}
+
+/** 슬롯 1..SAVE_SLOTS 의 세이브(빈 슬롯은 null) */
+export function listSaves(): (SaveFile | null)[] {
+  return Array.from({ length: SAVE_SLOTS }, (_, i) => readSave(i + 1))
+}
+
+export function firstEmptySlot(): number | null {
+  const i = listSaves().findIndex((f) => !f)
+  return i < 0 ? null : i + 1
 }
 
 /** 세이브 문자열 검증 — 불러오기(파일)에도 같이 쓴다 */
@@ -109,13 +163,16 @@ export function exportSave(state: GameState): boolean {
 }
 
 export function hasSave(): boolean {
-  return readSave() != null
+  return listSaves().some(Boolean)
 }
 
-export function deleteSave() {
-  if (typeof window === 'undefined') return
+/** 슬롯 하나 지우기 — 지운 슬롯이 활성 슬롯이면 자동 저장도 끈다 */
+export function deleteSave(slot: number) {
+  const ls = storage()
+  if (!ls) return
   try {
-    window.localStorage.removeItem(SAVE_KEY)
+    ls.removeItem(slotKey(slot))
+    if (getActiveSlot() === slot) ls.removeItem(ACTIVE_KEY)
   } catch {
     // 저장소 접근 불가(프라이빗 모드 등) — 무시
   }
