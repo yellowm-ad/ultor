@@ -24,7 +24,8 @@ import { ClassSceneOverlay } from '@/components/game/class-scene'
 import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
 
-const OVERLAY_HOTKEYS: Record<string, ScreenId> = { i: 'inventory', c: 'character', p: 'party', m: 'worldmap', j: 'journal' }
+// e.code(물리 키) 기준 — 한글 IME 상태에서도 동작. 이동 W/A/S/D·상호작용 E·달리기 Shift 와 겹치지 않게 유지할 것
+const OVERLAY_HOTKEYS: Record<string, ScreenId> = { KeyI: 'inventory', KeyC: 'character', KeyP: 'party', KeyM: 'worldmap', KeyJ: 'journal' }
 const CLOSABLE_WITH_ESC = new Set<ScreenId>([
   'journal',
   'inventory',
@@ -55,7 +56,10 @@ function GameShell() {
         return
       }
 
-      const wanted = OVERLAY_HOTKEYS[e.key.toLowerCase()]
+      // 수업 장면·미니게임 중엔 단축키 무시(리듬 실습 Q/W/E/R 등과 동시 입력 방지)
+      if (state.classScene) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const wanted = OVERLAY_HOTKEYS[e.code]
       if (!wanted) return
       if (state.screen === 'world') {
         e.preventDefault()
@@ -67,7 +71,7 @@ function GameShell() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [state.screen, dispatch])
+  }, [state.screen, state.classScene, dispatch])
 
   if (state.screen === 'title') return <TitleScreen />
   if (state.screen === 'create') return <CreateScreen />

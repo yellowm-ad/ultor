@@ -36,20 +36,34 @@ export function WorldScreen() {
     return () => ro.disconnect()
   }, [])
 
+  // 수업 장면·미니게임(리듬 Q/W/E/R 등)이 떠 있는 동안엔 월드 입력을 완전히 끊는다 — 눌려 있던 이동키도 비움
+  const inputLocked = !!state.classScene
   useEffect(() => {
+    if (inputLocked) pressedKeys.current.clear()
+  }, [inputLocked])
+
+  useEffect(() => {
+    // e.code(물리 키) 기준 — 한글 IME 상태에서도 W/A/S/D·E 가 그대로 동작
     const down = (e: KeyboardEvent) => {
-      pressedKeys.current.add(e.key.toLowerCase())
-      if (e.key.toLowerCase() === 'e') tryInteract()
+      if (inputLocked) return
+      const t = e.target as HTMLElement | null
+      if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return
+      pressedKeys.current.add(e.code)
+      if (e.code === 'KeyE' && !e.repeat) tryInteract()
     }
-    const up = (e: KeyboardEvent) => pressedKeys.current.delete(e.key.toLowerCase())
+    const up = (e: KeyboardEvent) => pressedKeys.current.delete(e.code)
+    // 창 포커스를 잃으면 keyup 이 안 와서 키가 눌린 채로 남는다 → 비움
+    const blur = () => pressedKeys.current.clear()
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', blur)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', blur)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.position, state.screen, state.fishing, state.storyQueue.length, state.life])
+  }, [state.position, state.screen, state.fishing, state.storyQueue.length, state.life, inputLocked])
 
   useEffect(() => {
     let raf = 0
@@ -66,12 +80,13 @@ export function WorldScreen() {
       const keys = pressedKeys.current
       let dx = 0
       let dy = 0
-      if (keys.has('arrowup') || keys.has('w')) dy -= 1
-      if (keys.has('arrowdown') || keys.has('s')) dy += 1
-      if (keys.has('arrowleft') || keys.has('a')) dx -= 1
-      if (keys.has('arrowright') || keys.has('d')) dx += 1
+      // 이동 = W/A/S/D(방향키도 보조로 허용), 달리기 = Shift
+      if (keys.has('KeyW') || keys.has('ArrowUp')) dy -= 1
+      if (keys.has('KeyS') || keys.has('ArrowDown')) dy += 1
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) dx -= 1
+      if (keys.has('KeyD') || keys.has('ArrowRight')) dx += 1
       const isMoving = dx !== 0 || dy !== 0
-      const isRunning = isMoving && keys.has('shift')
+      const isRunning = isMoving && (keys.has('ShiftLeft') || keys.has('ShiftRight'))
       setMoving((prev) => (prev === isMoving ? prev : isMoving))
       setRunning((prev) => (prev === isRunning ? prev : isRunning))
       if (isMoving) {
@@ -146,11 +161,11 @@ export function WorldScreen() {
     : null
 
   const dpadPress = (dx: number, dy: number) => {
-    const key = dx === -1 ? 'arrowleft' : dx === 1 ? 'arrowright' : dy === -1 ? 'arrowup' : 'arrowdown'
+    const key = dx === -1 ? 'ArrowLeft' : dx === 1 ? 'ArrowRight' : dy === -1 ? 'ArrowUp' : 'ArrowDown'
     pressedKeys.current.add(key)
   }
   const dpadRelease = (dx: number, dy: number) => {
-    const key = dx === -1 ? 'arrowleft' : dx === 1 ? 'arrowright' : dy === -1 ? 'arrowup' : 'arrowdown'
+    const key = dx === -1 ? 'ArrowLeft' : dx === 1 ? 'ArrowRight' : dy === -1 ? 'ArrowUp' : 'ArrowDown'
     pressedKeys.current.delete(key)
   }
 

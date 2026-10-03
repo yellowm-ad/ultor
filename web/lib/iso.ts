@@ -4,6 +4,8 @@
 //  - 오브젝트(건물/나무/캐릭터)는 화면 y 기준 깊이정렬 → 뒤 물체는 앞 물체에 가려짐.
 // ============================================================================
 
+import type { Facing } from '@/lib/types'
+
 export const ISO_TILE_W = 64
 export const ISO_TILE_H = 32 // 2:1
 
@@ -13,6 +15,30 @@ export function isoToScreen(cx: number, cy: number): { sx: number; sy: number } 
     sx: (cx - cy) * (ISO_TILE_W / 2),
     sy: (cx + cy) * (ISO_TILE_H / 2),
   }
+}
+
+/** 화면 기준 8방향(오른쪽부터 시계방향, 화면 y는 아래로) */
+const FACING_OCTANTS: Facing[] = ['right', 'down-right', 'down', 'down-left', 'left', 'up-left', 'up', 'up-right']
+
+/** 셀 공간 이동량 → 화면에 보이는 진행 방향(8방향). 이동이 없으면 null */
+export function facingFromCellDelta(dx: number, dy: number): Facing | null {
+  if (!dx && !dy) return null
+  const sx = (dx - dy) * (ISO_TILE_W / 2)
+  const sy = (dx + dy) * (ISO_TILE_H / 2)
+  const oct = Math.round(Math.atan2(sy, sx) / (Math.PI / 4))
+  return FACING_OCTANTS[((oct % 8) + 8) % 8]
+}
+
+/** 화면 8방향 → 셀 공간 단위 벡터(바라보는 칸 앞 계산용) */
+export const FACING_CELL_VEC: Record<Facing, { x: number; y: number }> = {
+  'down-left': { x: 0, y: 1 },
+  'up-right': { x: 0, y: -1 },
+  'up-left': { x: -1, y: 0 },
+  'down-right': { x: 1, y: 0 },
+  down: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  up: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+  left: { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
+  right: { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
 }
 
 /** 격자 크기 → 아이소 평면의 화면 바운딩 박스 */

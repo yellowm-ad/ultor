@@ -77,7 +77,7 @@ export function FishingOverlay() {
   useEffect(() => {
     if (!session) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === ' ' || e.key.toLowerCase() === 'e') {
+      if (e.code === 'Space' || e.code === 'KeyE') {
         e.preventDefault()
         if (phase === 'result') finish()
         else pull()

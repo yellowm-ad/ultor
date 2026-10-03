@@ -187,8 +187,8 @@ export const MAX_PARTY_SIZE = 4
 export const MAX_GUESTS = 2
 /** 적 최대 수 */
 export const MAX_ENEMIES = 4
-/** 펫 — 전위 캐릭터만 1마리씩 동행, 전투당 최대 2마리(전위 2명일 때)(통합 PRD §26) */
-export const MAX_ACTIVE_PETS = 2
+/** 펫 — 주인공만 데리고 다닌다(주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸움) */
+export const MAX_ACTIVE_PETS = 1
 /** 전투에 들고 가는 스킬 슬롯 수 */
 export const SKILL_LOADOUT_SIZE = 8
 
@@ -196,7 +196,7 @@ export const POSITIONS: Position[] = ['front', 'rear', 'support']
 
 // 통합 PRD §25 — 포지션 보너스는 캐릭터의 속성을 바꾸지 않는다
 export const POSITION_META: Record<Position, { label: string; short: string; bonus: string; role: string }> = {
-  front: { label: '전위', short: '전', bonus: '최대 HP +10% · 받는 피해 -5% · 펫 동행', role: '탱커 · 근접 · 펫 운용' },
+  front: { label: '전위', short: '전', bonus: '최대 HP +10% · 받는 피해 -5%', role: '탱커 · 근접' },
   rear: { label: '후위', short: '후', bonus: '공격력·마법공격력 +10%', role: '원거리 · 마법 딜러' },
   support: { label: '보조', short: '보', bonus: '회복량·버프 효율 +10%', role: '힐러 · 버퍼 · 디버퍼 · 상태이상 해제' },
 }
@@ -211,13 +211,13 @@ export const POSITION_BONUS = {
 }
 
 /**
- * 4대4 기본 슬롯(§25): 전위 2 · 후위 1 · 보조 1.
+ * 진형 6자리: 전위 2 · 후위 2 · 보조 2 — 최대 4인(주인공 + 3)이 6자리 중 골라 선다.
  * 솔로/소수 파티도 가능해야 하므로 최소 인원은 "전위 1명"만 요구한다.
  */
 export const FORMATION_LIMITS: Record<Position, { min: number; max: number }> = {
   front: { min: 1, max: 2 },
-  rear: { min: 0, max: 1 },
-  support: { min: 0, max: 1 },
+  rear: { min: 0, max: 2 },
+  support: { min: 0, max: 2 },
 }
 
 export function countPositions(positions: Position[]): Record<Position, number> {

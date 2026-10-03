@@ -18,7 +18,7 @@
     },
     "sheet_size": {
       "width": 828,
-      "height": 736
+      "height": 1104
     },
     "columns": 9,
     "pivot": "cell-center",
@@ -42,17 +42,17 @@
         "row": 1,
         "type": "animation",
         "frame_count": 9,
-        "animation": "Walking",
-        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
-        "direction": "south"
+        "animation": "RunDiag",
+        "animation_group_id": "3e0f322e-291c-4b9d-a700-71472ae7e80c",
+        "direction": "south-east"
       },
       {
         "row": 2,
         "type": "animation",
         "frame_count": 9,
-        "animation": "Walking",
-        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
-        "direction": "east"
+        "animation": "RunDiag",
+        "animation_group_id": "3e0f322e-291c-4b9d-a700-71472ae7e80c",
+        "direction": "north-east"
       },
       {
         "row": 3,
@@ -60,10 +60,42 @@
         "frame_count": 9,
         "animation": "Walking",
         "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
-        "direction": "north"
+        "direction": "south"
       },
       {
         "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
+        "direction": "east"
+      },
+      {
+        "row": 5,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "5452ce01-eb2f-4faa-b343-7342fcb4b7df",
+        "direction": "north"
+      },
+      {
+        "row": 6,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "WalkDiag",
+        "animation_group_id": "e19f7e27-e3e3-4b07-9050-d614a1df4c72",
+        "direction": "south-east"
+      },
+      {
+        "row": 7,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "WalkDiag",
+        "animation_group_id": "e19f7e27-e3e3-4b07-9050-d614a1df4c72",
+        "direction": "north-east"
+      },
+      {
+        "row": 8,
         "type": "animation",
         "frame_count": 9,
         "animation": "Run",
@@ -71,7 +103,7 @@
         "direction": "south"
       },
       {
-        "row": 5,
+        "row": 9,
         "type": "animation",
         "frame_count": 9,
         "animation": "Run",
@@ -79,7 +111,7 @@
         "direction": "east"
       },
       {
-        "row": 6,
+        "row": 10,
         "type": "animation",
         "frame_count": 9,
         "animation": "Run",
@@ -87,7 +119,7 @@
         "direction": "north"
       },
       {
-        "row": 7,
+        "row": 11,
         "type": "animation",
         "frame_count": 9,
         "animation": "WalkSouthFix",
@@ -97,5 +129,5 @@
     ]
   },
   "export_version": "1.0",
-  "export_date": "2026-10-02T12:47:57.648517+00:00"
+  "export_date": "2026-10-03T09:24:35.703316+00:00"
 }

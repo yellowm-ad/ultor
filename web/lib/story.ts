@@ -140,7 +140,7 @@ const ONBOARDING_BEATS: StoryBeat[] = [
     title: '학사 안내',
     trigger: { type: 'WEEK_START', week: 1 },
     lines: [
-      { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '방향키(WASD)로 걷고, 사람 곁에서 E를 누르면 이야기를 나눌 수 있단다. 우선 학교 본교 쿼드에 있는 나를 찾아와 주간 보고부터 하렴.' },
+      { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: 'W·A·S·D로 걷고(Shift를 누르고 있으면 달린단다), 사람 곁에서 E를 누르면 이야기를 나눌 수 있단다. 우선 학교 본교 쿼드에 있는 나를 찾아와 주간 보고부터 하렴.' },
       { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '매주 학사 수첩(J)에서 이번 주 미션을 확인하렴. 필수 1개와 선택 2개의 보상을 받으면 다음 주로 넘어갈 수 있단다.' },
       { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '야생으로 나갈 땐 통문 주둔지의 군 통문을 이용하고, 파티(P)에서 동기들을 동료로 데려갈 수 있어.' },
     ],

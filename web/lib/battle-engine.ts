@@ -191,9 +191,9 @@ export function initBattle(
   const core = members.map((m) => applyPosition(m.combatant, m.position))
   const petLinks: PetLink[] = []
   const pets: Combatant[] = []
-  // 펫은 전위 캐릭터만, 전투당 최대 2마리(통합 PRD §26)
+  // 펫은 주인공 전용 고정 칸 — 주인공 포지션과 무관하게 함께 싸운다
   members.forEach((m) => {
-    if (!m.pet || m.position !== 'front' || pets.length >= MAX_ACTIVE_PETS) return
+    if (!m.pet || m.combatant.kind !== 'hero' || pets.length >= MAX_ACTIVE_PETS) return
     const owner = core.find((c) => c.uid === m.combatant.uid)!
     pets.push({ ...m.pet, ownerUid: owner.uid })
     petLinks.push({ petUid: m.pet.uid, ownerCombatantUid: owner.uid })
@@ -219,10 +219,9 @@ export function initBattle(
   }
 }
 
-/** 펫 귀속 검증 — 주인이 없거나 전위가 아니면 false */
+/** 펫 귀속 검증 — 주인이 전투에 있으면 true(주인 포지션과 무관) */
 export function validPetLink(battle: BattleState, link: PetLink): boolean {
-  const owner = battle.combatants.find((c) => c.uid === link.ownerCombatantUid)
-  return !!owner && owner.position === 'front'
+  return battle.combatants.some((c) => c.uid === link.ownerCombatantUid)
 }
 
 /** 플레이어가 직접 조작하는 전투원 — 주인공 + 파티 동료(임시 NPC·펫 제외) */

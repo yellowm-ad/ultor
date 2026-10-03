@@ -20,6 +20,7 @@ import {
   QUIZ_BANK,
   QUIZ_CATEGORY_LABEL,
   REAGENTS,
+  RHYTHM_CODES,
   RHYTHM_KEYS,
   RHYTHM_STYLE_META,
   RHYTHM_WINDOWS,
@@ -244,7 +245,7 @@ function QuizGame({ seed, year, field, onDone }: MiniGameProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. 마법 리듬 실습 — 4레인 낙하, D F J K(또는 레인 클릭)
+// 2. 마법 리듬 실습 — 4레인 낙하, Q W E R(또는 레인 클릭)
 // ─────────────────────────────────────────────────────────────────────────────
 type Judge = 'PERFECT' | 'GREAT' | 'GOOD' | 'MISS'
 const JUDGE_POINT: Record<Judge, number> = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }
@@ -323,22 +324,27 @@ function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   }
 
   useEffect(() => {
+    // 리듬 실습 중엔 Q/W/E/R 를 이 게임이 독점 — 캡처 단계에서 먼저 받아 이동(W)·상호작용(E) 등 다른 단축키로 새지 않게 막는다
     const down = (e: KeyboardEvent) => {
-      const lane = RHYTHM_KEYS.indexOf(e.key.toLowerCase())
-      if (lane < 0 || e.repeat) return
+      const lane = RHYTHM_CODES.indexOf(e.code)
+      if (lane < 0) return
       e.preventDefault()
+      e.stopImmediatePropagation()
+      if (e.repeat) return
       setPressed((p) => p.map((v, i) => (i === lane ? true : v)))
       hit(lane)
     }
     const up = (e: KeyboardEvent) => {
-      const lane = RHYTHM_KEYS.indexOf(e.key.toLowerCase())
-      if (lane >= 0) setPressed((p) => p.map((v, i) => (i === lane ? false : v)))
+      const lane = RHYTHM_CODES.indexOf(e.code)
+      if (lane < 0) return
+      e.stopImmediatePropagation()
+      setPressed((p) => p.map((v, i) => (i === lane ? false : v)))
     }
-    window.addEventListener('keydown', down)
-    window.addEventListener('keyup', up)
+    window.addEventListener('keydown', down, true)
+    window.addEventListener('keyup', up, true)
     return () => {
-      window.removeEventListener('keydown', down)
-      window.removeEventListener('keyup', up)
+      window.removeEventListener('keydown', down, true)
+      window.removeEventListener('keyup', up, true)
     }
   })
 

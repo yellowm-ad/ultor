@@ -718,6 +718,9 @@ export interface GameSettings {
   companionAuto?: boolean
 }
 
+/** 플레이어가 바라보는 '화면 기준' 8방향(쿼터뷰라 셀 축 이동은 화면에서 대각으로 보인다) */
+export type Facing = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right'
+
 export interface GameState {
   screen: ScreenId
   previousScreen: ScreenId
@@ -725,7 +728,7 @@ export interface GameState {
   pet: Pet
   ownedPets: Pet[] // 보유 펫 도감(활성 펫 포함)
   position: { x: number; y: number }
-  facing: 'up' | 'down' | 'left' | 'right'
+  facing: Facing
   currentMapId: MapId
   currentZoneId: string
   inventory: InventorySlot[]

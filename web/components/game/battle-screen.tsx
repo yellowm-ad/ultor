@@ -83,10 +83,8 @@ function playerFormation(players: Combatant[]): Record<string, FxPos> {
     // 같은 줄에서 아래쪽(앞)일수록 살짝 가운데로 — 원근감
     lane.forEach((c, i) => (out[c.uid] = { left: PLAYER_LANES[p] - (tops[i] > 70 ? 4 : 0), top: tops[i] }))
   })
-  for (const pet of players.filter((c) => c.kind === 'pet')) {
-    const owner = pet.ownerUid ? out[pet.ownerUid] : undefined
-    out[pet.uid] = owner ? { left: owner.left + 8, top: owner.top + 3 } : { left: 44, top: 70 }
-  }
+  // 펫 = 주인공 전용 고정 칸 — 주인공 포지션과 무관하게 항상 전위 앞에 선다
+  for (const pet of players.filter((c) => c.kind === 'pet')) out[pet.uid] = { left: 44, top: 70 }
   return out
 }
 

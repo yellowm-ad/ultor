@@ -362,12 +362,19 @@ export function IsoWorld({
   const ps0 = isoToScreen(state.position.x, state.position.y)
   const ps = { sx: ps0.sx, sy: ps0.sy - onStair.z }
   const playerSortY = onStair.stair ? onStair.stair.x0 + state.position.y + 0.25 : state.position.x + state.position.y
-  // PixelLab 4등신 스프라이트 시트: 88px 셀, 8열 × 4행.
-  //   row0 = 8방향 회전 (s0 se1 e2 ne3 n4 nw5 w6 sw7), row1/2/3 = south/east/north 걷기 8프레임.
-  //   west(좌) 걷기는 east 행(row2)을 좌우 반전.
-  const DIR_COL: Record<string, number> = { down: 0, right: 2, up: 4, left: 6 }
-  const WALK_ROW: Record<string, number> = { down: 1, right: 2, left: 2, up: 3 }
-  const RUN_ROW: Record<string, number> = { down: 4, right: 5, left: 5, up: 6 }
+  // 주인공 PixelLab 4등신 시트(scripts/build-hero-sheets.mjs): 88px 셀, 8열 × 11행.
+  //   row0 = 8방향 회전 (s0 se1 e2 ne3 n4 nw5 w6 sw7)
+  //   row1~3 = 걷기 S/E/N · row4~6 = 달리기 S/E/N · row7/8 = 대각 걷기 SE/NE · row9/10 = 대각 달리기 SE/NE
+  //   서쪽 계열(W/SW/NW) 이동은 동쪽 행을 좌우 반전. facing 은 '화면 기준' 8방향(쿼터뷰라 S키는 down-left).
+  const DIR_COL: Record<string, number> = {
+    down: 0, 'down-right': 1, right: 2, 'up-right': 3, up: 4, 'up-left': 5, left: 6, 'down-left': 7,
+  }
+  const WALK_ROW: Record<string, number> = {
+    down: 1, right: 2, left: 2, up: 3, 'down-right': 7, 'down-left': 7, 'up-right': 8, 'up-left': 8,
+  }
+  const RUN_ROW: Record<string, number> = {
+    down: 4, right: 5, left: 5, up: 6, 'down-right': 9, 'down-left': 9, 'up-right': 10, 'up-left': 10,
+  }
   const facing = state.facing
   let heroCol: number
   let heroRow = 0
@@ -377,7 +384,7 @@ export function IsoWorld({
   } else {
     heroCol = DIR_COL[facing] ?? 0
   }
-  const heroFlip = moving && facing === 'left'
+  const heroFlip = moving && (facing === 'left' || facing === 'down-left' || facing === 'up-left')
   const HD = 88
   const playerNode = (
     <g key="__player" transform={`translate(${ps.sx},${ps.sy})`}>
@@ -392,7 +399,7 @@ export function IsoWorld({
           overflow="hidden"
           style={{ imageRendering: 'pixelated' }}
         >
-          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={616} />
+          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={968} />
         </svg>
       </g>
     </g>

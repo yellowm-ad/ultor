@@ -187,6 +187,32 @@ for (const name of CHARS) {
     }
   }
 
+  // ── row 7..10: 대각 걷기 SE/NE · 대각 달리기 SE/NE(애니 "WalkDiag"/"RunDiag") — 주인공 8방향 이동.
+  //    서쪽 대각(SW/NW)은 게임에서 좌우 반전. 달리기 행이 있을 때만(=7행 시트 뒤에) 붙인다.
+  const DIAG = [
+    ['walkdiag', 'south-east'],
+    ['walkdiag', 'north-east'],
+    ['rundiag', 'south-east'],
+    ['rundiag', 'north-east'],
+  ]
+  const diagRows = DIAG.map(([anim, dir]) =>
+    meta.rows.find((r) => r.type === 'animation' && String(r.animation || '').toLowerCase() === anim && r.direction === dir),
+  )
+  if (rows === ROWS + WALK_ROWS.length && diagRows.some(Boolean)) {
+    for (let di = 0; di < DIAG.length; di++) {
+      const src = diagRows[di] || diagRows[di % 2] // 대각 달리기가 없으면 대각 걷기로
+      if (!src) continue
+      const fc = src.frame_count || COLS
+      const start = fc > COLS ? 1 : 0
+      const rawFrames = []
+      for (let c = 0; c < COLS; c++) rawFrames.push(await grab(src.row, Math.min(start + c, fc - 1)))
+      const stable = await stabilizeRow(rawFrames, inCell, inCell)
+      for (let c = 0; c < COLS; c++) layers.push({ input: stable[c], left: c * CELL, top: (rows + di) * CELL })
+      statuses.push(`${rows + di}:${DIAG[di].join('-')}`)
+    }
+    rows += DIAG.length
+  }
+
   await sharp({
     create: { width: COLS * CELL, height: rows * CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })

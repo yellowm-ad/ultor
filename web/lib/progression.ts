@@ -591,27 +591,12 @@ export function formationMemberIds(state: Pick<GameState, 'companions'>): string
   return [...partyMemberIds(state), ...(state.companions.guests ?? []).slice(0, MAX_GUESTS).map((g) => g.id)].slice(0, COMPANION_SLOTS + 1)
 }
 
-/** 전위 동료에게 펫 붙이기/떼기(defId=null) — 주인공 펫·다른 동료 펫과 중복 불가, 전위만 */
+/** 주인공 펫 교체 — 펫은 주인공만 데리고 다닌다(동료 펫 없음) */
 export function setMemberPet(state: GameState, memberId: string, defId: string | null): GameState {
-  if (memberId === 'hero') {
-    if (!defId) return state
-    const found = state.ownedPets.find((p) => p.defId === defId)
-    if (!found) return state
-    const pets = { ...(state.formation.pets ?? {}) }
-    for (const k of Object.keys(pets)) if (pets[k] === defId) delete pets[k]
-    return { ...state, pet: found, formation: { ...state.formation, pets } }
-  }
-  const pets = { ...(state.formation.pets ?? {}) }
-  if (!defId) {
-    delete pets[memberId]
-    return { ...state, formation: { ...state.formation, pets } }
-  }
-  if ((state.formation.positions[memberId] ?? 'rear') !== 'front') return { ...state, toast: '펫은 전위 캐릭터만 데리고 갈 수 있습니다.' }
-  if (!state.ownedPets.some((p) => p.defId === defId)) return state
-  if (state.pet.defId === defId) return { ...state, toast: '주인공이 데리고 있는 펫입니다.' }
-  for (const k of Object.keys(pets)) if (pets[k] === defId) delete pets[k]
-  pets[memberId] = defId
-  return { ...state, formation: { ...state.formation, pets } }
+  if (memberId !== 'hero' || !defId) return state
+  const found = state.ownedPets.find((p) => p.defId === defId)
+  if (!found) return state
+  return { ...state, pet: found }
 }
 
 function defaultPositionOf(id: string): Position {
@@ -619,7 +604,7 @@ function defaultPositionOf(id: string): Position {
   return schoolNpcById(id)?.combat?.defaultPosition ?? guestNpcById(id)?.defaultPosition ?? 'rear'
 }
 
-/** 포지션 변경 — 인원 제한(전위 1~2 · 후위 0~1 · 보조 0~1)을 어기면 거절 */
+/** 포지션 변경 — 인원 제한(전위 1~2 · 후위 0~2 · 보조 0~2)을 어기면 거절 */
 export function setMemberPosition(state: GameState, memberId: string, position: Position): GameState {
   const ids = formationMemberIds(state)
   if (!ids.includes(memberId)) return state
@@ -652,12 +637,8 @@ export function normalizeFormation(state: GameState): GameState {
   }
   // 2) 전위가 비었으면 → 주인공을 전위로(전위가 0명이었으니 넘칠 일은 없다)
   if (count().front < FORMATION_LIMITS.front.min && ids.length > 0) positions.hero = 'front'
-  // 3) 펫 — 전위 동료에게만, 보유 중이고 주인공 펫과 겹치지 않는 것만 남긴다
-  const pets: Record<string, string> = {}
-  for (const [id, def] of Object.entries(state.formation.pets ?? {})) {
-    if (positions[id] === 'front' && id !== 'hero' && state.ownedPets.some((p) => p.defId === def) && def !== state.pet.defId) pets[id] = def
-  }
-  return { ...state, formation: { positions, pets } }
+  // 펫은 주인공 전용(state.pet) — 옛 세이브의 동료 펫 배정(formation.pets)은 버린다
+  return { ...state, formation: { positions } }
 }
 
 /**
@@ -712,10 +693,7 @@ export function battleParty(state: GameState): PartyMemberInput[] {
     const def = schoolNpcById(id)
     const prog = state.companions.recruited[id]
     if (!def?.combat || !prog) continue
-    const c = combatantFromCompanion(def, prog)
-    const petDef = state.formation.pets?.[id]
-    const owned = petDef ? state.ownedPets.find((p) => p.defId === petDef) : undefined
-    members.push({ combatant: c, position: pos(id), pet: owned && petDefById(owned.defId) ? combatantFromPet(owned, c.uid, `pet-${id}`) : null })
+    members.push({ combatant: combatantFromCompanion(def, prog), position: pos(id) })
   }
   for (const g of (state.companions.guests ?? []).slice(0, MAX_GUESTS)) {
     const def = guestNpcById(g.id)

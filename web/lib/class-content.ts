@@ -148,7 +148,9 @@ export function buildRhythmChart(style: RhythmStyle, year: number, rand: () => n
   return notes
 }
 export const RHYTHM_WINDOWS = { perfect: 60, great: 110, good: 170 } // ms
-export const RHYTHM_KEYS = ['d', 'f', 'j', 'k']
+export const RHYTHM_KEYS = ['q', 'w', 'e', 'r']
+/** 물리 키 코드(한글 IME 상태에서도 Q/W/E/R 로 인식되게 e.code 로 판정) */
+export const RHYTHM_CODES = ['KeyQ', 'KeyW', 'KeyE', 'KeyR']
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. 영창 암기(§18)

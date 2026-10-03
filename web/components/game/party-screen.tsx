@@ -38,30 +38,22 @@ function PositionPicker({ memberId, value }: { memberId: string; value: Position
   )
 }
 
-/** 전위 캐릭터의 펫(통합 PRD §26) — 전위가 아니면 안내만 */
-function PetPicker({ memberId, front }: { memberId: string; front: boolean }) {
+/** 주인공 펫 선택 — 펫은 주인공만 데리고 다니고, 포지션과 무관하게 고정 펫 칸에서 함께 싸운다 */
+function PetPicker() {
   const { state, dispatch } = useGame()
-  const current = memberId === 'hero' ? state.pet.defId : state.formation.pets?.[memberId]
-  const taken = new Set([state.pet.defId, ...Object.entries(state.formation.pets ?? {}).filter(([k]) => k !== memberId).map(([, v]) => v)])
-  if (!front) return <div className="text-[10px] opacity-50">펫: 전위만 동행</div>
   return (
     <select
       className="w-full rounded border border-black/20 bg-white/60 px-1 py-0.5 text-[10px]"
-      value={current ?? ''}
-      onChange={(e) => dispatch({ type: 'SET_MEMBER_PET', memberId, defId: e.target.value || null })}
+      value={state.pet.defId}
+      onChange={(e) => dispatch({ type: 'SET_MEMBER_PET', memberId: 'hero', defId: e.target.value || null })}
     >
-      {memberId !== 'hero' && <option value="">펫 없음</option>}
-      {state.ownedPets.map((p) => {
-        const d = petDefById(p.defId)
-        if (!d) return null
-        const busy = taken.has(p.defId) && p.defId !== current
-        return (
-          <option key={p.defId} value={p.defId} disabled={busy}>
+      {state.ownedPets.map((p) =>
+        petDefById(p.defId) ? (
+          <option key={p.defId} value={p.defId}>
             🐾 {p.nickname} Lv.{p.level}
-            {busy ? ' (동행 중)' : ''}
           </option>
-        )
-      })}
+        ) : null,
+      )}
     </select>
   )
 }
@@ -84,7 +76,6 @@ export function PartyScreen() {
   const lineup = countPositions(['hero', ...companions.party, ...guests.map((g) => g.id)].map(pos))
   // 경험치 분배 미리보기 — 몬스터 경험치 100 기준 1인 몫
   const sharePct = expSharePerMember(100, partyCount)
-  const petCount = (pos('hero') === 'front' && petDef ? 1 : 0) + Object.keys(state.formation.pets ?? {}).length
 
   return (
     <Modal open onClose={close} title={`파티 편성 (${partyCount}/${MAX_PARTY_SIZE})`} widthClass="max-w-3xl">
@@ -107,7 +98,7 @@ export function PartyScreen() {
           <div className="text-[10px] opacity-70">Lv.{player.level} · 주인공</div>
           <Bars hp={player.hp / player.stats.maxHp} mp={player.mp / player.stats.maxMp} exp={player.exp / expRequiredForLevel(player.level)} />
           <PositionPicker memberId="hero" value={pos('hero')} />
-          <PetPicker memberId="hero" front={pos('hero') === 'front'} />
+          <PetPicker />
         </div>
 
         {Array.from({ length: Math.max(0, COMPANION_SLOTS - guests.length) }).map((_, i) => {
@@ -138,7 +129,6 @@ export function PartyScreen() {
               </div>
               <Bars hp={prog.hp / s.maxHp} mp={prog.mp / s.maxMp} exp={prog.exp / expRequiredForLevel(prog.level)} />
               <PositionPicker memberId={def.id} value={pos(def.id)} />
-              <PetPicker memberId={def.id} front={pos(def.id) === 'front'} />
               <div className="mt-0.5 flex gap-1">
                 {bench.length > 0 && (
                   <Button size="sm" variant="parchment" className="h-6 px-2 text-[10px]" onClick={() => setSwapSlot(swapping ? null : i)}>
@@ -161,8 +151,8 @@ export function PartyScreen() {
             {petDef && <Image src={petDef.icon} alt="" width={28} height={28} />}
           </div>
           <div className="min-w-0 text-xs">
-            <div className="font-semibold">펫 동행 {petCount}/2</div>
-            <div className="text-[10px] opacity-70">전위 캐릭터만 펫 1마리씩(최대 2마리)</div>
+            <div className="font-semibold">주인공 펫 {petDef ? `· ${pet.nickname}` : '없음'}</div>
+            <div className="text-[10px] opacity-70">펫은 주인공 전용 고정 칸 — 주인공 포지션과 무관하게 항상 함께 싸움</div>
           </div>
         </div>
         {Array.from({ length: MAX_GUESTS }).map((_, i) => {
@@ -210,7 +200,7 @@ export function PartyScreen() {
       </div>
 
       {/* 주인공 펫 선택 */}
-      <div className="mt-3 mb-1 text-xs font-display text-gold-soft">보유 펫 — 주인공 펫 선택(주인공이 전위일 때 동행)</div>
+      <div className="mt-3 mb-1 text-xs font-display text-gold-soft">보유 펫 — 주인공 펫 선택</div>
       <div className="flex flex-wrap gap-2">
         {state.ownedPets.map((p) => {
           const d = petDefById(p.defId)
@@ -293,7 +283,7 @@ export function PartyScreen() {
       </div>
 
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        4대4 진형은 전위 2 · 후위 1 · 보조 1입니다. 펫은 전위 캐릭터만 1마리씩(최대 2마리) 데려갈 수 있습니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
+        진형은 전위 2 · 후위 2 · 보조 2, 총 6자리 중 최대 4인(주인공 + 3)이 골라 섭니다. 펫은 주인공만 데리고 다니며, 주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸웁니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
         동료는 전투에서 직접 조작하며(전투 화면 &lsquo;동료 수동/자동&rsquo;), 각자 레벨이 있어 승리 경험치를 나눠 받습니다. 동료를 모두 빼고 혼자 다닐 수도 있습니다. 합류 조건은 임시값입니다.
       </p>
 

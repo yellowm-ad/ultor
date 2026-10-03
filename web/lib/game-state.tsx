@@ -12,6 +12,7 @@ import type {
 import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
 import { FURNITURE_BY_ID } from '@/lib/housing'
+import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
@@ -373,16 +374,8 @@ function reducer(state: GameState, action: Action): GameState {
         }
       }
       const zone = zoneAt(map, nx, ny)
-      const facing =
-        Math.abs(action.dx) > Math.abs(action.dy)
-          ? action.dx > 0
-            ? 'right'
-            : 'left'
-          : action.dy > 0
-            ? 'down'
-            : action.dy < 0
-              ? 'up'
-              : state.facing
+      // 쿼터뷰: 셀 축 이동이 화면에선 대각으로 보이므로 '화면 방향'으로 8방향 판정(S키 = 화면 왼쪽 아래 → down-left)
+      const facing = facingFromCellDelta(action.dx, action.dy) ?? state.facing
 
       const CONTACT_RADIUS = 0.32
       let touched: string | null = null
@@ -477,7 +470,10 @@ function reducer(state: GameState, action: Action): GameState {
       const def = FURNITURE_BY_ID[action.defId]
       if (!def) return state
       const off =
-        state.facing === 'up' ? { x: 0, y: -0.9 } : state.facing === 'down' ? { x: 0, y: 0.9 } : state.facing === 'left' ? { x: -0.9, y: 0 } : { x: 0.9, y: 0 }
+        (() => {
+          const v = FACING_CELL_VEC[state.facing] ?? FACING_CELL_VEC['down-left']
+          return { x: v.x * 0.9, y: v.y * 0.9 }
+        })()
       const cell = { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
       if (blockedAt(state, 'personal-space', cell.x, cell.y)) return state
       const placed = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, defId: action.defId, cell }
