@@ -6,7 +6,8 @@
 //    충돌 박스(= 보이는 바닥)를 함께 계산한다. → 보이는 것 = 막히는 것.
 //  · 지형 좌표계: 화면 오른쪽아래 = +x, 화면 왼쪽아래 = +y (아이소 2:1)
 // ============================================================================
-import type { PropDef, PropKind, TileKind } from '@/lib/iso'
+import type { IsoStructGroup, PropDef, PropKind, TileKind } from '@/lib/iso'
+import { isoBox } from '@/lib/iso'
 import { mulberry32 } from '@/lib/rng'
 
 type Blocker = { x0: number; y0: number; x1: number; y1: number }
@@ -25,6 +26,8 @@ const CANAL_Y0 = 35.4
 const CANAL_Y1 = 37.4
 
 const ISLAND_CY = 30
+/** 수로·바다 수면이 땅보다 내려간 높이(px) — components/game/iso-water.tsx DEPTH 와 맞춘다 */
+const WATER_DROP = 20
 
 /** 해안선(불변) — 기존 각도별 물결 노이즈 그대로. 1 초과 = 바다 */
 export function atlantisIslandNorm(x: number, y: number): number {
@@ -104,6 +107,12 @@ function zoneAt(x: number, y: number): Zone {
   return 'block'
 }
 
+/** 물 지형(components/game/iso-water.tsx) — 바다·수로는 이어진 수면, 다리는 땅 높이 */
+export function atlantisWaterAt(x: number, y: number): 'sea' | 'canal' | 'bridge' | null {
+  const z = zoneAt(x, y)
+  return z === 'sea' || z === 'canal' || z === 'bridge' ? z : null
+}
+
 export function atlantisTileAt(x: number, y: number): TileKind {
   const z = zoneAt(x, y)
   if (z === 'sea' || z === 'canal') return 'water'
@@ -150,14 +159,18 @@ const SPR = {
   planter: spr('atl2_planter.png', 45, 64, 0.8),
   bridge: spr('atl2_bridge.png', 86, 51, 1.0),
   bridgef: spr('atl2_bridge_f.png', 86, 51, 1.0),
-  boat: spr('atl2_boat.png', 59, 56, 0.9),
+  boat: spr('atl5_boat.png', 62, 69, 0.9), // PixelLab 2026-10-04 — 물 받침 없는 나룻배(수면 높이로 내려 배치)
   gazebo: spr('atl_gazebo.png', 67, 77, 0.9),
   // 입구 선착장/낚시터 (atl4_*)
   pier: spr('atl4_pier.png', 98, 77, 1.2), // 갑판이 +x 방향으로 긴 부두(충돌은 2.4×0.9 로 별도)
   fishpier: spr('atl4_fishpier.png', 89, 83, 1.3),
   hut: spr('atl4_hut.png', 103, 98, 1.5),
   rack: spr('atl4_rack.png', 78, 76, 1.2),
-  fboat: spr('atl4_boat.png', 93, 76, 1.4),
+  fboat: spr('atl5_boat2.png', 62, 72, 1.0),
+  rock1: spr('atl5_rock1.png', 66, 61, 0.8), // 바다 바위(PixelLab)
+  rock2: spr('atl5_rock2.png', 53, 66, 0.7),
+  stack1: spr('atl5_stack1.png', 68, 79, 0.8),
+  stack2: spr('atl5_stack2.png', 66, 83, 0.8),
   crates: spr('atl4_crates.png', 49, 49, 0.7),
   // 벤치 4방향(앉는 방향): SE=+x, SW=+y, NW=-x, NE=-y. 벤치 길이는 바라보는 축의 수직 방향
   benchSE: spr('atl3_benchSE.png', 53, 57, 0.55, 1.25),
@@ -458,21 +471,29 @@ function build() {
   rowX('nw2-', ['townC', 'houseC'], 14.6, 18.2, 0.2, 19.2)
 
   // ═══════════════ 다리·보트·해안 ═══════════════
-  BRIDGES.forEach((b, i) => {
-    const cx = (b.x0 + b.x1) / 2
-    const cy = (b.y0 + b.y1) / 2
-    P.push({
-      // 비-radial + size 로 깊이정렬 우선순위를 높여 양옆 상가에 다리가 가려지지 않게 한다
-      id: `atl-bridge${i}`, kind: 'cloister', cell: { x: cx + 0.7, y: cy + 0.7 }, size: { w: 2.4, d: 2.4 },
-      sprite: SPR.bridgef.s, px: { w: SPR.bridgef.w, h: SPR.bridgef.h },
-    })
-  })
   ;[[11.5, 36.4], [24.0, 36.4], [40.5, 36.4], [53.0, 36.4]].forEach(([x, y], i) =>
     P.push({
       id: `atl-boat${i}`, kind: 'wall', cell: { x: x + 0.45, y: y + 0.45 }, size: { w: 0.1, d: 0.1 }, radial: true,
-      sprite: SPR.boat.s, px: { w: SPR.boat.w, h: SPR.boat.h },
+      sprite: SPR.boat.s, px: { w: SPR.boat.w, h: SPR.boat.h }, elev: -WATER_DROP,
     }),
   )
+
+  // 해안 바깥 바다 바위 — 섬 둘레(정규화 거리 1.04~1.3)에 드문드문, 입구 뱃길은 비운다
+  {
+    const rand = mulberry32(20261004)
+    const kinds: SprKey[] = ['rock1', 'rock2', 'stack1', 'rock1', 'stack2']
+    let n = 0
+    for (let tries = 0; tries < 900 && n < 22; tries++) {
+      const x = 1 + rand() * (AW - 2)
+      const y = 1 + rand() * (AH - 2)
+      const norm = atlantisIslandNorm(x, y)
+      if (norm < 1.06 || norm > 1.32) continue
+      if (Math.abs(x - ACX) < 9 && y > 44) continue
+      const k = kinds[n % kinds.length]
+      P.push({ id: `searock${n}`, kind: 'bush', cell: { x, y }, radial: true, sprite: SPR[k].s, px: { w: SPR[k].w, h: SPR[k].h }, elev: -WATER_DROP + 4 })
+      n++
+    }
+  }
 
   // ═══════════════ 도로변 가로등·산호·화단 (충돌체 회피 자동) ═══════════════
   // 가로등은 교차로·광장 입구에만 드문드문 (동서 대로 5개 + 환영길 교차점 2개)
@@ -527,7 +548,20 @@ function build() {
 }
 
 const built = build()
+for (const p of built.P) if (p.id.startsWith('fboat')) p.elev = -WATER_DROP
 export const ATLANTIS_PROPS: PropDef[] = built.P
+
+/** 다리 난간 — 다리 양옆(수로 위 구간)에 낮은 사암 난간. 서쪽은 플레이어 뒤, 동쪽은 앞에 그려지도록 sortY 지정 */
+const RAIL_TEX = { src: '/images/map/water/wall-canal.png', w: 256, h: 32, scale: 1 }
+export const ATLANTIS_STRUCTURES: IsoStructGroup[] = BRIDGES.flatMap((b, i) => {
+  const y0 = Math.floor(b.y0)
+  const y1 = Math.floor(b.y1 - 0.5) + 1
+  const rail = (x0: number, x1: number) => isoBox(x0, y0 - 0.05, x1, y1 + 0.05, 0, 9, { side: RAIL_TEX, topFill: '#f3e3bd', shadeX: 0.25, shadeY: 0.08 })
+  return [
+    { id: `bridge-rail-w${i}`, parts: rail(b.x0, b.x0 + 0.14), sortY: b.x0 + y0 },
+    { id: `bridge-rail-e${i}`, parts: rail(b.x1 - 0.14, b.x1), sortY: b.x1 + y1 },
+  ]
+})
 
 /** 수로(다리 구간 제외) 충돌 + 프롭 충돌 */
 function canalBlockers(): Blocker[] {

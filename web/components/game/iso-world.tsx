@@ -8,6 +8,7 @@ import { NPCS, MONSTERS } from '@/lib/mock-data'
 import { wanderState, npcWanderState } from '@/lib/field'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
 import { IsoStructNode } from '@/components/game/iso-structures'
+import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/iso-water'
 import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
@@ -106,6 +107,7 @@ export function IsoWorld({
   interactId: string | null
 }) {
   const map = MAPS[state.currentMapId]
+  const waterArt = useWaterOverlays(map)
   const [heroFrame, setHeroFrame] = useState(0)
   useEffect(() => {
     if (!moving) { setHeroFrame(0); return }
@@ -133,13 +135,16 @@ export function IsoWorld({
     const tiles: React.ReactNode[] = []
     for (let y = 0; y < VH; y++) {
       for (let x = 0; x < VW; x++) {
+        // 물 지형 맵: 바다·수로 칸은 WaterLayer 가 이어진 수면으로 그린다
+        const wk = map.water?.at(x + 0.5, y + 0.5)
+        if (wk === 'sea' || wk === 'canal') continue
         const kind: TileKind = map.tileAt ? map.tileAt(x + 0.5, y + 0.5) : 'grass'
         const a = isoToScreen(x, y)
         const sprite = map.assets === 'raster' ? TILE_SPRITES[kind] : undefined
         if (sprite) {
           // 다이메트릭 타일 PNG: 상단 꼭짓점(a)에 맞춰 배치.
           // 셀 해시로 좌우/상하 뒤집어 반복 패턴(솔기) 완화.
-          const h = ((x * 73856093) ^ (y * 19349663)) >>> 0
+          const h = map.tileFlip === false ? 0 : ((x * 73856093) ^ (y * 19349663)) >>> 0
           const fx = h & 1 ? -1 : 1
           const fy = h & 2 ? -1 : 1
           const px = fx < 0 ? 2 * a.sx : 0
@@ -490,13 +495,17 @@ export function IsoWorld({
   const camX = clamp(viewportSize.w / 2 - (originX + focus.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
   const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
+  // 수면 층은 화면에 보이는 영역만(텍스처 주기 단위로 맞춰 카메라가 조금 움직여선 다시 만들지 않는다)
+  const waterViewRect = map.water ? waterView(camX, camY, SCALE, viewportSize.w, viewportSize.h, worldW, worldH) : null
+
   return (
     <div className="absolute left-0 top-0" style={{ transform: `translate3d(${camX}px, ${camY}px, 0) scale(${SCALE})`, transformOrigin: '0 0', willChange: 'transform' }}>
+      {waterViewRect && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
       <svg
         width={worldW}
         height={worldH}
         viewBox={`${bounds.minSx} ${-padTop} ${worldW} ${worldH}`}
-        style={{ display: 'block', overflow: 'visible' }}
+        style={{ display: 'block', overflow: 'visible', position: 'relative' }}
         shapeRendering="crispEdges"
       >
         <defs>
@@ -508,12 +517,12 @@ export function IsoWorld({
         {/* 지면 */}
         <g>{ground}</g>
         {/* 격자 외곽 */}
-        <polygon
+        {!map.water && <polygon
           points={`${isoToScreen(0, 0).sx},${isoToScreen(0, 0).sy} ${isoToScreen(VW, 0).sx},${isoToScreen(VW, 0).sy} ${isoToScreen(VW, VH).sx},${isoToScreen(VW, VH).sy} ${isoToScreen(0, VH).sx},${isoToScreen(0, VH).sy}`}
           fill="none"
           stroke="rgba(217,164,65,0.35)"
           strokeWidth={3}
-        />
+        />}
         {/* 오브젝트 (뒤 → 플레이어 → 앞) */}
         {behind}
         {playerNode}

@@ -2,7 +2,7 @@ import type { GameMap, MapId, ZoneDef, ZoneKind } from '@/lib/types'
 import type { PropDef, TileKind } from '@/lib/iso'
 import { propAABB } from '@/lib/iso'
 import { assembleFieldMaps } from '@/lib/field-specs'
-import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS } from '@/lib/atlantis-map'
+import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, atlantisWaterAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS, ATLANTIS_STRUCTURES } from '@/lib/atlantis-map'
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
 import { HALL_W, HALL_H, HALL_CX, STAIR, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, hallTileAt, hall2TileAt, hallStairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
@@ -766,6 +766,9 @@ export const MAPS = {
     render: 'iso',
     assets: 'raster',
     tileAt: atlantisTileAt,
+    water: { at: atlantisWaterAt },
+    tileFlip: false,
+    structures: ATLANTIS_STRUCTURES,
     props: ATLANTIS_PROPS,
     blockers: ATLANTIS_BLOCKERS,
     zones: [

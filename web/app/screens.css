@@ -143,3 +143,14 @@
   .gw-cols.party-cols { grid-template-columns: minmax(0, 1fr) 300px; }
   .gw-cols.shop-cols { grid-template-columns: 190px minmax(0, 1fr) 260px; }
 }
+
+/* ── 물 지형(components/game/iso-water.tsx) — 화면에 보이는 수면 층만, transform 이동(합성 전용)·계단식이라 도트가 번지지 않는다 ── */
+@keyframes w-drift-a { from { transform: translate(0, 0); } to { transform: translate(256px, 128px); } }
+@keyframes w-drift-b { from { transform: translate(0, 0); } to { transform: translate(-256px, 128px); } }
+@keyframes w-drift-c { from { transform: translate(0, 0); } to { transform: translate(256px, 0); } }
+/* 바다 수면(HTML 층) — transform 만 움직여 합성 단계에서 처리 */
+.iso-sea .sea-glint { position: absolute; image-rendering: pixelated; will-change: transform; opacity: 0.7; }
+.iso-sea .sea-glint-a { animation: w-drift-a 72s steps(128) infinite; }
+.iso-sea .sea-glint-b { animation: w-drift-b 46s steps(128) infinite; opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) { .iso-sea .sea-glint { animation: none; } }
+.iso-sea .canal-glint-a { animation: w-drift-c 30s steps(128) infinite; }

@@ -9,8 +9,10 @@ if (!TOKEN) throw new Error('PIXELLAB_TOKEN 환경변수가 필요합니다')
 const API = 'https://api.pixellab.ai/v2'
 const [outDir, name, description, seed] = process.argv.slice(2)
 
-const STYLE_REFS = ['backpack', 'party', 'settings', 'character'].map((n) => `public/images/icons/hud/${n}.png`)
-const style_images = STYLE_REFS.map((f) => ({ image: { type: 'base64', base64: fs.readFileSync(f).toString('base64'), format: 'png' }, width: 64, height: 64 }))
+// STYLE_REFS(쉼표 구분, 모두 같은 크기 PNG) / STYLE_SIZE / STYLE_DESC 로 참고 그림을 바꿀 수 있다(기본: HUD 아이콘 64px)
+const STYLE_REFS = process.env.STYLE_REFS ? process.env.STYLE_REFS.split(',') : ['backpack', 'party', 'settings', 'character'].map((n) => `public/images/icons/hud/${n}.png`)
+const SIZE = Number(process.env.STYLE_SIZE ?? 64)
+const style_images = STYLE_REFS.map((f) => ({ image: { type: 'base64', base64: fs.readFileSync(f).toString('base64'), format: 'png' }, width: SIZE, height: SIZE }))
 
 const headers = { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' }
 const res = await fetch(`${API}/generate-with-style-v2`, {
@@ -19,7 +21,7 @@ const res = await fetch(`${API}/generate-with-style-v2`, {
   body: JSON.stringify({
     style_images,
     description,
-    style_description: 'chunky 64x64 fantasy RPG game UI icon, warm gold and brown palette, dark outline, soft shading, centered single object',
+    style_description: process.env.STYLE_DESC ?? 'chunky 64x64 fantasy RPG game UI icon, warm gold and brown palette, dark outline, soft shading, centered single object',
     no_background: true,
     ...(seed ? { seed: Number(seed) } : {}),
   }),

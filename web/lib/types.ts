@@ -546,6 +546,14 @@ export interface GameMap {
   bgImage?: string
   /** render:'iso' 일 때: 셀별 지면 타일 종류 */
   tileAt?: (x: number, y: number) => import('./iso').TileKind
+  /**
+   * render:'iso' 일 때: 물 지형 — 바다/수로를 칸 타일 대신 이어진 한 장의 수면(물결 애니메이션)으로 그리고,
+   * 물과 땅이 맞닿는 면에 벽(수로=돌벽, 바다=바위 절벽)을 세워 수위 차이를 보여 준다. (components/game/iso-water.tsx)
+   * 'bridge' = 수로 위를 지나는 다리 칸(땅 높이) — 아래 수로 벽에 아치가 뚫린다.
+   */
+  water?: { at: (x: number, y: number) => 'sea' | 'canal' | 'bridge' | null }
+  /** false = 지면 타일을 칸마다 무작위로 뒤집지 않는다(줄눈·벽돌이 이웃 칸과 이어지게) */
+  tileFlip?: boolean
   /** 야생 맵: 이 셀이 길(포탈 연결로)인지 — 몬스터 배치가 길을 피하는 데 사용 */
   roadAt?: (x: number, y: number) => boolean
   /** render:'iso' 일 때: 건물·자연물 등 배치 오브젝트 */
