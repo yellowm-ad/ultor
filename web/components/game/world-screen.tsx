@@ -198,14 +198,14 @@ export function WorldScreen() {
       <div
         className="pointer-events-none absolute inset-0 z-10"
         style={{
-          background: `radial-gradient(110% 90% at 50% 47%, rgba(8,6,6,${((1 - tone) * 1.3).toFixed(2)}) 0%, rgba(8,6,6,${((1 - tone) * 2.2).toFixed(2)}) 62%, rgba(8,6,6,${Math.min(0.9, (1 - tone) * 3.4).toFixed(2)}) 100%)`,
+          background: `radial-gradient(110% 90% at 50% 47%, rgba(8,6,6,${((1 - tone) * 0.5).toFixed(2)}) 0%, rgba(8,6,6,${((1 - tone) * 1.2).toFixed(2)}) 62%, rgba(8,6,6,${Math.min(0.6, (1 - tone) * 2.4).toFixed(2)}) 100%)`,
         }}
       />
     )}
     {/* 가장자리 비네트 — 아이소 다이아몬드 여백을 어둡게(밝은 지역은 옅게) */}
     <div
       className="pointer-events-none absolute inset-0 z-10"
-      style={{ background: `radial-gradient(135% 105% at 50% 44%, rgba(0,0,0,0) 50%, rgba(20,14,28,${tone > 1 ? 0.45 : 0.7}) 100%)` }}
+      style={{ background: `radial-gradient(135% 105% at 50% 44%, rgba(0,0,0,0) 50%, rgba(20,14,28,${tone > 1 ? 0.4 : 0.55}) 100%)` }}
     />
       </>
 

@@ -220,7 +220,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
   await Promise.all(files.map(async (f) => texByFile.set(f, await loadTex(TEX_DIR + f + '.png'))))
   // 맵 톤 — 밝은 지역은 밝기+조금 들어 올림(화사하게), 어두운 지역은 지면을 절반만 누른다(나머지는 화면 오버레이가 맡음)
   const tone = T.tone ?? 1
-  const gMul = tone >= 1 ? tone : 1 - (1 - tone) * 0.6
+  const gMul = tone >= 1 ? tone : 1 - (1 - tone) * 0.35
   const gAdd = tone > 1 ? (tone - 1) * 60 : 0
   const toned = (t: Tex, f = 1, cool = 1) => {
     if (f === 1 && gMul === 1 && gAdd === 0) return t
@@ -471,7 +471,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
           }
           // 어두운 지역은 수면도 한 겹 눌러 준다(밝게 뜨지 않게)
           if (tone < 1 && a < 0.9) {
-            const da = (1 - tone) * 1.1
+            const da = (1 - tone) * 0.6
             const na = a + da * (1 - a)
             r = (r * a + 4 * da * (1 - a)) / na
             g = (g * a + 12 * da * (1 - a)) / na
