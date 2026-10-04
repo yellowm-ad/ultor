@@ -101,6 +101,8 @@ export function WorldScreen() {
   }, [state.screen])
 
   const map = MAPS[state.currentMapId]
+  /** 맵 톤(자연 지면 맵) — 1 초과 밝은 지역, 1 미만 어두운 지역. 그 밖의 맵은 1 */
+  const tone = map.terrain?.tone ?? 1
   const mapNpcs = useMemo(
     () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId)),
     [map],
@@ -180,19 +182,30 @@ export function WorldScreen() {
       running={running}
       interactId={interactTarget?.id ?? nearNode?.key ?? null}
     />
-    {/* 골든아워 따뜻한 앰비언트 */}
+    {/* 골든아워 따뜻한 앰비언트 — 밝은 지역(map.terrain.tone > 1)은 햇살을 더 세게 */}
     <div
       className="pointer-events-none absolute inset-0 z-10"
       style={{
         background:
-          'linear-gradient(200deg, rgba(255,214,150,0.16) 0%, rgba(255,196,140,0.06) 38%, rgba(60,44,80,0.10) 100%)',
+          tone > 1
+            ? 'linear-gradient(200deg, rgba(255,236,180,0.30) 0%, rgba(255,226,170,0.14) 40%, rgba(255,214,160,0.04) 100%)'
+            : 'linear-gradient(200deg, rgba(255,214,150,0.16) 0%, rgba(255,196,140,0.06) 38%, rgba(60,44,80,0.10) 100%)',
         mixBlendMode: 'soft-light',
       }}
     />
-    {/* 가장자리 비네트 — 아이소 다이아몬드 여백을 어둡게 */}
+    {/* 어두운 지역(tone < 1) — 캐릭터 주변만 조금 밝게 남기고 화면 전체를 누른다(따뜻한 검정) */}
+    {tone < 1 && (
+      <div
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{
+          background: `radial-gradient(110% 90% at 50% 47%, rgba(8,6,6,${((1 - tone) * 1.3).toFixed(2)}) 0%, rgba(8,6,6,${((1 - tone) * 2.2).toFixed(2)}) 62%, rgba(8,6,6,${Math.min(0.9, (1 - tone) * 3.4).toFixed(2)}) 100%)`,
+        }}
+      />
+    )}
+    {/* 가장자리 비네트 — 아이소 다이아몬드 여백을 어둡게(밝은 지역은 옅게) */}
     <div
       className="pointer-events-none absolute inset-0 z-10"
-      style={{ background: 'radial-gradient(135% 105% at 50% 44%, rgba(0,0,0,0) 50%, rgba(20,14,28,0.70) 100%)' }}
+      style={{ background: `radial-gradient(135% 105% at 50% 44%, rgba(0,0,0,0) 50%, rgba(20,14,28,${tone > 1 ? 0.45 : 0.7}) 100%)` }}
     />
       </>
 

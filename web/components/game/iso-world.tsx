@@ -2,13 +2,14 @@
 
 import { useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
-import type { GameState } from '@/lib/types'
+import type { GameMap, GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { NPCS, MONSTERS } from '@/lib/mock-data'
 import { wanderState, npcWanderState } from '@/lib/field'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
 import { IsoStructNode } from '@/components/game/iso-structures'
 import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/iso-water'
+import { useTerrainArt, TerrainWaterBackdrop, TerrainCanvas } from '@/components/game/iso-terrain'
 import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
@@ -20,6 +21,13 @@ const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
 const PAD_BOTTOM = 60
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/** 맵의 월드 사각형(svg 좌표) — 자연 지면 캔버스 범위. 아래 IsoWorld 의 worldW/worldH 계산과 같다 */
+function worldRectOf(m: GameMap) {
+  const b = isoBounds(m.grid.w, m.grid.h)
+  const pt = Math.max(PAD_TOP, m.padTop ?? 0)
+  return { x: b.minSx, y: -pt, w: b.width, h: b.height + pt + Math.max(PAD_BOTTOM, m.padBottom ?? 0) }
+}
 
 /** 라스터(PNG) 프롭 — 발밑 앵커를 원점(0,0)에 맞춰 배치. 모든 소품은 PixelLab 도트(스프라이트 없는 소품은 그리지 않음) */
 function RasterProp({ p }: { p: PropDef }) {
@@ -129,10 +137,21 @@ export function IsoWorld({
   const originY = padTop
   const worldW = bounds.width
   const worldH = bounds.height + padTop + Math.max(PAD_BOTTOM, map.padBottom ?? 0)
+  // 자연 지면(야생맵) — 지면 전체를 한 장으로(components/game/iso-terrain.tsx). 그려지기 전엔 칸 타일로 보여 준다
+  const terrainNext = useMemo(
+    () =>
+      [...new Set(map.portals.map((p) => p.to))]
+        .map((id) => MAPS[id as keyof typeof MAPS] as GameMap | undefined)
+        .filter((m): m is GameMap => !!m?.terrain)
+        .map((m) => ({ map: m, rect: worldRectOf(m) })),
+    [map],
+  )
+  const terrainArt = useTerrainArt(map, worldRectOf(map), terrainNext)
 
   // 지면 (정적 — 메모)
   const ground = useMemo(() => {
     const tiles: React.ReactNode[] = []
+    if (map.terrain) return tiles
     for (let y = 0; y < VH; y++) {
       for (let x = 0; x < VW; x++) {
         // 물 지형 맵: 바다·수로 칸은 WaterLayer 가 이어진 수면으로 그린다
@@ -496,11 +515,13 @@ export function IsoWorld({
   const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
   // 수면 층은 화면에 보이는 영역만(텍스처 주기 단위로 맞춰 카메라가 조금 움직여선 다시 만들지 않는다)
-  const waterViewRect = map.water ? waterView(camX, camY, SCALE, viewportSize.w, viewportSize.h, worldW, worldH) : null
+  const waterViewRect = map.water || terrainArt.surface ? waterView(camX, camY, SCALE, viewportSize.w, viewportSize.h, worldW, worldH) : null
 
   return (
     <div className="absolute left-0 top-0" style={{ transform: `translate3d(${camX}px, ${camY}px, 0) scale(${SCALE})`, transformOrigin: '0 0', willChange: 'transform' }}>
-      {waterViewRect && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
+      {waterViewRect && terrainArt.surface && <TerrainWaterBackdrop surface={terrainArt.surface} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
+      {terrainArt.canvas && <TerrainCanvas canvas={terrainArt.canvas} w={worldW} h={worldH} />}
+      {waterViewRect && map.water && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
       <svg
         width={worldW}
         height={worldH}
@@ -515,9 +536,10 @@ export function IsoWorld({
           </linearGradient>
         </defs>
         {/* 지면 */}
-        <g>{ground}</g>
+        {/* 자연 지면 맵은 지면 캔버스가 대신한다(그리는 동안 옛 칸 타일이 번쩍이지 않게 비워 둠) */}
+        {!map.terrain && <g>{ground}</g>}
         {/* 격자 외곽 */}
-        {!map.water && <polygon
+        {!map.water && !map.terrain && <polygon
           points={`${isoToScreen(0, 0).sx},${isoToScreen(0, 0).sy} ${isoToScreen(VW, 0).sx},${isoToScreen(VW, 0).sy} ${isoToScreen(VW, VH).sx},${isoToScreen(VW, VH).sy} ${isoToScreen(0, VH).sx},${isoToScreen(0, VH).sy}`}
           fill="none"
           stroke="rgba(217,164,65,0.35)"

@@ -721,7 +721,7 @@ function testroomTileAt(x: number, y: number): TileKind {
 // 야생 전투맵(지역별 기본 3 + 특수 2) — 충돌은 여기서 소품 footprint 로 붙인다
 const FIELD = assembleFieldMaps()
 const FIELD_MAPS = Object.fromEntries(
-  Object.entries(FIELD.built).map(([id, b]) => [id, { ...b.map, blockers: buildBlockers(b.props) } as GameMap]),
+  Object.entries(FIELD.built).map(([id, b]) => [id, { ...b.map, blockers: buildBlockers(b.props, b.blockers) } as GameMap]),
 ) as Partial<Record<MapId, GameMap>>
 /** 안전 마을 출구 → 갈림길(3단계) 맵의 해당 포탈 앞 */
 const townReturn = (town: string) => FIELD.townReturns[town]

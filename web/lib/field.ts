@@ -1,6 +1,7 @@
 import type { FieldMonster, GameMap, MonsterDef, NpcDef } from '@/lib/types'
 import { MONSTERS, monsterById, monstersForZoneKind } from '@/lib/mock-data'
 import { mulberry32 } from '@/lib/rng'
+import { poolBlocks } from '@/lib/terrain'
 
 /** 맵 id 별로 고정 시드를 뽑아 배치가 재현되도록 한다 */
 function seedForMap(mapId: string): number {
@@ -51,6 +52,7 @@ export function generateFieldMonsters(map: GameMap, testMode: boolean): FieldMon
     Math.hypot(x - map.spawn.x, y - map.spawn.y) > 3.2 &&
     map.portals.every((p) => Math.hypot(p.cell.x - x, p.cell.y - y) > 2.4) &&
     !(map.roadAt?.(x, y) ?? false) &&
+    !poolBlocks(map.terrain?.pool(x, y)) &&
     !result.some((r) => Math.hypot(r.homeCell.x - x, r.homeCell.y - y) < spacing)
   const place = (id: string, cx: number, cy: number, prefix: string, force = false) => {
     let home = { x: cx + rand() * 0.8 + 0.1, y: cy + rand() * 0.8 + 0.1 }

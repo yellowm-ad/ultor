@@ -15,6 +15,7 @@
 import type { GameMap, MapId, Portal } from '@/lib/types'
 import type { PropDef, TileKind } from '@/lib/iso'
 import { mulberry32 } from '@/lib/rng'
+import { classifyPools, poolBlocks, POOL_DEPTH, valueNoise } from '@/lib/terrain'
 
 // ── 필드 프롭 스프라이트(기존 에셋) ─────────────────────────────────────────────
 type FieldSprite = { sprite: string; px: { w: number; h: number }; anchor: { x: number; y: number }; kind: PropDef['kind'] }
@@ -24,8 +25,22 @@ export const FIELD_SPRITES = {
     bush: { sprite: '/images/map/props/f_forest_bush.png', px: { w: 96, h: 56 }, anchor: { x: 48, y: 52 }, kind: 'bush' },
     rock: { sprite: '/images/map/props/f_forest_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 60 }, kind: 'bush' },
     mushroom: { sprite: '/images/map/props/f_forest_mushroom.png', px: { w: 72, h: 56 }, anchor: { x: 36, y: 52 }, kind: 'bush' },
-    log: { sprite: '/images/map/props/f_forest_log.png', px: { w: 120, h: 56 }, anchor: { x: 60, y: 48 }, kind: 'bush' },
+    // 쓰러진 통나무 — 옛 그림은 배경(풀·흙길)이 사각형으로 붙어 있어 PixelLab 으로 다시 그림(2026-10-04)
+    log: { sprite: '/images/map/props/forest/ff_log.png', px: { w: 84, h: 64 }, anchor: { x: 42, y: 54 }, kind: 'bush' },
     firefly: { sprite: '/images/map/props/f_forest_firefly.png', px: { w: 56, h: 96 }, anchor: { x: 28, y: 92 }, kind: 'lamp' },
+    // 숲 바닥 장식(PixelLab 2026-10-04) — 막지 않는 낮은 소품
+    fern: { sprite: '/images/map/props/forest/ff_fern1.png', px: { w: 52, h: 35 }, anchor: { x: 24, y: 32 }, kind: 'bush' },
+    fern2: { sprite: '/images/map/props/forest/ff_fern2.png', px: { w: 44, h: 50 }, anchor: { x: 19, y: 47 }, kind: 'bush' },
+    flowers: { sprite: '/images/map/props/forest/ff_flowers.png', px: { w: 58, h: 42 }, anchor: { x: 29, y: 37 }, kind: 'bush' },
+    stump: { sprite: '/images/map/props/forest/ff_stump1.png', px: { w: 68, h: 57 }, anchor: { x: 33, y: 50 }, kind: 'bush' },
+    stump2: { sprite: '/images/map/props/forest/ff_stump2.png', px: { w: 61, h: 52 }, anchor: { x: 28, y: 46 }, kind: 'bush' },
+  },
+  // 연못가(천연 우물가) — 부들·이끼 바위(PixelLab 2026-10-04)
+  pond: {
+    cattail: { sprite: '/images/map/props/forest/ff_cattail1.png', px: { w: 68, h: 68 }, anchor: { x: 34, y: 64 }, kind: 'bush' },
+    cattail2: { sprite: '/images/map/props/forest/ff_cattail2.png', px: { w: 62, h: 63 }, anchor: { x: 30, y: 60 }, kind: 'bush' },
+    stone: { sprite: '/images/map/props/forest/ff_pondstone1.png', px: { w: 74, h: 58 }, anchor: { x: 38, y: 52 }, kind: 'bush' },
+    stone2: { sprite: '/images/map/props/forest/ff_pondstone2.png', px: { w: 70, h: 53 }, anchor: { x: 40, y: 48 }, kind: 'bush' },
   },
   volcano: {
     spire: { sprite: '/images/map/props/f_volcano_spire.png', px: { w: 72, h: 144 }, anchor: { x: 36, y: 134 }, kind: 'tree' },
@@ -122,6 +137,20 @@ interface Theme {
   props: PropRef[]
   /** 셀당 소품 수 */
   propDensity: number
+  /** 자연 지면(components/game/iso-terrain.tsx) — 칸 타일 대신 이어진 지면 + 물 표현(웅덩이/연못/바다) */
+  painted?: boolean
+  /** 물이 곧 바닥인 맵(심해) — 연못·바다 대신 걸을 수 있는 얕은 물 */
+  flatWater?: boolean
+  /** 바닥 장식(낮은 소품) — 기존 소품 배치 뒤에 따로 흩뿌린다(기존 배치는 그대로) */
+  decor?: PropRef[]
+  decorDensity?: number
+  /** 연못 둘레 장식 · 연못 위 수련 */
+  pondDecor?: PropRef[]
+  lily?: boolean
+  /** 지면 종류별 밝기 배율(자연 지면) */
+  groundShade?: Partial<Record<TileKind, number>>
+  /** 맵 전체 톤(1 초과 밝게, 1 미만 어둡게) — 입구 숲·해안은 밝게, 깊은 숲·늪·동굴·심해는 어둡게 */
+  tone?: number
 }
 
 const pick = (h: number, pairs: [number, TileKind][], last: TileKind): TileKind => {
@@ -130,16 +159,16 @@ const pick = (h: number, pairs: [number, TileKind][], last: TileKind): TileKind 
 }
 
 export const THEMES = {
-  forest1: { base: (h) => pick(h, [[0.25, 'grass-dark']], 'grass'), road: 'dirt', blobs: [{ kind: 'water', count: 2, r: [1.4, 2.2] }], props: ['forest:tree', 'forest:tree', 'forest:bush', 'forest:bush', 'forest:rock', 'forest:mushroom', 'forest:log', 'forest:firefly'], propDensity: 0.05 },
-  forest2: { base: (h) => pick(h, [[0.5, 'grass-dark']], 'grass'), road: 'dirt', blobs: [{ kind: 'water', count: 1, r: [1.8, 2.6] }], props: ['forest:tree', 'forest:tree', 'forest:tree', 'forest:bush', 'forest:mushroom', 'forest:log', 'forest:firefly'], propDensity: 0.062 },
-  forest3: { base: (h) => pick(h, [[0.6, 'grass-dark']], 'grass'), road: 'dirt', hub: 'dirt', blobs: [{ kind: 'swamp', count: 2, r: [1.6, 2.4] }], props: ['forest:tree', 'forest:tree', 'forest:tree', 'forest:mushroom', 'forest:mushroom', 'forest:firefly', 'forest:firefly', 'forest:log'], propDensity: 0.07 },
-  cave: { base: (h) => pick(h, [[0.22, 'mine']], 'cave'), road: 'dirt', blobs: [{ kind: 'water', count: 2, r: [1.2, 1.8] }], props: ['cave:stalagmite', 'cave:stalagmite', 'cave:crystal', 'cave:mushroom', 'cave:rock'], propDensity: 0.06 },
-  swamp: { base: (h) => pick(h, [[0.3, 'grass-dark']], 'swamp'), road: 'dirt', blobs: [{ kind: 'water', count: 6, r: [0.9, 1.6] }], props: ['swamp:reed', 'swamp:reed', 'swamp:mangrove', 'swamp:lilypad'], propDensity: 0.06 },
-  sea1: { base: (h) => pick(h, [[0.08, 'grass']], 'sand'), road: 'dirt', shore: 'water', props: ['sea:driftwood', 'sea:rock', 'sea:coral', 'sea:dunegrass', 'sea:dunegrass'], propDensity: 0.045 },
-  sea2: { base: (h) => pick(h, [[0.1, 'grass']], 'sand'), road: 'dirt', blobs: [{ kind: 'water', count: 7, r: [1.0, 2.0] }], props: ['sea:coral', 'sea:coral', 'sea:rock', 'sea:driftwood', 'sea:dunegrass'], propDensity: 0.05 },
-  sea3: { base: (h) => pick(h, [[0.04, 'grass']], 'sand'), road: 'dirt', hub: 'sand', shore: 'water', blobs: [{ kind: 'water', count: 5, r: [1.2, 2.2] }], props: ['sea:rock', 'sea:rock', 'sea:coral', 'sea:driftwood', 'sea:dunegrass'], propDensity: 0.05 },
-  deepsea: { base: (h) => pick(h, [[0.3, 'sand']], 'water'), road: 'sand', props: ['deepsea:kelp', 'deepsea:kelp', 'deepsea:wreck', 'sea:coral', 'sea:rock'], propDensity: 0.055 },
-  seaCave: { base: (h) => pick(h, [[0.2, 'sand']], 'cave'), road: 'sand', blobs: [{ kind: 'water', count: 5, r: [1.0, 1.8] }], props: ['cave:crystal', 'cave:stalagmite', 'sea:coral', 'sea:rock', 'deepsea:kelp'], propDensity: 0.055 },
+  forest1: { base: (h) => pick(h, [[0.25, 'grass-dark']], 'grass'), road: 'dirt', blobs: [{ kind: 'water', count: 2, r: [1.4, 2.2] }], props: ['forest:tree', 'forest:tree', 'forest:bush', 'forest:bush', 'forest:rock', 'forest:mushroom', 'forest:log', 'forest:firefly'], propDensity: 0.05, painted: true, tone: 1.12, decor: ['forest:fern', 'forest:fern2', 'forest:flowers', 'forest:fern', 'forest:stump', 'forest:stump2'], decorDensity: 0.012, pondDecor: ['pond:cattail', 'pond:cattail2', 'pond:stone2', 'pond:cattail', 'forest:fern'], lily: true },
+  forest2: { base: (h) => pick(h, [[0.5, 'grass-dark']], 'grass'), road: 'dirt', blobs: [{ kind: 'water', count: 1, r: [1.8, 2.6] }], props: ['forest:tree', 'forest:tree', 'forest:tree', 'forest:bush', 'forest:mushroom', 'forest:log', 'forest:firefly'], propDensity: 0.062, painted: true, tone: 0.9, decor: ['forest:fern', 'forest:fern2', 'forest:flowers', 'forest:fern', 'forest:stump', 'forest:stump2'], decorDensity: 0.012, pondDecor: ['pond:cattail', 'pond:cattail2', 'pond:stone2', 'pond:cattail', 'forest:fern'], lily: true },
+  forest3: { base: (h) => pick(h, [[0.6, 'grass-dark']], 'grass'), road: 'dirt', hub: 'dirt', blobs: [{ kind: 'swamp', count: 2, r: [1.6, 2.4] }], props: ['forest:tree', 'forest:tree', 'forest:tree', 'forest:mushroom', 'forest:mushroom', 'forest:firefly', 'forest:firefly', 'forest:log'], propDensity: 0.07, painted: true, tone: 0.8, decor: ['forest:fern', 'forest:fern2', 'forest:flowers', 'forest:fern', 'forest:stump', 'forest:stump2'], decorDensity: 0.012, pondDecor: ['pond:cattail', 'pond:cattail2', 'pond:stone2', 'pond:cattail', 'forest:fern'], lily: true },
+  cave: { base: (h) => pick(h, [[0.22, 'mine']], 'cave'), road: 'dirt', blobs: [{ kind: 'water', count: 2, r: [1.2, 1.8] }], props: ['cave:stalagmite', 'cave:stalagmite', 'cave:crystal', 'cave:mushroom', 'cave:rock'], propDensity: 0.06, painted: true, tone: 0.78, pondDecor: ['pond:stone2', 'cave:crystal', 'pond:stone'], groundShade: { dirt: 0.7 } },
+  swamp: { base: (h) => pick(h, [[0.3, 'grass-dark']], 'swamp'), road: 'dirt', blobs: [{ kind: 'water', count: 6, r: [0.9, 1.6] }], props: ['swamp:reed', 'swamp:reed', 'swamp:mangrove', 'swamp:lilypad'], propDensity: 0.06, painted: true, tone: 0.8, pondDecor: ['pond:cattail', 'swamp:reed', 'pond:cattail2'], lily: true },
+  sea1: { base: (h) => pick(h, [[0.08, 'grass']], 'sand'), road: 'dirt', shore: 'water', props: ['sea:driftwood', 'sea:rock', 'sea:coral', 'sea:dunegrass', 'sea:dunegrass'], propDensity: 0.045, painted: true, tone: 1.12 },
+  sea2: { base: (h) => pick(h, [[0.1, 'grass']], 'sand'), road: 'dirt', blobs: [{ kind: 'water', count: 7, r: [1.0, 2.0] }], props: ['sea:coral', 'sea:coral', 'sea:rock', 'sea:driftwood', 'sea:dunegrass'], propDensity: 0.05, painted: true, tone: 1.12, pondDecor: ['sea:rock', 'pond:stone2', 'sea:dunegrass'] },
+  sea3: { base: (h) => pick(h, [[0.04, 'grass']], 'sand'), road: 'dirt', hub: 'sand', shore: 'water', blobs: [{ kind: 'water', count: 5, r: [1.2, 2.2] }], props: ['sea:rock', 'sea:rock', 'sea:coral', 'sea:driftwood', 'sea:dunegrass'], propDensity: 0.05, painted: true, tone: 1.1, pondDecor: ['sea:rock', 'pond:stone2', 'sea:dunegrass'] },
+  deepsea: { base: (h) => pick(h, [[0.3, 'sand']], 'water'), road: 'sand', props: ['deepsea:kelp', 'deepsea:kelp', 'deepsea:wreck', 'sea:coral', 'sea:rock'], propDensity: 0.055, painted: true, tone: 0.82, flatWater: true },
+  seaCave: { base: (h) => pick(h, [[0.2, 'sand']], 'cave'), road: 'sand', blobs: [{ kind: 'water', count: 5, r: [1.0, 1.8] }], props: ['cave:crystal', 'cave:stalagmite', 'sea:coral', 'sea:rock', 'deepsea:kelp'], propDensity: 0.055, painted: true, tone: 0.8, pondDecor: ['pond:stone2', 'cave:crystal', 'sea:rock'], groundShade: { sand: 0.58 } },
   storm1: { base: (h) => pick(h, [[0.14, 'sky-marble']], 'sky-cloud'), road: 'sky-road', blobs: [{ kind: 'sky-marble', count: 3, r: [1.6, 2.4] }], props: ['stormhaven:banner', 'stormhaven:stormgrass', 'stormhaven:stormgrass', 'stormhaven:floatrock'], propDensity: 0.045 },
   storm2: { base: (h) => pick(h, [[0.06, 'sky-marble']], 'sky-cloud'), road: 'sky-road', blobs: [{ kind: 'sky-marble', count: 5, r: [1.4, 2.4] }], props: ['stormhaven:floatrock', 'stormhaven:floatrock', 'stormhaven:stormgrass', 'stormhaven:banner'], propDensity: 0.045 },
   storm3: { base: (h) => pick(h, [[0.12, 'ruin-stone']], 'sky-marble'), road: 'sky-road', hub: 'sky-cloud', props: ['stormhaven:banner', 'stormhaven:banner', 'stormhaven:floatrock', 'ruinsField:pillar', 'stormhaven:stormgrass'], propDensity: 0.05 },
@@ -217,6 +246,8 @@ const SPAWN_INSET = 3.2
 export interface BuiltFieldMap {
   map: Omit<GameMap, 'blockers'>
   props: PropDef[]
+  /** 소품 외 충돌(연못·바다 칸) */
+  blockers: { x0: number; y0: number; x1: number; y1: number }[]
   /** 이 맵의 포탈(to)로 되돌아올 때 설 위치 */
   arrivalFor: (to: MapId) => { x: number; y: number }
 }
@@ -338,9 +369,9 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
   const usedSides = new Set<Side>([spec.entry.side, ...spec.exits.map((e) => e.side)])
   const shoreSide: Side | null = theme.shore ? ((['N', 'E', 'W', 'S'] as Side[]).find((s) => !usedSides.has(s)) ?? null) : null
   const shoreDepth = (along: number) => 3.2 + Math.sin(along * 0.28) * 1.4 + Math.sin(along * 0.11 + 1.3) * 0.8
-  const inShore = (x: number, y: number) => {
+  const inShore = (x: number, y: number, rd: (x: number, y: number) => number = roadDist) => {
     if (!shoreSide || !theme.shore) return false
-    if (roadDist(x, y) < ROAD_W + 0.8) return false
+    if (rd(x, y) < ROAD_W + 0.8) return false
     switch (shoreSide) {
       case 'N':
         return y < shoreDepth(x)
@@ -386,7 +417,142 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
     }
     if (props.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < 2.0)) continue
     const ref = theme.props[Math.floor(rand() * theme.props.length)]
+    if (/lilypad/.test(ref)) continue // 수련은 물 위에만(땅 위에 떠 있던 문제)
     props.push(fprop(ref, `${spec.id}-p${props.length}`, x, y))
+  }
+
+  // ── 자연 지면(components/game/iso-terrain.tsx) · 물 표현(lib/terrain.ts) ──
+  //  tileAt(칸 단위, 게임 로직)은 그대로 두고, 그림용 at 은 같은 길·얼룩을 소수 좌표로 매끈하게 계산한다.
+  let terrain: GameMap['terrain']
+  const blockers: BuiltFieldMap['blockers'] = []
+  if (theme.painted) {
+    const pools = classifyPools(w, h, (x, y) => tileAt(x + 0.5, y + 0.5) === 'water', theme.flatWater)
+    const pool = (x: number, y: number) => {
+      const cx = Math.floor(x)
+      const cy = Math.floor(y)
+      return cx < 0 || cy < 0 || cx >= w || cy >= h ? null : pools[cy * w + cx]
+    }
+    const nEdge = valueNoise(spec.seed)
+    const nPatch = valueNoise(spec.seed + 99)
+    // 칸 중심 길 거리장을 겹선형 보간 — 칸 계단 없는 곡선 길
+    const roadF = (x: number, y: number) => {
+      const fx = Math.min(w - 1, Math.max(0, x - 0.5))
+      const fy = Math.min(h - 1, Math.max(0, y - 0.5))
+      const x0 = Math.floor(fx)
+      const y0 = Math.floor(fy)
+      const x1 = Math.min(w - 1, x0 + 1)
+      const y1 = Math.min(h - 1, y0 + 1)
+      const u = fx - x0
+      const v = fy - y0
+      const a = nearRoadDist[y0 * w + x0] * (1 - u) + nearRoadDist[y0 * w + x1] * u
+      const b = nearRoadDist[y1 * w + x0] * (1 - u) + nearRoadDist[y1 * w + x1] * u
+      return a * (1 - v) + b * v
+    }
+    const at = (x: number, y: number): TileKind => {
+      const wob = (nEdge(x * 1.7, y * 1.7) - 0.5) * 0.55
+      const inHub = hubbed && Math.hypot(x - center.x, y - center.y) + wob < 2.6
+      if (inHub && theme.hub) return theme.hub
+      if (inHub || roadF(x, y) + wob < ROAD_W) return theme.road
+      for (const b of blobs) {
+        const d = Math.hypot(x - b.x, y - b.y)
+        if (d > b.r + 0.36) continue // 흔들림(±0.35) 밖 — atan2 생략
+        if (d < b.r - 0.36) return b.kind
+        if (d < b.r + Math.sin(Math.atan2(y - b.y, x - b.x) * 3 + b.x) * 0.35) return b.kind
+      }
+      if (inShore(x, y, roadF)) return theme.shore!
+      // 바탕 얼룩 — 칸 해시(소금후추 체크무늬) 대신 부드러운 노이즈 덩어리
+      const n = nPatch(x * 0.28, y * 0.28) * 0.7 + nPatch(x * 0.9 + 50, y * 0.9) * 0.3
+      return theme.base(Math.min(0.999, Math.max(0, (n - 0.5) * 2.4 + 0.5)), x, y)
+    }
+    terrain = { at, pool, shade: theme.groundShade, tone: theme.tone }
+    // 연못·바다는 못 들어간다 — 물 칸끼리 맞닿은 쪽은 틈 없이, 물가 쪽만 조금 안으로
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        if (!poolBlocks(pools[y * w + x])) continue
+        const open = (dx: number, dy: number) => !poolBlocks(pool(x + dx, y + dy)) && x + dx >= 0 && y + dy >= 0 && x + dx < w && y + dy < h
+        blockers.push({ x0: x + (open(-1, 0) ? 0.12 : 0), y0: y + (open(0, -1) ? 0.12 : 0), x1: x + 1 - (open(1, 0) ? 0.12 : 0), y1: y + 1 - (open(0, 1) ? 0.12 : 0) })
+      }
+    // 물 위 소품(수련·산호·켈프)은 수면 높이로 — 칸 중심이 물이 아닌 가장자리 칸이면 이웃 물 칸의 표현을 따른다
+    const poolNear = (x: number, y: number) => {
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) {
+        const pk = pool(x + dx, y + dy)
+        if (pk) return pk
+      }
+      return null
+    }
+    for (const p of props) {
+      if (tileAt(p.cell.x, p.cell.y) !== 'water') continue
+      const pk = poolNear(p.cell.x, p.cell.y)
+      if (pk) p.elev = -POOL_DEPTH[pk]
+    }
+    // 장식은 기존 배치 난수와 따로(기존 소품 자리는 그대로)
+    const drand = mulberry32(spec.seed ^ 0x5eed)
+    const free = (x: number, y: number, gap: number) =>
+      x > 0.8 && y > 0.8 && x < w - 0.8 && y < h - 0.8 &&
+      roadDist(x, y) > ROAD_W + 0.4 &&
+      !keepClear.some((k) => Math.hypot(k.x - x, k.y - y) < k.r) &&
+      !props.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < gap)
+    const deco = (ref: PropRef, x: number, y: number) => props.push(fprop(ref, `${spec.id}-d${props.length}`, x, y))
+    // 연못 둘레(천연 우물가) — 둑 바로 바깥에 부들·이끼 바위, 연못 위엔 수련
+    for (const b of blobs) {
+      if (b.kind !== 'water' || pool(b.x, b.y) !== 'pond') continue
+      if (theme.pondDecor) {
+        const n = 2 + Math.floor(drand() * 2)
+        const a0 = drand() * Math.PI * 2
+        for (let k = 0; k < n; k++) {
+          const ang = a0 + (k / n) * Math.PI * 2 + (drand() - 0.5) * 0.6
+          const rr = b.r + 0.75 + drand() * 0.3
+          const x = b.x + Math.cos(ang) * rr
+          const y = b.y + Math.sin(ang) * rr
+          if (tileAt(x, y) === 'water' || !free(x, y, 1.1)) continue
+          deco(theme.pondDecor[Math.floor(drand() * theme.pondDecor.length)], x, y)
+        }
+      }
+      if (theme.lily) {
+        const n = 1 + Math.floor(drand() * 2)
+        for (let k = 0; k < n; k++) {
+          const ang = drand() * Math.PI * 2
+          const rr = drand() * Math.max(0, b.r - 1.1)
+          const x = b.x + Math.cos(ang) * rr
+          const y = b.y + Math.sin(ang) * rr
+          if (pool(x, y) !== 'pond' || props.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < 0.9)) continue
+          const lp = fprop('swamp:lilypad', `${spec.id}-l${props.length}`, x, y)
+          lp.elev = -POOL_DEPTH.pond
+          props.push(lp)
+        }
+      }
+    }
+    // 바닥 장식(고사리·들꽃·그루터기)
+    if (theme.decor) {
+      const target = Math.round(w * h * (theme.decorDensity ?? 0.02))
+      let placed = 0
+      for (let tries = 0; tries < target * 30 && placed < target; tries++) {
+        const x = 1 + drand() * (w - 2)
+        const y = 1 + drand() * (h - 2)
+        if (tileAt(x, y) === 'water' || !free(x, y, 1.3)) continue
+        deco(theme.decor[Math.floor(drand() * theme.decor.length)], x, y)
+        placed++
+      }
+    }
+    // 물가에 바짝 붙은 땅 소품(나무·표지판 등)은 꺼진 수면 위로 걸쳐 보이므로 뺀다
+    const nearWater = (x: number, y: number) =>
+      [[0.55, 0], [-0.55, 0], [0, 0.55], [0, -0.55], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4]].some(([dx, dy]) => at(x + dx, y + dy) === 'water')
+    for (let i = props.length - 1; i >= 0; i--) {
+      const p = props[i]
+      if ((p.elev ?? 0) < 0 || tileAt(p.cell.x, p.cell.y) === 'water') continue
+      if (poolNear(p.cell.x, p.cell.y) && poolBlocks(poolNear(p.cell.x, p.cell.y)) && nearWater(p.cell.x, p.cell.y)) props.splice(i, 1)
+    }
+  }
+
+  // 같은 그림이 몰려 있으면 솎아 낸다(가시성) — 종류가 다른 소품끼리는 그대로, 같은 스프라이트가 가까이 반복될 때만 뒤에 놓인 쪽을 뺀다
+  if (theme.painted) {
+    const kept: PropDef[] = []
+    for (const p of props) {
+      const gap = p.kind === 'tree' ? 3.0 : 4.2
+      if (kept.some((q) => q.sprite === p.sprite && Math.hypot(q.cell.x - p.cell.x, q.cell.y - p.cell.y) < gap)) continue
+      kept.push(p)
+    }
+    props.splice(0, props.length, ...kept)
   }
 
   // 포탈
@@ -421,6 +587,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
 
   return {
     props,
+    blockers,
     arrivalFor,
     map: {
       id: spec.id,
@@ -432,6 +599,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       assets: 'raster',
       tileAt,
       roadAt,
+      terrain,
       props,
       zones: [],
       monsterPool: spec.monsterPool,

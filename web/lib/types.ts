@@ -554,6 +554,19 @@ export interface GameMap {
   water?: { at: (x: number, y: number) => 'sea' | 'canal' | 'bridge' | null }
   /** false = 지면 타일을 칸마다 무작위로 뒤집지 않는다(줄눈·벽돌이 이웃 칸과 이어지게) */
   tileFlip?: boolean
+  /**
+   * render:'iso' 일 때: 자연 지면(야생맵) — 칸 타일 대신 지면 전체를 한 장으로 이어 그린다(components/game/iso-terrain.tsx).
+   * at = 소수 좌표 지면 종류(길·얼룩 가장자리가 칸 계단 없이 곡선), pool = 칸의 물 표현(lib/terrain.ts).
+   * tileAt 은 게임 로직(낚시·채집)용으로 그대로 둔다.
+   */
+  terrain?: {
+    at: (x: number, y: number) => import('./iso').TileKind
+    pool: (x: number, y: number) => import('./terrain').PoolKind | null
+    /** 지면 종류별 밝기 배율(동굴 속 모래처럼 너무 튀는 바닥을 눌러 줄 때) */
+    shade?: Partial<Record<import('./iso').TileKind, number>>
+    /** 맵 전체 톤 — 1 초과 = 밝은 지역(화사하게), 1 미만 = 어두운 지역(지면을 누르고 화면에 어둠을 깐다) */
+    tone?: number
+  }
   /** 야생 맵: 이 셀이 길(포탈 연결로)인지 — 몬스터 배치가 길을 피하는 데 사용 */
   roadAt?: (x: number, y: number) => boolean
   /** render:'iso' 일 때: 건물·자연물 등 배치 오브젝트 */
