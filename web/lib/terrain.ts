@@ -4,7 +4,8 @@
 //      웅덩이(1~5칸)  = 빗물이 고인 얕은 물 — 땅 높이 그대로, 밟고 지나갈 수 있다
 //      연못(6칸 이상) = 돌로 둘린 천연 우물가·작은 호수 — 수면이 내려가 있고 둘레에 바위 둑, 못 들어간다
 //      바다(맵 가장자리에 닿는 큰 물) = 해안 절벽 + 거품, 못 들어간다
-//      flat           = 심해처럼 물이 곧 바닥인 맵 — 걸을 수 있는 얕은 물
+//      flat           = 심해처럼 물이 곧 바닥인 맵 — 걸을 수 있는 얕은 물(설원의 얼어붙은 호수도 flat)
+//    용암(2026-10-07)은 작아도 웅덩이 없이 둑이 있는 pond/sea 로만 나눈다(classifyPools noPuddle)
 // ============================================================================
 
 export type PoolKind = 'puddle' | 'pond' | 'sea' | 'flat'
@@ -20,7 +21,7 @@ export const poolBlocks = (k: PoolKind | null | undefined) => k === 'pond' || k 
  * 칸 단위 물 덩어리 분류. isWater(x,y) = 칸(x,y)가 물인가(칸 중심 기준).
  * 결과: 칸마다 PoolKind | null
  */
-export function classifyPools(W: number, H: number, isWater: (x: number, y: number) => boolean, flat = false): (PoolKind | null)[] {
+export function classifyPools(W: number, H: number, isWater: (x: number, y: number) => boolean, flat = false, noPuddle = false): (PoolKind | null)[] {
   const out: (PoolKind | null)[] = new Array(W * H).fill(null)
   const seen = new Uint8Array(W * H)
   for (let y0 = 0; y0 < H; y0++)
@@ -46,7 +47,8 @@ export function classifyPools(W: number, H: number, isWater: (x: number, y: numb
           q.push(n)
         }
       }
-      const kind: PoolKind = flat ? 'flat' : comp.length <= PUDDLE_MAX_CELLS ? 'puddle' : edge && comp.length >= 30 ? 'sea' : 'pond'
+      // noPuddle = 용암처럼 작아도 둑이 있는 것(얕은 웅덩이 표현이 없는 액체)
+      const kind: PoolKind = flat ? 'flat' : comp.length <= PUDDLE_MAX_CELLS && !noPuddle ? 'puddle' : edge && comp.length >= 30 ? 'sea' : 'pond'
       for (const p of comp) out[p] = kind
     }
   return out

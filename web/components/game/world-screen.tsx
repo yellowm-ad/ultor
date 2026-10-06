@@ -9,6 +9,7 @@ import { npcWanderPosition } from '@/lib/field'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
+import { WeatherLayer } from '@/components/game/weather-layer'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
 // 전 맵이 아이소 도트 엔진(iso-world.tsx)으로 렌더된다 — 옛 CSS 그라디언트/일러스트 렌더 경로는 제거됨(2026-09-28)
@@ -182,6 +183,8 @@ export function WorldScreen() {
       running={running}
       interactId={interactTarget?.id ?? nearNode?.key ?? null}
     />
+    {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}
+    {map.terrain?.weather && <WeatherLayer kind={map.terrain.weather} />}
     {/* 골든아워 따뜻한 앰비언트 — 밝은 지역(map.terrain.tone > 1)은 햇살을 더 세게 */}
     <div
       className="pointer-events-none absolute inset-0 z-10"

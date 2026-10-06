@@ -566,6 +566,16 @@ export interface GameMap {
     shade?: Partial<Record<import('./iso').TileKind, number>>
     /** 맵 전체 톤 — 1 초과 = 밝은 지역(화사하게), 1 미만 = 어두운 지역(지면을 누르고 화면에 어둠을 깐다) */
     tone?: number
+    /** 지면 종류 → 텍스처 이름(public/images/map/terrain/*) — 지역마다 같은 타일 종류를 다른 그림으로(설원의 path = 밟힌 눈길 등) */
+    tex?: Partial<Record<import('./iso').TileKind, string>>
+    /** 지면 높이 순위(높은 쪽이 낮은 쪽 위로 그늘) — 생략 시 풀 계열만 높음 */
+    rank?: Partial<Record<import('./iso').TileKind, number>>
+    /** 고인 것의 종류 — 물(기본)·용암(가라앉은 둑 + 흐르는 용암, 못 지나감)·얼음(땅 높이의 얼어붙은 호수, 지나감) */
+    liquid?: 'water' | 'lava' | 'ice'
+    /** 격자 바깥 그늘 색 */
+    fog?: [number, number, number]
+    /** 화면 날씨 층 — 눈·불티·폭풍(빗줄기 + 번개) */
+    weather?: 'snow' | 'embers' | 'storm'
   }
   /** 야생 맵: 이 셀이 길(포탈 연결로)인지 — 몬스터 배치가 길을 피하는 데 사용 */
   roadAt?: (x: number, y: number) => boolean
@@ -752,6 +762,8 @@ export interface GameState {
   facing: Facing
   currentMapId: MapId
   currentZoneId: string
+  /** 한 번이라도 들어가 본 맵 — 전체 지도 텔레포트 대상(2026-10-07). 옛 세이브엔 없음 */
+  visitedMaps?: MapId[]
   inventory: InventorySlot[]
   fieldMonsters: FieldMonster[] // 현재 맵의 몬스터만 보유
   pendingEncounterUid: string | null // 접촉 시 전투 여부를 묻는 대상

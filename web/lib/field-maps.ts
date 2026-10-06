@@ -43,9 +43,10 @@ export const FIELD_SPRITES = {
     stone2: { sprite: '/images/map/props/forest/ff_pondstone2.png', px: { w: 70, h: 53 }, anchor: { x: 40, y: 48 }, kind: 'bush' },
   },
   volcano: {
-    spire: { sprite: '/images/map/props/f_volcano_spire.png', px: { w: 72, h: 144 }, anchor: { x: 36, y: 134 }, kind: 'tree' },
+    // 첨탑·바위 — 원본은 이미지 테두리에서 잘려 밑동이 일자였다 → 둥근 둔덕으로 깎음(scripts/round-prop-base.mjs, 2026-10-07)
+    spire: { sprite: '/images/map/props/volcano/fv_spire.png', px: { w: 72, h: 144 }, anchor: { x: 36, y: 134 }, kind: 'tree' },
     deadtree: { sprite: '/images/map/props/f_volcano_deadtree.png', px: { w: 104, h: 136 }, anchor: { x: 52, y: 128 }, kind: 'tree' },
-    rock: { sprite: '/images/map/props/f_volcano_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 58 }, kind: 'bush' },
+    rock: { sprite: '/images/map/props/volcano/fv_rock.png', px: { w: 88, h: 64 }, anchor: { x: 44, y: 58 }, kind: 'bush' },
     vent: { sprite: '/images/map/props/f_volcano_vent.png', px: { w: 88, h: 56 }, anchor: { x: 44, y: 50 }, kind: 'bush' },
     sulfur: { sprite: '/images/map/props/f_volcano_sulfur.png', px: { w: 64, h: 64 }, anchor: { x: 32, y: 58 }, kind: 'bush' },
     ashmound: { sprite: '/images/map/props/f_volcano_ashmound.png', px: { w: 72, h: 48 }, anchor: { x: 36, y: 44 }, kind: 'bush' },
@@ -151,7 +152,65 @@ interface Theme {
   groundShade?: Partial<Record<TileKind, number>>
   /** 맵 전체 톤(1 초과 밝게, 1 미만 어둡게) — 에르디아 숲 첫 스테이지(1.12) 밝기를 기준으로 전 지역을 비슷하게 맞춘다 */
   tone?: number
+  /** 고인 것의 종류(기본 물) — 용암: 작아도 둑이 있고 못 지나감 / 얼음: 땅 높이의 얼어붙은 호수, 지나감 */
+  liquid?: 'water' | 'lava' | 'ice'
+  /** 맵을 가로지르는 강(용암 강) — 한 변에서 맞은편 변으로 굽이치고, 길과 만나는 곳은 길이 덮어 자연 다리가 된다 */
+  river?: { width: number }
+  /** 지면 종류 → 텍스처(자연 지면) · 높이 순위 · 격자 밖 그늘 · 날씨 — GameMap.terrain 참고 */
+  tex?: Partial<Record<TileKind, string>>
+  rank?: Partial<Record<TileKind, number>>
+  fog?: [number, number, number]
+  weather?: 'snow' | 'embers' | 'storm'
+  /** 같은 그림 솎아내기 간격 배율(기본 1) — 키 큰 첨탑·기둥이 많은 지역은 더 넓게 */
+  spread?: number
 }
+
+/** 액체 종류 → 그 액체를 뜻하는 타일 종류(게임 로직의 tileAt 값) */
+const LIQUID_TILE = { water: 'water', lava: 'demon-lava', ice: 'ice' } as const satisfies Record<string, TileKind>
+
+// ── 지역별 자연 지면 묶음(2026-10-07) — 같은 타일 종류를 지역 텍스처로 바꿔 그린다 ──
+/** 스톰헤이븐 — 폭풍 구름 위 고원: 구름 바닥 · 하얀 대리석 판 · 사암 포석 길 */
+const SKY = {
+  painted: true,
+  spread: 1.45,
+  tex: { 'sky-cloud': 'cloud', 'sky-marble': 'marble', 'sky-road': 'sky-road', 'ruin-stone': 'flagstone' },
+  rank: { 'sky-cloud': 2, 'sky-marble': 1, 'ruin-stone': 1 },
+  fog: [26, 26, 32],
+  // 구름 바닥도 밝아서 햇살 오버레이 없이(1). 먹구름 맵은 1 아래로 살짝 눌러 흐린 날씨
+  tone: 1,
+} satisfies Partial<Theme>
+/** 폐허 — 마른 풀밭에 깨진 포석이 드문드문 남은 옛 도시 */
+const RUIN = {
+  painted: true,
+  spread: 1.45,
+  tex: { 'ruin-moss': 'ruin-grass', 'ruin-stone': 'flagstone', plaza: 'flagstone', 'ruin-road': 'dirt', ash: 'grave-soil' },
+  rank: { 'ruin-moss': 2 },
+  tone: 1.08,
+} satisfies Partial<Theme>
+/** 설원 — 눈밭 · 바람에 그늘진 눈 · 밟힌 눈길 · 서리 돌판, 얼어붙은 호수, 잔잔한 눈 */
+const SNOW = {
+  painted: true,
+  spread: 1.45,
+  liquid: 'ice',
+  tex: { snow: 'snow', 'aurora-snow': 'snow-shade', path: 'snow-path', 'aurora-stone': 'frost-stone', 'aurora-mist': 'snow-shade', 'aurora-road': 'snow-path' },
+  rank: { snow: 2, 'aurora-snow': 2, 'aurora-mist': 2 },
+  fog: [22, 24, 30],
+  // 눈밭은 그 자체로 밝아 햇살 오버레이(tone>1)를 얹으면 하얗게 날아간다 — 흐린 눈 오는 날 톤으로 살짝 누르고 지면도 차갑게
+  tone: 0.97,
+  groundShade: { snow: 0.92, 'aurora-snow': 0.92, 'aurora-mist': 0.92, path: 0.95 },
+  weather: 'snow',
+} satisfies Partial<Theme>
+/** 화산 — 화산재 · 현무암 판 · 붉은 잿길, 가라앉은 용암 웅덩이와 흐르는 용암 강, 날리는 불티 */
+const LAVA = {
+  painted: true,
+  spread: 1.45,
+  liquid: 'lava',
+  tex: { ash: 'ash', 'demon-ash': 'ash', obsidian: 'basalt', 'demon-stone': 'basalt', path: 'cinder', 'demon-road': 'cinder' },
+  rank: { ash: 2, 'demon-ash': 2, obsidian: 2, 'demon-stone': 2 },
+  fog: [16, 9, 7],
+  tone: 1.08,
+  weather: 'embers',
+} satisfies Partial<Theme>
 
 const pick = (h: number, pairs: [number, TileKind][], last: TileKind): TileKind => {
   for (const [t, k] of pairs) if (h < t) return k
@@ -169,27 +228,32 @@ export const THEMES = {
   sea3: { base: (h) => pick(h, [[0.04, 'grass']], 'sand'), road: 'dirt', hub: 'sand', shore: 'water', blobs: [{ kind: 'water', count: 5, r: [1.2, 2.2] }], props: ['sea:rock', 'sea:rock', 'sea:coral', 'sea:driftwood', 'sea:dunegrass'], propDensity: 0.05, painted: true, tone: 1.1, pondDecor: ['sea:rock', 'pond:stone2', 'sea:dunegrass'] },
   deepsea: { base: (h) => pick(h, [[0.3, 'sand']], 'water'), road: 'sand', props: ['deepsea:kelp', 'deepsea:kelp', 'deepsea:wreck', 'sea:coral', 'sea:rock'], propDensity: 0.055, painted: true, tone: 1.08, flatWater: true },
   seaCave: { base: (h) => pick(h, [[0.2, 'sand']], 'cave'), road: 'sand', blobs: [{ kind: 'water', count: 5, r: [1.0, 1.8] }], props: ['cave:crystal', 'cave:stalagmite', 'sea:coral', 'sea:rock', 'deepsea:kelp'], propDensity: 0.055, painted: true, tone: 1.08, pondDecor: ['pond:stone2', 'cave:crystal', 'sea:rock'], groundShade: { sand: 0.72 } },
-  storm1: { base: (h) => pick(h, [[0.14, 'sky-marble']], 'sky-cloud'), road: 'sky-road', blobs: [{ kind: 'sky-marble', count: 3, r: [1.6, 2.4] }], props: ['stormhaven:banner', 'stormhaven:stormgrass', 'stormhaven:stormgrass', 'stormhaven:floatrock'], propDensity: 0.045 },
-  storm2: { base: (h) => pick(h, [[0.06, 'sky-marble']], 'sky-cloud'), road: 'sky-road', blobs: [{ kind: 'sky-marble', count: 5, r: [1.4, 2.4] }], props: ['stormhaven:floatrock', 'stormhaven:floatrock', 'stormhaven:stormgrass', 'stormhaven:banner'], propDensity: 0.045 },
-  storm3: { base: (h) => pick(h, [[0.12, 'ruin-stone']], 'sky-marble'), road: 'sky-road', hub: 'sky-cloud', props: ['stormhaven:banner', 'stormhaven:banner', 'stormhaven:floatrock', 'ruinsField:pillar', 'stormhaven:stormgrass'], propDensity: 0.05 },
-  cloudRift: { base: (h) => pick(h, [[0.1, 'sky-marble']], 'sky-cloud'), road: 'sky-road', blobs: [{ kind: 'sky-marble', count: 4, r: [1.2, 2.0] }], props: ['stormhaven:floatrock', 'stormhaven:floatrock', 'stormhaven:stormgrass'], propDensity: 0.045 },
-  thunderSpire: { base: (h) => pick(h, [[0.12, 'ruin-stone']], 'sky-marble'), road: 'sky-road', props: ['ruinsField:pillar', 'ruinsField:pillar', 'stormhaven:banner', 'ruinsField:crystal', 'stormhaven:floatrock'], propDensity: 0.055 },
-  ruins1: { base: (h) => pick(h, [[0.23, 'plaza'], [0.38, 'dirt']], 'ash'), road: 'ruin-road', props: ['ruinsField:pillar', 'ruinsField:rubble', 'ruinsField:crystal', 'ruinsField:vine', 'ruinsField:vine'], propDensity: 0.05 },
-  ruins2: { base: (h) => pick(h, [[0.4, 'ruin-stone'], [0.5, 'dirt']], 'ash'), road: 'ruin-road', props: ['ruinsField:pillar', 'ruinsField:pillar', 'ruinsField:rubble', 'ruinsField:rubble', 'ruinsField:vine'], propDensity: 0.055 },
-  ruins3: { base: (h) => pick(h, [[0.3, 'ruin-moss'], [0.4, 'ash']], 'plaza'), road: 'ruin-road', hub: 'ruin-stone', props: ['ruinsField:pillar', 'ruinsField:crystal', 'ruinsField:crystal', 'ruinsField:rubble', 'graveyard:lantern'], propDensity: 0.055 },
-  graveyard: { base: (h) => pick(h, [[0.28, 'ruin-moss']], 'ash'), road: 'dirt', props: ['graveyard:tombstone', 'graveyard:tombstone', 'graveyard:deadtree', 'graveyard:lantern'], propDensity: 0.065 },
-  catacomb: { base: (h) => pick(h, [[0.3, 'cave']], 'ruin-stone'), road: 'ruin-road', props: ['graveyard:tombstone', 'graveyard:lantern', 'ruinsField:pillar', 'cave:rock', 'ruinsField:rubble'], propDensity: 0.06 },
-  snow1: { base: (h) => pick(h, [[0.15, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 2, r: [1.8, 2.8] }], props: ['snowfield:pine', 'snowfield:frostrock', 'snowfield:icicle', 'snowfield:snowmound'], propDensity: 0.05 },
-  snow2: { base: (h) => pick(h, [[0.35, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 1, r: [2.0, 2.8] }], props: ['snowfield:snowmound', 'snowfield:snowmound', 'snowfield:frostrock', 'snowfield:pine'], propDensity: 0.048 },
-  snow3: { base: (h) => pick(h, [[0.12, 'aurora-snow']], 'snow'), road: 'path', hub: 'aurora-stone', props: ['snowfield:pine', 'snowfield:pine', 'snowfield:pine', 'snowfield:icicle', 'snowfield:frostrock'], propDensity: 0.065 },
-  iceCave: { base: (h) => pick(h, [[0.2, 'aurora-mist']], 'aurora-stone'), road: 'aurora-road', blobs: [{ kind: 'ice', count: 5, r: [1.4, 2.4] }], props: ['snowfield:icicle', 'snowfield:icicle', 'cave:crystal', 'cave:stalagmite', 'snowfield:frostrock'], propDensity: 0.06 },
-  frozenLake: { base: (h) => pick(h, [[0.2, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 3, r: [3.0, 4.4] }], props: ['snowfield:pine', 'snowfield:frostrock', 'snowfield:snowmound'], propDensity: 0.045 },
-  volcano1: { base: (h) => pick(h, [[0.36, 'ash']], 'obsidian'), road: 'path', props: ['volcano:spire', 'volcano:deadtree', 'volcano:rock', 'volcano:vent', 'volcano:sulfur', 'volcano:ashmound'], propDensity: 0.05 },
-  volcano2: { base: (h) => pick(h, [[0.45, 'demon-ash']], 'ash'), road: 'demon-road', blobs: [{ kind: 'demon-lava', count: 2, r: [1.0, 1.6] }], props: ['volcano:rock', 'volcano:rock', 'volcano:ashmound', 'volcano:spire', 'volcano:deadtree'], propDensity: 0.05 },
-  volcano3: { base: (h) => pick(h, [[0.3, 'demon-stone']], 'obsidian'), road: 'demon-road', hub: 'demon-stone', blobs: [{ kind: 'demon-lava', count: 5, r: [1.2, 2.2] }], props: ['volcano:vent', 'volcano:vent', 'volcano:spire', 'volcano:sulfur', 'volcano:rock'], propDensity: 0.05 },
-  mine: { base: (h) => pick(h, [[0.3, 'cave']], 'mine'), road: 'dirt', props: ['mine:orevein', 'mine:orevein', 'mine:beam', 'mine:cart', 'mine:rock'], propDensity: 0.06 },
-  lavaCave: { base: (h) => pick(h, [[0.35, 'obsidian']], 'cave'), road: 'demon-road', blobs: [{ kind: 'demon-lava', count: 6, r: [1.0, 1.8] }], props: ['volcano:vent', 'volcano:spire', 'cave:crystal', 'volcano:rock'], propDensity: 0.055 },
-  demonCastle: { base: (h) => pick(h, [[0.3, 'ash'], [0.5, 'demon-stone']], 'obsidian'), road: 'demon-road', props: ['demonCastle:bones', 'demonCastle:banner', 'volcano:spire', 'volcano:vent'], propDensity: 0.055 },
+  // 스톰헤이븐 — 구름 위 고원. 안쪽(2·3단계·첨탑)으로 갈수록 먹구름이 짙고 빗줄기·번개
+  storm1: { ...SKY, base: (h) => pick(h, [[0.22, 'sky-marble']], 'sky-cloud'), road: 'sky-road', props: ['stormhaven:banner', 'stormhaven:stormgrass', 'stormhaven:stormgrass', 'stormhaven:floatrock'], propDensity: 0.04 },
+  storm2: { ...SKY, tone: 0.97, tex: { ...SKY.tex, 'sky-marble': 'cloud-dark' }, rank: { 'sky-cloud': 2, 'sky-marble': 2 }, weather: 'storm', base: (h) => pick(h, [[0.42, 'sky-marble']], 'sky-cloud'), road: 'sky-road', props: ['stormhaven:floatrock', 'stormhaven:floatrock', 'stormhaven:stormgrass', 'stormhaven:banner'], propDensity: 0.04 },
+  storm3: { ...SKY, tone: 0.97, tex: { ...SKY.tex, 'sky-cloud': 'cloud-dark' }, weather: 'storm', base: (h) => pick(h, [[0.3, 'sky-cloud'], [0.42, 'ruin-stone']], 'sky-marble'), road: 'sky-road', hub: 'ruin-stone', props: ['stormhaven:banner', 'stormhaven:floatrock', 'ruinsField:pillar', 'stormhaven:stormgrass', 'ruinsField:rubble'], propDensity: 0.04 },
+  cloudRift: { ...SKY, base: (h) => pick(h, [[0.18, 'sky-marble']], 'sky-cloud'), road: 'sky-road', props: ['stormhaven:floatrock', 'stormhaven:floatrock', 'stormhaven:stormgrass'], propDensity: 0.04 },
+  thunderSpire: { ...SKY, tex: { ...SKY.tex, 'sky-cloud': 'cloud-dark' }, weather: 'storm', tone: 0.94, base: (h) => pick(h, [[0.35, 'sky-cloud'], [0.5, 'ruin-stone']], 'sky-marble'), road: 'sky-road', props: ['ruinsField:pillar', 'stormhaven:banner', 'ruinsField:crystal', 'stormhaven:floatrock', 'stormhaven:floatrock'], propDensity: 0.038 },
+  // 폐허 — 1단계는 풀밭 사이 포석 조각, 갈수록 포석이 넓어지고 3단계는 깨진 광장
+  ruins1: { ...RUIN, base: (h) => pick(h, [[0.28, 'ruin-stone']], 'ruin-moss'), road: 'ruin-road', props: ['ruinsField:pillar', 'ruinsField:rubble', 'ruinsField:crystal', 'ruinsField:rubble', 'ruinsField:pillar'], propDensity: 0.038 },
+  ruins2: { ...RUIN, base: (h) => pick(h, [[0.5, 'ruin-stone']], 'ruin-moss'), road: 'ruin-road', props: ['ruinsField:pillar', 'ruinsField:pillar', 'ruinsField:rubble', 'ruinsField:rubble', 'graveyard:deadtree'], propDensity: 0.04 },
+  ruins3: { ...RUIN, base: (h) => pick(h, [[0.32, 'ruin-moss']], 'ruin-stone'), road: 'ruin-road', hub: 'plaza', props: ['ruinsField:pillar', 'ruinsField:crystal', 'ruinsField:rubble', 'graveyard:lantern', 'ruinsField:rubble'], propDensity: 0.036 },
+  graveyard: { ...RUIN, tone: 1.02, groundShade: { 'ruin-moss': 0.82 }, base: (h) => pick(h, [[0.3, 'ruin-moss']], 'ash'), road: 'dirt', rank: { 'ruin-moss': 2, ash: 2 }, props: ['graveyard:tombstone', 'graveyard:tombstone', 'graveyard:deadtree', 'graveyard:lantern'], propDensity: 0.06 },
+  catacomb: { ...RUIN, groundShade: { 'ruin-stone': 0.78, 'ruin-road': 0.8 }, base: (h) => pick(h, [[0.3, 'cave']], 'ruin-stone'), road: 'ruin-road', rank: {}, props: ['graveyard:tombstone', 'graveyard:lantern', 'ruinsField:pillar', 'cave:rock', 'ruinsField:rubble'], propDensity: 0.055 },
+  // 설원 — 얼어붙은 호수(밟고 지나감)와 눈 내림. 얼음 동굴은 실내라 눈이 오지 않는다
+  snow1: { ...SNOW, base: (h) => pick(h, [[0.2, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 2, r: [1.8, 2.8] }], props: ['snowfield:pine', 'snowfield:pine', 'snowfield:frostrock', 'snowfield:snowmound'], propDensity: 0.045 },
+  snow2: { ...SNOW, base: (h) => pick(h, [[0.4, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 1, r: [2.2, 3.0] }], props: ['snowfield:snowmound', 'snowfield:snowmound', 'snowfield:frostrock', 'snowfield:pine'], propDensity: 0.04 },
+  snow3: { ...SNOW, base: (h) => pick(h, [[0.18, 'aurora-snow']], 'snow'), road: 'path', hub: 'aurora-stone', blobs: [{ kind: 'ice', count: 1, r: [1.8, 2.4] }], props: ['snowfield:pine', 'snowfield:pine', 'snowfield:pine', 'snowfield:frostrock', 'snowfield:snowmound'], propDensity: 0.06 },
+  iceCave: { ...SNOW, weather: undefined, fog: [12, 14, 20], base: (h) => pick(h, [[0.25, 'aurora-mist']], 'aurora-stone'), road: 'aurora-road', rank: { 'aurora-mist': 2 }, blobs: [{ kind: 'ice', count: 4, r: [1.4, 2.4] }], props: ['snowfield:icicle', 'cave:crystal', 'cave:crystal', 'cave:stalagmite', 'snowfield:frostrock'], propDensity: 0.055 },
+  frozenLake: { ...SNOW, base: (h) => pick(h, [[0.25, 'aurora-snow']], 'snow'), road: 'path', blobs: [{ kind: 'ice', count: 3, r: [3.0, 4.4] }], props: ['snowfield:pine', 'snowfield:frostrock', 'snowfield:snowmound'], propDensity: 0.04 },
+  // 화산 — 1단계 용암 웅덩이, 2단계부터 맵을 가로지르는 용암 강(길이 지나는 곳은 식은 바위 다리)
+  volcano1: { ...LAVA, base: (h) => pick(h, [[0.4, 'obsidian']], 'ash'), road: 'path', blobs: [{ kind: 'demon-lava', count: 3, r: [1.1, 1.7] }], props: ['volcano:spire', 'volcano:deadtree', 'volcano:rock', 'volcano:sulfur', 'volcano:ashmound', 'volcano:vent'], propDensity: 0.045 },
+  volcano2: { ...LAVA, base: (h) => pick(h, [[0.45, 'demon-stone']], 'demon-ash'), road: 'demon-road', river: { width: 1.5 }, blobs: [{ kind: 'demon-lava', count: 1, r: [1.0, 1.5] }], props: ['volcano:rock', 'volcano:rock', 'volcano:ashmound', 'volcano:spire', 'volcano:deadtree'], propDensity: 0.045 },
+  volcano3: { ...LAVA, base: (h) => pick(h, [[0.55, 'obsidian']], 'ash'), road: 'demon-road', hub: 'demon-stone', river: { width: 1.8 }, blobs: [{ kind: 'demon-lava', count: 3, r: [1.2, 2.0] }], props: ['volcano:vent', 'volcano:spire', 'volcano:sulfur', 'volcano:rock', 'volcano:deadtree', 'volcano:ashmound'], propDensity: 0.045 },
+  // 폐광산 — 보랏빛 광맥 타일 대신 갱도 돌바닥 + 진흙 웅덩이 자국
+  mine: { painted: true, spread: 1.45, tone: 1.08, tex: { mine: 'cave', cave: 'mud' }, rank: { mine: 2 }, fog: [12, 9, 8], base: (h) => pick(h, [[0.32, 'cave']], 'mine'), road: 'dirt', props: ['mine:orevein', 'mine:beam', 'mine:cart', 'mine:rock', 'mine:orevein'], propDensity: 0.045 },
+  lavaCave: { ...LAVA, base: (h) => pick(h, [[0.35, 'cave']], 'obsidian'), road: 'demon-road', river: { width: 1.4 }, blobs: [{ kind: 'demon-lava', count: 4, r: [1.0, 1.7] }], props: ['volcano:spire', 'cave:crystal', 'volcano:rock', 'cave:stalagmite'], propDensity: 0.05, groundShade: { cave: 0.85 } },
+  demonCastle: { ...LAVA, base: (h) => pick(h, [[0.3, 'ash'], [0.62, 'demon-stone']], 'obsidian'), road: 'demon-road', blobs: [{ kind: 'demon-lava', count: 2, r: [1.0, 1.5] }], props: ['demonCastle:bones', 'demonCastle:banner', 'volcano:spire', 'volcano:rock', 'volcano:deadtree'], propDensity: 0.04 },
 } satisfies Record<string, Theme>
 
 export type ThemeId = keyof typeof THEMES
@@ -350,6 +414,39 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
     ...exitPortals.flatMap((x) => [{ ...x.cell, r: 2.6 }, { ...x.inner, r: 2.2 }]),
     ...(hubbed ? [{ ...center, r: 3.4 }] : []),
   ]
+  // 강(용암 강) — 한 변에서 맞은편 변으로 굽이친다. 입구·출구·갈림길을 가장 덜 건드리는 물길을 몇 번 뽑아 고른다.
+  //  길은 강보다 먼저 판정되므로 길이 지나는 곳은 자연 다리(식은 바위)가 되어 막히지 않는다.
+  const liquidTile: TileKind = LIQUID_TILE[theme.liquid ?? 'water']
+  const riverW = theme.river?.width ?? 0
+  const riverDist = new Float32Array(theme.river ? w * h : 0)
+  if (theme.river) {
+    let best: Pt[] = []
+    let bestBad = Infinity
+    for (let tries = 0; tries < 16 && bestBad > 0; tries++) {
+      const vertical = rand() < 0.5
+      const a = 0.2 + rand() * 0.6
+      const b = 0.2 + rand() * 0.6
+      const m1 = 0.15 + rand() * 0.7
+      const m2 = 0.15 + rand() * 0.7
+      const ctrl: Pt[] = vertical
+        ? [{ x: a * w, y: -1.5 }, { x: m1 * w, y: h * 0.36 }, { x: m2 * w, y: h * 0.66 }, { x: b * w, y: h + 1.5 }]
+        : [{ x: -1.5, y: a * h }, { x: w * 0.36, y: m1 * h }, { x: w * 0.66, y: m2 * h }, { x: w + 1.5, y: b * h }]
+      const pts = samplePath(ctrl, rand)
+      const bad = keepClear.filter((k) => pts.some((s) => Math.hypot(s.x - k.x, s.y - k.y) < k.r + riverW + 0.6)).length
+      if (bad < bestBad) {
+        bestBad = bad
+        best = pts
+      }
+    }
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        let d = 1e9
+        for (const s of best) d = Math.min(d, (s.x - x - 0.5) ** 2 + (s.y - y - 0.5) ** 2)
+        riverDist[y * w + x] = Math.sqrt(d)
+      }
+  }
+  const riverAt = (x: number, y: number) => riverW > 0 && riverDist[idx(x, y)] < riverW
+
   const blobs: (Pt & { r: number; kind: TileKind })[] = []
   for (const b of theme.blobs ?? []) {
     let placed = 0
@@ -358,6 +455,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       const x = r + 1 + rand() * (w - 2 * r - 2)
       const y = r + 1 + rand() * (h - 2 * r - 2)
       if (roadDist(x, y) < r + 1.2) continue
+      if (riverW && riverDist[idx(x, y)] < r + riverW + 1.5) continue
       if (keepClear.some((k) => Math.hypot(k.x - x, k.y - y) < k.r + r)) continue
       if (blobs.some((o) => Math.hypot(o.x - x, o.y - y) < o.r + r + 1)) continue
       blobs.push({ x, y, r, kind: b.kind })
@@ -389,6 +487,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       if (hubbed && theme.hub && Math.hypot(x - center.x, y - center.y) < 2.6) return theme.hub
       return theme.road
     }
+    if (riverAt(x, y)) return liquidTile
     for (const b of blobs) {
       const wob = Math.sin(Math.atan2(y - b.y, x - b.x) * 3 + b.x) * 0.35
       if (Math.hypot(x - b.x, y - b.y) < b.r + wob) return b.kind
@@ -426,7 +525,8 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
   let terrain: GameMap['terrain']
   const blockers: BuiltFieldMap['blockers'] = []
   if (theme.painted) {
-    const pools = classifyPools(w, h, (x, y) => tileAt(x + 0.5, y + 0.5) === 'water', theme.flatWater)
+    // 얼음은 땅 높이(밟고 지나감), 용암은 작아도 둑이 있다
+    const pools = classifyPools(w, h, (x, y) => tileAt(x + 0.5, y + 0.5) === liquidTile, theme.flatWater || theme.liquid === 'ice', theme.liquid === 'lava')
     const pool = (x: number, y: number) => {
       const cx = Math.floor(x)
       const cy = Math.floor(y)
@@ -434,8 +534,8 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
     }
     const nEdge = valueNoise(spec.seed)
     const nPatch = valueNoise(spec.seed + 99)
-    // 칸 중심 길 거리장을 겹선형 보간 — 칸 계단 없는 곡선 길
-    const roadF = (x: number, y: number) => {
+    // 칸 중심 거리장(길·강)을 겹선형 보간 — 칸 계단 없는 곡선
+    const bilerp = (field: Float32Array) => (x: number, y: number) => {
       const fx = Math.min(w - 1, Math.max(0, x - 0.5))
       const fy = Math.min(h - 1, Math.max(0, y - 0.5))
       const x0 = Math.floor(fx)
@@ -444,15 +544,18 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       const y1 = Math.min(h - 1, y0 + 1)
       const u = fx - x0
       const v = fy - y0
-      const a = nearRoadDist[y0 * w + x0] * (1 - u) + nearRoadDist[y0 * w + x1] * u
-      const b = nearRoadDist[y1 * w + x0] * (1 - u) + nearRoadDist[y1 * w + x1] * u
+      const a = field[y0 * w + x0] * (1 - u) + field[y0 * w + x1] * u
+      const b = field[y1 * w + x0] * (1 - u) + field[y1 * w + x1] * u
       return a * (1 - v) + b * v
     }
+    const roadF = bilerp(nearRoadDist)
+    const riverF = riverW ? bilerp(riverDist) : null
     const at = (x: number, y: number): TileKind => {
       const wob = (nEdge(x * 1.7, y * 1.7) - 0.5) * 0.55
       const inHub = hubbed && Math.hypot(x - center.x, y - center.y) + wob < 2.6
       if (inHub && theme.hub) return theme.hub
       if (inHub || roadF(x, y) + wob < ROAD_W) return theme.road
+      if (riverF && riverF(x, y) + wob * 1.4 < riverW) return liquidTile
       for (const b of blobs) {
         const d = Math.hypot(x - b.x, y - b.y)
         if (d > b.r + 0.36) continue // 흔들림(±0.35) 밖 — atan2 생략
@@ -464,7 +567,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       const n = nPatch(x * 0.28, y * 0.28) * 0.7 + nPatch(x * 0.9 + 50, y * 0.9) * 0.3
       return theme.base(Math.min(0.999, Math.max(0, (n - 0.5) * 2.4 + 0.5)), x, y)
     }
-    terrain = { at, pool, shade: theme.groundShade, tone: theme.tone }
+    terrain = { at, pool, shade: theme.groundShade, tone: theme.tone, tex: theme.tex, rank: theme.rank, liquid: theme.liquid, fog: theme.fog, weather: theme.weather }
     // 연못·바다는 못 들어간다 — 물 칸끼리 맞닿은 쪽은 틈 없이, 물가 쪽만 조금 안으로
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
@@ -529,18 +632,21 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       for (let tries = 0; tries < target * 30 && placed < target; tries++) {
         const x = 1 + drand() * (w - 2)
         const y = 1 + drand() * (h - 2)
-        if (tileAt(x, y) === 'water' || !free(x, y, 1.3)) continue
+        if (tileAt(x, y) === liquidTile || !free(x, y, 1.3)) continue
         deco(theme.decor[Math.floor(drand() * theme.decor.length)], x, y)
         placed++
       }
     }
     // 물가에 바짝 붙은 땅 소품(나무·표지판 등)은 꺼진 수면 위로 걸쳐 보이므로 뺀다
+    // 용암은 둑이 달아올라 보여 소품을 더 멀리(1칸) 떼어 놓는다
+    const nr = theme.liquid === 'lava' ? 1.8 : 1
     const nearWater = (x: number, y: number) =>
-      [[0.55, 0], [-0.55, 0], [0, 0.55], [0, -0.55], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4]].some(([dx, dy]) => at(x + dx, y + dy) === 'water')
+      [[0.55, 0], [-0.55, 0], [0, 0.55], [0, -0.55], [0.4, 0.4], [-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4]].some(([dx, dy]) => at(x + dx * nr, y + dy * nr) === liquidTile)
     for (let i = props.length - 1; i >= 0; i--) {
       const p = props[i]
-      if ((p.elev ?? 0) < 0 || tileAt(p.cell.x, p.cell.y) === 'water') continue
-      if (poolNear(p.cell.x, p.cell.y) && poolBlocks(poolNear(p.cell.x, p.cell.y)) && nearWater(p.cell.x, p.cell.y)) props.splice(i, 1)
+      if ((p.elev ?? 0) < 0 || tileAt(p.cell.x, p.cell.y) === liquidTile) continue
+      // 얼음 호수는 땅 높이지만 얼음 위에 나무가 박혀 보이지 않게 함께 정리
+      if (poolNear(p.cell.x, p.cell.y) && (poolBlocks(poolNear(p.cell.x, p.cell.y)) || theme.liquid === 'ice') && nearWater(p.cell.x, p.cell.y)) props.splice(i, 1)
     }
   }
 
@@ -548,7 +654,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
   if (theme.painted) {
     const kept: PropDef[] = []
     for (const p of props) {
-      const gap = p.kind === 'tree' ? 3.0 : 4.2
+      const gap = (p.kind === 'tree' ? 3.0 : 4.2) * (theme.spread ?? 1)
       if (kept.some((q) => q.sprite === p.sprite && Math.hypot(q.cell.x - p.cell.x, q.cell.y - p.cell.y) < gap)) continue
       kept.push(p)
     }

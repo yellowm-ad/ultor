@@ -154,3 +154,33 @@
 .iso-sea .sea-glint-b { animation: w-drift-b 46s steps(128) infinite; opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) { .iso-sea .sea-glint { animation: none; } }
 .iso-sea .canal-glint-a { animation: w-drift-c 30s steps(128) infinite; }
+
+/* 용암·얼음 수면(components/game/iso-terrain.tsx, 2026-10-07) — 용암 결(오른쪽 위로 기운 띠)을 따라 흐른다. 바탕 < 껍질 < 열기 줄 순으로 빠르게 */
+@keyframes w-drift-lava { from { transform: translate(0, 0); } to { transform: translate(256px, -128px); } }
+@keyframes lava-pulse { from { opacity: 0.45; } to { opacity: 0.95; } }
+.iso-lava .lava-base { opacity: 1; animation: w-drift-lava 64s steps(256) infinite; }
+.iso-lava .lava-crust { opacity: 1; animation: w-drift-lava 40s steps(256) infinite; }
+.iso-lava .lava-glint { animation: w-drift-lava 22s steps(256) infinite, lava-pulse 2.6s ease-in-out infinite alternate; }
+.iso-sea .ice-glint { opacity: 0.6; animation: w-drift-a 140s steps(128) infinite; }
+
+/* 날씨 층(화면 고정, components/game/weather-layer.tsx) — 256px 타일을 한 주기만큼 옮겨 끊김 없이 되풀이. transform·opacity 만 */
+.weather { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.weather > div { position: absolute; inset: 0; }
+.weather .wx-tile { position: absolute; left: -256px; top: -256px; right: -256px; bottom: -256px; background-repeat: repeat; background-size: 256px 256px; image-rendering: pixelated; will-change: transform; }
+@keyframes wx-fall { from { transform: translate(0, 0); } to { transform: translate(0, 256px); } }
+@keyframes wx-rise { from { transform: translate(0, 0); } to { transform: translate(0, -256px); } }
+@keyframes wx-rain { from { transform: translate(0, 0); } to { transform: translate(-256px, 512px); } }
+@keyframes wx-sway { from { transform: translateX(-10px); } to { transform: translateX(10px); } }
+@keyframes wx-flash { 0%, 90%, 93%, 95.5%, 100% { opacity: 0; } 91% { opacity: 0.5; } 94.2% { opacity: 0.32; } }
+.weather .wx-sway { animation: wx-sway 5.5s ease-in-out infinite alternate; will-change: transform; }
+.weather .wx-sway-slow { animation: wx-sway 8s ease-in-out infinite alternate-reverse; will-change: transform; }
+.weather .wx-snow-far { animation: wx-fall 19s linear infinite; opacity: 0.75; }
+.weather .wx-snow-near { animation: wx-fall 10s linear infinite; opacity: 0.9; }
+.weather .wx-ember { animation: wx-rise 14s linear infinite; opacity: 0.75; }
+.weather .wx-ember-b { animation: wx-rise 9s linear infinite; opacity: 0.5; }
+.weather .wx-rain { animation: wx-rain 1.3s linear infinite; opacity: 0.38; }
+.weather .wx-flash { background: rgba(220, 230, 255, 1); mix-blend-mode: soft-light; opacity: 0; animation: wx-flash 11s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .iso-lava .lava-base, .iso-lava .lava-crust, .iso-lava .lava-glint, .iso-sea .ice-glint { animation: none; }
+  .weather .wx-tile, .weather .wx-sway, .weather .wx-sway-slow, .weather .wx-flash { animation: none; }
+}

@@ -262,6 +262,8 @@ export function gatherNodesForMap(map: GameMap): GatherNode[] {
     const y = 1.5 + rand() * (map.grid.h - 3)
     const tile = map.tileAt?.(x, y)
     if (tile === 'water' || tile === 'demon-lava' || blocked(x, y)) continue
+    // 자연 지면 용암 맵 — 용암 둑에서 한 칸 넘게 떨어뜨린다(그림이 둑 위로 걸쳐 용암 위에 놓인 듯 보였다)
+    if (map.terrain?.liquid === 'lava' && [[1.3, 0], [-1.3, 0], [0, 1.3], [0, -1.3], [1, 1], [-1, -1], [1, -1], [-1, 1]].some(([dx, dy]) => map.terrain!.pool(x + dx, y + dy))) continue
     if (Math.hypot(x - map.spawn.x, y - map.spawn.y) < 2.5) continue
     if (map.portals.some((p) => Math.hypot(p.cell.x - x, p.cell.y - y) < 2)) continue
     if (nodes.some((n) => Math.hypot(n.cell.x - x, n.cell.y - y) < 3)) continue
