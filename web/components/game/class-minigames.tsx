@@ -24,6 +24,11 @@ import {
   RHYTHM_KEYS,
   RHYTHM_STYLE_META,
   RHYTHM_WINDOWS,
+  RUNE_PAIRS,
+  matchPairCount,
+  sigilNodes,
+  sigilStartLength,
+  SORT_SETS,
   type QuizCategory,
   type RhythmNote,
 } from '@/lib/class-content'
@@ -54,10 +59,11 @@ function shuffle<T>(arr: T[], rand: () => number): T[] {
 }
 
 /**
- * 라운드 수 — 빨리 끝나는 게임 5라운드, 한 판이 긴 게임 3라운드.
+ * 라운드 수 — 미니게임 한 판이 대략 2~3분(2026-10-07: 퀴즈 4문제×3라운드가 길다는 피드백으로 단축).
+ * 시험(중간·기말)은 게임을 2~3개 잇달아 하므로 게임마다 1라운드만 — 시험 전체가 3~4분.
  * 최종 점수 = 라운드 평균, 판정 라벨은 평균 점수로 다시 매긴다.
  */
-export const MINIGAME_ROUNDS: Record<MiniGameType, number> = { chant: 5, draw: 5, quiz: 3, rhythm: 3, alchemy: 3 }
+export const MINIGAME_ROUNDS: Record<MiniGameType, number> = { chant: 3, draw: 3, quiz: 2, rhythm: 2, alchemy: 2, match: 2, sigil: 2, sort: 2 }
 
 function roundLabel(type: MiniGameType, score: number): string {
   if (type === 'rhythm') return score >= 95 ? 'PERFECT' : score >= 80 ? 'GREAT' : score >= 60 ? 'GOOD' : 'MISS'
@@ -65,8 +71,8 @@ function roundLabel(type: MiniGameType, score: number): string {
   return score >= 90 ? 'PERFECT' : score >= 75 ? 'GREAT' : score >= 50 ? 'PASS' : 'FAIL'
 }
 
-export function MiniGame({ type, seed, onDone, ...p }: MiniGameProps & { type: MiniGameType }) {
-  const total = MINIGAME_ROUNDS[type]
+export function MiniGame({ type, seed, onDone, exam, ...p }: MiniGameProps & { type: MiniGameType; exam?: boolean }) {
+  const total = exam ? 1 : MINIGAME_ROUNDS[type]
   const [round, setRound] = useState(0)
   const [results, setResults] = useState<{ score: number; label: string }[]>([])
   const [between, setBetween] = useState<{ score: number; label: string } | null>(null)
@@ -128,6 +134,12 @@ function SingleGame({ type, ...p }: MiniGameProps & { type: MiniGameType }) {
       return <DrawGame {...p} />
     case 'alchemy':
       return <AlchemyGame {...p} />
+    case 'match':
+      return <MatchGame {...p} />
+    case 'sigil':
+      return <SigilGame {...p} />
+    case 'sort':
+      return <SortGame {...p} />
   }
 }
 
@@ -146,11 +158,15 @@ const FIELD_QUIZ_CATS: Record<MasteryField, QuizCategory[]> = {
   magic: ['magic', 'magic', 'world', 'math', 'manners'],
   combat: ['magic', 'world', 'nature', 'ethics', 'math'],
   life: ['nature', 'nature', 'math', 'time', 'ethics'],
-  craft: ['math', 'math', 'magic', 'manners', 'time'],
+  craft: ['math', 'alchemy', 'magic', 'manners', 'time'],
   liberal: ['world', 'world', 'time', 'ethics', 'manners'],
 }
-const QUIZ_COUNT = 4 // 라운드당(3라운드 = 12문제)
-const QUIZ_TIME = 15
+// 2026-10-07 — 몬스터 생태·연금 문제를 계열별로 섞는다
+FIELD_QUIZ_CATS.combat.push('monster', 'monster')
+FIELD_QUIZ_CATS.life.push('alchemy', 'monster')
+FIELD_QUIZ_CATS.magic.push('monster')
+const QUIZ_COUNT = 4 // 라운드당(2라운드 = 8문제)
+const QUIZ_TIME = 12
 
 function QuizGame({ seed, year, field, onDone }: MiniGameProps) {
   const questions = useMemo(() => {
@@ -208,7 +224,7 @@ function QuizGame({ seed, year, field, onDone }: MiniGameProps) {
 
   if (finished) {
     const score = Math.min(100, Math.round((correct / questions.length) * 92 + (timeBonus / (QUIZ_TIME * questions.length)) * 8))
-    const label = correct === questions.length ? 'PERFECT' : correct >= 4 ? 'GREAT' : correct >= 3 ? 'PASS' : 'FAIL'
+    const label = correct === questions.length ? 'PERFECT' : correct >= questions.length - 1 ? 'GREAT' : correct >= Math.ceil(questions.length / 2) ? 'PASS' : 'FAIL'
     return (
       <div className="mg-board flex flex-col items-center gap-2 p-6 text-center">
         <div className="mg-judge" data-j={label}>{label}</div>
@@ -609,7 +625,11 @@ function DrawGame({ seed, onDone, onGrant }: MiniGameProps) {
 // 5. 시약 합성 — 재료 2~4개 · 순서 · 온도 · 마나
 // ─────────────────────────────────────────────────────────────────────────────
 function AlchemyGame({ seed, onDone, onGrant }: MiniGameProps) {
-  const recipe = useMemo(() => ALCHEMY_RECIPES[Math.floor(mulberry32(seed ^ 0xa1c3)() * ALCHEMY_RECIPES.length)], [seed])
+  const recipe = useMemo(() => {
+    // 보상 아이템이 실제로 있는 레시피만
+    const valid = ALCHEMY_RECIPES.filter((r) => itemById(r.rewardItemId))
+    return valid[Math.floor(mulberry32(seed ^ 0xa1c3)() * valid.length)]
+  }, [seed])
   const [pot, setPot] = useState<string[]>([])
   const [temp, setTemp] = useState(50)
   const [mana, setMana] = useState(50)
@@ -690,6 +710,319 @@ function AlchemyGame({ seed, onDone, onGrant }: MiniGameProps) {
           <DoneButton label="결과 제출" onClick={() => onDone(result.score, result.label)} />
         </div>
       )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. 룬 짝맞추기(2026-10-07) — 처음 1.6초 동안 전부 보여 준 뒤 뒤집는다. 두 장씩 열어 같은 룬을 찾는다
+// ─────────────────────────────────────────────────────────────────────────────
+function MatchGame({ seed, year, onDone }: MiniGameProps) {
+  const cards = useMemo(() => {
+    const rand = mulberry32(seed ^ 0x3a7c)
+    const pairs = shuffle(RUNE_PAIRS, rand).slice(0, matchPairCount(year))
+    return shuffle(pairs.flatMap((p, i) => [{ ...p, pair: i, key: `${i}a` }, { ...p, pair: i, key: `${i}b` }]), rand)
+  }, [seed, year])
+  const [peek, setPeek] = useState(true)
+  const [open, setOpen] = useState<number[]>([])
+  const [found, setFound] = useState<Set<number>>(new Set())
+  const [mistakes, setMistakes] = useState(0)
+  const startRef = useRef(0)
+  const [elapsed, setElapsed] = useState(0)
+  const pairCount = cards.length / 2
+  const done = found.size === pairCount
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setPeek(false)
+      startRef.current = performance.now()
+    }, 1600)
+    return () => clearTimeout(t)
+  }, [])
+  useEffect(() => {
+    if (open.length !== 2) return
+    const [a, b] = open
+    if (cards[a].pair === cards[b].pair) {
+      const next = new Set(found).add(cards[a].pair)
+      setFound(next)
+      setOpen([])
+      if (next.size === pairCount) setElapsed((performance.now() - startRef.current) / 1000)
+      return
+    }
+    setMistakes((m) => m + 1)
+    const t = setTimeout(() => setOpen([]), 650)
+    return () => clearTimeout(t)
+  }, [open, cards, found, pairCount])
+
+  function flip(i: number) {
+    if (peek || done || open.length >= 2 || open.includes(i) || found.has(cards[i].pair)) return
+    setOpen((o) => [...o, i])
+  }
+
+  if (done) {
+    // 실수는 짝 수의 절반까지 봐주고, 시간은 짝당 5초 넘게 쓴 만큼 깎는다
+    const score = Math.max(0, Math.min(100, Math.round(100 - Math.max(0, mistakes - pairCount / 2) * 7 - Math.max(0, elapsed - pairCount * 5) * 0.8)))
+    const label = roundLabel('match', score)
+    return (
+      <div className="mg-board flex flex-col items-center gap-2 p-6 text-center">
+        <div className="mg-judge" data-j={label}>{label}</div>
+        <div className="text-xs text-[#f3e6c4]">
+          {pairCount}쌍 · 실수 {mistakes}회 · {elapsed.toFixed(1)}초
+        </div>
+        <DoneButton label="룬 정리 완료" onClick={() => onDone(score, label)} />
+      </div>
+    )
+  }
+  return (
+    <div className="mg-board flex flex-col gap-3 p-5">
+      <div className="flex justify-between text-xs text-[#d8c79c]">
+        <span>{peek ? '룬의 자리를 기억하세요…' : '같은 룬 두 장을 찾으세요'}</span>
+        <span>
+          찾은 짝 {found.size}/{pairCount} · 실수 {mistakes}
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-2 self-center">
+        {cards.map((c, i) => {
+          const shown = peek || open.includes(i) || found.has(c.pair)
+          return (
+            <button key={c.key} onClick={() => flip(i)} className={`mg-card ${shown ? 'mg-card-up' : ''} ${found.has(c.pair) ? 'mg-card-done' : ''}`} style={{ ['--rune' as string]: c.color }}>
+              {shown ? (
+                <>
+                  <span className="mg-card-glyph">{c.glyph}</span>
+                  <span className="text-[10px] opacity-80">{c.name}</span>
+                </>
+              ) : (
+                <span className="mg-card-back">✦</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. 마법진 따라 그리기(2026-10-07) — 꼭짓점이 빛나는 순서를 보고 그대로 잇는다. 한 라운드 = 시도 3번(성공할 때마다 한 획 길어짐)
+// ─────────────────────────────────────────────────────────────────────────────
+const SIGIL_TRIES = 3
+function SigilGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
+  const n = sigilNodes(year)
+  const color = RHYTHM_STYLE_META[style].color
+  const rand = useMemo(() => mulberry32(seed ^ 0x51c1), [seed])
+  const makeSeq = (len: number) => {
+    const out: number[] = []
+    while (out.length < len) {
+      const v = Math.floor(rand() * n)
+      if (v !== out[out.length - 1]) out.push(v)
+    }
+    return out
+  }
+  const baseLen = sigilStartLength(year) + round
+  const [tryNo, setTryNo] = useState(0)
+  const [len, setLen] = useState(baseLen)
+  const [seq, setSeq] = useState<number[]>(() => makeSeq(baseLen))
+  const [phase, setPhase] = useState<'show' | 'input' | 'ok' | 'fail' | 'done'>('show')
+  const [lit, setLit] = useState(-1)
+  const [input, setInput] = useState<number[]>([])
+  const [scores, setScores] = useState<number[]>([])
+
+  // 순서 보여 주기
+  useEffect(() => {
+    if (phase !== 'show') return
+    const timers: number[] = []
+    seq.forEach((v, i) => {
+      timers.push(window.setTimeout(() => setLit(v), 500 + i * 620))
+      timers.push(window.setTimeout(() => setLit(-1), 500 + i * 620 + 420))
+    })
+    timers.push(window.setTimeout(() => setPhase('input'), 500 + seq.length * 620))
+    return () => timers.forEach((t) => clearTimeout(t))
+  }, [phase, seq])
+
+  // 성공/실패 표시 뒤 다음 시도
+  useEffect(() => {
+    if (phase !== 'ok' && phase !== 'fail') return
+    const t = setTimeout(() => {
+      const nextTry = tryNo + 1
+      if (nextTry >= SIGIL_TRIES) {
+        setPhase('done')
+        return
+      }
+      const nl = phase === 'ok' ? len + 1 : len
+      setTryNo(nextTry)
+      setLen(nl)
+      setSeq(makeSeq(nl))
+      setInput([])
+      setPhase('show')
+    }, 900)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
+  function press(i: number) {
+    if (phase !== 'input') return
+    const next = [...input, i]
+    setInput(next)
+    setLit(i)
+    window.setTimeout(() => setLit((l) => (l === i ? -1 : l)), 180)
+    if (seq[next.length - 1] !== i) {
+      // 틀린 곳까지 맞힌 비율만큼 부분 점수
+      setScores((s) => [...s, Math.round(((next.length - 1) / seq.length) * 60)])
+      setPhase('fail')
+    } else if (next.length === seq.length) {
+      setScores((s) => [...s, 100])
+      setPhase('ok')
+    }
+  }
+
+  const R = 92
+  const pts = Array.from({ length: n }, (_, i) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2
+    return { x: 120 + Math.cos(a) * R, y: 120 + Math.sin(a) * R }
+  })
+  if (phase === 'done') {
+    const score = Math.round(scores.reduce((a, b) => a + b, 0) / Math.max(1, scores.length))
+    const label = roundLabel('sigil', score)
+    return (
+      <div className="mg-board flex flex-col items-center gap-2 p-6 text-center">
+        <div className="mg-judge" data-j={label}>{label}</div>
+        <div className="text-xs text-[#f3e6c4]">
+          마법진 {SIGIL_TRIES}번 중 {scores.filter((s) => s === 100).length}번 완성 · 최장 {len}획
+        </div>
+        <DoneButton label="마법진 완성" onClick={() => onDone(score, label)} />
+      </div>
+    )
+  }
+  return (
+    <div className="mg-board flex flex-col items-center gap-2 p-5">
+      <div className="flex w-full justify-between text-xs text-[#d8c79c]">
+        <span>{phase === 'show' ? '빛나는 순서를 기억하세요' : phase === 'input' ? '같은 순서로 꼭짓점을 누르세요' : phase === 'ok' ? '술식 완성!' : '술식이 흐트러졌다…'}</span>
+        <span>
+          시도 {tryNo + 1}/{SIGIL_TRIES} · {seq.length}획
+        </span>
+      </div>
+      <svg width={240} height={240} className={phase === 'fail' ? 'mg-shake' : ''}>
+        <circle cx={120} cy={120} r={R + 14} fill="none" stroke={color} strokeOpacity={0.35} strokeWidth={2} />
+        <circle cx={120} cy={120} r={R - 26} fill="none" stroke={color} strokeOpacity={0.2} strokeWidth={1} strokeDasharray="4 4" />
+        {/* 지금까지 이은 선 */}
+        {input.slice(1).map((v, k) => (
+          <line key={k} x1={pts[input[k]].x} y1={pts[input[k]].y} x2={pts[v].x} y2={pts[v].y} stroke={phase === 'fail' && k === input.length - 2 ? '#e08a8a' : color} strokeWidth={3} strokeLinecap="round" />
+        ))}
+        {pts.map((p, i) => (
+          <g key={i} onClick={() => press(i)} style={{ cursor: phase === 'input' ? 'pointer' : 'default' }}>
+            <circle cx={p.x} cy={p.y} r={17} fill={lit === i ? color : '#2b2340'} stroke={color} strokeWidth={2} style={{ filter: lit === i ? `drop-shadow(0 0 8px ${color})` : undefined, transition: 'fill 0.12s' }} />
+            <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={11} fill={lit === i ? '#2a1d10' : '#d8c79c'} pointerEvents="none">
+              {i + 1}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div className="flex gap-1">
+        {Array.from({ length: SIGIL_TRIES }).map((_, i) => (
+          <span key={i} className={`mg-round-pip ${scores[i] === 100 ? 'done' : scores[i] == null && i === tryNo ? 'now' : ''}`}>
+            {scores[i] != null ? (scores[i] === 100 ? '✓' : '✗') : '·'}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. 분류 실습(2026-10-07) — 카드가 한 장씩 나온다. ←/A 왼쪽 · →/D 오른쪽(또는 바구니 클릭). 카드당 4.5초
+// ─────────────────────────────────────────────────────────────────────────────
+const SORT_CARDS = 8
+const SORT_TIME = 4500
+function SortGame({ seed, year, field, onDone }: MiniGameProps) {
+  const { set, cards } = useMemo(() => {
+    const rand = mulberry32(seed ^ 0x5047)
+    const pool = SORT_SETS.filter((s) => s.field.includes(field) && (s.minYear ?? 1) <= year)
+    const set = shuffle(pool.length ? pool : SORT_SETS, rand)[0]
+    return { set, cards: shuffle(set.items, rand).slice(0, SORT_CARDS) }
+  }, [seed, year, field])
+  const [idx, setIdx] = useState(0)
+  const [results, setResults] = useState<{ ok: boolean; ms: number }[]>([])
+  const [flash, setFlash] = useState<{ side: 0 | 1; ok: boolean } | null>(null)
+  const [shownAt, setShownAt] = useState(() => performance.now())
+  const [now, setNow] = useState(() => performance.now())
+  const done = idx >= cards.length
+
+  function answer(side: 0 | 1 | null) {
+    if (done || flash) return
+    const ok = side != null && side === cards[idx][1]
+    setResults((r) => [...r, { ok, ms: performance.now() - shownAt }])
+    setFlash({ side: side ?? (cards[idx][1] === 0 ? 1 : 0), ok })
+    window.setTimeout(() => {
+      setFlash(null)
+      setIdx((i) => i + 1)
+      setShownAt(performance.now())
+    }, 420)
+  }
+
+  // 남은 시간 표시 + 시간 초과(오답 처리)
+  useEffect(() => {
+    if (done || flash) return
+    const id = window.setInterval(() => {
+      const t = performance.now()
+      setNow(t)
+      if (t - shownAt >= SORT_TIME) answer(null)
+    }, 100)
+    return () => clearInterval(id)
+  })
+
+  // ←/A · →/D — 이동 키로 새지 않게 캡처 단계에서 가로챈다
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const side = e.code === 'ArrowLeft' || e.code === 'KeyA' ? 0 : e.code === 'ArrowRight' || e.code === 'KeyD' ? 1 : null
+      if (side == null) return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (!e.repeat) answer(side)
+    }
+    window.addEventListener('keydown', down, true)
+    return () => window.removeEventListener('keydown', down, true)
+  })
+
+  if (done) {
+    const right = results.filter((r) => r.ok).length
+    const fast = results.filter((r) => r.ok && r.ms < 2000).length
+    const score = Math.min(100, Math.round((right / cards.length) * 90 + (fast / cards.length) * 10))
+    const label = roundLabel('sort', score)
+    return (
+      <div className="mg-board flex flex-col items-center gap-2 p-6 text-center">
+        <div className="mg-judge" data-j={label}>{label}</div>
+        <div className="text-xs text-[#f3e6c4]">
+          {set.title} — {cards.length}장 중 {right}장 정답 · 빠른 판단 {fast}번
+        </div>
+        <DoneButton label="분류 제출" onClick={() => onDone(score, label)} />
+      </div>
+    )
+  }
+  const left = Math.max(0, SORT_TIME - (now - shownAt))
+  return (
+    <div className="mg-board flex flex-col gap-3 p-5">
+      <div className="flex justify-between text-xs text-[#d8c79c]">
+        <span>{set.title}</span>
+        <span>
+          {idx + 1}/{cards.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <button onClick={() => answer(0)} className={`mg-bin ${flash?.side === 0 ? (flash.ok ? 'mg-bin-ok' : 'mg-bin-bad') : ''}`}>
+          <span className="text-[10px] opacity-70">← A</span>
+          <span>{set.left}</span>
+        </button>
+        <div key={idx} className={`mg-sort-card ${flash ? (flash.ok ? 'mg-sort-ok' : 'mg-sort-bad') : ''}`}>
+          {cards[idx][0]}
+        </div>
+        <button onClick={() => answer(1)} className={`mg-bin ${flash?.side === 1 ? (flash.ok ? 'mg-bin-ok' : 'mg-bin-bad') : ''}`}>
+          <span className="text-[10px] opacity-70">D →</span>
+          <span>{set.right}</span>
+        </button>
+      </div>
+      <div className="mg-progress">
+        <div style={{ width: `${(left / SORT_TIME) * 100}%`, transition: 'width 0.1s linear' }} />
+      </div>
     </div>
   )
 }

@@ -115,6 +115,7 @@ export function ClassSceneOverlay() {
               style={meta.rhythm}
               field={meta.field}
               courseId={sc.courseId}
+              exam={isExam}
               onGrant={onGrant}
               onDone={(score, label) => dispatch({ type: 'CLASS_GAME_DONE', score, label })}
             />

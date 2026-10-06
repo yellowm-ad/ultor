@@ -14,6 +14,7 @@ import type { GameState, TermType } from '@/lib/types'
 import { calendarInfo, globalWeekOf, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import type { RegionId } from '@/lib/regions'
 import { SCRIPT_BEATS } from '@/lib/story-script'
+import { episodeQuestId, isStoryEpisodeWeek, STORY_EPISODES } from '@/lib/story-episodes'
 
 export interface StoryArc {
   id: string
@@ -198,7 +199,8 @@ function placeholderBeats(): StoryBeat[] {
   const out: StoryBeat[] = []
   for (let gw = 3; gw <= TOTAL_WEEKS; gw += 3) {
     const info = calendarInfo(gw)
-    if (info.isPostGame || taken.has(gw) || STORY_CYCLE[gw]) continue
+    // 스토리 주간 에피소드가 있는 주는 결말 장면이 대신한다
+    if (info.isPostGame || taken.has(gw) || STORY_CYCLE[gw] || isStoryEpisodeWeek(gw)) continue
     const arc = arcForWeek(gw)
     const intensity = SLOT_INTENSITY[info.week] ?? 'LOW'
     out.push({
@@ -212,8 +214,40 @@ function placeholderBeats(): StoryBeat[] {
   return out
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 3주 스토리 주간 에피소드(lib/story-episodes.ts, 2026-10-07) — 주 시작 오프닝 + 미션 보상 수령 시 결말
+// ─────────────────────────────────────────────────────────────────────────────
+function episodeBeats(): StoryBeat[] {
+  return STORY_EPISODES.flatMap((ep) => {
+    const arc = arcForWeek(ep.week)
+    const info = calendarInfo(ep.week)
+    return [
+      {
+        id: `EP_${ep.week}_OPEN`,
+        arcId: arc.id,
+        title: `스토리 ${ep.no}화 — ${ep.title}`,
+        trigger: { type: 'WEEK_START', week: ep.week },
+        lines: [
+          { speaker: '', text: `${info.year}학년 ${info.isVacation ? '방학' : '학기'} ${info.week}주차 · 스토리 ${ep.no}화 「${ep.title}」${info.isVacation ? '' : ' — 이번 주는 수업이 없다.'}` },
+          ...ep.brief,
+          { speaker: '', text: `이번 주 필수 미션: ${ep.objectives.map((o) => o.label).join(' · ')}  (학사 수첩 J)` },
+        ],
+      },
+      {
+        id: `EP_${ep.week}_END`,
+        arcId: arc.id,
+        title: ep.title,
+        trigger: { type: 'QUEST_CLAIMED', templateId: episodeQuestId(ep.week) },
+        setFlags: [`EP_${ep.week}_DONE`, ...ep.setFlags],
+        lines: ep.outro,
+        ...(ep.choices.length ? { choices: ep.choices } : {}),
+      },
+    ] satisfies StoryBeat[]
+  })
+}
+
 // 대화집 비트가 먼저(P-01 입학식 → 조작 안내, 1-01 첫 실습 → 채집 안내 순)
-export const STORY_BEATS: StoryBeat[] = [...SLOTTED_SCRIPT, ...ONBOARDING_BEATS, ...placeholderBeats()]
+export const STORY_BEATS: StoryBeat[] = [...SLOTTED_SCRIPT, ...ONBOARDING_BEATS, ...episodeBeats(), ...placeholderBeats()]
 
 /**
  * 주차별 필수(MAIN) 퀘스트 — globalWeek → quests.ts 의 템플릿 id.

@@ -5,6 +5,7 @@ import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
 import { MONSTERS } from '@/lib/mock-data'
 import { DiamondMark } from '@/components/game/ui-motifs'
+import { mapThumbUrl } from '@/components/game/map-thumb'
 
 const MAX = 148
 
@@ -68,6 +69,8 @@ export function Minimap() {
   }, [map, w, h])
 
   if (state.screen !== 'world') return null
+  // 야생맵은 구역이 없어 비어 보였다 — 지형 썸네일(길·물·용암)을 바탕에 깐다
+  const thumb = map.zones.length === 0 ? mapThumbUrl(map) : null
 
   // 원형 미니맵 테두리에 마커가 반쯤 가려지지 않도록 안쪽으로 살짝 여백을 둔다(지도 끝 근처를 걸을 때 대비).
   const MARK_PAD = 6
@@ -85,7 +88,7 @@ export function Minimap() {
         style={{ cursor: 'pointer' }}
         onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'worldmap' })}
       >
-        전체 지도 보기
+        전체 지도 · 텔레포트
       </div>
       <div
         className="relative shrink-0 cursor-pointer overflow-hidden rounded-full border border-gold/70 bg-[#100c08] shadow-[0_0_0_2px_rgba(0,0,0,0.5),0_6px_18px_rgba(0,0,0,0.5),0_0_14px_rgba(240,217,153,0.25)] pointer-events-auto"
@@ -94,7 +97,7 @@ export function Minimap() {
       >
         <div
           className="absolute overflow-hidden"
-          style={{ width: w, height: h, left: (diameter - w) / 2, top: (diameter - h) / 2 }}
+          style={{ width: w, height: h, left: (diameter - w) / 2, top: (diameter - h) / 2, background: thumb ? `url(${thumb}) 0 0 / 100% 100%` : undefined, imageRendering: 'pixelated' }}
         >
           {/* 구역 블록 */}
           {staticMarks.zones}

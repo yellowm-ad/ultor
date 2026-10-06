@@ -33,7 +33,7 @@ export function JournalScreen() {
   const [tab, setTab] = useState<Tab>('week')
   if (state.screen !== 'journal') return null
   const close = () => dispatch({ type: 'SET_SCREEN', screen: 'world' })
-  const { optionalDone } = weekCompletion(state.weekly)
+  const { optionalDone, requiredOptional } = weekCompletion(state.weekly)
   const claimable = state.weekly.quests.filter((q) => q.status === 'complete').length
 
   return (
@@ -52,7 +52,7 @@ export function JournalScreen() {
             {calendarLabel(state.calendar)}
           </span>
           <HeadPill icon={menuIcon('badge-side')}>
-            외부활동 <b>{optionalDone}</b>/{REQUIRED_OPTIONAL}
+            외부활동 <b>{optionalDone}</b>/{requiredOptional}
           </HeadPill>
         </>
       }
@@ -159,7 +159,7 @@ function WeekTab() {
   const { state, dispatch } = useGame()
   const [filter, setFilter] = useState<Filter>('all')
   const [selKey, setSelKey] = useState<string | null>(null)
-  const { classRequired, classDone, mainDone, optionalDone, canEnd } = weekCompletion(state.weekly)
+  const { classRequired, classDone, mainDone, optionalDone, requiredOptional, storyWeek: episodeWeek, canEnd } = weekCompletion(state.weekly)
   const mult = yearRewardMult(state.calendar.globalWeek)
   const wc = classForWeek(state.calendar.globalWeek)
   const meta = wc ? classMetaFor(wc.courseId) : null
@@ -191,7 +191,7 @@ function WeekTab() {
       kind: main ? 'main' : 'side',
       title: t.title,
       desc: t.description,
-      pill: main ? '메인 스토리' : `외부활동 · ${SLOT_LABEL[q.slot]}`,
+      pill: main ? (episodeWeek ? '스토리 주간' : '메인 스토리') : `외부활동 · ${SLOT_LABEL[q.slot]}`,
       status: q.status,
       progress: q.status === 'offered' ? '후보' : q.status === 'claimed' ? '완료' : `${p}/${total}`,
       q,
@@ -244,10 +244,10 @@ function WeekTab() {
         </div>
         <div className="gw-foot">
           <span>
-            수업 {classRequired ? (classDone ? '✔' : '✘') : '—'} · 외부활동 {optionalDone}/{REQUIRED_OPTIONAL} (수락 {accepted}/{REQUIRED_OPTIONAL})
+            {episodeWeek ? '스토리 주간(수업 없음)' : `수업 ${classRequired ? (classDone ? '✔' : '✘') : '—'}`} · 외부활동 {optionalDone}/{requiredOptional} (수락 {accepted}/{REQUIRED_OPTIONAL})
             {entries.some((e) => e.kind === 'main') && ` · 스토리 ${mainDone ? '✔' : '✘'}`}
             {isRestWeek(state.calendar.globalWeek) && ' · 쉬어가는 주'}
-            {storyWeek && <span className="text-[#9a6a1c]"> · 마치면 메인스토리 진행</span>}
+            {storyWeek && !episodeWeek && <span className="text-[#9a6a1c]"> · 마치면 메인스토리 진행</span>}
           </span>
           <button type="button" className="gw-btn is-gold is-sm" disabled={!canEnd} onClick={() => dispatch({ type: 'END_WEEK' })}>
             이번 주 마치기

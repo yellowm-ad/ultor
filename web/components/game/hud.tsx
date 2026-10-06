@@ -91,7 +91,10 @@ function WeekTracker() {
   const { state, dispatch } = useGame()
   const main = state.weekly.quests.find((q) => q.slot === 'MAIN')
   const mainT = main ? questTemplateById(main.templateId) : undefined
-  const { canEnd, optionalDone } = weekCompletion(state.weekly)
+  const { canEnd, optionalDone, requiredOptional } = weekCompletion(state.weekly)
+  // 필수 미션 진행도 — 목표가 여러 개면 합산
+  const mainP = mainT && main ? mainT.objectives.reduce((a, ob, i) => a + Math.min(main.progress[i] ?? 0, ob.count), 0) : 0
+  const mainTotal = mainT ? mainT.objectives.reduce((a, ob) => a + ob.count, 0) : 1
   const ready = state.weekly.quests.some((q) => q.status === 'complete')
   const meal = state.mealBuff ? itemById(state.mealBuff.itemId) : undefined
   return (
@@ -105,8 +108,8 @@ function WeekTracker() {
       {mainT && main && (
         <span className="hud-clean-text truncate text-[10px] text-white/80">
           ★ {mainT.title}{' '}
-          {main.status === 'claimed' ? '✔' : main.status === 'complete' ? '(보상 대기)' : `${main.progress[0] ?? 0}/${mainT.objectives[0]?.count ?? 1}`}
-          <span className="ml-1 text-white/50">· 선택 {optionalDone}/{REQUIRED_OPTIONAL}</span>
+          {main.status === 'claimed' ? '✔' : main.status === 'complete' ? '(보상 대기)' : `${mainP}/${mainTotal}`}
+          <span className="ml-1 text-white/50">· 선택 {optionalDone}/{requiredOptional}</span>
         </span>
       )}
       {(ready || canEnd) && (

@@ -2,7 +2,8 @@
 
 // ============================================================================
 // 전체 지도 — 미니맵을 눌러 여는 확대판. 현재 맵 구조(구역+포탈+내 위치)를 크게 보여주고,
-// 좌측 목록에서 다른 지역을 골라 그 맵의 구역 배치도 미리 볼 수 있다(이동 없이 조회만).
+// 좌측 목록에서 다른 지역을 골라 그 맵의 구역 배치를 미리 볼 수 있다.
+// 2026-10-07: 가 본 맵은 [텔레포트]로 바로 이동(lib/teleport.ts). 야생맵은 지형 썸네일(길·물·용암)을 바탕에 깐다.
 // ============================================================================
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
@@ -10,6 +11,8 @@ import { MAPS } from '@/lib/maps'
 import type { MapId } from '@/lib/types'
 import { REGIONS } from '@/lib/regions'
 import { Modal } from '@/components/ui/modal'
+import { teleportBlockReason, teleportTargets } from '@/lib/teleport'
+import { mapThumbUrl } from '@/components/game/map-thumb'
 
 // 지역 목록은 lib/regions.ts 에서 파생 — 맵이 추가돼도 여기 손댈 필요 없음(테스트룸 제외)
 const MAP_GROUPS: { label: string; ids: MapId[] }[] = [
@@ -37,6 +40,9 @@ export function WorldMapScreen() {
   const fx = (cx: number) => (cx / map.grid.w) * w
   const fy = (cy: number) => (cy / map.grid.h) * h
   const gateShown = new Set<string>()
+  const targets = teleportTargets(state)
+  const blockReason = teleportBlockReason(state, viewId)
+  const thumb = map.zones.length === 0 ? mapThumbUrl(map) : null
 
   return (
     <Modal open onClose={close} title={`지도 — ${map.name}`} widthClass="max-w-4xl">
@@ -56,7 +62,13 @@ export function WorldMapScreen() {
                     }`}
                   >
                     {MAPS[id].name}
-                    {id === state.currentMapId && <span className="ml-1 text-[9px] text-emerald-400">● 현재 위치</span>}
+                    {id === state.currentMapId ? (
+                      <span className="ml-1 text-[9px] text-emerald-400">● 현재 위치</span>
+                    ) : targets.has(id) ? (
+                      <span className="ml-1 text-[9px] text-sky-300" title="텔레포트 가능">✦</span>
+                    ) : (
+                      <span className="ml-1 text-[9px] text-white/30" title="아직 가 본 적 없음">?</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -64,8 +76,8 @@ export function WorldMapScreen() {
           ))}
         </div>
 
-        <div className="flex flex-1 items-center justify-center">
-          <div className="relative" style={{ width: w, height: h }}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-3">
+          <div className="relative overflow-hidden rounded-md" style={{ width: w, height: h, background: thumb ? `url(${thumb}) 0 0 / 100% 100%` : undefined, imageRendering: 'pixelated' }}>
             {map.zones.map((z) => (
               <div
                 key={z.id}
@@ -108,12 +120,26 @@ export function WorldMapScreen() {
               />
             )}
 
-            {map.zones.length === 0 && (
+            {map.zones.length === 0 && !thumb && (
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-[11px] text-muted-foreground">
                 (야생 지역 — 세부 구역 없이 포탈 배치만 표시됩니다)
               </div>
             )}
           </div>
+          {/* 텔레포트 */}
+          {viewId !== state.currentMapId && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={!!blockReason}
+                onClick={() => dispatch({ type: 'TELEPORT', mapId: viewId })}
+                className="rounded-md border border-sky-300/70 bg-sky-900/40 px-4 py-1.5 text-[12px] font-display text-sky-100 shadow-[0_0_10px_rgba(125,200,255,0.25)] transition-colors hover:bg-sky-800/60 disabled:cursor-not-allowed disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:shadow-none"
+              >
+                ✦ {map.name}(으)로 텔레포트
+              </button>
+              {blockReason && <span className="text-[11px] text-muted-foreground">{blockReason}</span>}
+            </div>
+          )}
         </div>
       </div>
     </Modal>

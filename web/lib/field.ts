@@ -125,62 +125,146 @@ function pauseCycle(t: number, period: number, moveFrac: number): { effectiveT: 
   return { effectiveT: t - cyclePos + moveEnd, moving: false }
 }
 
-/** 배회 애니메이션: 홈 셀 주변을 실제로 걷는 것처럼 맴도는 위치 계산 (시간 기반, 결정론적) */
-export function wanderPosition(fm: FieldMonster, timeMs: number, blockers?: Blocker[]): { x: number; y: number } {
-  const t = timeMs / 1000 + fm.wanderSeed
-  const { effectiveT } = pauseCycle(t, 7, 0.6)
-  const radius = 1.1
-  const speed = 0.22
-  const pos = {
-    x: fm.homeCell.x + Math.cos(effectiveT * speed) * radius,
-    y: fm.homeCell.y + Math.sin(effectiveT * speed * 1.35) * radius * 0.85,
+// ── 몬스터 배회(2026-10-07 개편) ────────────────────────────────────────────────
+// 예전: 모든 몬스터가 같은 속도·같은 모양(리사주 곡선)으로 맴돌고, 구조물에 닿으면 집으로 순간이동했다.
+// 지금: 몬스터마다 정해진 박자(4~6.5초)로 "집 주변의 다음 지점"을 골라 걸어가고(가속·감속), 도착하면 잠깐 서서 두리번거린다.
+//   · 다음 지점은 막힌 곳(나무·연못·건물)을 피해 고른다 → 순간이동 없음
+//   · 플레이어가 가까이 오면(3.2칸) 고개를 돌려 조금 다가온다(집에서 너무 멀어지지 않게) — 보스는 제자리 위엄 유지
+//   · 전부 시간·시드만으로 정해져서(상태 없음) 렌더와 접촉 판정이 같은 위치를 본다(game-state MOVE)
+type Pt2 = { x: number; y: number }
+type Facing4 = 'down' | 'up' | 'left' | 'right'
+
+const hash01 = (a: number, b: number, c = 0) => {
+  let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263) + Math.imul(c | 0, 2246822519)) | 0
+  h = Math.imul(h ^ (h >>> 13), 1274126177)
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+const smooth = (t: number) => t * t * (3 - 2 * t)
+const blockedAt = (p: Pt2, blockers: Blocker[] | undefined, r: number) => !!blockers?.some((b) => p.x > b.x0 - r && p.x < b.x1 + r && p.y > b.y0 - r && p.y < b.y1 + r)
+
+interface WanderProfile {
+  /** 한 박자(초) — 걷기 + 쉬기 */
+  slot: number
+  /** 걷는 속도(칸/초) */
+  speed: number
+  /** 집에서 돌아다니는 반경(칸) */
+  radius: number
+  /** 플레이어에게 다가오는가 */
+  curious: boolean
+}
+const PROFILE_CACHE = new Map<string, WanderProfile>()
+function profileOf(fm: FieldMonster): WanderProfile {
+  const key = `${fm.uid}:${fm.monsterId}`
+  const hit = PROFILE_CACHE.get(key)
+  if (hit) return hit
+  const p = makeProfile(fm)
+  if (PROFILE_CACHE.size > 2000) PROFILE_CACHE.clear()
+  PROFILE_CACHE.set(key, p)
+  return p
+}
+function makeProfile(fm: FieldMonster): WanderProfile {
+  const s = Math.floor(fm.wanderSeed * 1000)
+  const rank = monsterRank(fm.monsterId)
+  const boss = rank === 'fieldBoss' || rank === 'storyBoss' || rank === 'miniBoss'
+  return {
+    slot: 4 + hash01(s, 11) * 2.5,
+    speed: (boss ? 0.35 : 0.55) + hash01(s, 13) * 0.45,
+    radius: boss ? 0.7 : 1.2 + hash01(s, 17) * 0.5,
+    curious: !boss,
   }
-  return avoidBlockers(pos, fm.homeCell, blockers, MONSTER_BODY_R)
 }
 
-/** 지금 이 순간 걷는 중인지(정지 구간이면 false) — CreatureSprite의 walking prop에 그대로 연결 */
-export function wanderIsMoving(fm: FieldMonster, timeMs: number): boolean {
-  return pauseCycle(timeMs / 1000 + fm.wanderSeed, 7, 0.6).moving
+/** 몬스터 등급(보스는 덜 움직이고 다가오지 않는다) */
+const monsterRank = (id: string): string | undefined => monsterById(id)?.rank
+
+/** k번째 박자의 목적지 — 막힌 곳이면 다른 후보, 끝내 없으면 집 */
+const WP_CACHE = new Map<string, Pt2>()
+function waypoint(fm: FieldMonster, k: number, pr: WanderProfile, blockers: Blocker[] | undefined): Pt2 {
+  const key = `${fm.uid}:${fm.homeCell.x.toFixed(2)}:${k}`
+  const hit = WP_CACHE.get(key)
+  if (hit) return hit
+  const s = Math.floor(fm.wanderSeed * 1000)
+  let out: Pt2 = fm.homeCell
+  for (let tries = 0; tries < 6; tries++) {
+    const a = hash01(s, k, tries * 2 + 1) * Math.PI * 2
+    const r = pr.radius * Math.sqrt(0.15 + 0.85 * hash01(s, k, tries * 2 + 2))
+    const p = { x: fm.homeCell.x + Math.cos(a) * r, y: fm.homeCell.y + Math.sin(a) * r * 0.85 }
+    if (!blockedAt(p, blockers, MONSTER_BODY_R)) {
+      out = p
+      break
+    }
+  }
+  if (WP_CACHE.size > 4000) WP_CACHE.clear()
+  WP_CACHE.set(key, out)
+  return out
 }
 
-/** wanderPosition의 순간 이동 방향(도트 스프라이트 걷기용, down/up/left/right). 정지 중엔 정면(down) */
-export function wanderFacing(fm: FieldMonster, timeMs: number, blockers?: Blocker[]): 'down' | 'up' | 'left' | 'right' {
-  const a = wanderPosition(fm, timeMs, blockers)
-  const b = wanderPosition(fm, timeMs + 100, blockers)
-  const dx = b.x - a.x
-  const dy = b.y - a.y
-  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return 'down'
-  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+/** 플레이어를 신경 쓰지 않은 기본 배회 위치 */
+function basePos(fm: FieldMonster, tSec: number, pr: WanderProfile, blockers: Blocker[] | undefined): { pos: Pt2; moving: boolean; dir: Pt2 } {
+  const t = tSec + fm.wanderSeed * 37
+  const k = Math.floor(t / pr.slot)
+  const local = t - k * pr.slot
+  const from = waypoint(fm, k - 1, pr, blockers)
+  const to = waypoint(fm, k, pr, blockers)
+  const dist = Math.hypot(to.x - from.x, to.y - from.y)
+  const moveT = Math.min(pr.slot * 0.65, Math.max(0.4, dist / pr.speed))
+  const dir = { x: to.x - from.x, y: to.y - from.y }
+  if (local >= moveT) return { pos: to, moving: false, dir }
+  const e = smooth(local / moveT)
+  return { pos: { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e }, moving: dist > 0.05, dir }
 }
 
-function facingFromDelta(dx: number, dy: number): 'down' | 'up' | 'left' | 'right' {
-  if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) return 'down'
-  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
+const AWARE_R = 3.2
+const facingFromDelta = (dx: number, dy: number): Facing4 => facingOf({ x: dx, y: dy })
+function facingOf(v: Pt2): Facing4 {
+  if (Math.abs(v.x) < 1e-6 && Math.abs(v.y) < 1e-6) return 'down'
+  return Math.abs(v.x) > Math.abs(v.y) ? (v.x > 0 ? 'right' : 'left') : v.y > 0 ? 'down' : 'up'
 }
 
 /**
- * wanderPosition/wanderFacing/wanderIsMoving을 렌더 프레임마다 각각 따로 부르면
- * pauseCycle·avoidBlockers 가 3배로 중복 계산된다(iso-world.tsx가 몬스터마다 매 틱 호출).
- * 같은 값을 한 번만 계산해 세 결과를 함께 돌려주는 합本(合本) 버전 — 결과는 기존 함수들과 100% 동일.
+ * 몬스터 위치·방향·걷는 중 여부 — 렌더(iso-world)와 접촉 판정(game-state MOVE)이 같은 값을 쓴다.
+ * player 를 주면 가까울 때 그쪽을 보고 조금 다가온다.
  */
-export function wanderState(
-  fm: FieldMonster,
-  timeMs: number,
-  blockers?: Blocker[],
-): { pos: { x: number; y: number }; facing: 'down' | 'up' | 'left' | 'right'; moving: boolean } {
-  const t = timeMs / 1000 + fm.wanderSeed
-  const { effectiveT, moving } = pauseCycle(t, 7, 0.6)
-  const radius = 1.1
-  const speed = 0.22
-  const pos = avoidBlockers(
-    { x: fm.homeCell.x + Math.cos(effectiveT * speed) * radius, y: fm.homeCell.y + Math.sin(effectiveT * speed * 1.35) * radius * 0.85 },
-    fm.homeCell,
-    blockers,
-    MONSTER_BODY_R,
-  )
-  const next = wanderPosition(fm, timeMs + 100, blockers)
-  return { pos, facing: facingFromDelta(next.x - pos.x, next.y - pos.y), moving }
+export function wanderState(fm: FieldMonster, timeMs: number, blockers?: Blocker[], player?: Pt2): { pos: Pt2; facing: Facing4; moving: boolean } {
+  const pr = profileOf(fm)
+  const base = basePos(fm, timeMs / 1000, pr, blockers)
+  let pos = base.pos
+  let moving = base.moving
+  let face = base.dir
+  if (player && pr.curious) {
+    const dx = player.x - pos.x
+    const dy = player.y - pos.y
+    const d = Math.hypot(dx, dy)
+    if (d < AWARE_R && d > 0.01) {
+      // 가까울수록 더 다가온다(최대 0.6칸) — 단, 집에서 반경+0.9칸 밖으로는 안 나간다
+      const pull = (1 - d / AWARE_R) * 0.6
+      let p = { x: pos.x + (dx / d) * pull, y: pos.y + (dy / d) * pull }
+      const hx = p.x - fm.homeCell.x
+      const hy = p.y - fm.homeCell.y
+      const hd = Math.hypot(hx, hy)
+      const lim = pr.radius + 0.9
+      if (hd > lim) p = { x: fm.homeCell.x + (hx / hd) * lim, y: fm.homeCell.y + (hy / hd) * lim }
+      if (!blockedAt(p, blockers, MONSTER_BODY_R)) {
+        pos = p
+        moving = moving || pull > 0.08
+      }
+      face = { x: dx, y: dy }
+    }
+  }
+  return { pos, facing: facingOf(face), moving }
 }
+
+/** 예전 API 호환 — 위치만 */
+export function wanderPosition(fm: FieldMonster, timeMs: number, blockers?: Blocker[]): Pt2 {
+  return wanderState(fm, timeMs, blockers).pos
+}
+export function wanderIsMoving(fm: FieldMonster, timeMs: number): boolean {
+  return wanderState(fm, timeMs).moving
+}
+export function wanderFacing(fm: FieldMonster, timeMs: number, blockers?: Blocker[]): Facing4 {
+  return wanderState(fm, timeMs, blockers).facing
+}
+
 
 // ── NPC 자유 이동(배회) ── npc.cell(홈 위치) 주변을 몬스터와 동일한 방식(결정론적 리사주 곡선)으로
 // 맴돈다. 상점/훈련 등 기능형 NPC는 카운터를 이탈하면 상호작용이 어려워지므로 반경을 아주 작게(제자리

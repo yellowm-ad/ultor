@@ -26,6 +26,7 @@ import type {
 } from '@/lib/types'
 import { calendarInfo } from '@/lib/calendar'
 import { classForWeek } from '@/lib/curriculum'
+import { episodeQuestId, isStoryEpisodeWeek, STORY_EPISODES } from '@/lib/story-episodes'
 import { arcForWeek, flagsAllOn, MAIN_QUEST_BY_WEEK, STORY_ARCS } from '@/lib/story'
 import { REGIONS, type RegionId } from '@/lib/regions'
 import { isActivityUnlocked, itemMatches, type ActivityId } from '@/lib/life'
@@ -159,6 +160,23 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
   { id: 'HOUSING_DECORATE', category: 'HOUSING', title: '방 꾸미기', description: '개인 공간에 가구를 하나 배치한다.', objectives: [o('PLACE_FURNITURE', 'any', 1, '가구 배치')], rewards: [exp(30), gold(50)] },
 ]
 
+// 3주 스토리 주간 미션(lib/story-episodes.ts) — 에피소드마다 필수(MAIN) 템플릿 하나. 보상엔 그 주 빠진 수업 몫의 과목 점수가 들어 있다
+for (const ep of STORY_EPISODES) {
+  const year = calendarInfo(ep.week).year
+  const r = ep.rewards
+  QUEST_TEMPLATES.push({
+    id: episodeQuestId(ep.week),
+    category: 'MAIN',
+    title: `스토리 ${ep.no}화 — ${ep.title}`,
+    // 요약이 없으면 오프닝의 교수·나레이션 대사(학생들의 말장난은 장면에서만)
+    description: ep.summary || ep.brief.filter((l) => !l.hero).map((l) => l.text).join(' '),
+    objectives: ep.objectives,
+    rewards: [exp(r.exp ?? 120 + year * 40), gold(r.gold ?? 120 + year * 40), course(r.course ?? 30), ...(r.items ?? []).map((it) => item(it.itemId, it.qty))],
+    regionId: ep.region,
+    cooldownWeeks: 999,
+  })
+}
+
 const TEMPLATE_BY_ID = new Map(QUEST_TEMPLATES.map((t) => [t.id, t]))
 export function questTemplateById(id: string): QuestTemplate | undefined {
   return TEMPLATE_BY_ID.get(id)
@@ -272,7 +290,9 @@ export function generateWeeklyQuests(state: GenState): WeeklyState {
   const quests: QuestInstance[] = []
   const used = new Set<string>()
   // 스토리가 이 주에 지정한 필수 과제(있을 때만)
-  const storyMain = MAIN_QUEST_BY_WEEK[gw] ? questTemplateById(MAIN_QUEST_BY_WEEK[gw]) : undefined
+  // 스토리 주간이면 그 주 에피소드 미션이 필수(직접 지정한 MAIN_QUEST_BY_WEEK 가 있으면 그쪽이 우선)
+  const mainId = MAIN_QUEST_BY_WEEK[gw] ?? (isStoryEpisodeWeek(gw) ? episodeQuestId(gw) : undefined)
+  const storyMain = mainId ? questTemplateById(mainId) : undefined
   if (storyMain) {
     quests.push(instanceOf(storyMain, 'MAIN', gw))
     used.add(storyMain.id)
@@ -398,13 +418,17 @@ export function applyQuestEvents(weekly: WeeklyState, events: QuestEvent[]): { w
   return { weekly: w, completed }
 }
 
-export function weekCompletion(weekly: WeeklyState): { classRequired: boolean; classDone: boolean; mainDone: boolean; optionalDone: number; canEnd: boolean } {
+/** 이 주에 보상까지 받아야 하는 외부활동 수 — 스토리 주간은 에피소드가 큰 덩어리라 1개 */
+export const requiredOptionalFor = (week: number) => (isStoryEpisodeWeek(week) ? 1 : REQUIRED_OPTIONAL)
+
+export function weekCompletion(weekly: WeeklyState): { classRequired: boolean; classDone: boolean; mainDone: boolean; optionalDone: number; requiredOptional: number; storyWeek: boolean; canEnd: boolean } {
   const classRequired = classForWeek(weekly.week) != null
   const classDone = !classRequired || !!weekly.classDone
   const hasMain = weekly.quests.some((q) => q.slot === 'MAIN')
   const mainDone = !hasMain || weekly.quests.some((q) => q.slot === 'MAIN' && q.status === 'claimed')
   const optionalDone = weekly.quests.filter((q) => q.slot !== 'MAIN' && q.status === 'claimed').length
-  return { classRequired, classDone, mainDone, optionalDone, canEnd: classDone && mainDone && optionalDone >= REQUIRED_OPTIONAL }
+  const requiredOptional = requiredOptionalFor(weekly.week)
+  return { classRequired, classDone, mainDone, optionalDone, requiredOptional, storyWeek: isStoryEpisodeWeek(weekly.week), canEnd: classDone && mainDone && optionalDone >= requiredOptional }
 }
 
 export function regionIds(): RegionId[] {

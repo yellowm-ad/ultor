@@ -2,7 +2,8 @@
 // 수업 커리큘럼 — 교수진 · 과목별 수업 장소/미니게임 · 주차별 수업 배정 · 성적/숙련도 (통합 PRD v1.0 §14~22, §30~31, §44~45)
 //
 //   한 주 = 필수 수업 1회 + 외부활동 2개. 방학에는 수업이 없다.
-//   학기 12주 순환(§45): 1·4·8주 = 1과목 / 2·5·9주 = 2과목 / 3·6·10주 = 3과목 / 11주 = 4과목(기말 대비 실습)
+//   학기 12주 순환(§45 → 2026-10-07 스토리 주간 반영): 1·4주 = 1과목 / 2·5주 = 2과목 / 8·10주 = 3과목 / 11주 = 4과목(기말 대비 실습)
+//                        3·6·9주 = 스토리 주간(수업 없음, lib/story-episodes.ts)
 //                        7주 = 중간고사 / 12주 = 기말고사
 //   수업 결과(S~D)는 메인스토리를 막지 않는다(§2.1, §56) — 실패(D)해도 수업은 수료.
 //   좋은 결과 = 과목 점수(스킬 습득 진도) · 분야 숙련도 · 교수 관계도 · EXP · 골드를 더 준다.
@@ -11,6 +12,7 @@
 import type { MapId } from '@/lib/types'
 import { calendarInfo } from '@/lib/calendar'
 import { coursesForWeek, courseById, type CourseDef } from '@/lib/academics'
+import { isSemesterStoryWeek } from '@/lib/story-episodes'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 교수 / 강사진 (§15) — 전용 에셋 전까지 기존 NPC 도트 재사용
@@ -46,13 +48,17 @@ export const professorById = (id: string) => PROF_BY_ID.get(id)
 // ─────────────────────────────────────────────────────────────────────────────
 // 미니게임 종류(§16~20) — 실제 구현은 components/game/class-minigames.tsx
 // ─────────────────────────────────────────────────────────────────────────────
-export type MiniGameType = 'quiz' | 'rhythm' | 'chant' | 'draw' | 'alchemy'
+export type MiniGameType = 'quiz' | 'rhythm' | 'chant' | 'draw' | 'alchemy' | 'match' | 'sigil' | 'sort'
 export const MINIGAME_META: Record<MiniGameType, { name: string; desc: string }> = {
   quiz: { name: '지식 퀴즈', desc: '세계관 지식과 교양 문제를 푼다.' },
   rhythm: { name: '마법 리듬 실습', desc: '마력 노드가 판정선에 닿는 순간 입력한다.' },
   chant: { name: '영창 암기', desc: '주문 영창의 순서를 외워 다시 배열한다.' },
   draw: { name: '실습 도구 뽑기', desc: '수업용 상자에서 재료·도구를 무작위로 뽑는다.' },
   alchemy: { name: '시약 합성', desc: '재료·순서·온도·마나를 맞춰 시약을 만든다.' },
+  // 2026-10-07 추가
+  match: { name: '룬 짝맞추기', desc: '뒤집힌 룬 카드에서 같은 룬 두 장을 찾아낸다.' },
+  sigil: { name: '마법진 따라 그리기', desc: '마법진 꼭짓점이 빛나는 순서를 기억해 그대로 잇는다.' },
+  sort: { name: '분류 실습', desc: '나오는 카드를 제한 시간 안에 알맞은 쪽으로 나눈다.' },
 }
 
 /** 숙련도 분야 */
@@ -70,17 +76,20 @@ export interface CourseClassMeta {
 }
 
 const M = (professorId: string, room: MapId, games: MiniGameType[], field: MasteryField, rhythm: RhythmStyle = 'neutral'): CourseClassMeta => ({ professorId, room, games, field, rhythm })
-const MAGIC: MiniGameType[] = ['rhythm', 'chant', 'quiz']
-const LIFE: MiniGameType[] = ['alchemy', 'draw', 'quiz']
-const CRAFT: MiniGameType[] = ['draw', 'alchemy', 'chant']
-const LIBERAL: MiniGameType[] = ['quiz', 'chant', 'quiz']
+// 과목 계열별 미니게임 후보 — 매주 한 개를 고르되 지난 수업과 같은 종류는 피한다(progression.startClass)
+const MAGIC: MiniGameType[] = ['rhythm', 'chant', 'quiz', 'sigil', 'match']
+const LIFE: MiniGameType[] = ['alchemy', 'draw', 'quiz', 'sort']
+const CRAFT: MiniGameType[] = ['draw', 'alchemy', 'chant', 'match']
+const LIBERAL: MiniGameType[] = ['quiz', 'chant', 'sort', 'match']
+const FIELD: MiniGameType[] = ['draw', 'quiz', 'rhythm', 'sort']
+const TACTIC: MiniGameType[] = ['rhythm', 'quiz', 'chant', 'sigil']
 
 export const COURSE_CLASS_META: Record<string, CourseClassMeta> = {
   // 1학년 — 1층 3원소 수업관 + 실습실
   FIRE_101: M('ignis', 'class-fire', MAGIC, 'magic', 'fire'),
   ICE_101: M('kael', 'class-ice', MAGIC, 'magic', 'ice'),
   EARTH_101: M('terra', 'class-earth', MAGIC, 'magic', 'earth'),
-  FIELD_101: M('edric', 'practice-lab', ['draw', 'quiz', 'rhythm'], 'combat'),
+  FIELD_101: M('edric', 'practice-lab', FIELD, 'combat'),
   ELEMENT_102: M('mirel', 'class-fire', MAGIC, 'magic', 'fire'),
   CRAFT_101: M('ban', 'practice-lab', CRAFT, 'craft'),
   HISTORY_101: M('owen', 'class-earth', LIBERAL, 'liberal'),
@@ -88,12 +97,12 @@ export const COURSE_CLASS_META: Record<string, CourseClassMeta> = {
   // 2학년 — 2층 2학년 교실
   TRIAD_201: M('mirel', 'class-year2', MAGIC, 'magic', 'ice'),
   ALCHEMY_201: M('selin', 'practice-lab', LIFE, 'life'),
-  ECOLOGY_201: M('selin', 'class-year2', ['quiz', 'draw', 'alchemy'], 'life'),
+  ECOLOGY_201: M('selin', 'class-year2', ['quiz', 'draw', 'alchemy', 'sort'], 'life'),
   COOKING_201: M('selin', 'practice-lab', LIFE, 'life'),
   TRIAD_202: M('mirel', 'class-year2', MAGIC, 'magic', 'earth'),
-  BATTLE_202: M('kael', 'class-year2', ['rhythm', 'quiz', 'chant'], 'combat', 'ice'),
+  BATTLE_202: M('kael', 'class-year2', TACTIC, 'combat', 'ice'),
   RUINS_202: M('owen', 'class-year2', LIBERAL, 'liberal'),
-  HUNT_202: M('edric', 'practice-lab', ['draw', 'quiz', 'rhythm'], 'combat'),
+  HUNT_202: M('edric', 'practice-lab', FIELD, 'combat'),
   // 3학년 — 3층(어둠·빛 수업관 개방)
   DARK_301: M('noella', 'class-dark', MAGIC, 'magic', 'dark'),
   LIGHT_301: M('lumen', 'class-light', MAGIC, 'magic', 'light'),
@@ -106,12 +115,12 @@ export const COURSE_CLASS_META: Record<string, CourseClassMeta> = {
   // 4학년 — 4층
   ANCIENT_MAGIC_401: M('mirel', 'class-year4', MAGIC, 'magic', 'earth'),
   DUSKDAWN_401: M('noella', 'class-dark', MAGIC, 'magic', 'dark'),
-  SEAL_401: M('mirel', 'class-year4', ['chant', 'quiz', 'rhythm'], 'liberal', 'light'),
+  SEAL_401: M('mirel', 'class-year4', ['chant', 'quiz', 'rhythm', 'sigil'], 'liberal', 'light'),
   WARHISTORY_401: M('owen', 'class-year4', LIBERAL, 'liberal'),
   ARCHMAGE_402: M('mirel', 'practice-lab-adv', MAGIC, 'magic', 'light'),
-  TACTICS_402: M('kael', 'class-year4', ['rhythm', 'quiz', 'chant'], 'combat', 'ice'),
+  TACTICS_402: M('kael', 'class-year4', TACTIC, 'combat', 'ice'),
   LOSTWIND_402: M('owen', 'class-year4', LIBERAL, 'liberal'),
-  THESIS_402: M('owen', 'class-year4', ['chant', 'quiz', 'quiz'], 'liberal'),
+  THESIS_402: M('owen', 'class-year4', ['chant', 'quiz', 'sort'], 'liberal'),
 }
 
 export function classMetaFor(courseId: string): CourseClassMeta {
@@ -135,12 +144,14 @@ export interface WeekClass {
   label: string
 }
 
-const ROTATION: Record<number, number> = { 1: 0, 4: 0, 8: 0, 2: 1, 5: 1, 9: 1, 3: 2, 6: 2, 10: 2, 11: 3 }
+const ROTATION: Record<number, number> = { 1: 0, 4: 0, 2: 1, 5: 1, 8: 2, 10: 2, 11: 3 }
 
 /** 이번 주 필수 수업 — 방학이면 null */
 export function classForWeek(globalWeek: number): WeekClass | null {
   const info = calendarInfo(globalWeek)
   if (info.isVacation) return null
+  // 스토리 주간(학기 3·6·9주)은 수업 대신 스토리 에피소드
+  if (isSemesterStoryWeek(globalWeek)) return null
   const open = coursesForWeek(globalWeek)
   if (open.length === 0) return null
   const ids = open.map((c) => c.id)

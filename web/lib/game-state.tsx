@@ -5,18 +5,20 @@ import type {
   BattleAction as EngineBattleAction,
   EquipSlot,
   GameState,
+  MapId,
   PlayerAppearance,
   Position,
   ScreenId,
 } from '@/lib/types'
 import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
+import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
-import { generateFieldMonsters } from '@/lib/field'
+import { generateFieldMonsters, wanderState } from '@/lib/field'
 import { getEffectiveStats } from '@/lib/derived'
 import { canTrain, clampAffection, createPet, petDefById, petStatsForLevel, PET_DEFS } from '@/lib/pets'
 import {
@@ -100,6 +102,7 @@ export type Action =
   | { type: 'USE_PORTAL'; portalId: string }
   | { type: 'PORTAL_CONFIRM' }
   | { type: 'PORTAL_CANCEL' }
+  | { type: 'TELEPORT'; mapId: MapId }
   | { type: 'HOUSING_TOGGLE_EDIT' }
   | { type: 'HOUSING_PLACE'; defId: string }
   | { type: 'HOUSING_REMOVE'; id: string }
@@ -147,7 +150,7 @@ export type Action =
   | { type: 'SET_MEMBER_PET'; memberId: string; defId: string | null }
   | { type: 'DROP_QUEST'; instanceId: string }
   | { type: 'START_CLASS' }
-  | { type: 'ADMIN_CLASS_TEST'; game: 'quiz' | 'rhythm' | 'chant' | 'draw' | 'alchemy' }
+  | { type: 'ADMIN_CLASS_TEST'; game: import('@/lib/curriculum').MiniGameType }
   | { type: 'CLASS_ALERT' }
   | { type: 'CLASS_BEGIN_GAMES' }
   | { type: 'CLASS_GAME_DONE'; score: number; label: string }
@@ -383,7 +386,10 @@ function reducer(state: GameState, action: Action): GameState {
         const rank = monsterById(fm.monsterId)?.rank
         // 보스는 덩치가 큰 만큼 접촉 판정도 넉넉하게(필드보스가 가장 큼, 스프라이트 축소에 맞춰 비례 완화)
         const radius = rank === 'fieldBoss' || rank === 'storyBoss' ? CONTACT_RADIUS * 1.84 : rank === 'miniBoss' ? CONTACT_RADIUS * 1.35 : CONTACT_RADIUS
-        const d = Math.hypot(fm.homeCell.x - nx, fm.homeCell.y - ny)
+        // 화면에 보이는 위치(배회 중 위치)로 판정 — 예전엔 집 좌표로 재서 보이는 몬스터에 닿아도 전투가 안 걸렸다
+        if (Math.hypot(fm.homeCell.x - nx, fm.homeCell.y - ny) > 4) continue
+        const at = wanderState(fm, performance.now(), map.blockers, { x: nx, y: ny }).pos
+        const d = Math.hypot(at.x - nx, at.y - ny)
         if (d < radius) {
           touched = fm.uid
           break
@@ -419,8 +425,9 @@ function reducer(state: GameState, action: Action): GameState {
         : null
       let position = state.position
       if (fm) {
-        const dx = state.position.x - fm.homeCell.x
-        const dy = state.position.y - fm.homeCell.y
+        const at = wanderState(fm, performance.now(), map.blockers, state.position).pos
+        const dx = state.position.x - at.x
+        const dy = state.position.y - at.y
         const len = Math.hypot(dx, dy) || 1
         position = {
           x: Math.max(0.2, Math.min(map.grid.w - 0.2, state.position.x + (dx / len) * 0.75)),
@@ -442,6 +449,9 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'PORTAL_CONFIRM':
       return state.pendingPortalId ? travelThroughPortal(state, state.pendingPortalId) : state
+
+    case 'TELEPORT':
+      return teleportTo(state, action.mapId)
 
     case 'PORTAL_CANCEL': {
       if (!state.pendingPortalId) return state
@@ -845,6 +855,30 @@ function reducer(state: GameState, action: Action): GameState {
     default:
       return state
   }
+}
+
+/** 전체 지도 텔레포트(2026-10-07) — 가 본 맵(또는 학교·마을)의 입구로 바로 이동. 수업·전투·스토리 장면 중엔 안 된다 */
+function teleportTo(state: GameState, mapId: MapId): GameState {
+  const reason = teleportBlockReason(state, mapId)
+  if (reason) return { ...state, toast: reason }
+  const dest = MAPS[mapId]
+  const pos = dest.respawn ?? dest.spawn
+  return visitMap(
+    {
+      ...state,
+      screen: 'world',
+      currentMapId: dest.id,
+      position: { ...pos },
+      facing: 'down',
+      currentZoneId: zoneAt(dest, pos.x, pos.y)?.id ?? '',
+      fieldMonsters: generateFieldMonsters(dest, state.settings.testMode),
+      pendingEncounterUid: null,
+      pendingPortalId: null,
+      gateOpen: false,
+      toast: `텔레포트 — ${dest.name}`,
+    },
+    dest.id,
+  )
 }
 
 /** 포탈(타일/군 통문)을 통해 다른 맵으로 이동 */

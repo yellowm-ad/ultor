@@ -247,7 +247,7 @@ export function AdminPanel() {
             </Button>
             {/* 수업 미니게임 테스트(이번 주 수업 완료 여부 무시) */}
             <div className="grid grid-cols-3 gap-1">
-              {(['quiz', 'rhythm', 'chant', 'draw', 'alchemy'] as const).map((g) => (
+              {(Object.keys(MINIGAME_META) as (keyof typeof MINIGAME_META)[]).map((g) => (
                 <Button key={g} size="sm" variant="outline" onClick={() => dispatch({ type: 'ADMIN_CLASS_TEST', game: g })}>
                   {MINIGAME_META[g].name}
                 </Button>

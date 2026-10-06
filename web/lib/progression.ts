@@ -10,6 +10,7 @@ import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests,
 import { addCourseScore, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
 import { classForWeek, classGrade, classMetaFor, examGames, GRADE_REWARD, MASTERY_LABEL, masteryLevel, professorById, type MiniGameType } from '@/lib/curriculum'
 import { mulberry32 } from '@/lib/rng'
+import { isSemesterStoryWeek } from '@/lib/story-episodes'
 import {
   ACTIVITY_META,
   activityUnlockWeek,
@@ -206,13 +207,17 @@ export function startClass(state: GameState, test?: { game: MiniGameType }): Gam
   if (state.classScene) return state
   const gw = state.calendar.globalWeek
   const wc = classForWeek(gw) ?? (test ? { kind: 'lecture' as const, courseId: 'FIRE_101', courseIds: ['FIRE_101'], label: '테스트 수업' } : null)
-  if (!wc) return { ...state, toast: '방학에는 수업이 없습니다.' }
+  if (!wc) return { ...state, toast: isSemesterStoryWeek(gw) ? '이번 주는 스토리 주간이라 수업이 없습니다. 학사 수첩(J)의 스토리 미션을 확인하세요.' : '방학에는 수업이 없습니다.' }
   if (state.weekly.classDone && !test) return { ...state, toast: '이번 주 수업은 이미 들었습니다.' }
   const meta = classMetaFor(wc.courseId)
   const seed = (state.playerSeed ^ (gw * 2654435761)) >>> 0
   const rand = mulberry32(seed)
+  // 지난 수업과 같은 미니게임은 피한다 — 매주 다른 실습이 나오게(2026-10-07)
+  const lastGame = state.academics.classLog?.at(-1)?.games?.[0]?.type
+  const pool = meta.games.filter((g) => g !== lastGame)
+  const choices = pool.length ? pool : meta.games
   const games: MiniGameType[] =
-    test ? [test.game] : wc.kind === 'midterm' || wc.kind === 'final' ? examGames(wc.kind, wc.courseIds, rand) : [meta.games[Math.floor(rand() * meta.games.length)]]
+    test ? [test.game] : wc.kind === 'midterm' || wc.kind === 'final' ? examGames(wc.kind, wc.courseIds, rand) : [choices[Math.floor(rand() * choices.length)]]
   const seat = classSeatFor(meta.room)
   return {
     ...state,
@@ -330,7 +335,12 @@ export function endWeek(state: GameState, force = false): GameState {
   const gw = state.calendar.globalWeek
   const wc = weekCompletion(state.weekly)
   if (!force && !wc.canEnd) {
-    return { ...state, toast: wc.classDone ? '외부활동 2개의 보상을 받아야 이번 주를 마칠 수 있습니다.' : '이번 주 수업을 먼저 들어야 합니다. (학사 수첩 → 수업 참석)' }
+    const why = !wc.classDone
+      ? '이번 주 수업을 먼저 들어야 합니다. (학사 수첩 → 수업 참석)'
+      : !wc.mainDone
+        ? wc.storyWeek ? '스토리 미션의 보상을 먼저 받아야 합니다. (학사 수첩 J)' : '필수 미션의 보상을 먼저 받아야 합니다.'
+        : `외부활동 ${wc.requiredOptional}개의 보상을 받아야 이번 주를 마칠 수 있습니다.`
+    return { ...state, toast: why }
   }
   if (gw >= TOTAL_WEEKS) return { ...state, toast: '4학년 겨울방학 — 마지막 주입니다. (후일담 구간)' }
   const info = calendarInfo(gw)
@@ -453,7 +463,10 @@ export function talkTo(state: GameState, npcId: string): GameState {
 }
 
 export function visitMap(state: GameState, mapId: MapId): GameState {
-  const next = queueBeats(state, (t) => t.type === 'VISIT' && t.mapId === mapId)
+  // 방문 기록 — 전체 지도 텔레포트 대상
+  const visited = state.visitedMaps ?? []
+  const withVisit = visited.includes(mapId) ? state : { ...state, visitedMaps: [...visited, mapId] }
+  const next = queueBeats(withVisit, (t) => t.type === 'VISIT' && t.mapId === mapId)
   return withQuestEvents(next, [{ type: 'VISIT', mapId }], next.toast)
 }
 

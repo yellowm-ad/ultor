@@ -286,7 +286,7 @@ export function IsoWorld({
   const monsterEntities = visibleMonsters.flatMap((fm) => {
     const def = MONSTERS.find((m) => m.id === fm.monsterId)
     if (!def) return []
-    const { pos, facing: dir, moving } = wanderState(fm, wanderT, map.blockers)
+    const { pos, facing: dir, moving } = wanderState(fm, wanderT, map.blockers, state.position)
     const s = isoToScreen(pos.x, pos.y)
     const scale = fieldRankScale(def.rank)
     const size = MD * scale
@@ -297,7 +297,8 @@ export function IsoWorld({
       {
         sortY: pos.x + pos.y,
         node: (
-          <g key={fm.uid} transform={`translate(${s.sx},${s.sy})`}>
+          // 위치는 0.1초마다 갱신 — CSS 전환으로 그 사이를 이어 미끄러지듯 걷게(끊김 방지)
+          <g key={fm.uid} style={{ transform: `translate(${s.sx}px,${s.sy}px)`, transition: 'transform 0.1s linear' }}>
             <ellipse cx={0} cy={2} rx={shadowRx} ry={shadowRy} fill="rgba(0,0,0,0.34)" />
             <foreignObject x={-size / 2} y={-size + 8} width={size} height={size} style={{ overflow: 'visible' }}>
               <CreatureSprite spriteId={def.id} fallbackSrc={def.icon} dir={dir} walking={moving} px={size} />
