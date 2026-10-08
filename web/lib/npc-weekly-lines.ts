@@ -27,7 +27,7 @@ const POOLS: Record<string, LinePool> = {
   },
   'npc-librarian': {
     calm: ['오늘은 신간이 들어왔습니다.', '그 책은 아직 네가 읽을 때가 아닙니다.', '이 기록은… 나중에 이야기합시다.'],
-    after: { flag: 'SKY_CLEARED', lines: ['예전에 했던 질문에 답할 때가 된 것 같군요.'] },
+    after: { flag: 'FOUR_EMOTIONS_DISCOVERED', lines: ['예전에 했던 질문에 답할 때가 된 것 같군요.'] },
   },
   'npc-weapon': {
     calm: ['장비 점검은 했나?', '새 장비가 필요하면 먼저 지금 장비가 왜 부족한지부터 생각해.', '망가진 장비는 솔직하다. 관리가 부족했다는 뜻이니까.'],

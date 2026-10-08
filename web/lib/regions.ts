@@ -27,7 +27,7 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'ACADEMY',
     name: '울토르 마법학교',
-    maps: ['village', 'school-hall', 'academy-2f', 'class-fire', 'class-ice', 'class-earth', 'grand-auditorium', 'headmaster-office', 'academy-library', 'academy-3f', 'academy-4f', 'class-year2', 'class-year3', 'class-year4', 'class-dark', 'class-light', 'practice-lab', 'practice-lab-adv', 'council-room', 'lab-fire', 'lab-ice', 'lab-earth', 'lab-dark', 'lab-light', 'personal-space', 'testroom'],
+    maps: ['village', 'school-hall', 'academy-2f', 'class-fire', 'class-ice', 'class-earth', 'grand-auditorium', 'headmaster-office', 'academy-library', 'academy-3f', 'academy-4f', 'academy-secret', 'class-year2', 'class-year3', 'class-year4', 'class-dark', 'class-light', 'practice-lab', 'practice-lab-adv', 'council-room', 'lab-fire', 'lab-ice', 'lab-earth', 'lab-dark', 'lab-light', 'personal-space', 'testroom'],
     recommendedLevel: 1,
     contentProfile: { gather: 1, hunt: 1, fish: 1, craft: 4, alchemy: 3, explore: 2, story: 4 },
     description: '메인 허브. 수업·동아리·제작·하우징.',
@@ -38,7 +38,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['forest', 'forest-2', 'forest-3', 'cave', 'swamp'],
     recommendedLevel: 2,
     contentProfile: { gather: 5, hunt: 4, fish: 2, craft: 2, alchemy: 3, explore: 3, story: 5 },
-    description: '1장 무대. 숲 → 깊은 숲 → 고목숲(갈림길: 이끼 동굴·안개 늪지). 가시어미와 고대목 골렘.',
+    description: 'CH1 무대. 숲 → 깊은 숲 → 고목숲(갈림길: 이끼 동굴·안개 늪지). 가시어미 변이체와 고대목 골렘, 첫 봉인의 흔적.',
   },
   {
     id: 'COAST',
@@ -46,7 +46,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['sea', 'sea-2', 'sea-3', 'deepsea', 'sea-cave', 'atlantis', 'atlantis-temple'],
     recommendedLevel: 3,
     contentProfile: { gather: 3, hunt: 3, fish: 5, craft: 2, alchemy: 3, explore: 5, story: 4 },
-    description: '2장 무대. 항구·해안·수중 탐험, 해파리 여왕과 심해 암초왕, 모르스의 인장.',
+    description: "CH2 무대. 폐등대·해저 유적·심해, 해파리 여왕과 암초왕. '모르스'라는 이름이 '마왕'으로 기록된 채 처음 등장.",
   },
   {
     id: 'STORMHAVEN',
@@ -54,7 +54,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['stormhaven', 'stormhaven-2', 'stormhaven-3', 'cloud-rift', 'thunder-spire', 'sky-temple', 'sky-sanctum'],
     recommendedLevel: 7,
     contentProfile: { gather: 2, hunt: 3, fish: 1, craft: 4, alchemy: 2, explore: 5, story: 5 },
-    description: '3장 전반. 폭풍 위 하늘 도시와 천공 신전, 하늘의 이상 마력 현상.',
+    description: "CH3 무대. 폭풍 위 하늘 도시와 천공 신전, 성녀와 '네 개로 나뉜 왕의 마음'의 기록.",
   },
   {
     id: 'RUINS',
@@ -62,7 +62,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['ruins', 'ruins-2', 'ruins-3', 'graveyard', 'catacomb', 'temple-ruin', 'ruin-sanctum'],
     recommendedLevel: 10,
     contentProfile: { gather: 2, hunt: 4, fish: 1, craft: 4, alchemy: 3, explore: 5, story: 5 },
-    description: '3장 후반. 언데드 마법사·석상 병사, 석상 거인왕과 봉인 균열.',
+    description: "CH4 무대. 언데드가 기억하는 인마대전, 버려진 신전의 '노' 봉인 — 폭주한 루스벨.",
   },
   {
     id: 'SNOWFIELD',
@@ -70,7 +70,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['snowfield', 'snowfield-2', 'snowfield-3', 'ice-cave', 'frozen-lake', 'aurora-village', 'aurora-sanctum'],
     recommendedLevel: 15,
     contentProfile: { gather: 4, hunt: 5, fish: 3, craft: 4, alchemy: 2, explore: 3, story: 4 },
-    description: '4장 무대. 추위·사냥·가죽, 인간에게 적대적이지 않았던 마족의 기록.',
+    description: 'CH5 무대. 루스벨의 화염으로 녹아내리는 설원, 유실 문자의 석비, 오로라 마을.',
   },
   {
     id: 'VOLCANO',
@@ -78,7 +78,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['volcano', 'volcano-2', 'volcano-3', 'mine', 'lava-cave', 'demon-village', 'demon-temple'],
     recommendedLevel: 20,
     contentProfile: { gather: 5, hunt: 5, fish: 1, craft: 5, alchemy: 5, explore: 3, story: 4 },
-    description: '5장 무대. 광석·대장간·마도구, 봉인의 핵심 매개체.',
+    description: "CH6 무대. 인간 사회에서 밀려난 마물들의 땅. 모르스가 '애'의 인격으로 살아가는 곳.",
   },
   {
     id: 'MORS',
@@ -86,7 +86,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['demon-castle'],
     recommendedLevel: 32,
     contentProfile: { gather: 1, hunt: 2, fish: 1, craft: 1, alchemy: 1, explore: 2, story: 5 },
-    description: '최종장. 4학년 2학기 최종 조건 전에는 모르스와 싸울 수 없다.',
+    description: '최종장. 모르스는 필드에서 싸울 수 없다 — 4학년 2학기 엔딩 조건에 따른 최종전에서만 만난다.',
   },
 ]
 

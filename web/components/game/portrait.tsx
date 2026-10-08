@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { Element, Gender } from '@/lib/types'
+import { schoolNpcById } from '@/lib/companions'
 
 // ============================================================================
 // NPC / 주인공 초상화 — PixelLab 도트·사용자 일러스트만 사용.
@@ -18,7 +19,9 @@ const OBJECT_ICON_IDS = new Set(['npc-workbench', 'npc-alchemy-pot', 'npc-kitche
  */
 export function Portrait({ id, className }: { id: string; className?: string }) {
   const isObjectIcon = OBJECT_ICON_IDS.has(id)
-  const candidates = [`/images/npc/portrait-${id}.png`, `/images/npc/${id}.png`, ...(isObjectIcon ? ['/images/npc/npc-workbench.png'] : [])]
+  // 학교 동료(comp-*)는 동료 정의의 초상화가 먼저
+  const mate = id.startsWith('comp-') ? schoolNpcById(id)?.portrait : undefined
+  const candidates = [...(mate ? [mate] : []), `/images/npc/portrait-${id}.png`, `/images/npc/${id}.png`, ...(isObjectIcon ? ['/images/npc/npc-workbench.png'] : [])]
   const [idx, setIdx] = useState(0)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)

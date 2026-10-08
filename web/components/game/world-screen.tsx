@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS, zoneAt } from '@/lib/maps'
-import { MONSTERS, NPCS } from '@/lib/mock-data'
+import { MONSTERS, NPCS, npcById } from '@/lib/mock-data'
+import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { FURNITURE_CATALOG } from '@/lib/housing'
 import { npcWanderPosition } from '@/lib/field'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
@@ -103,10 +104,11 @@ export function WorldScreen() {
 
   const map = MAPS[state.currentMapId]
   /** 맵 톤(자연 지면 맵) — 1 초과 밝은 지역, 1 미만 어두운 지역. 그 밖의 맵은 1 */
-  const tone = map.terrain?.tone ?? 1
+  const tone = map.terrain?.tone ?? map.ambientTone ?? 1
   const mapNpcs = useMemo(
-    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId)),
-    [map],
+    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [map, state.storyFlags],
   )
 
   /** E 상호작용 우선순위: NPC → 채집 지점 → 물가 낚시 */
@@ -117,6 +119,11 @@ export function WorldScreen() {
       dispatch({ type: 'OPEN_NPC', npcId: near.id })
       return
     }
+    const secret = nearestSecret()
+    if (secret) {
+      dispatch({ type: 'USE_PORTAL', portalId: secret.id })
+      return
+    }
     const node = nearestGatherNode(map, state.life, state.position)
     if (node) {
       dispatch({ type: 'GATHER', nodeKey: node.key })
@@ -125,16 +132,32 @@ export function WorldScreen() {
     if (isActivityUnlocked(state, 'fishing') && isNearWater(map, state.position)) dispatch({ type: 'START_FISHING' })
   }
 
+  /** 숨겨진 통로 — 가까이(1.3셀)에서만 E 로 열린다 */
+  function nearestSecret() {
+    return map.portals.find((p) => p.secret && Math.hypot(p.cell.x - state.position.x, p.cell.y - state.position.y) < 1.3) ?? null
+  }
+
   function nearestNpc() {
     let best: (typeof NPCS)[number] | null = null
     let bestDist = 1.2
     for (const npc of mapNpcs) {
       // 배회 중인 NPC는 홈 셀이 아니라 현재(시간 기반) 배회 위치 기준으로 근접 판정
-      const pos = npcWanderPosition(npc, Date.now())
+      const pos = npcWanderPosition(npc, performance.now(), map.blockers)
       const d = Math.hypot(pos.x - state.position.x, pos.y - state.position.y)
       if (d < bestDist) {
         bestDist = d
         best = npc
+      }
+    }
+    // 이번 주 이 방·로비에 서 있는 학교 동료(lib/school-roster)
+    for (const spot of rosterOnMap(state)) {
+      // 배회 중인 지금 위치로 판정(iso-world 와 같은 계산)
+      const pos = npcWanderPosition(rosterWanderNpc(spot), performance.now(), map.blockers)
+      const d = Math.hypot(pos.x - state.position.x, pos.y - state.position.y)
+      const def = npcById(spot.npcId)
+      if (def && d < bestDist) {
+        bestDist = d
+        best = def
       }
     }
     return best
@@ -146,10 +169,13 @@ export function WorldScreen() {
   const currentZone = zoneAt(map, state.position.x, state.position.y)
   const locationName = currentZone?.name ?? map.name
   const interactTarget = nearestNpc()
-  const nearNode = interactTarget ? null : nearestGatherNode(map, state.life, state.position)
+  const nearSecret = interactTarget ? null : nearestSecret()
+  const nearNode = interactTarget || nearSecret ? null : nearestGatherNode(map, state.life, state.position)
   const lifePrompt = interactTarget
     ? null
-    : nearNode
+    : nearSecret
+      ? `${nearSecret.label} 살펴보기`
+      : nearNode
       ? `${GATHER_NODE_META[nearNode.kind].verb} — ${GATHER_NODE_META[nearNode.kind].name}`
       : isActivityUnlocked(state, 'fishing') && isNearWater(map, state.position)
         ? '낚시'

@@ -262,9 +262,9 @@ function galleryFurniture(onFloor2: boolean, ext?: HallExt): PropDef[] {
   for (const x of [3, 6, 9, 12, 15, 32, 35, 38].filter((x) => !blockedX(x))) out.push(isoProp(`g-shelf-n${x}`, S.shelf, x, 1.0, 0.6, { elev: e, back: b(x), flip: true }))
   // 서쪽 회랑 — 벽에 붙은 책장(책 면이 +x)
   for (const y of [8, 11, 14, 22, 25, 28, 31]) out.push(isoProp(`g-shelf-w${y}`, S.shelf, 1.0, y, 0.6, { elev: e, back: b(y + 50) }))
-  // 회랑 벤치·화분
-  ;[18, 30].forEach((x, i) => out.push(isoProp(`g-plant-n${i}`, S.plant, x, 2.6, 0.5, { elev: e, back: b(x + 100) })))
-  ;[17.5].forEach((y, i) => out.push(isoProp(`g-bench-w${i}`, S.bench, 2.4, y, 0.7, { elev: e, back: b(y + 150), flip: true })))
+  // 회랑 화분 — 대강당 문 왼쪽, 대강당 문과 3층 계단 입구 사이
+  ;[[18, 2.6], [27.6, 1.5]].forEach(([x, y], i) => out.push(isoProp(`g-plant-n${i}`, S.plant, x, y, 0.5, { elev: e, back: b(x + 100) })))
+  // (서쪽 회랑 y=17.5 벤치 자리는 비밀 통로 — 2026-10-08 벤치 제거, lib/academy-secret.ts)
   return out
 }
 
@@ -347,8 +347,13 @@ export function buildHallFloor2(ext?: HallExt): { props: PropDef[]; structures: 
     { x0: 0, y0: 0, x1: 0.5, y1: HALL_H },
     { x0: HALL_W - 0.3, y0: 0, x1: HALL_W, y1: GAL },
     { x0: 0, y0: HALL_H - 0.3, x1: GAL, y1: HALL_H },
-    // 아트리움(뚫린 곳) 전체 — 1층으로는 계단 위 포탈로 내려간다
-    { x0: GAL - 0.1, y0: GAL - 0.1, x1: HALL_W, y1: HALL_H },
+    // 아트리움(뚫린 곳) — 대계단 자리만 비워 두고 막는다. 계단을 걸어 내려가 끝에서 1층 맵으로 이어진다
+    { x0: GAL - 0.1, y0: GAL - 0.1, x1: STAIR.x0, y1: HALL_H },
+    { x0: STAIR.x1, y0: GAL - 0.1, x1: HALL_W, y1: HALL_H },
+    { x0: STAIR.x0, y0: STAIR.yBottom + 0.05, x1: STAIR.x1, y1: HALL_H },
+    // 대계단 난간(옆면)
+    { x0: STAIR.x0 - 0.25, y0: GAL - 0.1, x1: STAIR.x0 + 0.05, y1: STAIR.yBottom + 0.05 },
+    { x0: STAIR.x1 - 0.05, y0: GAL - 0.1, x1: STAIR.x1 + 0.25, y1: STAIR.yBottom + 0.05 },
     ...(ext?.blockers ?? []),
   ]
   return { props, structures: [...walls, ...below, ...slab, rails, ...(ext?.structures(zb) ?? [])], blockers }
@@ -358,3 +363,11 @@ export const HALL_PAD_TOP = WALL_Z + 60
 /** 2층 맵: 아트리움 아래로 내려다보이는 1층이 잘리지 않게 */
 export const HALL2_PAD_BOTTOM = FLOOR2 + 80
 export const hallStairs = (): GameMap['stairs'] => [{ ...STAIR }]
+/** 2층 맵의 대계단 — 회랑 바닥(z=0)에서 1층(z=-FLOOR2)으로 내려간다 */
+export const hall2Stairs = (): GameMap['stairs'] => [{ ...STAIR, zBase: -FLOOR2 }]
+/**
+ * 1층 ↔ 2층 걸어서 오르내리기 — 두 맵은 같은 셀 좌표계라 위치를 그대로 넘긴다.
+ * 1층 맵은 계단 꼭대기 근처, 2층 맵은 계단 맨 아래 근처에서 넘어가고(겹치지 않게 간격을 둠), 넘어간 자리는 상대 맵 계단 위.
+ */
+export const STAIR_TO_2F = { x0: STAIR.x0, y0: STAIR.yTop - 1, x1: STAIR.x1, y1: STAIR.yTop + 0.6 }
+export const STAIR_TO_1F = { x0: STAIR.x0, y0: STAIR.yBottom - 0.6, x1: STAIR.x1, y1: STAIR.yBottom + 1 }

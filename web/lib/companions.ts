@@ -15,7 +15,7 @@
 //   1학년 동기 셋(리안·셀라·도란)은 입학과 동시에 파티에 들어와 4인 편성을 채운다.
 // ============================================================================
 
-import type { Combatant, CompanionProgress, GameState, Gender, GuestMember, Position, SpriteSheet, Stats } from '@/lib/types'
+import type { Combatant, CompanionProgress, GameState, Gender, GuestMember, MapId, Position, SpriteSheet, Stats } from '@/lib/types'
 import { computeStatsForLevel, MAX_PARTY_SIZE } from '@/lib/constants'
 import { calendarInfo } from '@/lib/calendar'
 import { flagOn } from '@/lib/story'
@@ -54,6 +54,10 @@ export interface SchoolNpc {
   combat?: NpcCombatProfile
   /** 파티 화면 대사(합류 전/후) — 스토리 작업 시 교체 */
   lines: { recruit: string; idle: string }
+  /** 학교 안에서 머무는 방 — 매주 이 방 또는 로비(중앙 홀·2층 회랑) 중 한 곳에 서 있다(lib/school-roster) */
+  homeRoom?: MapId
+  /** 스토리상 자리를 비우는 구간 — from 플래그가 켜지면 파티에서 빠지고 학교에도 없다, until 플래그가 켜지면 돌아온다 */
+  away?: { from: string; until?: string }
 }
 
 export const SCHOOL_NPCS: SchoolNpc[] = [
@@ -84,6 +88,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '불꽃이 필요하면 불러. 앞장서는 건 내 전문이니까!', idle: '오늘은 몇 마리나 쓰러뜨릴 수 있을까.' },
+    homeRoom: 'class-fire',
   },
   {
     id: 'comp-rusbel',
@@ -91,6 +96,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     title: '화염 동료 · 광역 마법',
     role: 'student',
     gender: 'female',
+    // v3.0: 루스벨 = 폐허된 신전 편 최종보스('노'의 숙주). 3학년 2학기 폭주(RUSPELL_ENRAGED) 후 도주 → 설원에서 찾으면(RUSPELL_FOUND) 복귀
     personality: '자신감 넘치고 화끈한 성격. 지는 걸 무엇보다 싫어한다.',
     sprite: 'hero-fire-female',
     portrait: '/images/portraits/hero-fire-female.png',
@@ -109,6 +115,8 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '내 화염 마법, 옆에서 똑똑히 봐 둬.', idle: '이번 시험도 1등은 내 거야.' },
+    homeRoom: 'class-fire',
+    away: { from: 'RUSPELL_ENRAGED', until: 'RUSPELL_FOUND' },
   },
   {
     id: 'comp-jade',
@@ -134,6 +142,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '…계산은 끝났어. 같이 가는 편이 효율적이야.', idle: '감정적으로 움직이면 진다.' },
+    homeRoom: 'class-ice',
   },
   {
     id: 'comp-lucia',
@@ -159,6 +168,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '다치면 바로 말해 줘. 내가 뒤를 받칠게.', idle: '차 한 잔 하고 갈래?' },
+    homeRoom: 'class-ice',
   },
   {
     id: 'comp-chris',
@@ -184,6 +194,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '방패가 필요하면 나를 세워.', idle: '배고프다… 식당 들렀다 갈까?' },
+    homeRoom: 'class-earth',
   },
   {
     id: 'comp-jane',
@@ -209,6 +220,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '같이 가자. 흙은 언제나 우리 편이야.', idle: '약초는 뿌리째 뽑으면 안 돼.' },
+    homeRoom: 'class-earth',
   },
   // ── 학교 NPC(동기·선배·조교·교수) ──
   //    전원 삼면도 기반 전용 PixelLab 도트(npc-*) — 2026-10-02
@@ -239,6 +251,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '같은 반이지? 숲 실습 같이 가자. 앞은 내가 맡을게!', idle: '다음엔 더 센 놈이랑 붙어 보고 싶은데.' },
+    homeRoom: 'class-fire',
   },
   {
     id: 'comp-sella',
@@ -267,6 +280,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '…혼자 다니면 위험해. 내가 적 발을 묶어 둘게.', idle: '노트 정리 끝나면 같이 복습할래?' },
+    homeRoom: 'class-ice',
   },
   {
     id: 'comp-doran',
@@ -295,6 +309,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '힘 쓰는 일이면 나한테 맡겨. 뒤는 걱정 마.', idle: '공동 식당 오늘 메뉴 봤어?' },
+    homeRoom: 'class-earth',
   },
   {
     id: 'comp-yuna',
@@ -321,6 +336,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '후배들끼리만 보내긴 불안하잖니. 다치면 바로 말해.', idle: '약초는 뿌리째 뽑으면 안 돼, 알지?' },
+    homeRoom: 'class-light',
   },
   {
     id: 'comp-kael',
@@ -348,6 +364,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
       ],
     },
     lines: { recruit: '교수님 지시다. 이번 조사는 내가 동행한다.', idle: '보고서는 오늘 안에 내.' },
+    homeRoom: 'lab-ice',
   },
   {
     id: 'comp-mirel',
@@ -375,6 +392,62 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     },
     lines: { recruit: '이번 원정은 나도 함께 가마. 너무 기대지는 말고.', idle: '기초가 탄탄해야 극의에 닿는단다.' },
   },
+  // ── 패러디 동료 2인(2026-10-08 삼면도 「패러디 캐릭터 밀포이, 해리포탈 삼면도.png」 → PixelLab 도트) ──
+  {
+    id: 'comp-milfoy',
+    name: '밀포이',
+    title: '뱀 문장 기숙사 · 저주형',
+    role: 'student',
+    gender: 'female',
+    personality: '도도하고 자존심이 세다. 품위를 따지지만, 속으로는 실력으로 인정받고 싶어 한다.',
+    sprite: 'npc-milfoy',
+    portrait: '/images/npc/portrait-npc-milfoy.png',
+    joinYear: 1,
+    combat: {
+      statMult: { matk: 1.15, spd: 1.1, maxHp: 0.9 },
+      defaultPosition: 'rear',
+      skills: [
+        { skillId: 'dark-curse', level: 1 },
+        { skillId: 'dark-seal', level: 6 },
+        { skillId: 'dark-veil', level: 12 },
+        { skillId: 'dark-miasma', level: 20 },
+        { skillId: 'dark-gaze', level: 30 },
+        { skillId: 'dark-illusion', level: 40 },
+        { skillId: 'dark-execute', level: 55 },
+        { skillId: 'dark-sentence', level: 75 },
+      ],
+    },
+    lines: { recruit: '흥, 나랑 같은 파티라니 영광인 줄 알아.', idle: '품위 없는 마법은 마법이 아니야.' },
+    homeRoom: 'class-dark',
+  },
+  {
+    id: 'comp-harry',
+    name: '해리포탈',
+    title: '번개 흉터의 학생 · 만능형',
+    role: 'student',
+    gender: 'male',
+    personality: '겸손하고 정의감이 강하다. 위기가 닥치면 이상할 만큼 운이 따른다.',
+    sprite: 'npc-harry',
+    portrait: '/images/npc/portrait-npc-harry.png',
+    joinYear: 1,
+    combat: {
+      statMult: { luck: 1.4, spd: 1.1, matk: 1.05 },
+      defaultPosition: 'front',
+      skills: [
+        { skillId: 'fire-basic-1', level: 1 },
+        { skillId: 'n-firstaid', level: 4 },
+        { skillId: 'fire-basic-3', level: 8 },
+        { skillId: 'light-might', level: 14 },
+        { skillId: 'fire-adv-1', level: 20 },
+        { skillId: 'light-purify', level: 28 },
+        { skillId: 'fire-adv-3', level: 38 },
+        { skillId: 'light-revive', level: 50 },
+        { skillId: 'fire-high-1', level: 62 },
+      ],
+    },
+    lines: { recruit: '혼자 가면 위험해. 나도 같이 갈게.', idle: '이마 흉터? 신경 쓰지 마. 어릴 때 생긴 거야.' },
+    homeRoom: 'class-fire',
+  },
 ]
 
 /** 전투 프로필이 있는 학교 NPC(파티 편성 후보) */
@@ -388,8 +461,15 @@ export function schoolNpcById(id: string): SchoolNpc | undefined {
 /** 동료 슬롯 수 — 주인공을 뺀 나머지 3(펫·임시 NPC 는 슬롯을 차지하지 않는다) */
 export const COMPANION_SLOTS = MAX_PARTY_SIZE - 1
 
+/** 스토리상 자리를 비운 동료인가(폭주 후 도주한 루스벨 등) */
+export function isCompanionAway(state: Pick<GameState, 'storyFlags'>, def: SchoolNpc | undefined): boolean {
+  if (!def?.away) return false
+  return flagOn(state, def.away.from) && !(def.away.until && flagOn(state, def.away.until))
+}
+
 export function canRecruit(state: Pick<GameState, 'calendar' | 'storyFlags' | 'settings'>, def: SchoolNpc): { ok: boolean; reason?: string } {
   if (!def.combat) return { ok: false, reason: '전투에 참가하지 않는 NPC' }
+  if (isCompanionAway(state, def)) return { ok: false, reason: '지금은 행방을 알 수 없다' }
   if (state.storyFlags.DEBUG_UNLOCK_ALL) return { ok: true }
   const year = calendarInfo(state.calendar.globalWeek).year
   if (year < def.joinYear) return { ok: false, reason: `${def.joinYear}학년부터 합류 가능` }

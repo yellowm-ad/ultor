@@ -155,6 +155,8 @@ export function combatantFromMonster(def: MonsterDef): Combatant {
     rank: def.rank ?? 'normal',
     aiProfile: aiProfileOf(def),
     isTestMonster: def.isTestMonster,
+    ...(def.heroSheet ? { appearance: { kind: 'hero' as const, sheet: def.heroSheet } } : {}),
+    ...(def.aura ? { aura: def.aura } : {}),
     alive: true,
   }
 }

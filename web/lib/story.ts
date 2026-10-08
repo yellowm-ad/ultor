@@ -1,24 +1,22 @@
 // ============================================================================
-// 스토리 골격 (§학사 PRD 9~28, 43~44, 62)
+// 스토리 골격 — 메인 스토리 53막 통합안 v3.0 (2026-10-08 확정, Documents/메인 스토리 53막 v3.0.md)
 //
-// 실제 대사/사건은 lib/story-script.ts(대화집 v1.0 초안) 와 MAIN_QUEST_BY_WEEK(주차별 필수 퀘스트) 에
-//   데이터로만 추가하면 코드 수정 없이 게임에 반영된다.
-//
-//   · StoryArc  : 장(chapter) 단위 — 시작/끝 주차, 무대 지역
+//   · StoryArc  : 장(CH0~CH7 + 후일담) — 시작/끝 주차, 무대 지역
+//   · 53막      : EP00 프롤로그 = lib/story-script.ts, EP01~EP52 = lib/story-episodes.ts
 //   · StoryBeat : 조건이 맞으면 딱 한 번 재생되는 사건(대사 묶음). 재생되면 `beat:<id>` 플래그가 켜져
-//                 다시는 발생하지 않는다(§82-10). setFlags 로 다음 사건의 조건을 연다.
-//   · 플래그     : GameState.storyFlags — 모든 스토리 진행은 플래그 기반(§82-4)
+//                 다시는 발생하지 않는다. setFlags 로 다음 사건의 조건을 연다.
+//   · 플래그     : GameState.storyFlags — 모든 스토리 진행은 플래그 기반(v3.0 §9)
 // ============================================================================
 
-import type { GameState, TermType } from '@/lib/types'
-import { calendarInfo, globalWeekOf, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
+import type { GameState } from '@/lib/types'
+import { calendarInfo } from '@/lib/calendar'
 import type { RegionId } from '@/lib/regions'
 import { SCRIPT_BEATS } from '@/lib/story-script'
 import { episodeQuestId, isStoryEpisodeWeek, STORY_EPISODES } from '@/lib/story-episodes'
 
 export interface StoryArc {
   id: string
-  chapter: number // 학기 단계 번호(1~16)
+  chapter: number // 장 번호(0~7, 후일담 8)
   name: string
   startWeek: number
   endWeek: number
@@ -26,68 +24,94 @@ export interface StoryArc {
   description: string
 }
 
-// 학기별 진행(통합 PRD v1.0 §5~13 · 2026-10-02 사용자 결정: '장(chapter) 배치' 폐기).
-// 16개 학기·방학이 각각 하나의 스토리 단계 — 학기 = 학교생활 중심, 방학 = 지역 원정 중심.
-// 해안(1학년 여름) → 스톰헤이븐(1학년 2학기·겨울, 심해 원정은 게임 지역 COAST) → 하늘 유적·폐허(2학년 1학기·여름)
-// → 설원(2학년 2학기·겨울) → 화산(3학년) → 회수·최종 원정(4학년 1학기·여름) → 모르스(4학년 2학기) → 졸업(4학년 겨울).
-// ⚠ 단계 이름/설명은 상세 스토리 작업 때 사용자가 다시 쓴다. id = 학기 termId(예: Y1_SEMESTER1).
-type TermStage = [year: number, term: TermType, name: string, region: RegionId, description: string]
-const TERM_STAGES: TermStage[] = [
-  [1, 'semester1', '입학 · 에르디아 숲', 'ERDIA', '입학식과 삼원 기초 수업. 숲 실습 중 몬스터 이상행동 → 가시어미 변이체 → 고대목 골렘, 첫 봉인 단서.'],
-  [1, 'summer', '에르디아 해안', 'COAST', '휴식 겸 현장실습. 어업 마을 · 낚시 · 등대 조사 → 고대 해안 유적 → 해안 수호수, 이상한 인장의 파편.'],
-  [1, 'semester2', '스톰헤이븐 입항', 'COAST', '학교 밖 세계가 하나의 사건으로 이어진다. 스톰헤이븐 입항 · 하늘과 폭풍의 이상징후.'],
-  [1, 'winter', '스톰헤이븐 원정', 'COAST', '첫 대형 원정. 심해 탐사 → 해파리 여왕 → 모르스의 인장 → 심해 암초왕.'],
-  [2, 'semester1', '하늘 유적', 'STORMHAVEN', '스톰헤이븐의 기록을 쫓아 하늘 유적으로. "우리가 알던 인마대전의 기록은 정확한가?"'],
-  [2, 'summer', '폐허 원정', 'RUINS', '버려진 폐허 · 묘지 · 신전. 언데드와 흑마법사 → 석상 거인왕 → 봉인 균열.'],
-  [2, 'semester2', '루미나 설원', 'SNOWFIELD', '템포를 낮추는 학기. 사냥 · 채집 · 설원 낚시 · 마을 생활 · 동료 이벤트.'],
-  [2, 'winter', '설원 원정', 'SNOWFIELD', '전투보다 관계와 진실. 온건파 마족과의 첫 접촉.'],
-  [3, 'semester1', '화산지대', 'VOLCANO', '제작 · 마도구 · 장비가 이야기와 이어진다. 광석 채굴과 화산 대장간.'],
-  [3, 'summer', '화산 원정', 'VOLCANO', '봉인의 매개체를 찾아 화산 깊은 곳으로 — 봉인 수호자.'],
-  [3, 'semester2', '봉인의 진실', 'VOLCANO', '인마대전의 진실. 봉인은 누군가의 힘을 계속 소모시키는 구조였다.'],
-  [3, 'winter', '전환점', 'ACADEMY', '3학년의 끝. 동료 · 교수와의 관계를 정리하고 마지막 해를 준비한다.'],
-  [4, 'semester1', '회수', 'ACADEMY', '과거 지역 재방문 — 4년간의 기록(도움 · 평판 · 관계 · 연구 · 봉인 파편)이 졸업 프로젝트로 모인다.'],
-  [4, 'summer', '최종 원정', 'ACADEMY', '모든 지역의 봉인 흔적을 연결하는 마지막 외부원정.'],
-  [4, 'semester2', '모르스', 'MORS', '학교 내부 이상현상 → 봉인 붕괴 → 학교 방어전 → 최종 게이트 해금 → 모르스. 본편 엔딩.'],
-  [4, 'winter', '졸업', 'ACADEMY', '졸업식 · 후일담 · 자유 생활(본편은 4학년 2학기에서 끝).'],
+// v3.0 §4 지역/장 구조 — 해안(CH2)과 스톰헤이븐(CH3)은 절대 합치지 않는다.
+type ChapterDef = [id: string, chapter: number, name: string, startWeek: number, endWeek: number, region: RegionId, description: string]
+const CHAPTERS: ChapterDef[] = [
+  ['CH0', 0, '프롤로그 · 입학', 1, 2, 'ACADEMY', '울토르 마법학교 입학. 미르엘 교수와 동기들, 학교 지하 금지구역의 금기.'],
+  ['CH1', 1, '에르디아 숲', 3, 24, 'ERDIA', '숲의 이상 → 가시어미 변이체 → 고목의 문장. 봉인의 흔적이 처음 미스터리로 떠오른다.'],
+  ['CH2', 2, '에르디아 해안 · 아틀란티스', 25, 48, 'COAST', "폐등대와 해저 유적 → 해파리 여왕 → 암초왕. '모르스'라는 이름이 '마왕'으로 기록된 채 처음 등장."],
+  ['CH3', 3, '스톰헤이븐 · 천공 신전', 49, 96, 'STORMHAVEN', "고쳐 쓰인 기록, 성녀와의 만남, 천공 신전과 대성당의 '네 개로 나뉜 왕의 마음'."],
+  ['CH4', 4, '버려진 폐허 · 버려진 신전', 97, 132, 'RUINS', "역사 개변 의혹, 미르엘의 개입. '노'의 봉인이 풀려 루스벨이 폭주하고 달아난다."],
+  ['CH5', 5, '설원 · 오로라 마을', 133, 156, 'SNOWFIELD', '루스벨의 화염으로 녹는 설원, 읽을 수 없는 석비, 루스벨 추적 — 엔딩 루트의 첫 분기.'],
+  ['CH6', 6, '화산지대 · 마물 마을', 157, 168, 'VOLCANO', '모르스가 사는 화산지대. 루스벨을 찾았느냐에 따라 토벌(A) 또는 대화(B/C).'],
+  ['CH7', 7, '최종장', 169, 180, 'ACADEMY', "마을 상징, 학교 지하의 '희', 미르엘의 정체, 왕 앞의 증언 — A/B/C 엔딩과 졸업식."],
+  ['EPILOGUE', 8, '졸업 · 후일담', 181, 192, 'ACADEMY', '본편 이후 졸업식 · 후일담 · 자유 생활.'],
 ]
-export const STORY_ARCS: StoryArc[] = TERM_STAGES.map(([year, term, name, mainRegion, description], i) => ({
-  id: `Y${year}_${term.toUpperCase()}`,
-  chapter: i + 1, // 단계 번호(1~16)
-  name,
-  startWeek: globalWeekOf(year, term, 1),
-  endWeek: globalWeekOf(year, term, 12),
-  mainRegion,
-  description,
-}))
+export const STORY_ARCS: StoryArc[] = CHAPTERS.map(([id, chapter, name, startWeek, endWeek, mainRegion, description]) => ({ id, chapter, name, startWeek, endWeek, mainRegion, description }))
 
 export function arcForWeek(globalWeek: number): StoryArc {
   return STORY_ARCS.find((a) => globalWeek >= a.startWeek && globalWeek <= a.endWeek) ?? STORY_ARCS[0]
 }
 
-// ── 주요 플래그 (§27 엔딩 플래그 포함) ──────────────────────────────────────────
-// 문자열 오타 방지용 상수. 새 플래그는 자유롭게 문자열로 써도 동작한다.
+// ── 스토리 플래그(v3.0 §9) ────────────────────────────────────────────────────
+// 문자열 오타 방지용 상수. 루스벨 관련 키는 RUSPELL_* 하나로 통일(문서의 RUSSELL_ENRAGED → RUSPELL_ENRAGED).
 export const FLAGS = {
-  // 장 클리어
-  ERDIA_CLEARED: 'ERDIA_CLEARED',
-  SHORE_CLEARED: 'SHORE_CLEARED',
-  STORMHAVEN_CLEARED: 'STORMHAVEN_CLEARED',
-  SKY_CLEARED: 'SKY_CLEARED',
-  SNOWFIELD_CLEARED: 'SNOWFIELD_CLEARED',
-  VOLCANO_CLEARED: 'VOLCANO_CLEARED',
-  /** 모르스 최종전 진입 조건(§26) — 이 플래그 전에는 storyBoss 가 나오지 않는다 */
+  CH0_STARTED: 'CH0_STARTED',
+  CH1_STARTED: 'CH1_STARTED',
+  CH1_ERDIA_COMPLETE: 'CH1_ERDIA_COMPLETE',
+  CH2_COAST_STARTED: 'CH2_COAST_STARTED',
+  CH2_COAST_COMPLETE: 'CH2_COAST_COMPLETE',
+  CH3_STORMHAVEN_STARTED: 'CH3_STORMHAVEN_STARTED',
+  SAINT_MET: 'SAINT_MET',
+  CATHEDRAL_RECORD_FOUND: 'CATHEDRAL_RECORD_FOUND',
+  FOUR_EMOTIONS_DISCOVERED: 'FOUR_EMOTIONS_DISCOVERED',
+  CH4_RUINS_STARTED: 'CH4_RUINS_STARTED',
+  MIREL_HISTORY_SUSPICION: 'MIREL_HISTORY_SUSPICION',
+  NO_SEAL_FOUND: 'NO_SEAL_FOUND',
+  NO_RELEASED: 'NO_RELEASED',
+  RUSPELL_ENRAGED: 'RUSPELL_ENRAGED',
+  /** 엔딩 루트 첫 분기 — 설원에서 루스벨을 찾았는가(EP45) */
+  RUSPELL_FOUND: 'RUSPELL_FOUND',
+  SNOW_STELE_FOUND: 'SNOW_STELE_FOUND',
+  ANCIENT_SCRIPT_CONFIRMED: 'ANCIENT_SCRIPT_CONFIRMED',
+  MORS_MEMORY_ACQUIRED: 'MORS_MEMORY_ACQUIRED',
+  MORS_TRUTH_CONFIRMED: 'MORS_TRUTH_CONFIRMED',
+  MIREL_TRUE_IDENTITY_FOUND: 'MIREL_TRUE_IDENTITY_FOUND',
+  // 희·노·애·락 — 모르스의 네 감정
+  JOY_FRAGMENT_FOUND: 'JOY_FRAGMENT_FOUND',
+  RAGE_FRAGMENT_RETURNED: 'RAGE_FRAGMENT_RETURNED',
+  SORROW_FRAGMENT_CONFIRMED: 'SORROW_FRAGMENT_CONFIRMED',
+  PLEASURE_FRAGMENT_RECOVERED: 'PLEASURE_FRAGMENT_RECOVERED',
+  MORS_COMPLETE: 'MORS_COMPLETE',
+  MIREL_DEFEATED: 'MIREL_DEFEATED',
+  /** 최종전 진입 조건 — 이 플래그 전에는 모르스의 성 최종전(storyBoss)이 나오지 않는다 */
   FINAL_GATE_OPEN: 'FINAL_GATE_OPEN',
-  // 엔딩 분기(§27)
-  DEMON_TRUST: 'DEMON_TRUST',
-  ACADEMY_TRUST: 'ACADEMY_TRUST',
-  SEAL_KNOWLEDGE: 'SEAL_KNOWLEDGE',
-  MORS_DIALOGUE: 'MORS_DIALOGUE',
-  ALLY_DEMON: 'ALLY_DEMON',
-  ALLY_HUMAN: 'ALLY_HUMAN',
-  SACRIFICE_FLAG: 'SACRIFICE_FLAG',
-  PRESERVATION_FLAG: 'PRESERVATION_FLAG',
+  ENDING_A: 'ENDING_A',
+  ENDING_B: 'ENDING_B',
+  ENDING_C: 'ENDING_C',
   /** 관리자/테스트 — 모든 생활 시스템 즉시 해금 */
   DEBUG_UNLOCK_ALL: 'DEBUG_UNLOCK_ALL',
 } as const
+
+// ── 평판 거점 · 마을 상징(v3.0 §5) — 평판 DB·분수대·상징 지급은 Phase 2 ─────────────────
+export interface ReputationHub {
+  id: string
+  name: string
+  mapId: string
+  /** 평판 수치 플래그(Lv.1~5) */
+  repFlag: string
+  /** Lv.5 상징 획득 플래그 */
+  emblemFlag: string
+}
+export const REPUTATION_HUBS: ReputationHub[] = [
+  { id: 'SAFE_VILLAGE', name: '안전지대 마을', mapId: 'village', repFlag: 'REP_SAFE_VILLAGE', emblemFlag: 'EMBLEM_SAFE_VILLAGE' },
+  { id: 'ATLANTIS', name: '아틀란티스 마을', mapId: 'atlantis', repFlag: 'REP_ATLANTIS', emblemFlag: 'EMBLEM_ATLANTIS' },
+  { id: 'SKY_SANCTUARY', name: '천공 신전 성역', mapId: 'sky-temple', repFlag: 'REP_SKY_SANCTUARY', emblemFlag: 'EMBLEM_SKY_SANCTUARY' },
+  { id: 'RUIN_VILLAGE', name: '폐허 신전 쪽 마을', mapId: 'temple-ruin', repFlag: 'REP_RUIN_VILLAGE', emblemFlag: 'EMBLEM_RUIN_VILLAGE' },
+  { id: 'AURORA', name: '오로라 마을', mapId: 'aurora-village', repFlag: 'REP_AURORA', emblemFlag: 'EMBLEM_AURORA' },
+  { id: 'MONSTER_VILLAGE', name: '마물 마을', mapId: 'demon-village', repFlag: 'REP_MONSTER_VILLAGE', emblemFlag: 'EMBLEM_MONSTER_VILLAGE' },
+]
+export const REPUTATION_LEVELS = ['낯선 사람', '얼굴을 아는 손님', '믿을 만한 모험가', '마을의 은인', '마을의 대변자'] as const
+/** C 엔딩에 필요한 상징 — 6거점 전부(2026-10-08 확정) */
+export const ENDING_EMBLEM_FLAGS: string[] = REPUTATION_HUBS.map((h) => h.emblemFlag)
+/** 마물 마을 평판 Lv.5(상징) — 모르스와의 첫 대화에서 협력 루트가 열리는 조건 */
+export const VOLCANO_REPUTATION_LV5 = 'EMBLEM_MONSTER_VILLAGE'
+
+/** 엔딩 판정(v3.0 §6) — 루스벨을 못 찾았거나 마물 마을 상징이 없으면 A, 상징이 하나라도 빠지면 B, 전부면 C */
+export function endingRoute(state: Pick<GameState, 'storyFlags'>): 'A' | 'B' | 'C' {
+  if (!flagOn(state, FLAGS.RUSPELL_FOUND) || !flagOn(state, VOLCANO_REPUTATION_LV5)) return 'A'
+  return ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f)) ? 'C' : 'B'
+}
 
 // ── 스토리 비트 ─────────────────────────────────────────────────────────────────
 export type StoryTrigger =
@@ -128,6 +152,8 @@ export interface StoryBeat {
   lines: StoryLine[]
   /** 마지막 대사에서 고르는 선택지 — 고른 쪽 setFlags 가 켜지고 FLAG 트리거로 이어진다 */
   choices?: StoryChoice[]
+  /** 장면을 닫으면 이 몬스터들과 바로 전투(스토리 보스). 지거나 도망치면 장면이 되돌아가 다시 도전할 수 있다 */
+  battle?: { monsterIds: string[] }
 }
 
 /**
@@ -137,7 +163,7 @@ export interface StoryBeat {
 const ONBOARDING_BEATS: StoryBeat[] = [
   {
     id: 'TUTORIAL_CONTROLS',
-    arcId: 'CH1_ERDIA',
+    arcId: 'CH0',
     title: '학사 안내',
     trigger: { type: 'WEEK_START', week: 1 },
     lines: [
@@ -148,7 +174,7 @@ const ONBOARDING_BEATS: StoryBeat[] = [
   },
   {
     id: 'TUTORIAL_FIRST_FIELD',
-    arcId: 'CH1_ERDIA',
+    arcId: 'CH1',
     title: '첫 야생 실습',
     trigger: { type: 'VISIT', mapId: 'forest' },
     lines: [
@@ -158,64 +184,14 @@ const ONBOARDING_BEATS: StoryBeat[] = [
   },
 ]
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 3주 스토리 슬롯(통합 PRD §3, §39, §49) — 3·6·9·12주차를 마감할 때 메인스토리 비트가 재생된다.
-//   · 대화집(story-script)의 주차 트리거 비트는 같은 학기 안의 가장 가까운 다음 슬롯으로 옮긴다
-//     (학기 1주차 오프닝·입학식은 그대로 주 시작에). ⚠ 임시 배치 — 상세 스토리 작업 때 사용자가 다시 짠다.
-//   · 대화집 비트가 없는 슬롯은 장(Arc) 설명으로 만든 임시 비트로 채운다(STORY_CYCLE 로 덮어쓸 수 있음).
-//   · 강도(§49): 학기 3주 LOW → 6주 MID → 9주 LOW/MID → 12주 HIGH
-// ─────────────────────────────────────────────────────────────────────────────
-export type StoryIntensity = 'LOW' | 'MID' | 'HIGH'
-export const SLOT_INTENSITY: Record<number, StoryIntensity> = { 3: 'LOW', 6: 'MID', 9: 'MID', 12: 'HIGH' }
-export const isStoryWeek = (globalWeek: number) => calendarInfo(globalWeek).week % 3 === 0
+/** 이 주가 메인 스토리 주인가(v3.0 §8 globalWeek 표) */
+export const isStoryWeek = (globalWeek: number) => isStoryEpisodeWeek(globalWeek)
 
-/** 학기 내 주차 → 같은 학기의 다음 슬롯 주(globalWeek) */
-function slotWeekFor(globalWeek: number): number {
-  const info = calendarInfo(globalWeek)
-  const slot = Math.min(WEEKS_PER_TERM, Math.ceil(info.week / 3) * 3)
-  return globalWeek - info.week + slot
-}
-function slotify(b: StoryBeat): StoryBeat {
-  const t = b.trigger
-  if (t.type === 'WEEK_START') {
-    if (calendarInfo(t.week).week === 1) return b // 학기 오프닝은 주 시작 그대로
-    return { ...b, trigger: { type: 'STORY_SLOT', week: slotWeekFor(t.week) } }
-  }
-  if (t.type === 'WEEK_END') return { ...b, trigger: { type: 'STORY_SLOT', week: slotWeekFor(t.week) } }
-  return b
-}
-const SLOTTED_SCRIPT = SCRIPT_BEATS.map(slotify)
-
-/** 슬롯별 직접 지정(globalWeek → 비트 id) — 비워 두면 대화집/임시 비트가 쓰인다 */
+/** 주차별 직접 지정(globalWeek → 비트 id) — 비워 두면 53막 에피소드만 쓰인다 */
 export const STORY_CYCLE: Record<number, string> = {}
 
-const PLACEHOLDER_NARRATION: Record<StoryIntensity, (arc: StoryArc) => string[]> = {
-  LOW: (a) => [`${a.name} — 수업과 과제로 바쁜 한 주가 지나갔다.`, '기숙사 휴게실에서는 요즘 학교 밖에서 들려오는 이상한 소문이 화제다.'],
-  MID: (a) => [`${a.name} — 외부활동에서 마주친 흔적들이 하나의 방향을 가리키기 시작한다.`, `교수진이 조용히 조사를 시작했다는 이야기가 돈다. (${a.description})`],
-  HIGH: (a) => [`${a.name} — 학기의 끝, 쌓여 온 단서가 사건이 되어 터진다.`, a.description],
-}
-function placeholderBeats(): StoryBeat[] {
-  const taken = new Set(SLOTTED_SCRIPT.filter((b) => b.trigger.type === 'STORY_SLOT').map((b) => (b.trigger as { week: number }).week))
-  const out: StoryBeat[] = []
-  for (let gw = 3; gw <= TOTAL_WEEKS; gw += 3) {
-    const info = calendarInfo(gw)
-    // 스토리 주간 에피소드가 있는 주는 결말 장면이 대신한다
-    if (info.isPostGame || taken.has(gw) || STORY_CYCLE[gw] || isStoryEpisodeWeek(gw)) continue
-    const arc = arcForWeek(gw)
-    const intensity = SLOT_INTENSITY[info.week] ?? 'LOW'
-    out.push({
-      id: `SLOT_${gw}`,
-      arcId: arc.id,
-      title: `${arc.name} · ${info.year}학년 ${info.isVacation ? '방학' : '학기'} ${info.week}주차`,
-      trigger: { type: 'STORY_SLOT', week: gw },
-      lines: PLACEHOLDER_NARRATION[intensity](arc).map((text) => ({ speaker: '', text })),
-    })
-  }
-  return out
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// 3주 스토리 주간 에피소드(lib/story-episodes.ts, 2026-10-07) — 주 시작 오프닝 + 미션 보상 수령 시 결말
+// 메인 스토리 EP01~EP52(lib/story-episodes.ts) — 주 시작 오프닝 + 스토리 미션 보상 수령 시 결말
 // ─────────────────────────────────────────────────────────────────────────────
 function episodeBeats(): StoryBeat[] {
   return STORY_EPISODES.flatMap((ep) => {
@@ -225,10 +201,11 @@ function episodeBeats(): StoryBeat[] {
       {
         id: `EP_${ep.week}_OPEN`,
         arcId: arc.id,
-        title: `스토리 ${ep.no}화 — ${ep.title}`,
+        title: `${ep.id} — ${ep.title}`,
         trigger: { type: 'WEEK_START', week: ep.week },
+        ...(ep.requiredFlags.length ? { requiredFlags: ep.requiredFlags } : {}),
         lines: [
-          { speaker: '', text: `${info.year}학년 ${info.isVacation ? '방학' : '학기'} ${info.week}주차 · 스토리 ${ep.no}화 「${ep.title}」${info.isVacation ? '' : ' — 이번 주는 수업이 없다.'}` },
+          { speaker: '', text: `${info.year}학년 ${info.isVacation ? '방학' : '학기'} ${info.week}주차 · 메인 스토리 ${ep.id} 「${ep.title}」` },
           ...ep.brief,
           { speaker: '', text: `이번 주 필수 미션: ${ep.objectives.map((o) => o.label).join(' · ')}  (학사 수첩 J)` },
         ],
@@ -246,8 +223,8 @@ function episodeBeats(): StoryBeat[] {
   })
 }
 
-// 대화집 비트가 먼저(P-01 입학식 → 조작 안내, 1-01 첫 실습 → 채집 안내 순)
-export const STORY_BEATS: StoryBeat[] = [...SLOTTED_SCRIPT, ...ONBOARDING_BEATS, ...episodeBeats(), ...placeholderBeats()]
+// 프롤로그(EP00 입학식) → 조작 안내 순
+export const STORY_BEATS: StoryBeat[] = [...SCRIPT_BEATS, ...ONBOARDING_BEATS, ...episodeBeats()]
 
 /**
  * 주차별 필수(MAIN) 퀘스트 — globalWeek → quests.ts 의 템플릿 id.

@@ -1,1247 +1,310 @@
 // ============================================================================
-// 3주 스토리 주간 — 52화 작성 파일
+// 메인 스토리 53막 — 통합안 v3.0 (2026-10-08 확정, Documents/메인 스토리 53막 v3.0.md)
 //
-//   스토리 주간 = 학기 3·6·9주차(그 주는 수업 없음) + 방학 3·6·9·12주차. 학기 12주차는 기말고사라 제외,
-//   4학년 겨울(후일담)도 제외 → 4년간 52화. 한 화의 흐름:
-//     ① brief(오프닝)  — 그 주가 시작될 때 재생
-//     ② objectives(미션) — 학사 수첩 '필수' 칸. 다 채우고 보상을 받으면
-//     ③ outro(결말)    — 바로 재생. choices 가 있으면 마지막 대사에서 선택지
-//     ④ 주를 마감할 때 대화집(story-script)의 그 주 장면이 있으면 이어서 재생
+//   EP00 프롤로그(입학식)는 1학년 1학기 1주차 시작 장면 — lib/story-script.ts.
+//   EP01~EP52 는 아래 데이터. 각 막은 정해진 globalWeek 가 시작될 때 오프닝, 그 주의 스토리 미션 보상을
+//   받으면 결말이 재생된다(lib/story.ts episodeBeats). 스토리 주간에도 수업은 그대로 있다(v3.0 §10).
 //
-// ── 작성 형식(한 화 = 한 블록, 항목 순서 고정) ───────────────────────────────────
-//   ep(학년, 학기, 주차, {
-//     status:     '임시' | '완성'                      — 다 쓴 화는 '완성'으로
-//     title:      '화 제목'                            — 수첩·장면 제목
-//     region:     'ERDIA' 등 지역 id(lib/regions.ts)   — 미션 지역 표시
-//     summary:    '한 줄 요약'                          — 수첩 미션 설명(비우면 오프닝의 교수·나레이션 대사로 대신)
-//     brief:      [대사, …]                            — ① 오프닝
-//     objectives: [목표, …]                            — ② 미션(아래 목표 함수)
-//     outro:      [대사, …]                            — ③ 결말
-//     choices:    [{ label: '선택지', setFlags: ['플래그'] }, …]  — 결말 선택지(없으면 [])
-//     setFlags:   ['플래그', …]                         — 결말 후 켜질 플래그(EP_<주>_DONE 은 자동)
-//     rewards:    { exp, gold, course, items: [{ itemId, qty }] }  — 비우면 기본 보상(학년 비례 EXP·골드 + 과목 점수 30)
-//   }),
+//   ⚠ 이번 단계(v3.0 Phase 1)는 제목·주차·장·지역·플래그·루트·요약만 확정했다.
+//     brief/outro 는 문서의 요점(points)을 나레이션으로 읽는 임시 장면 — 대사집·컷신은 다음 작업에서 교체한다.
 //
-//   대사:  N('나레이션') · MIREL('…') 같은 화자 함수 · FIRE/ICE/EARTH('…') = 삼원 주인공
-//          (플레이어와 같은 속성이면 플레이어 본인, 아니면 같은 속성 동기 리안·셀라·도란이 말함)
-//          목록에 없는 인물은 say('이름', '초상화 id')('대사')
-//   목표:  visit('맵 id', '맵 이름')        — 그 맵에 도착
-//          kill('몬스터 id' | 'family:계열', 수, '표시 문구')
-//          win('지역 id' | 'any', 수, '표시 문구')   — 전투 승리
-//          talk('NPC id' | 'any', '표시 문구', 수?)
-//   미션 목표를 대화집의 방문/전투 장면과 겹치게 잡으면, 미션 중에 그 장면들이 자연스럽게 터진다.
+// ── 작성 형식(한 막 = E(…) 한 줄 묶음) ──────────────────────────────────────────
+//   E(번호, globalWeek, 장, 지역, '제목', [요점, …], [미션 목표, …], [켜질 플래그, …], { 선택 옵션 })
+//     옵션: route(기본 'ALL') · routes(루트별 요점) · requiredFlags · choices · rewards · status
+//   목표:  visit('맵 id', '맵 이름') · kill('몬스터 id' | 'family:계열', 수, '문구')
+//          win('지역 id' | 'any', 수, '문구') · talk('NPC id' | 'any', '문구', 수?) · act('PLACE_FURNITURE' 등, 'any', 수, '문구')
 // ============================================================================
 
-import type { QuestObjective, TermType } from '@/lib/types'
+import type { QuestObjective, QuestObjectiveType } from '@/lib/types'
 import type { StoryChoice, StoryLine } from '@/lib/story'
 import type { RegionId } from '@/lib/regions'
-import { calendarInfo, globalWeekOf } from '@/lib/calendar'
+import { calendarInfo } from '@/lib/calendar'
 
 export interface EpisodeRewards {
   exp?: number
   gold?: number
+  /** 이번 학기 과목 점수 — 스토리 주간에도 수업이 있으므로 기본 0 */
   course?: number
   items?: { itemId: string; qty: number }[]
 }
 
+/** v3.0 장 구분 */
+export type StoryChapter = 'CH0' | 'CH1' | 'CH2' | 'CH3' | 'CH4' | 'CH5' | 'CH6' | 'CH7'
+/** 엔딩 루트 — 공통(ALL) 또는 루트 전용. 루트 판정은 Phase 2(평판·상징) 이후 연결 */
+export type StoryRoute = 'ALL' | 'A' | 'B' | 'C' | 'B_OR_C'
+
 export interface StoryEpisode {
-  /** globalWeek */
+  /** globalWeek(1~192) */
   week: number
-  /** 몇 화(1~52) */
+  /** 막 번호(1~52, 프롤로그 EP00 은 story-script) */
   no: number
+  /** 'EP01' 형식 */
+  id: string
+  chapter: StoryChapter
   status: '임시' | '완성'
   title: string
   region: RegionId
+  route: StoryRoute
+  /** 수첩 미션 설명 */
   summary: string
+  /** v3.0 문서의 막 요점 */
+  points: string[]
+  /** 루트별로 달라지는 요점(EP46~52) */
+  routes?: Partial<Record<'A' | 'B' | 'C' | 'B_OR_C', string[]>>
   brief: StoryLine[]
   objectives: QuestObjective[]
   outro: StoryLine[]
   choices: StoryChoice[]
+  requiredFlags: string[]
   setFlags: string[]
   rewards: EpisodeRewards
 }
 
-// ── 화자 ────────────────────────────────────────────────────────────────────
 const N = (text: string): StoryLine => ({ speaker: '', text })
-/** 목록에 없는 화자 — say('이름', '초상화 id')('대사') */
-const say = (speaker: string, portraitId?: string) => (text: string): StoryLine => ({ speaker, portraitId, text })
-const MIREL = say('미르엘 교수', 'npc-mirel')
-const OWEN = say('사서 오웬', 'npc-librarian')
-const EDRIC = say('에드릭 교수', 'npc-job-trainer')
-const KAEL = say('카엘 조교', 'prof-kael')
-const GROT = say('용암대장장이 그롯', 'npc-demon-smith')
-// 아래는 대화집(story-script)의 인물 — 이번 초안엔 안 썼지만 작성용으로 미리 둔다
-/* eslint-disable @typescript-eslint/no-unused-vars */
-const VAN = say('대장장이 반', 'npc-weapon')
-const CELINE = say('약사 셀린', 'npc-potion')
-const MARENA = say('어부 마레나', 'story-marena')
-const LEON = say('항만 길드장 레온', 'story-leon')
-const NEREA = say('연구자 네레아', 'story-nerea')
-const HART = say('설원 수렵가 하르트', 'story-hart')
-const SER = say('마족 세르', 'story-ser')
-const MORS = say('모르스', 'story-mors')
-/* eslint-enable @typescript-eslint/no-unused-vars */
-const FIRE = (text: string): StoryLine => ({ speaker: '화염 주인공', hero: 'fire', text })
-const ICE = (text: string): StoryLine => ({ speaker: '빙결 주인공', hero: 'ice', text })
-const EARTH = (text: string): StoryLine => ({ speaker: '대지 주인공', hero: 'earth', text })
 
 // ── 목표 ────────────────────────────────────────────────────────────────────
 const visit = (mapId: string, name: string): QuestObjective => ({ type: 'VISIT', targetId: mapId, count: 1, label: `${name} 도착` })
 const kill = (target: string, count: number, label: string): QuestObjective => ({ type: 'KILL', targetId: target, count, label })
 const win = (region: string, count: number, label: string): QuestObjective => ({ type: 'WIN_BATTLE', targetId: region, count, label })
 const talk = (npcId: string, label: string, count = 1): QuestObjective => ({ type: 'TALK', targetId: npcId, count, label })
+const act = (type: QuestObjectiveType, targetId: string, count: number, label: string): QuestObjective => ({ type, targetId, count, label })
 
-type EpisodeBody = Omit<StoryEpisode, 'week' | 'no'>
-const ep = (year: number, term: TermType, week: number, body: EpisodeBody) => ({ ...body, week: globalWeekOf(year, term, week) })
+interface EpisodeOpts {
+  route?: StoryRoute
+  routes?: StoryEpisode['routes']
+  requiredFlags?: string[]
+  choices?: StoryChoice[]
+  rewards?: EpisodeRewards
+  status?: StoryEpisode['status']
+}
 
-/** 52화 — 주차 순서대로 */
-const EPISODES: Omit<StoryEpisode, 'no'>[] = [
-  // ════════════════════════════════════════════════════════════════════════
-  // 1학년 1학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 1화 · 1학년 1학기 3주차 ──
-  ep(1, 'semester1', 3, {
-    status: '임시',
-    title: '숲의 이상행동',
-    region: 'ERDIA',
-    summary: '',
-    brief: [
-      EDRIC('이번 주 수업은 쉰다. 대신 현장 조사다.'),
-      EDRIC('깊은 숲의 짐승들이 사람을 피하지 않고 달려든다는 보고가 들어왔어. 원인을 확인하고 와라.'),
-      FIRE('수업이 없다고? 좋아, 바로 가자!'),
-      ICE('…조사라고 했잖아. 싸우러 가는 게 아니야.'),
-    ],
-    objectives: [
-      visit('forest-2', '에르디아 깊은 숲'),
-      win('ERDIA', 3, '에르디아에서 전투 승리'),
-    ],
-    outro: [
-      N('쓰러진 짐승의 몸에서 희미한 보랏빛 마력이 피어오르다 흩어진다.'),
-      EARTH('이건… 짐승의 마력이 아니야.'),
-      EDRIC('잘했다. 표본은 내가 미르엘 교수께 넘기마.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 2화 · 1학년 1학기 6주차 ──
-  ep(1, 'semester1', 6, {
-    status: '임시',
-    title: '가시어미의 둥지',
-    region: 'ERDIA',
-    summary: '',
-    brief: [
-      MIREL('지난번 표본에서 이상한 술식의 흔적이 나왔다.'),
-      MIREL('흔적은 고목숲 한가운데를 가리킨다. 가시덩굴이 둥지를 틀었다는 곳이지.'),
-      MIREL('무리하지 마라. 위험하면 돌아와.'),
-    ],
-    objectives: [
-      visit('forest-3', '에르디아 고목숲'),
-      kill('mon-thorn-matriarch', 1, '가시어미 처치'),
-    ],
-    outro: [
-      N('거대한 가시덩굴이 무너지며 뿌리 아래에서 금이 간 돌판이 드러난다.'),
-      ICE('돌판에… 문양이 새겨져 있어.'),
-      FIRE('교수님한테 가져가자. 이건 그냥 몬스터 둥지가 아니야.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 3화 · 1학년 1학기 9주차 ──
-  ep(1, 'semester1', 9, {
-    status: '임시',
-    title: '봉인의 잔재',
-    region: 'ERDIA',
-    summary: '',
-    brief: [
-      OWEN('돌판의 문양은 인마대전 시절 봉인진의 일부와 닮았습니다.'),
-      OWEN('같은 문양이 이끼 동굴 벽에서도 발견됐다는 기록이 있지요. 확인해 주시겠습니까?'),
-    ],
-    objectives: [
-      talk('npc-librarian', '사서 오웬에게 돌판 보여 주기'),
-      visit('cave', '이끼 동굴'),
-      kill('family:construct', 2, '동굴의 구조물형 처치'),
-    ],
-    outro: [
-      N('동굴 깊은 벽에 돌판과 같은 문양이 희미하게 빛나고 있다.'),
-      EARTH('봉인이… 아직 살아 있는 거야?'),
-      OWEN('기록에는 "완전히 끝났다"고 적혀 있었는데 말이지요.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+/** 요점 앞쪽 절반 = 오프닝 나레이션, 나머지 = 결말 나레이션(임시) */
+function E(
+  no: number, week: number, chapter: StoryChapter, region: RegionId, title: string,
+  points: string[], objectives: QuestObjective[], setFlags: string[] = [], o: EpisodeOpts = {},
+): StoryEpisode {
+  const routeLines = Object.entries(o.routes ?? {}).map(([r, ps]) => `[${r === 'B_OR_C' ? 'B/C' : r} 루트] ${ps.join(' · ')}`)
+  const all = [...points, ...routeLines]
+  const cut = Math.max(1, Math.ceil(all.length / 2))
+  return {
+    week, no, id: `EP${String(no).padStart(2, '0')}`, chapter, status: o.status ?? '임시', title, region,
+    route: o.route ?? 'ALL',
+    summary: points.slice(0, 3).join(' · '),
+    points, routes: o.routes,
+    brief: all.slice(0, cut).map(N),
+    objectives,
+    outro: (all.slice(cut).length ? all.slice(cut) : ['(임시 결말 — 대사집 작업 예정)']).map(N),
+    choices: o.choices ?? [], requiredFlags: o.requiredFlags ?? [], setFlags, rewards: o.rewards ?? {},
+  }
+}
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 1학년 여름방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 4화 · 1학년 여름방학 3주차 ──
-  ep(1, 'summer', 3, {
-    status: '임시',
-    title: '안개 늪의 고대목',
-    region: 'ERDIA',
-    summary: '',
-    brief: [
-      MIREL('방학이지만 미안하게 됐다. 안개 늪에서 거대한 나무가 걸어다닌다는구나.'),
-      MIREL('봉인 문양이 나온 곳과 이어져 있을지도 모른다.'),
-    ],
-    objectives: [
-      visit('swamp', '안개 늪지'),
-      kill('mon-ancient-bark-golem', 1, '고대목 골렘 처치'),
-    ],
-    outro: [
-      N('쓰러진 고대목의 심재에서 문짝 모양의 문양이 떠오른다.'),
-      ICE('문… 이 봉인은 무언가를 가두는 문이야.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 5화 · 1학년 여름방학 6주차 ──
-  ep(1, 'summer', 6, {
-    status: '임시',
-    title: '해안 현장실습',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      EDRIC('남은 방학은 해안 현장실습이다. 바람 좀 쐬고 와라.'),
-      FIRE('바다다!'),
-      EDRIC('…실습이라고 했다.'),
-    ],
-    objectives: [
-      visit('sea', '바다 해안'),
-      win('COAST', 3, '해안에서 전투 승리'),
-    ],
-    outro: [
-      N('파도 사이로 낯선 물빛이 일렁인다. 바다 쪽 몬스터들도 어딘가 들떠 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 6화 · 1학년 여름방학 9주차 ──
-  ep(1, 'summer', 9, {
-    status: '임시',
-    title: '산호 여울의 이상 파도',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      EDRIC('어부들이 산호 여울의 파도가 거꾸로 친다고 하더군.'),
-      EARTH('파도가 거꾸로? 그게 말이 돼?'),
-    ],
-    objectives: [
-      visit('sea-2', '산호 여울'),
-      kill('family:aquatic', 4, '수생형 몬스터 처치'),
-    ],
-    outro: [
-      N('바닷속에서 숲의 돌판과 같은 빛이 잠깐 번쩍였다 사라진다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 7화 · 1학년 여름방학 12주차 ──
-  ep(1, 'summer', 12, {
-    status: '임시',
-    title: '등대의 불빛',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      EDRIC('방학 마지막 과제다. 암초 해안의 꺼진 등대를 확인해라.'),
-    ],
-    objectives: [
-      visit('sea-3', '암초 해안'),
-      win('COAST', 3, '암초 해안 일대 정리'),
-    ],
-    outro: [
-      N('꺼진 등대 아래, 바다 쪽을 향해 새겨진 오래된 인장이 보인다.'),
-      ICE('숲, 늪, 그리고 바다까지… 전부 이어져 있어.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+/** EP01~EP52 — v3.0 §7·§8 */
+const EPISODES: StoryEpisode[] = [
+  // ════════ CH1 — 에르디아 숲 ════════
+  E(1, 3, 'CH1', 'ACADEMY', '처음 맞는 학교생활',
+    ['학생들과 첫 교류', '수업·동아리·기숙사·학사 수첩 사용', '간단한 외부 사이트 퀘스트 경험', '전투와 생활 콘텐츠를 처음 연결', "'4년을 여기서 보낸다'는 현실적인 감각"],
+    [talk('any', '학교 사람들과 인사하기', 3), visit('forest', '에르디아 숲')], ['CH1_STARTED']),
+  E(2, 6, 'CH1', 'ERDIA', '숲에서 들려온 이상한 울음',
+    ['에르디아 숲 현장 수업', '채집과 몬스터 토벌의 교육적 연결', '평소와 다른 몬스터 행동 발견', '교사는 단순한 이상기후·서식 변화로 판단', '주인공 일행은 작은 마력 잔향 발견'],
+    [visit('forest-2', '에르디아 깊은 숲'), win('ERDIA', 3, '에르디아에서 전투 승리')]),
+  E(3, 9, 'CH1', 'ERDIA', '중간고사와 사라진 약초',
+    ['원소 기초·산술·동식물·예절 중간평가', '학교생활과 동료 관계 강화', '실습 준비 중 희귀 약초가 사라지는 사건', '숲 몬스터의 행동과 연결됨', '오래된 가시 흔적 발견'],
+    [act('GATHER', 'tag:herb', 3, '숲에서 약초 채집'), kill('family:plant', 3, '식물형 몬스터 처치')]),
+  E(4, 12, 'CH1', 'ERDIA', '마지막 수업, 이상한 뿌리',
+    ['학기말 평가와 성적·학점 정산', '방학 전 외부활동 안내', '숲 심층부에서 거대한 뿌리 흔적 확인', '학교 측은 단순 생태 이상으로 처리', '주인공 일행은 방학 조사단 참가를 결심'],
+    [visit('forest-3', '에르디아 고목숲'), talk('npc-job-trainer', '에드릭 교수에게 방학 조사단 신청')]),
+  E(5, 15, 'CH1', 'ERDIA', '깊은 숲으로',
+    ['에르디아 장기 원정 시작', '깊은 숲 → 고목숲 진입', '채집·사냥·생활 퀘스트가 메인 사건 조사와 결합', '몬스터 변이 흔적 다수 발견', '첫 본격적인 사건 지역 확정'],
+    [visit('forest-3', '에르디아 고목숲'), win('ERDIA', 4, '고목숲 일대 전투 승리')]),
+  E(6, 19, 'CH1', 'ERDIA', '가시어미 변이체',
+    ['가시어미 변이체 등장', '일반 생태계에서 설명되지 않는 마력 변화', '지역 보스급 전투', '처치 후 정상 마력과 다른 고대 계열 잔향 발견', '미르엘은 이 결과를 학교로 가져오게 함'],
+    [kill('mon-thorn-matriarch', 1, '가시어미 변이체 처치'), talk('npc-mirel', '미르엘 교수에게 잔향 보고')]),
+  E(7, 23, 'CH1', 'ERDIA', '고목의 문장',
+    ['고대목 골렘과 대치', '골렘이 오래된 문장을 반복', "'문을 닫아야 한다'는 이미지와 기억", '봉인의 흔적이 처음으로 메인 미스터리로 승격', '이 시점에서는 모르스의 이름을 확정하지 않음', '개강 준비와 함께 해안으로'],
+    [visit('swamp', '안개 늪지'), kill('mon-ancient-bark-golem', 1, '고대목 골렘 처치')], ['CH1_ERDIA_COMPLETE']),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 1학년 2학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 8화 · 1학년 2학기 3주차 ──
-  ep(1, 'semester2', 3, {
-    status: '임시',
-    title: '해식 동굴의 노래',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      KAEL('해식 동굴에서 노랫소리가 들린다는 신고가 들어왔다. 세이렌 유충일 가능성이 높아.'),
-      KAEL('귀를 막을 필요는 없지만 정신은 똑바로 차려.'),
-    ],
-    objectives: [
-      visit('sea-cave', '해식 동굴'),
-      kill('mon-siren-larva', 2, '세이렌 유충 처치'),
-    ],
-    outro: [
-      N('노래가 그치자 동굴 바닥에서 바다 쪽 인장과 같은 문양이 드러난다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 9화 · 1학년 2학기 6주차 ──
-  ep(1, 'semester2', 6, {
-    status: '임시',
-    title: '해안 수호수의 경고',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      MIREL('산호 여울을 지키던 수호수가 사람을 막아서기 시작했다.'),
-      MIREL('적이라기보다는 경고에 가까운 행동이야. 이유를 알아내라.'),
-    ],
-    objectives: [
-      visit('sea-2', '산호 여울'),
-      win('COAST', 4, '해안에서 전투 승리'),
-    ],
-    outro: [
-      N('수호수가 물러난 자리, 물속에 깨진 인장 조각이 반짝인다.'),
-      EARTH('누가 일부러 깨뜨린 것 같아.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 10화 · 1학년 2학기 9주차 ──
-  ep(1, 'semester2', 9, {
-    status: '임시',
-    title: '수중 도시의 손님',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      KAEL('아틀란티스에서 정식 초대장이 왔다. 인장 조각에 대해 할 말이 있다는군.'),
-    ],
-    objectives: [
-      visit('atlantis', '아틀란티스'),
-      visit('atlantis-temple', '아틀란티스 대성당'),
-    ],
-    outro: [
-      N('대성당의 벽화에는 "바다 깊은 곳에 잠든 두 번째 문"이 그려져 있다.'),
-      ICE('두 번째 문… 첫 번째는 숲이었어.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH2 — 에르디아 해안 / 아틀란티스 ════════
+  E(8, 27, 'CH2', 'COAST', '숲을 떠나 바다로',
+    ['개강 후 학교 복귀', '숲 사건 조사 결과 정리', '해안 현장실습 공지', '아틀란티스·바다 해안 지역과의 교류', '바다 생태 수업과 낚시 실습 준비'],
+    [visit('sea', '바다 해안'), act('FISH', 'any', 1, '해안에서 낚시')], ['CH2_COAST_STARTED']),
+  E(9, 30, 'CH2', 'COAST', '바다는 기다리는 사람에게',
+    ['낚시·채집·해양 생태 조사', '어민 NPC와 교류', '특정 시간대에만 나타나는 바다빛 발견', '폐등대 조사', '등대 안에서 숲의 봉인 흔적과 닮은 문양 발견'],
+    [visit('sea-3', '암초 해안'), kill('family:aquatic', 3, '수생형 몬스터 처치')]),
+  E(10, 33, 'CH2', 'COAST', '중간고사, 그리고 해저 유적',
+    ['해양 생태·원소 응용 중간평가', '학생 간 경쟁과 동료 관계 강화', '해안에서 오래된 유적의 일부 발견', '수중 활동의 스토리 도입', "유적 벽면에 '문'을 암시하는 기호 — 판독 불가"],
+    [visit('sea-2', '산호 여울'), visit('sea-cave', '해식 동굴')]),
+  E(11, 36, 'CH2', 'COAST', '파도 아래 잠든 것',
+    ['학기말 정산', '해안 수호수·유적 수호자와의 전투', '인장 파편 하나 확보', '파편이 숲에서 가져온 잔향과 공명', '바다 밑 더 깊은 곳을 조사하기로 함'],
+    [visit('sea-cave', '해식 동굴'), win('COAST', 4, '해안 유적 일대 전투 승리')]),
+  E(12, 39, 'CH2', 'COAST', '겨울 바다의 불빛',
+    ['아틀란티스에서 겨울 체류', '낚시·채집·생활 퀘스트로 쉬어 가는 구간', '밤바다에 거대한 광원이 나타남', '도시 사람들은 오래된 재앙의 전조로 생각', '심해 탐사 준비'],
+    [visit('atlantis', '아틀란티스'), talk('npc-atlantis-elder', '해류사제 넬리아에게 광원 이야기 듣기')]),
+  E(13, 43, 'CH2', 'COAST', '해파리 여왕',
+    ['심해 진입', '해파리 여왕과 전투', "전투 중 '누군가 문을 열려 한다'는 반응", '단순 해저 생태 이상이 아니라 봉인 사건임을 확신'],
+    [visit('sea-3', '암초 해안'), kill('mon-jelly-queen', 1, '해파리 여왕 처치')]),
+  E(14, 47, 'CH2', 'COAST', '암초왕의 기억',
+    ['심해 암초왕 토벌', '심해 유적 중심에서 인장의 진짜 명칭 일부 발견', "처음으로 '모르스'라는 이름이 기록에 등장", "기록은 모르스를 '마왕·재앙'으로 기술", '주인공은 의문을 품고 학교로 복귀'],
+    [visit('deepsea', '심해'), kill('mon-reef-king', 1, '심해 암초왕 처치')], ['CH2_COAST_COMPLETE']),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 1학년 겨울방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 11화 · 1학년 겨울방학 3주차 ──
-  ep(1, 'winter', 3, {
-    status: '임시',
-    title: '해파리 여왕',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      EDRIC('첫 대형 원정이다. 암초 해안의 해파리 여왕이 심해 입구를 막고 있다.'),
-      EDRIC('파티를 꼭 4명으로 꾸려 가라.'),
-    ],
-    objectives: [
-      visit('sea-3', '암초 해안'),
-      kill('mon-jelly-queen', 1, '해파리 여왕 처치'),
-    ],
-    outro: [
-      N('여왕의 왕관 속에 박혀 있던 인장이 깨지며 이름 하나가 떠오른다 — 모르스.'),
-      FIRE('모르스…? 교과서에 나온 그 악마왕?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 12화 · 1학년 겨울방학 6주차 ──
-  ep(1, 'winter', 6, {
-    status: '임시',
-    title: '심해로',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      MIREL('모르스의 인장이 바다에 있었다는 건, 봉인의 한쪽 끝이 심해에 있다는 뜻이다.'),
-      MIREL('심해로 내려가 봐라. 숨은 내가 마법으로 붙들어 두마.'),
-    ],
-    objectives: [
-      visit('deepsea', '심해'),
-      win('COAST', 3, '심해에서 전투 승리'),
-    ],
-    outro: [
-      N('가라앉은 신전의 기둥마다 사슬 문양이 감겨 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 13화 · 1학년 겨울방학 9주차 ──
-  ep(1, 'winter', 9, {
-    status: '임시',
-    title: '심해 암초왕',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      EDRIC('사슬 문양의 중심에 암초왕이 자리를 잡았다. 그 녀석을 넘어야 봉인을 볼 수 있다.'),
-    ],
-    objectives: [
-      visit('deepsea', '심해'),
-      kill('mon-reef-king', 1, '심해 암초왕 처치'),
-    ],
-    outro: [
-      N('암초왕이 지키던 자리에 봉인 장치의 일부가 남아 있다. 아직도 무언가를 빨아들이며 돌고 있다.'),
-      EARTH('이 봉인… 계속 뭔가를 먹고 있어.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 14화 · 1학년 겨울방학 12주차 ──
-  ep(1, 'winter', 12, {
-    status: '임시',
-    title: '인장의 파편',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      MIREL('원정 수고 많았다. 가져온 파편은 내 연구실로 가져와라.'),
-    ],
-    objectives: [
-      talk('npc-mirel', '미르엘 교수에게 파편 전달'),
-    ],
-    outro: [
-      MIREL('…이건 학교 지하 봉인과 같은 재질이다.'),
-      MIREL('이 이야기는 아직 너희끼리만 알고 있어라.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH3 — 스톰헤이븐 / 천공 신전 ════════
+  E(15, 51, 'CH3', 'ACADEMY', '돌아온 학생, 남겨진 질문',
+    ['원정 조사 결과 학술 보고', '학교생활 비중 증가', '동료 NPC와의 관계 심화', '마족·인마대전 역사 수업에서 불편한 질문 발생'],
+    [visit('academy-library', '도서관'), talk('any', '동료들과 이야기 나누기', 2)], ['CH3_STORMHAVEN_STARTED']),
+  E(16, 54, 'CH3', 'ACADEMY', '기록이 다르게 쓰여 있다',
+    ['오웬의 도서관 자료 조사', '해안에서 발견한 기록과 학교 공식 역사의 불일치', '같은 인장을 두고 설명이 다르게 적혀 있음', "'누군가 기록을 수정했을 가능성'이 처음 제시됨"],
+    [visit('academy-library', '도서관'), talk('npc-librarian', '사서 오웬과 기록 대조')]),
+  E(17, 60, 'CH3', 'STORMHAVEN', '하늘에서 내려온 초대',
+    ['기말평가', '스톰헤이븐 연구기관의 초청', '하늘 지역과 신전 자료를 조사할 여름 연구 계획 수립', '미르엘이 직접 원정을 승인', "미르엘이 일행의 '역사 개변 조사'에 관심을 갖기 시작"],
+    [talk('npc-mirel', '미르엘 교수에게 원정 승인 받기'), visit('stormhaven', '스톰헤이븐')]),
+  E(18, 63, 'CH3', 'ACADEMY', '방학은 조금 천천히',
+    ['전투 비중을 줄이고 휴식', '동료 NPC와 외출', '개인공간·하우징·요리·낚시·제작', '학생 관계도 상승', '생활·타이쿤 요소 강조'],
+    [act('PLACE_FURNITURE', 'any', 1, '개인 공간 꾸미기'), act('COOK', 'any', 1, '요리 한 가지 만들기'), talk('any', '동료들과 외출 이야기', 2)]),
+  E(19, 67, 'CH3', 'STORMHAVEN', '마법 동아리 합동 실습',
+    ['동료들과 마법 실습', '협동 미니게임', '5속성 체계를 공부하는 심화 수업의 전조', '빛·어둠과 관련된 고대 개념이 학술 자료에서 처음 언급됨'],
+    [visit('stormhaven-2', '폭풍 구름다리'), win('STORMHAVEN', 3, '스톰헤이븐에서 합동 실습 전투')]),
+  E(20, 71, 'CH3', 'ACADEMY', '여름밤의 성녀',
+    ['휴식과 축제 중심의 여름 이벤트', '성녀의 사절이 울토르를 방문', '빛 속성·성역에 관한 새로운 지식', '성녀 본인과의 만남이 다음 학기의 주요 사건이 됨'],
+    [talk('npc-priest', '신관 세드릭에게 사절 소식 듣기'), talk('any', '축제에서 사람들과 이야기', 2)]),
+  E(21, 75, 'CH3', 'ACADEMY', '성녀와 첫 대화',
+    ['성녀가 울토르 방문', '빛의 마법·치유·성역 수업 공개', '성녀는 공식 역사와 오래된 기록 사이의 차이를 감지', '주인공에게 과거의 봉인에 관해 신중하게 접근'],
+    [talk('npc-saint', '성녀 리아나와 대화')], ['SAINT_MET']),
+  E(22, 78, 'CH3', 'ACADEMY', '중간고사: 빛과 기록',
+    ['빛 마법 실습', '역사·윤리 시험', '마왕을 악으로만 정의하는 학교 교육에 의문 제기', "성녀가 '기록을 읽는 법'을 알려 줌"],
+    [talk('npc-saint', '성녀에게 기록 읽는 법 배우기'), talk('npc-librarian', '사서 오웬과 이야기')]),
+  E(23, 81, 'CH3', 'STORMHAVEN', '천공 신전의 문',
+    ['성녀와 일행이 천공 신전의 고대 기록을 확인', "'네 개로 나뉜 왕의 마음'이라는 상징 발견", '희노애락이라는 이름까지는 확정하지 않음', '미르엘이 조사 범위를 축소시키려 함'],
+    [visit('sky-temple', '천공 신전'), visit('sky-sanctum', '천공 대신전 내부')]),
+  E(24, 84, 'CH3', 'ACADEMY', '하늘을 올려다보는 이유',
+    ['기말평가', '천공 신전 자료가 오래된 대성당 기록과 연결될 가능성', '겨울방학에 아틀란티스 대성당을 방문하기로 결정', '미르엘은 동행 대신 보고서 제출을 요구'],
+    [talk('npc-mirel', '미르엘 교수에게 보고서 제출')]),
+  E(25, 87, 'CH3', 'COAST', '대성당으로 가는 겨울길',
+    ['아틀란티스 대성당 방문', '종교·성역·역사 관련 생활형 퀘스트', '성녀의 가르침과 지역 주민 교류', '성당에서 오래된 왕의 형상 발견'],
+    [visit('atlantis', '아틀란티스'), visit('atlantis-temple', '아틀란티스 대성당')]),
+  E(26, 91, 'CH3', 'COAST', '네 개로 나뉜 마음',
+    ['성당 지하의 오래된 벽화 조사', '왕의 마음이 희·노·애·락 네 상징으로 분리된 묘사 확인', '오웬은 기록이 의도적으로 잘려 있다고 판단', '미르엘이 이 사실을 알고 있었을 가능성'],
+    [visit('atlantis-temple', '아틀란티스 대성당'), talk('npc-librarian', '사서 오웬에게 벽화 기록 전달')], ['CATHEDRAL_RECORD_FOUND', 'FOUR_EMOTIONS_DISCOVERED']),
+  E(27, 95, 'CH3', 'ACADEMY', '읽지 못한 문장',
+    ['성녀가 일부 문장을 해독하려 하지만 완전하지 않음', '미르엘이 조사 중단을 지시', '학교 공식 역사와 오래된 기록이 충돌한다는 확신', '3학년부터 유적 자체를 직접 조사하기로 결심'],
+    [talk('npc-saint', '성녀와 문장 해독 시도'), talk('npc-mirel', '미르엘 교수의 지시 듣기')]),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 2학년 1학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 15화 · 2학년 1학기 3주차 ──
-  ep(2, 'semester1', 3, {
-    status: '임시',
-    title: '폭풍 위의 도시',
-    region: 'STORMHAVEN',
-    summary: '',
-    brief: [
-      OWEN('스톰헤이븐에는 인마대전의 "다른 기록"이 남아 있다고 합니다.'),
-      OWEN('직접 보고 오시지요. 하늘은 생각보다 가깝습니다.'),
-    ],
-    objectives: [
-      visit('stormhaven', '스톰헤이븐'),
-      win('STORMHAVEN', 3, '스톰헤이븐에서 전투 승리'),
-    ],
-    outro: [
-      N('구름 위 고원, 무너진 깃대마다 낯선 문장의 깃발이 펄럭인다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 16화 · 2학년 1학기 6주차 ──
-  ep(2, 'semester1', 6, {
-    status: '임시',
-    title: '구름다리의 이상 마력',
-    region: 'STORMHAVEN',
-    summary: '',
-    brief: [
-      KAEL('폭풍 구름다리에서 밀물 정령이 하늘로 거슬러 오른다. 바다의 마력이 하늘까지 끌려 올라오는 거야.'),
-    ],
-    objectives: [
-      visit('stormhaven-2', '폭풍 구름다리'),
-      kill('mon-tide-elemental', 3, '밀물 정령 처치'),
-    ],
-    outro: [
-      N('정령이 흩어지며 남긴 물방울이 하늘의 한 점 — 천공 신전 — 쪽으로 빨려 간다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 17화 · 2학년 1학기 9주차 ──
-  ep(2, 'semester1', 9, {
-    status: '임시',
-    title: '천공 신전의 기록',
-    region: 'STORMHAVEN',
-    summary: '',
-    brief: [
-      OWEN('천공 신전의 서고를 열 수 있게 허가를 받아 두었습니다. 다녀오셔서 이야기를 들려주세요.'),
-    ],
-    objectives: [
-      visit('sky-temple', '천공 신전'),
-      talk('npc-librarian', '사서 오웬에게 보고'),
-    ],
-    outro: [
-      OWEN('"전쟁은 1년 만에 끝났다"… 신전 기록에는 그 뒤로 30년의 공백이 있군요.'),
-      ICE('누군가 30년을 지웠다는 거야?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH4 — 버려진 폐허 / 버려진 신전 ════════
+  E(28, 99, 'CH4', 'RUINS', '천공 아래서 찾은 길',
+    ['고급 탐사 수업', '스톰헤이븐 기록을 실제 유적 현장과 대조', "과거 지역 재방문 — '4년의 학교생활이 연결된다'"],
+    [visit('stormhaven-3', '뇌운 고원'), visit('ruins', '버려진 폐허')], ['CH4_RUINS_STARTED']),
+  E(29, 102, 'CH4', 'RUINS', '중간고사: 고대마법과 역사의 빈칸',
+    ['고대마법·봉인학·역사 시험', '시험 문제 속 공식 기록과 실제 유물의 불일치', '직접 조사할 명분 확보'],
+    [talk('npc-librarian', '사서 오웬과 시험 문제 검토'), visit('ruins', '버려진 폐허')]),
+  E(30, 105, 'CH4', 'RUINS', '버려진 폐허의 기록자',
+    ['폐허·묘지·언데드 조사', '언데드 마법사와 접촉', "'승자는 항상 자기 기록을 남긴다'는 메시지", '과거가 조작됐다는 확신 강화'],
+    [visit('ruins-2', '무너진 성곽'), kill('family:undead', 3, '언데드 처치')]),
+  E(31, 108, 'CH4', 'RUINS', '신전으로 이어지는 균열',
+    ['기말평가', '버려진 신전의 봉인 구조 발견', '안쪽에 네 감정 중 하나가 봉인되어 있다는 정황', '미르엘이 조사 결과를 비정상적으로 빨리 알고 있음'],
+    [visit('temple-ruin', '버려진 신전'), talk('npc-abandoned-scholar', '유물학자 세라와 봉인 구조 확인')], ['MIREL_HISTORY_SUSPICION']),
+  E(32, 111, 'CH4', 'ACADEMY', '방학 원정, 마지막 평온',
+    ['유적 탐사 전 짧은 휴식', '동료들과 장비·요리·캠핑·하우징 정비', '4학년을 앞둔 선택과 책임에 관한 개인적 대화'],
+    [act('COOK', 'any', 1, '원정 식량 요리'), talk('any', '동료들과 속 깊은 이야기', 3)]),
+  E(33, 115, 'CH4', 'RUINS', '죽은 자가 기억하는 전쟁',
+    ['폐허 심층부 진입', '언데드·흑마법사', '인마대전 당시의 자료와 현재 공식 역사 비교', "'마왕이 먼저 공격했다'는 기록이 조작됐을 가능성이 매우 높아짐"],
+    [visit('catacomb', '지하 납골당'), kill('mon-dark-mage', 2, '흑마법사 처치')]),
+  E(34, 119, 'CH4', 'RUINS', '문을 열지 말 것',
+    ['버려진 신전 입구 발견', '봉인된 감정 파편의 반응', '미르엘이 직접 조사 허가', '지금까지 찾은 모든 사건의 중심이라고 판단'],
+    [visit('temple-ruin', '버려진 신전'), visit('ruin-sanctum', '버려진 신전 내부')]),
+  E(35, 123, 'CH4', 'RUINS', '신전 아래의 봉인',
+    ['신전 내부 조사', "봉인된 '노'의 인격 발견", '루스벨의 흔적 확인', '미르엘은 내부 상황을 비정상적으로 정확히 알고 있음'],
+    [visit('ruin-sanctum', '버려진 신전 내부'), win('RUINS', 3, '신전 내부 전투 승리')], ['NO_SEAL_FOUND']),
+  E(36, 126, 'CH4', 'ACADEMY', '미르엘의 손',
+    ['역사 개변에 대해 미르엘에게 직접 질문', '미르엘은 모호한 답변으로 넘김', '동시에 몰래 봉인 장치를 조작', "'노'의 인격 봉인이 풀림"],
+    [talk('npc-mirel', '미르엘 교수에게 역사 개변을 묻기')], ['NO_RELEASED']),
+  E(37, 128, 'CH4', 'RUINS', '폭주하는 루스벨',
+    ["미르엘이 '노'의 인격을 루스벨에게 주입", '루스벨 폭주', '화염 마족의 힘 + 분노 인격으로 전투 양상이 완전히 변함', '폐허된 신전 편 최종보스 — 마왕 루스벨'],
+    // 신전 내부에 들어가면 폭주 장면(story-script EP37_RAGE) → 보스전. 처치해도 도주(EP37_FLED)
+    [visit('ruin-sanctum', '버려진 신전 내부'), kill('mon-ruspell-rage', 1, '폭주한 루스벨 저지')]),
+  E(38, 130, 'CH4', 'RUINS', '노는 죽지 않았다',
+    ['루스벨은 처치되지 않고 도주', '신전에서 고대문자·인격 조각에 대한 단서 획득', '루스벨이 살아 있는 한 사건이 끝나지 않았음을 깨달음'],
+    [visit('ruin-sanctum', '버려진 신전 내부'), talk('npc-abandoned-scholar', '유물학자 세라와 고대문자 단서 확인')]),
+  E(39, 132, 'CH4', 'ACADEMY', '기록을 바꾼 사람',
+    ['기말평가보다 사건 수습 비중 증가', '학교가 공식 발표로 사건을 축소', '미르엘이 단순 방관자가 아니라고 판단', '루스벨의 행방은 불명'],
+    [talk('npc-librarian', '사서 오웬과 공식 발표 비교'), talk('any', '학교 사람들의 반응 듣기', 2)]),
+  E(40, 136, 'CH5', 'SNOWFIELD', '뜨거워진 겨울',
+    ['설원 지역 기후가 급격히 상승', '만년설이 녹기 시작', '화산이 아니라 루스벨의 폭주가 기후 이상을 일으켰을 가능성', '피해 복구 지원과 고대 석비 조사를 함께 하기로 결정'],
+    [visit('snowfield', '루미나 설원'), win('SNOWFIELD', 2, '설원에서 전투 승리')]),
+  E(41, 141, 'CH5', 'ACADEMY', '다음은 설원이다',
+    ['설원 파견 준비', '장비·코스튬·연금술·사냥 준비', '루스벨을 반드시 찾아야 한다는 목표 설정', "학교는 공식적으로 '마왕 토벌 준비'를 시작"],
+    [act('CRAFT', 'any', 1, '원정 장비 제작'), talk('npc-potion', '약사 셀린에게 원정 물약 준비')]),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 2학년 여름방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 18화 · 2학년 여름방학 3주차 ──
-  ep(2, 'summer', 3, {
-    status: '임시',
-    title: '버려진 폐허',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      EDRIC('지워진 30년의 흔적이 폐허에 있다는 게 오웬의 추측이다. 언데드가 많으니 빛과 불을 챙겨라.'),
-    ],
-    objectives: [
-      visit('ruins-2', '무너진 성곽'),
-      kill('family:undead', 3, '언데드 처치'),
-    ],
-    outro: [
-      N('성곽 벽에는 인간과 마족이 나란히 선 벽화가 반쯤 지워져 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 19화 · 2학년 여름방학 6주차 ──
-  ep(2, 'summer', 6, {
-    status: '임시',
-    title: '망각의 광장',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      MIREL('광장의 석상 거인이 깨어났다. 봉인 균열이 커지고 있다는 증거다.'),
-    ],
-    objectives: [
-      visit('ruins-3', '망각의 광장'),
-      kill('mon-stone-titan', 1, '석상 거인 처치'),
-    ],
-    outro: [
-      N('거인의 가슴에 박힌 봉인석이 금 간 채로 떨고 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 20화 · 2학년 여름방학 9주차 ──
-  ep(2, 'summer', 9, {
-    status: '임시',
-    title: '묘지의 왕',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      EDRIC('묘지에 석상 거인왕이 있다. 이번 원정의 고비다.'),
-    ],
-    objectives: [
-      visit('graveyard', '버려진 묘지'),
-      kill('mon-stone-titan-king', 1, '석상 거인왕 처치'),
-    ],
-    outro: [
-      N('거인왕이 무너지자 묘지 전체의 무덤에서 같은 사슬 문양이 동시에 빛난다.'),
-      FIRE('여기 묻힌 사람들… 봉인을 지키다 죽은 거야?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 21화 · 2학년 여름방학 12주차 ──
-  ep(2, 'summer', 12, {
-    status: '임시',
-    title: '봉인 균열',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      MIREL('버려진 신전에서 균열이 시작됐다. 내가 가기 전에 상태만 확인해다오.'),
-    ],
-    objectives: [
-      visit('temple-ruin', '버려진 신전'),
-      talk('npc-mirel', '미르엘 교수에게 보고'),
-    ],
-    outro: [
-      MIREL('균열은 막을 수 있다. 하지만 왜 생겼는지 모르면 또 생긴다.'),
-      MIREL('…다음 학기엔 설원으로 가 보자.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH5 — 설원 / 오로라 마을 ════════
+  E(42, 147, 'CH5', 'SNOWFIELD', '여름이어야 할 눈',
+    ['루미나 설원 도착', '이상 고온으로 눈과 얼음이 녹는 지역 발견', '오로라 마을 피해 복구', '마을 평판 시스템 본격 개방', '주민의 신뢰를 얻는 첫 단계'],
+    [visit('aurora-village', '오로라 마을'), talk('npc-aurora-chief', '설인족장 보르에게 피해 상황 듣기')]),
+  E(43, 150, 'CH5', 'SNOWFIELD', '만년설 아래의 석비',
+    ['고온 때문에 드러난 고대 석비 발견', '유실 문자라 읽을 수 없음', '미르엘은 해독에 도움을 주지 않음', '빈손에 가까운 상황'],
+    [visit('frozen-lake', '얼어붙은 호수'), win('SNOWFIELD', 3, '석비 주변 정리')], ['SNOW_STELE_FOUND']),
+  E(44, 153, 'CH5', 'SNOWFIELD', '동굴 속의 루스벨',
+    ['설원 곳곳에서 루스벨의 화염 흔적 추적', '루스벨 은신 동굴 후보 발견', '설원 평판이 높을수록 추적 단서 증가', '루스벨을 찾을 수 있는 마지막 기회가 준비됨'],
+    [visit('ice-cave', '얼음 동굴'), win('SNOWFIELD', 4, '설원에서 전투 승리')]),
+  E(45, 156, 'CH5', 'SNOWFIELD', '두 갈래의 진실',
+    ['기말평가·졸업 준비가 멈추고 최종 조사로 전환', '루스벨 발견 여부를 확정하는 핵심 분기', '여기서부터 4학년 2학기는 엔딩 특수 루프로 전환'],
+    // ⚠ RUSPELL_FOUND 판정(설원 평판·추적 단서)은 Phase 2 — 지금은 자동으로 켜지지 않는다
+    [visit('ice-cave', '얼음 동굴')], [],
+    { routes: { B_OR_C: ["RUSPELL_FOUND — 루스벨 생존 확인, '노' 인격 상태와 깃든 모르스의 기억 확인"], A: ['루스벨을 찾지 못한 채 학교로 귀환'] } }),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 2학년 2학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 22화 · 2학년 2학기 3주차 ──
-  ep(2, 'semester2', 3, {
-    status: '임시',
-    title: '설원 관문',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      EDRIC('설원은 추위가 먼저 사람을 잡는다. 몸을 데울 요리나 물약을 챙겨라.'),
-    ],
-    objectives: [
-      visit('snowfield', '루미나 설원'),
-      win('SNOWFIELD', 3, '설원에서 전투 승리'),
-    ],
-    outro: [
-      N('눈보라 사이로 사람이 아닌 발자국이 마을 쪽으로 이어져 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 23화 · 2학년 2학기 6주차 ──
-  ep(2, 'semester2', 6, {
-    status: '임시',
-    title: '오로라 마을',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      KAEL('설원 깊은 곳에 오로라 마을이 있다. 그 발자국이 마을로 갔다는 게 마음에 걸린다.'),
-    ],
-    objectives: [
-      visit('snowfield-2', '눈보라 언덕'),
-      visit('aurora-village', '오로라 마을'),
-    ],
-    outro: [
-      N('마을 사람들은 발자국의 주인을 "손님"이라 부를 뿐 더 말하지 않는다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 24화 · 2학년 2학기 9주차 ──
-  ep(2, 'semester2', 9, {
-    status: '임시',
-    title: '서리 망령',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      EDRIC('서리 침엽수림에 망령이 늘었다. 마을 사람들이 숲에 들어가질 못한다.'),
-    ],
-    objectives: [
-      visit('snowfield-3', '서리 침엽수림'),
-      kill('mon-frost-revenant', 3, '서리 망령 처치'),
-    ],
-    outro: [
-      N('망령이 걷힌 숲속, 누군가 망령을 막으려 세워 둔 작은 결계석이 보인다. 마족의 문양이다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH6 — 화산지대 / 마물 마을 / 모르스의 성 ════════
+  E(46, 160, 'CH6', 'VOLCANO', '화산으로',
+    ['화산지대 진입'],
+    [visit('volcano', '화산지대'), visit('demon-village', '마물 마을')], [],
+    { routes: {
+      A: ['루스벨을 찾지 못함', '미르엘과 함께 모르스 토벌 작전으로 이동', '모르스가 악의적인 마왕이라고 믿을 수밖에 없음'],
+      B_OR_C: ["루스벨에게 남은 '노' 인격과 모르스의 기억 일부 확인", '학교로 돌아가지 않고 먼저 화산지대로', '마물 마을에서 모르스의 존재 확인'],
+    } }),
+  E(47, 167, 'CH6', 'VOLCANO', '마왕의 성에 도착하기 전에',
+    ['모르스의 성을 앞둔 마물 마을'],
+    [visit('demon-village', '마물 마을'), talk('npc-demon-elder', '장로 카즈와 대화')], [],
+    { routes: {
+      A: ['모르스와 대치', '마을 사람들은 인간에게 적대적', '모르스도 주인공을 인간 세력의 일원으로 판단', '토벌 전투 준비'],
+      B_OR_C: ['화산지대 평판작 본격 시작', '분수대를 중심으로 마물 마을의 사정 해결', '루스벨의 말과 마을의 기억을 비교', '모르스와 대화하기 위한 신뢰 조건 준비'],
+    } }),
 
-  // ════════════════════════════════════════════════════════════════════════
-  // 2학년 겨울방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 25화 · 2학년 겨울방학 3주차 ──
-  ep(2, 'winter', 3, {
-    status: '임시',
-    title: '얼음 동굴',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      MIREL('결계석의 마력을 따라가면 얼음 동굴이 나온다. 조심해라, 동굴은 메아리가 크다.'),
-    ],
-    objectives: [
-      visit('ice-cave', '얼음 동굴'),
-      win('SNOWFIELD', 4, '설원에서 전투 승리'),
-    ],
-    outro: [
-      N('동굴 깊은 곳에 누군가 머물다 간 흔적 — 꺼진 모닥불과 인간의 책.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 26화 · 2학년 겨울방학 6주차 ──
-  ep(2, 'winter', 6, {
-    status: '임시',
-    title: '얼어붙은 호수',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      KAEL('얼어붙은 호수에 흑마법사들이 모였다. 결계석을 노리는 것 같다.'),
-    ],
-    objectives: [
-      visit('frozen-lake', '얼어붙은 호수'),
-      kill('mon-dark-mage', 2, '흑마법사 처치'),
-    ],
-    outro: [
-      N('흑마법사의 품에서 "봉인을 먹이로 삼는 법"이라는 메모가 나온다.'),
-      EARTH('봉인을… 먹이로?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 27화 · 2학년 겨울방학 9주차 ──
-  ep(2, 'winter', 9, {
-    status: '임시',
-    title: '손님의 정체',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      MIREL('설원 성소에 다녀와라. 마을이 숨기는 "손님"이 거기 있다.'),
-    ],
-    objectives: [
-      visit('aurora-sanctum', '설원 성소'),
-      win('SNOWFIELD', 3, '성소 주변 정리'),
-    ],
-    outro: [
-      N('성소의 제단에는 인간과 마족이 함께 새긴 맹세문이 남아 있다.'),
-      ICE('적이었던 게 아니라… 함께 봉인을 만든 거야?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 28화 · 2학년 겨울방학 12주차 ──
-  ep(2, 'winter', 12, {
-    status: '임시',
-    title: '설원의 진실',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      OWEN('맹세문의 사본을 가져오셨다고요. 도서관에서 기다리겠습니다.'),
-    ],
-    objectives: [
-      talk('npc-librarian', '사서 오웬에게 맹세문 전달'),
-    ],
-    outro: [
-      OWEN('…교과서의 첫 장을 다시 써야 할지도 모르겠습니다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 3학년 1학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 29화 · 3학년 1학기 3주차 ──
-  ep(3, 'semester1', 3, {
-    status: '임시',
-    title: '화산지대',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      EDRIC('이번 학기는 화산이다. 용암 웅덩이에 발 담그지 마라. 농담 아니다.'),
-    ],
-    objectives: [
-      visit('volcano', '화산지대'),
-      win('VOLCANO', 3, '화산지대에서 전투 승리'),
-    ],
-    outro: [
-      N('흘러내리는 용암 줄기 하나가 봉인 문양과 똑같은 모양으로 굽이친다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 30화 · 3학년 1학기 6주차 ──
-  ep(3, 'semester1', 6, {
-    status: '임시',
-    title: '잿빛 협곡',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      KAEL('잿빛 협곡의 화염 파수꾼들이 누군가의 명령을 받는 것처럼 움직인다.'),
-    ],
-    objectives: [
-      visit('volcano-2', '잿빛 협곡'),
-      kill('mon-flame-warden', 2, '화염 파수꾼 처치'),
-    ],
-    outro: [
-      N('파수꾼의 핵에 새겨진 명령문 — "문을 지켜라. 먹이를 들이지 마라."'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 31화 · 3학년 1학기 9주차 ──
-  ep(3, 'semester1', 9, {
-    status: '임시',
-    title: '마물 마을의 대장간',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      MIREL('마물 마을의 대장장이가 봉인 장치를 고쳐 본 적이 있다고 한다. 정중하게 대해라.'),
-    ],
-    objectives: [
-      visit('demon-village', '마물 마을'),
-      talk('npc-demon-smith', '용암대장장이 그롯과 대화'),
-    ],
-    outro: [
-      GROT('그 장치? 우리 할아버지가 인간이랑 같이 만든 거다.'),
-      GROT('그런데 지금은 한쪽만 계속 닳고 있지. 누가 뒤에서 빼먹는 거야.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 3학년 여름방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 32화 · 3학년 여름방학 3주차 ──
-  ep(3, 'summer', 3, {
-    status: '임시',
-    title: '용암 평원',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      EDRIC('그롯이 말한 "빼먹는 자리"는 용암 평원 너머다. 가자.'),
-    ],
-    objectives: [
-      visit('volcano-3', '용암 평원'),
-      win('VOLCANO', 4, '용암 평원에서 전투 승리'),
-    ],
-    outro: [
-      N('평원 한가운데, 용암이 모두 한 방향 — 모르스의 성 — 으로 흘러간다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 33화 · 3학년 여름방학 6주차 ──
-  ep(3, 'summer', 6, {
-    status: '임시',
-    title: '폐광산',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      KAEL('폐광산에 봉인석을 캐 가는 무리가 있다. 막아라.'),
-    ],
-    objectives: [
-      visit('mine', '폐광산'),
-      kill('family:construct', 3, '구조물형 처치'),
-    ],
-    outro: [
-      N('광산 수레마다 봉인석 조각이 실려 있다. 행선지는 학교 쪽이다.'),
-      FIRE('학교로…? 왜 학교로 가져가는 거야?'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 34화 · 3학년 여름방학 9주차 ──
-  ep(3, 'summer', 9, {
-    status: '임시',
-    title: '용암 동굴',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      MIREL('용암 동굴이 봉인의 핵이다. 파수꾼들을 넘어 핵을 확인해라.'),
-    ],
-    objectives: [
-      visit('lava-cave', '용암 동굴'),
-      kill('mon-flame-warden', 3, '화염 파수꾼 처치'),
-    ],
-    outro: [
-      N('봉인 핵에서 굵은 마력 줄기가 땅속으로 — 울토르 방향으로 — 뻗어 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 35화 · 3학년 여름방학 12주차 ──
-  ep(3, 'summer', 12, {
-    status: '임시',
-    title: '봉인의 매개체',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      MIREL('돌아오면 바로 내 연구실로 와라. 다른 교수들에게는 아직 말하지 말고.'),
-    ],
-    objectives: [
-      talk('npc-mirel', '미르엘 교수에게 보고'),
-    ],
-    outro: [
-      MIREL('봉인은 모르스를 가두는 문이 아니라, 모르스의 힘을 끌어다 쓰는 관이었다.'),
-      MIREL('그리고 그 관의 끝은… 우리 학교다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 3학년 2학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 36화 · 3학년 2학기 3주차 ──
-  ep(3, 'semester2', 3, {
-    status: '임시',
-    title: '기록 대조',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      OWEN('지금까지 모은 기록을 한자리에 놓아 봅시다. 도서관으로 오세요.'),
-    ],
-    objectives: [
-      visit('academy-library', '도서관'),
-      talk('npc-librarian', '사서 오웬과 기록 대조'),
-    ],
-    outro: [
-      OWEN('지워진 30년 동안 학교가 세워졌군요. 봉인에서 끌어온 힘으로.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 37화 · 3학년 2학기 6주차 ──
-  ep(3, 'semester2', 6, {
-    status: '임시',
-    title: '흑마법의 흔적',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      KAEL('봉인을 "먹이"로 삼는 법을 아는 흑마법사들이 화산에 모였다. 토벌한다.'),
-    ],
-    objectives: [
-      kill('family:darkmage', 4, '흑마법사형 처치'),
-    ],
-    outro: [
-      N('쓰러진 흑마법사의 로브 안쪽에 울토르 교직원의 휘장이 꿰매져 있다.'),
-      ICE('…학교 안에 있어.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 38화 · 3학년 2학기 9주차 ──
-  ep(3, 'semester2', 9, {
-    status: '임시',
-    title: '봉인 수호자의 유언',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      GROT('화산 성채에 할아버지가 남긴 말이 있다. 인간인 너희가 들어야 할 말이야.'),
-    ],
-    objectives: [
-      visit('demon-temple', '화산 성채'),
-      win('VOLCANO', 3, '성채 주변 정리'),
-    ],
-    outro: [
-      N('"봉인은 두 종족이 함께 지킬 때만 닫힌다. 한쪽이 독차지하면 문은 굶주린다."'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 3학년 겨울방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 39화 · 3학년 겨울방학 3주차 ──
-  ep(3, 'winter', 3, {
-    status: '임시',
-    title: '동료와의 밤',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      N('기숙사 휴게실. 아무도 먼저 말을 꺼내지 않는다.'),
-      EARTH('…우리가 알아낸 거, 다른 애들한테도 말해야 할까?'),
-    ],
-    objectives: [
-      talk('any', '학교 사람들과 이야기 나누기', 3),
-    ],
-    outro: [
-      N('누군가는 믿고, 누군가는 고개를 젓는다. 그래도 말하길 잘했다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 40화 · 3학년 겨울방학 6주차 ──
-  ep(3, 'winter', 6, {
-    status: '임시',
-    title: '교수 회의',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      MIREL('교수 회의에 너희를 증인으로 부르겠다. 본 것만 말해라.'),
-    ],
-    objectives: [
-      visit('council-room', '교수 회의실'),
-      talk('npc-mirel', '미르엘 교수와 회의 준비'),
-    ],
-    outro: [
-      MIREL('반은 믿고 반은 의심하더군. 하지만 의심하는 쪽에 그 휘장의 주인이 있다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 41화 · 3학년 겨울방학 9주차 ──
-  ep(3, 'winter', 9, {
-    status: '임시',
-    title: '마지막 해를 앞두고',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      EDRIC('내년이 마지막 해다. 실력부터 다져 둬라. 어디든 좋다, 싸워서 이겨 와.'),
-    ],
-    objectives: [
-      win('any', 5, '전투 승리'),
-    ],
-    outro: [
-      N('손에 익은 술식이 예전보다 훨씬 가볍다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 42화 · 3학년 겨울방학 12주차 ──
-  ep(3, 'winter', 12, {
-    status: '임시',
-    title: '결의',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      EDRIC('4년 전에 입학식에서 들은 말, 기억하나? "배운 것을 무엇을 위해 쓸지 결정하게 될 거다."'),
-    ],
-    objectives: [
-      talk('npc-job-trainer', '에드릭 교수와 대화'),
-    ],
-    outro: [
-      FIRE('결정했어. 끝까지 가 보자.'),
-      ICE('…응.'),
-      EARTH('같이 가자.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 4학년 1학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 43화 · 4학년 1학기 3주차 ──
-  ep(4, 'semester1', 3, {
-    status: '임시',
-    title: '에르디아 재방문',
-    region: 'ERDIA',
-    summary: '',
-    brief: [
-      MIREL('졸업 프로젝트는 4년간의 기록을 모으는 일이다. 처음 시작한 숲부터 다시 가 봐라.'),
-    ],
-    objectives: [
-      visit('forest-3', '에르디아 고목숲'),
-      kill('family:plant', 5, '식물형 처치'),
-    ],
-    outro: [
-      N('1학년 때 쓰러뜨린 가시어미의 자리에서 작은 새싹이 돋아 있다. 봉인 문양은 사라졌다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 44화 · 4학년 1학기 6주차 ──
-  ep(4, 'semester1', 6, {
-    status: '임시',
-    title: '바다의 기록',
-    region: 'COAST',
-    summary: '',
-    brief: [
-      KAEL('심해 봉인 장치의 상태를 다시 기록해 와라. 이번엔 너희가 선배다.'),
-    ],
-    objectives: [
-      visit('deepsea', '심해'),
-      kill('family:aquatic', 5, '수생형 처치'),
-    ],
-    outro: [
-      N('심해 장치는 여전히 돌고 있지만, 빨아들이는 속도가 눈에 띄게 빨라졌다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 45화 · 4학년 1학기 9주차 ──
-  ep(4, 'semester1', 9, {
-    status: '임시',
-    title: '하늘과 폐허',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      OWEN('뇌운 첨탑과 지하 납골당 — 아직 기록이 비어 있는 두 곳입니다.'),
-    ],
-    objectives: [
-      visit('thunder-spire', '뇌운 첨탑'),
-      visit('catacomb', '지하 납골당'),
-    ],
-    outro: [
-      OWEN('이제 지도가 완성됐습니다. 모든 봉인의 관이 한 점으로 모입니다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 4학년 여름방학
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 46화 · 4학년 여름방학 3주차 ──
-  ep(4, 'summer', 3, {
-    status: '임시',
-    title: '봉인 흔적 연결 ① 설원',
-    region: 'SNOWFIELD',
-    summary: '',
-    brief: [
-      MIREL('마지막 원정이다. 각 지역 봉인에 학교 쪽으로 가는 관을 끊는 표식을 새긴다. 설원부터.'),
-    ],
-    objectives: [
-      visit('frozen-lake', '얼어붙은 호수'),
-      win('SNOWFIELD', 4, '설원에서 전투 승리'),
-    ],
-    outro: [
-      N('얼음 아래 흐르던 마력 줄기 하나가 잠잠해진다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 47화 · 4학년 여름방학 6주차 ──
-  ep(4, 'summer', 6, {
-    status: '임시',
-    title: '봉인 흔적 연결 ② 화산',
-    region: 'VOLCANO',
-    summary: '',
-    brief: [
-      GROT('화산 쪽 관은 내가 같이 끊어 주마. 대신 흑마법사 녀석들은 너희가 맡아.'),
-    ],
-    objectives: [
-      visit('lava-cave', '용암 동굴'),
-      kill('family:darkmage', 3, '흑마법사형 처치'),
-    ],
-    outro: [
-      N('두 번째 줄기가 끊긴다. 멀리 학교 쪽 하늘이 붉게 번쩍인다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 48화 · 4학년 여름방학 9주차 ──
-  ep(4, 'summer', 9, {
-    status: '임시',
-    title: '봉인 흔적 연결 ③ 폐허',
-    region: 'RUINS',
-    summary: '',
-    brief: [
-      MIREL('버려진 신전 깊은 곳이 마지막이다. 끊는 순간 학교 쪽에서 반응이 올 거다.'),
-    ],
-    objectives: [
-      visit('ruin-sanctum', '버려진 신전 내부'),
-      win('RUINS', 4, '폐허에서 전투 승리'),
-    ],
-    outro: [
-      N('세 번째 줄기가 끊기자 땅 전체가 크게 한 번 흔들린다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 49화 · 4학년 여름방학 12주차 ──
-  ep(4, 'summer', 12, {
-    status: '임시',
-    title: '최종 준비',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      MIREL('학교 지하 봉인이 깨어나고 있다. 마지막 학기가 시작되기 전에 와라.'),
-    ],
-    objectives: [
-      talk('npc-mirel', '미르엘 교수와 대화'),
-    ],
-    outro: [
-      MIREL('이제 남은 건 하나다. 문 너머의 그 녀석과 이야기를 하든, 싸우든.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-
-  // ════════════════════════════════════════════════════════════════════════
-  // 4학년 2학기
-  // ════════════════════════════════════════════════════════════════════════
-  // ── 50화 · 4학년 2학기 3주차 ──
-  ep(4, 'semester2', 3, {
-    status: '임시',
-    title: '학교 이상현상',
-    region: 'ACADEMY',
-    summary: '',
-    brief: [
-      N('복도 바닥의 마법진이 저절로 빛났다 꺼지기를 반복한다.'),
-      KAEL('몬스터가 학교 근처까지 왔다. 학생들을 지킨다.'),
-    ],
-    objectives: [
-      win('any', 5, '전투 승리'),
-      talk('npc-mirel', '미르엘 교수에게 보고'),
-    ],
-    outro: [
-      MIREL('봉인이 무너지기 시작했다. 최종 게이트가 열린다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 51화 · 4학년 2학기 6주차 ──
-  ep(4, 'semester2', 6, {
-    status: '임시',
-    title: '모르스의 성',
-    region: 'MORS',
-    summary: '',
-    brief: [
-      MIREL('게이트 너머가 모르스의 성이다. 전령부터 넘어야 한다.'),
-    ],
-    objectives: [
-      visit('demon-castle', '모르스의 성'),
-      kill('mon-azka-herald', 1, '모르스의 전령 처치'),
-    ],
-    outro: [
-      N('전령이 쓰러지며 웃는다. "주인님은 너희를 기다리고 계셨다."'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
-  // ── 52화 · 4학년 2학기 9주차 ──
-  ep(4, 'semester2', 9, {
-    status: '임시',
-    title: '최후의 선택',
-    region: 'MORS',
-    summary: '',
-    brief: [
-      FIRE('여기까지 왔어.'),
-      ICE('…끝내자.'),
-      EARTH('어떤 끝이든, 우리가 고른 끝으로.'),
-    ],
-    objectives: [
-      visit('demon-castle', '모르스의 성'),
-      win('MORS', 3, '성 안에서 전투 승리'),
-    ],
-    outro: [
-      N('성 가장 깊은 곳, 사슬에 감긴 문이 천천히 열린다.'),
-    ],
-    choices: [],
-    setFlags: [],
-    rewards: {},
-  }),
+  // ════════ CH7 — 최종장 (4학년 2학기 특수 플롯) ════════
+  E(48, 171, 'CH7', 'ACADEMY', '마을의 이름으로',
+    ['거점 평판 최종 점검', '각 마을 분수대에서 최종 평판 퀘스트 개방', '지정 에픽 몬스터 사냥·생활 활동·주민 사건 해결', '마을별 Lv.5 상징 아이템 획득', '부족한 상징은 여기서 추가 파밍'],
+    // ⚠ 평판·분수대·상징(6거점)은 Phase 2 — 임시 목표
+    [win('any', 3, '거점 의뢰 전투 승리'), talk('any', '거점 주민들과 이야기', 3)]),
+  E(49, 174, 'CH7', 'ACADEMY', '학교 지하의 기쁨',
+    ['울토르 학교 금지구역의 숨겨진 마법진'],
+    // 숨겨진 통로(academy-secret, 2층 서쪽 회랑 벽 너머의 오망성 제단실)가 '희'의 봉인 자리 후보
+    [visit('academy-secret', '숨겨진 통로')], [],
+    { routes: {
+      B_OR_C: ['모르스와의 대화에서 확인한 진실을 바탕으로 학교 지하로', "봉인된 '희'의 인격 확인", '미르엘이 오래전부터 학교를 이용해 희를 관리해 온 증거', "'마왕은 학교에 잠들어 있었다'는 말의 진짜 의미"],
+      A: ['학교 지하 조사를 할 수 없거나 불완전한 기록만 확보', '미르엘은 과거 이야기를 덮고 최종 토벌을 재촉'],
+    } }),
+  E(50, 177, 'CH7', 'ACADEMY', '락을 가진 자',
+    ['미르엘의 정체가 본격적으로 드러남', '인마대전 당시부터 살아온 존재임이 확인', "모르스에게서 '락'을 빼앗아 자신의 힘으로 써 왔다는 사실", '마족·인외종을 화산지대로 몰아넣은 정책의 설계자가 미르엘', '인마대전 기록이 미르엘에 의해 개변됐다는 사실 확정', '최종 적 = 미르엘'],
+    [talk('npc-mirel', '미르엘과 마주하기')], ['MIREL_TRUE_IDENTITY_FOUND', 'FINAL_GATE_OPEN']),
+  E(51, 179, 'CH7', 'STORMHAVEN', '왕 앞에 서는 자',
+    ['스톰헤이븐 천공 신전에 머무는 국왕 앞의 공식 심문'],
+    [visit('sky-temple', '천공 신전'), talk('npc-king', '국왕 알현')], [],
+    { routes: {
+      C: ['거점 상징을 모두 가진 주인공이 인간 사회 대표로 인정됨', '왕 앞에서 모르스의 입장을 대변', '과거의 차별과 역사 개변 공개', '인간 측·마물 측 증언과 울토르 기록 제시', '미르엘의 거짓말을 공개적으로 뒤집음'],
+      B: ['상징이 하나 이상 부족', '사실은 증명했지만 사회적 합의 실패', '주인공과 모르스에게 추적 명령'],
+      A: ['이미 모르스 토벌이 끝난 경우', '공식적으로 영웅으로 추앙받지만 주인공만 진실의 흔적을 앎'],
+    } }),
+  E(52, 180, 'CH7', 'MORS', '네 마음이 다시 하나가 될 때',
+    ['본편 결말 — 4학년 2학기 졸업 직전'],
+    [visit('demon-castle', '모르스의 성'), win('MORS', 3, '최종전')], [],
+    { routes: {
+      A: ['모르스 토벌 완료', '미르엘은 영웅으로 남거나 의심받지 않음', '석비의 문장과 학교 기록에 남은 의문을 안고 졸업', '마족이 차별받는 현실을 보여 주는 찝찝한 마무리'],
+      B: ['모르스와 주인공이 미르엘의 영향에서 벗어남', '희·노·락·애의 진실', '인간 사회의 신뢰 부족으로 함께 도피', '화산지대 너머 새로운 땅을 바라보며 끝'],
+      C: ["루스벨의 '노', 미르엘의 '락', 울토르 지하의 '희'를 회수", "모르스의 '애'와 함께 네 감정을 흡수 — 모르스 완전체", '미르엘 최종 토벌', '마족·인간 교류 재개와 마족 마을 개방', '왕과 새로운 협약, 주인공 영웅 인정', '입학식과 대응되는 졸업식'],
+    } }),
 ]
 
-/** 스토리 주간 에피소드 전부 — globalWeek 순, no = 1~52화 */
-export const STORY_EPISODES: StoryEpisode[] = EPISODES.slice()
-  .sort((a, b) => a.week - b.week)
-  .map((e, i) => ({ ...e, no: i + 1 }))
+/** 메인 스토리 EP01~EP52 — globalWeek 순 */
+export const STORY_EPISODES: StoryEpisode[] = EPISODES.slice().sort((a, b) => a.week - b.week)
 
 const BY_WEEK = new Map(STORY_EPISODES.map((e) => [e.week, e]))
 export const episodeForWeek = (globalWeek: number) => BY_WEEK.get(globalWeek)
 
-/** 이 주가 스토리 주간인가 — 학기 중이면 그 주는 수업이 없다 */
+/** 이 주가 메인 스토리 주인가 */
 export function isStoryEpisodeWeek(globalWeek: number): boolean {
   return BY_WEEK.has(globalWeek)
 }
@@ -1249,8 +312,11 @@ export function isStoryEpisodeWeek(globalWeek: number): boolean {
 /** 에피소드 미션의 퀘스트 템플릿 id */
 export const episodeQuestId = (week: number) => `STORY_EP_${week}`
 
-/** 학기 중 스토리 주간인 학기 주차(수업 없음) */
+/**
+ * 학기 중 수업이 빠지는 스토리 주인가 — v3.0 §10: 스토리 주에도 필수 수업은 그대로 있다 → 항상 false.
+ * (4학년 2학기 특수 루프의 수업 해제는 Phase 3 에서 이 함수로 연결)
+ */
 export function isSemesterStoryWeek(globalWeek: number): boolean {
-  const info = calendarInfo(globalWeek)
-  return !info.isVacation && isStoryEpisodeWeek(globalWeek)
+  void calendarInfo(globalWeek)
+  return false
 }

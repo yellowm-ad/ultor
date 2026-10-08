@@ -1,10 +1,11 @@
-// ════════ 마법학교 본관 상층 — 2층 회랑 확장(2학년 교실 · 3층 계단) + 3층 · 4층 복도 (2026-10-02) ════════
+// ════════ 마법학교 본관 상층 — 2층 회랑 확장(2학년 교실 · 3층 계단 입구) + 3층 · 4층 복도 (2026-10-02) ════════
+// 2026-10-08: 2층 회랑의 3층 계단 구조물은 통로를 가로막아 제거 — 대강당 문 옆 벽면 계단실 아치(입구)만 남김.
 // 사용자 규칙(feedback-wall-furniture-iso-rules): 벽은 맵 끝선(x=0, y=0)에 전체 길이로 높게, 가구·구조물은 쿼터뷰 축 정합.
 //   · 계단·벽은 iso-structures 투영면으로 정확히 그리고, 문·아치는 PixelLab 정면도를 벽면에 투영해 붙인다.
 //   · 올라가는 계단 = 북벽을 향해 오르는 계단 구조물 + 꼭대기 벽면 아치(포탈). 내려가는 쪽 = 서벽의 계단실 아치(포탈).
 import type { GameMap, MapId } from '@/lib/types'
 import type { IsoPart, IsoStair, IsoStructGroup, PropDef, TileKind } from '@/lib/iso'
-import { FLOOR2, GAL, HALL_SPR, HALL_TEX as T, isoProp } from '@/lib/academy-hall'
+import { FLOOR2, GAL, HALL_CX, HALL_SPR, HALL_TEX as T, isoProp } from '@/lib/academy-hall'
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 
 type Blocker = { x0: number; y0: number; x1: number; y1: number }
@@ -48,31 +49,27 @@ function stairBlockers(s: IsoStair): Blocker[] {
 }
 
 // ════════ 2층 회랑 확장 ════════
-/** 2층 회랑 동쪽 끝 계단(3층으로) — 2층 맵 바닥 z=0 기준. 회랑 깊이(GAL=4) 안에 들어간다 */
-export const GALLERY_STAIR: IsoStair = { x0: 33.4, x1: 37.6, yTop: 0.55, yBottom: 3.8, zTop: 120 }
-export const GALLERY_STAIR_CX = (GALLERY_STAIR.x0 + GALLERY_STAIR.x1) / 2
 /** 2층 북벽 2학년 교실 문 위치(x) */
 export const YEAR2_DOOR_X = 10
 const ARCH_H = 200
+/** 3층 계단 입구(계단실 아치) — 대강당 대문(x=HALL_CX, 높이 240) 오른쪽, 회랑 바닥에 대문과 같은 기준선으로 */
+export const FLOOR3_ENTRY_X = HALL_CX + 6.6
+const ENTRY_H = 224
 
 /** 2층 벽에 붙는 문·아치 — zBase 는 academy-hall 의 기준(1층 맵 0, 2층 맵 -FLOOR2) */
 export function galleryWallDecals(zBase: number): IsoPart[] {
   const z2 = zBase + FLOOR2
   return [
     wallDecal('y', YEAR2_DOOR_X, 184, z2, HALL_SPR.doorClass),
-    wallDecal('y', GALLERY_STAIR_CX, ARCH_H, z2 + GALLERY_STAIR.zTop, HALL_SPR.archStair),
+    wallDecal('y', FLOOR3_ENTRY_X, ENTRY_H, z2, HALL_SPR.archStair),
+    wallDecal('y', FLOOR3_ENTRY_X, 96, z2 + ENTRY_H + 24, HALL_SPR.banner),
   ]
 }
 /** 2층 벽 창·배너를 비워야 하는 구간(x) — 문·아치와 겹치지 않게 */
 export const GALLERY_WALL_SKIP: [number, number][] = [
   [YEAR2_DOOR_X - 2.2, YEAR2_DOOR_X + 2.2],
-  [GALLERY_STAIR.x0 - 0.6, GALLERY_STAIR.x1 + 0.6],
+  [FLOOR3_ENTRY_X - decalHalfWidth(ENTRY_H, HALL_SPR.archStair) - 0.4, FLOOR3_ENTRY_X + decalHalfWidth(ENTRY_H, HALL_SPR.archStair) + 0.4],
 ]
-/** 2층 회랑 계단 구조물(1층 맵에선 장식, 2층 맵에선 오를 수 있음) */
-export function galleryStair(zBase: number): IsoStructGroup[] {
-  return straightStair(`gstair${zBase}`, GALLERY_STAIR, zBase + FLOOR2, 6)
-}
-export const galleryStairBlockers = (): Blocker[] => stairBlockers(GALLERY_STAIR)
 /** 회랑 책장이 계단·문을 막지 않게 — 이 x 의 북쪽 책장은 뺀다 */
 export const GALLERY_SHELF_SKIP = (x: number) => GALLERY_WALL_SKIP.some(([a, b]) => x > a - 0.4 && x < b + 0.4)
 export const GALLERY_LIMIT_Y = GAL
@@ -181,7 +178,7 @@ export function upperPortals(floor: 3 | 4, roomIds: Record<AcademyRoomKey, { id:
   // 아래층 — 서벽 계단실
   out.push(
     floor === 3
-      ? { id: '3f-to-2f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-2f', toSpawn: { x: GALLERY_STAIR_CX, y: GALLERY_STAIR.yBottom - 0.15 }, label: '2층으로', kind: 'exit' as const }
+      ? { id: '3f-to-2f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-2f', toSpawn: { x: FLOOR3_ENTRY_X, y: 2.7 }, label: '2층으로', kind: 'exit' as const }
       : { id: '4f-to-3f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-3f', toSpawn: { x: (UP_STAIR.x0 + UP_STAIR.x1) / 2, y: UP_STAIR.yBottom - 0.15 }, label: '3층으로', kind: 'exit' as const },
   )
   if (floor === 3) out.push({ id: '3f-to-4f', cell: { x: (UP_STAIR.x0 + UP_STAIR.x1) / 2, y: UP_STAIR.yTop + 0.6 }, to: 'academy-4f', toSpawn: { x: 2.6, y: DOWN_ARCH_Y }, label: '4층으로', kind: 'portal' as const })

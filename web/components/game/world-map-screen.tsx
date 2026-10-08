@@ -16,7 +16,7 @@ import { mapThumbUrl } from '@/components/game/map-thumb'
 
 // 지역 목록은 lib/regions.ts 에서 파생 — 맵이 추가돼도 여기 손댈 필요 없음(테스트룸 제외)
 const MAP_GROUPS: { label: string; ids: MapId[] }[] = [
-  ...REGIONS.map((r) => ({ label: r.name, ids: r.maps.filter((m) => m !== 'testroom' && m !== 'personal-space') })),
+  ...REGIONS.map((r) => ({ label: r.name, ids: r.maps.filter((m) => m !== 'testroom' && m !== 'personal-space' && m !== 'academy-secret') })),
   { label: '개인 공간', ids: ['personal-space'] },
 ]
 
@@ -98,6 +98,7 @@ export function WorldMapScreen() {
             ))}
 
             {map.portals.map((p) => {
+              if (p.secret) return null
               if (p.kind === 'gate') {
                 if (gateShown.has(`${p.cell.x},${p.cell.y}`)) return null
                 gateShown.add(`${p.cell.x},${p.cell.y}`)

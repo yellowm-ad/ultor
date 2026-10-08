@@ -3,6 +3,7 @@ import { computeStatsForLevel, toLevel100 } from '@/lib/constants'
 import { legacyMonsterBaseExp, monsterBaseExp } from '@/lib/exp-table'
 import { COURSES } from '@/lib/academics'
 import { LIFE_ITEMS, LIFE_RECIPES } from '@/lib/life'
+import { SCHOOL_NPCS } from '@/lib/companions'
 
 const FIRE = '/images/elements/fire-crest.png'
 const ICE = '/images/elements/ice-crest.png'
@@ -768,6 +769,26 @@ const MONSTERS_LEGACY: MonsterDef[] = [
     rank: 'fieldBoss',
     dropTable: [{ itemId: 'mat-giant-core', chance: 1 }, { itemId: 'mat-statue-fragment', chance: 0.8 }],
   },
+  // 폐허된 신전 편 최종보스 — '노'를 주입당해 폭주한 루스벨(v3.0 EP37). 동료 루스벨의 4등신 시트 그대로 + 보랏빛 불꽃 오라.
+  // 스토리 장면(EP37_RAGE)에서만 전투가 열린다 — 쓰러뜨려도 죽지 않고 도주(EP37_FLED).
+  {
+    id: 'mon-ruspell-rage',
+    name: '마왕 루스벨',
+    level: 34,
+    icon: '/images/portraits/hero-fire-female.png',
+    element: 'fire',
+    family: 'darkmage',
+    stats: mstat(34, { maxHp: 7.5, matk: 2.5, maxMp: 3.2, mdef: 1.8, def: 1.4, spd: 1.25, atk: 1.6, luck: 1.5 }),
+    traits: ['caster', 'aggressive'],
+    skills: ['fire-high-1', 'fire-high-2', 'fire-adv-3', 'fire-adv-2'],
+    expReward: 1600,
+    goldReward: 700,
+    zoneKinds: [],
+    rank: 'storyBoss',
+    aiProfile: 'healerHunt',
+    heroSheet: 'hero-fire-female',
+    aura: 'rage-violet',
+  },
   // 최종보스 — 모르스(유실된 바람 속성, storyBoss). 랜덤 풀·필드 배치에 나오지 않고 최종전 스토리로만 등장한다.
   // ⚠ 전용 도트 미제작 — 임시로 '모르스의 전령' 그림을 빌려 쓴다.
   {
@@ -854,6 +875,10 @@ const NPCS_BASE: NpcDef[] = [
   // ── 천공 신전 (안전지대) ──
   { id: 'npc-sky-priest', name: '바람사제 이엘', role: 'templePriest', icon: '/images/npc/npc-sky-priest.png', zoneId: 'z-sky-temple', cell: { x: 32.0, y: 12.8 }, greeting: ['폭풍 위에 온 걸 환영하네, 순례자여.', '바람의 결을 읽으면 삼원의 다음 장이 보인다 — 그렇게들 믿지.'] },
   { id: 'npc-sky-keeper', name: '종지기 하나', role: 'flavor', icon: '/images/npc/npc-sky-keeper.png', zoneId: 'z-sky-temple', cell: { x: 32.0, y: 21.6 }, greeting: ['신전 종은 폭풍이 방향을 바꿀 때만 울려요.', '아래를 내려다보면 스톰헤이븐 전체가 보인답니다.'] },
+  // 국왕 일행(v3.0 — 왕은 가끔 언급되거나 스톰헤이븐에서 우연히 마주친다). 스톰헤이븐 장(CH3)이 열린 뒤에만 신전에 머문다
+  { id: 'npc-king', name: '국왕 레오니스', role: 'royal', icon: '/images/npc/npc-king.png', zoneId: 'z-sky-temple', cell: { x: 26.5, y: 16.6 }, roam: 0.5, visibleFlag: 'CH3_STORMHAVEN_STARTED', greeting: ['바람이 거센 날엔 이곳에서 옛 기록을 떠올리곤 하지.', '울토르의 학생들이 이 나라를 어떻게 배우고 있는지, 나는 늘 궁금하다.'] },
+  { id: 'npc-royal-guard', name: '왕실 근위병', role: 'royalGuard', icon: '/images/npc/npc-royal-guard.png', zoneId: 'z-sky-temple', cell: { x: 25.0, y: 18.0 }, roam: 0.3, visibleFlag: 'CH3_STORMHAVEN_STARTED', greeting: ['폐하 곁에서는 걸음을 조심하도록.'] },
+  { id: 'npc-royal-guard-2', name: '왕실 근위병', role: 'royalGuard', spriteId: 'npc-royal-guard', icon: '/images/npc/npc-royal-guard.png', zoneId: 'z-sky-temple', cell: { x: 28.2, y: 18.0 }, roam: 0.3, visibleFlag: 'CH3_STORMHAVEN_STARTED', greeting: ['신전 안에서는 무기를 거두는 것이 예의다.'] },
 
   // ── 버려진 신전 (안전지대) ──
   { id: 'npc-abandoned-monk', name: '은둔수도자 그림', role: 'templePriest', icon: '/images/npc/npc-abandoned-monk.png', zoneId: 'z-abandoned-temple', cell: { x: 32.0, y: 12.8 }, greeting: ['폐허라 부르지만, 우리에겐 아직 집이라네.', '유물을 노리는 자는 많아도, 지키는 손은 우리뿐이지.'] },
@@ -865,7 +890,7 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'npc-aurora-hunter', name: '서리사냥꾼 룬', role: 'flavor', icon: '/images/npc/npc-aurora-hunter.png', zoneId: 'z-aurora', cell: { x: 32.0, y: 21.6 }, greeting: ['설원 바깥은 서리 짐승 천지야. 마을 안에선 안심해도 돼.'] },
 
   // ── 마물 마을 (안전지대) ──
-  { id: 'npc-demon-elder', name: '온건파 장로 카즈', role: 'flavor', icon: '/images/npc/npc-demon-elder.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 13.0 }, greeting: ['놀랐나? 우리 모두가 모르스를 따르는 건 아니야.', '여기선 칼을 거둬라. 교역하러 온 거라면 환영이다.'] },
+  { id: 'npc-demon-elder', name: '온건파 장로 카즈', role: 'flavor', icon: '/images/npc/npc-demon-elder.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 13.0 }, greeting: ['인간의 책에 적힌 마왕과 우리가 아는 모르스님은 다른 분이다.', '여기선 칼을 거둬라. 교역하러 온 거라면 환영이다.'] },
   { id: 'npc-demon-smith', name: '용암대장장이 그롯', role: 'weaponMerchant', icon: '/images/npc/npc-demon-smith.png', zoneId: 'z-demon-village', cell: { x: 18.6, y: 23.2 }, greeting: ['화산 불로 벼린 물건이다. 뭍 대장간 것과는 격이 달라.'], shopItemIds: [...wands.map((w) => w.id)] },
   { id: 'npc-demon-child', name: '꼬마 마물 삐약', role: 'flavor', icon: '/images/npc/npc-demon-child.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 21.6 }, greeting: ['인간이다! 뿔 없는 거 진짜였네…'] },
 ]
@@ -883,7 +908,20 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
 }
 
 export const NPCS: NpcDef[] = [...NPCS_BASE, ...testRoomNpcs(NPCS_BASE)]
-const NPC_MAP = new Map(NPCS.map((n) => [n.id, n]))
+/**
+ * 학교 동료(lib/companions SCHOOL_NPCS)의 대화용 NPC 정의 — 맵 구역에 묶이지 않고(lib/school-roster 가 매주 배치)
+ * npcById 로만 찾는다. 인사말 = 평소 대사 + 합류 권유 대사.
+ */
+const COMPANION_NPCS: NpcDef[] = SCHOOL_NPCS.filter((c) => !!c.homeRoom).map((c) => ({
+  id: c.id,
+  name: c.name,
+  role: 'companion' as const,
+  icon: c.portrait,
+  zoneId: 'school-roster',
+  cell: { x: 0, y: 0 },
+  greeting: [c.lines.idle, c.lines.recruit],
+}))
+const NPC_MAP = new Map([...NPCS, ...COMPANION_NPCS].map((n) => [n.id, n]))
 export function npcById(id: string): NpcDef | undefined {
   return NPC_MAP.get(id)
 }

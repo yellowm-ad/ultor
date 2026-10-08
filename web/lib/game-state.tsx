@@ -7,11 +7,13 @@ import type {
   GameState,
   MapId,
   PlayerAppearance,
+  Portal,
   Position,
   ScreenId,
 } from '@/lib/types'
 import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
+import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
@@ -268,8 +270,12 @@ function reducer(state: GameState, action: Action): GameState {
     case 'END_WEEK':
       return endWeek(state)
 
-    case 'DISMISS_STORY':
-      return dismissStory(state)
+    case 'DISMISS_STORY': {
+      // 장면이 보스전을 여는 비트면(EP37 폭주한 루스벨 등) 닫자마자 전투
+      const head = state.storyQueue[0] ? beatById(state.storyQueue[0]) : undefined
+      const next = dismissStory(state)
+      return head?.battle ? startStoryBattle(next, head.id, head.battle.monsterIds) : next
+    }
 
     case 'STORY_CHOICE':
       return chooseStory(state, action.setFlags)
@@ -400,7 +406,12 @@ function reducer(state: GameState, action: Action): GameState {
 
       // 포탈 타일 접촉 — 이동 여부 확인 (군 통문 gate 는 클릭 전용이라 제외)
       for (const p of map.portals) {
-        if (p.kind === 'gate') continue
+        if (p.kind === 'gate' || p.secret) continue
+        if (p.walkArea) {
+          const a = p.walkArea
+          if (nx >= a.x0 && nx <= a.x1 && ny >= a.y0 && ny <= a.y1) return walkToFloor(state, p, { x: nx, y: ny }, facing)
+          continue
+        }
         const d = Math.hypot(p.cell.x - nx, p.cell.y - ny)
         if (d < 0.45) return { ...state, facing, pendingPortalId: p.id }
       }
@@ -759,7 +770,7 @@ function reducer(state: GameState, action: Action): GameState {
       const { battle: resolved, itemConsumed, fled } = resolveAction(state.battle, action.actorUid, action.action)
       let inventory = state.inventory
       if (itemConsumed) inventory = removeFromInventory(inventory, itemConsumed, 1)
-      if (fled) return afterBattleFled(leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.'), resolved)
+      if (fled) return reopenStoryBattle(afterBattleFled(leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.'), resolved), resolved)
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
       return { ...state, battle: next, inventory }
@@ -831,7 +842,7 @@ function reducer(state: GameState, action: Action): GameState {
       const village = MAPS.village
       const respawnPos = village.respawn ?? village.spawn
       const pet = { ...state.pet, hp: Math.max(1, Math.round(state.pet.hp * 0.2)) }
-      return afterBattleDefeat({
+      return reopenStoryBattle(afterBattleDefeat({
         ...state,
         player: { ...state.player, hp: 1, mp: Math.max(1, Math.round(state.player.stats.maxMp * 0.2)) },
         pet,
@@ -846,7 +857,7 @@ function reducer(state: GameState, action: Action): GameState {
         battle: null,
         screen: 'world',
         toast: '기절했다... 성역 신전에서 정신을 차렸다.',
-      }, state.battle)
+      }, state.battle), state.battle)
     }
 
     case 'RESET_GAME':
@@ -878,6 +889,25 @@ function teleportTo(state: GameState, mapId: MapId): GameState {
       toast: `텔레포트 — ${dest.name}`,
     },
     dest.id,
+  )
+}
+
+/** 같은 좌표계의 위/아래층으로 걸어서 넘어간다 — 확인창·도착 토스트 없이 위치·방향 유지 */
+function walkToFloor(state: GameState, portal: Portal, pos: { x: number; y: number }, facing: GameState['facing']): GameState {
+  const destMap = MAPS[portal.to]
+  return visitMap(
+    {
+      ...state,
+      currentMapId: destMap.id,
+      position: { ...pos },
+      facing,
+      currentZoneId: zoneAt(destMap, pos.x, pos.y)?.id ?? '',
+      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode),
+      pendingEncounterUid: null,
+      pendingPortalId: null,
+      gateOpen: false,
+    },
+    destMap.id,
   )
 }
 
@@ -951,6 +981,24 @@ function startBattleFromField(state: GameState, fieldMonsterUid: string): GameSt
     huntEnabled: isActivityUnlocked(state, 'hunting'),
   })
   return { ...ready, previousScreen: state.screen, screen: 'battle', battle }
+}
+
+/** 스토리 장면이 여는 보스전 — 호위 없이 지정한 몬스터만(장면의 battle.monsterIds) */
+function startStoryBattle(state: GameState, beatId: string, monsterIds: string[]): GameState {
+  const defs = monsterIds.map((id) => MONSTERS.find((m) => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m)
+  if (!defs.length) return state
+  const ready = ensureParty(state)
+  const battle = initBattle(battleParty(ready), defs, state.position, undefined, { huntEnabled: isActivityUnlocked(state, 'hunting') })
+  return { ...ready, previousScreen: state.screen, screen: 'battle', battle: { ...battle, storyBeatId: beatId } }
+}
+
+/** 스토리 보스전에서 지거나 도망치면 그 장면을 다시 볼 수 있게(같은 곳에 다시 가면 재도전) */
+function reopenStoryBattle(state: GameState, battle: GameState['battle']): GameState {
+  const id = battle?.storyBeatId
+  if (!id) return state
+  const storyFlags = { ...state.storyFlags }
+  delete storyFlags[`beat:${id}`]
+  return { ...state, storyFlags, toast: `${state.toast ? state.toast + ' ' : ''}같은 장소에 다시 가면 재도전할 수 있다.` }
 }
 
 function updateFieldMonstersAfterVictory(fieldMonsters: GameState['fieldMonsters'], uid: string) {

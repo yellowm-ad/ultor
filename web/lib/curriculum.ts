@@ -2,7 +2,7 @@
 // 수업 커리큘럼 — 교수진 · 과목별 수업 장소/미니게임 · 주차별 수업 배정 · 성적/숙련도 (통합 PRD v1.0 §14~22, §30~31, §44~45)
 //
 //   한 주 = 필수 수업 1회 + 외부활동 2개. 방학에는 수업이 없다.
-//   학기 12주 순환(§45 → 2026-10-07 스토리 주간 반영): 1·4주 = 1과목 / 2·5주 = 2과목 / 8·10주 = 3과목 / 11주 = 4과목(기말 대비 실습)
+//   학기 12주 순환(§45 → 2026-10-08 v3.0: 스토리 주에도 수업 유지): 1·4주 = 1과목 / 2·5주 = 2과목 / 3·8·10주 = 3과목 / 6·9주 = 4과목 / 11주 = 기말 대비 실습
 //                        3·6·9주 = 스토리 주간(수업 없음, lib/story-episodes.ts)
 //                        7주 = 중간고사 / 12주 = 기말고사
 //   수업 결과(S~D)는 메인스토리를 막지 않는다(§2.1, §56) — 실패(D)해도 수업은 수료.
@@ -144,13 +144,13 @@ export interface WeekClass {
   label: string
 }
 
-const ROTATION: Record<number, number> = { 1: 0, 4: 0, 2: 1, 5: 1, 8: 2, 10: 2, 11: 3 }
+const ROTATION: Record<number, number> = { 1: 0, 4: 0, 2: 1, 5: 1, 3: 2, 8: 2, 10: 2, 6: 3, 9: 3, 11: 3 }
 
 /** 이번 주 필수 수업 — 방학이면 null */
 export function classForWeek(globalWeek: number): WeekClass | null {
   const info = calendarInfo(globalWeek)
   if (info.isVacation) return null
-  // 스토리 주간(학기 3·6·9주)은 수업 대신 스토리 에피소드
+  // v3.0 §10: 메인 스토리 주에도 필수 수업은 그대로(4학년 2학기 특수 루프 해제는 Phase 3 — isSemesterStoryWeek)
   if (isSemesterStoryWeek(globalWeek)) return null
   const open = coursesForWeek(globalWeek)
   if (open.length === 0) return null

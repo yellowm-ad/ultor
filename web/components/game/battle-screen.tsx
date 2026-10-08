@@ -193,6 +193,24 @@ export function BattleScreen() {
 
   // 자동 전투는 리듀서(BATTLE_TICK)가 AI 로 처리한다 — battle.auto
 
+  // 폭주 보스(보랏빛 오라) — 전장이 계속 낮게 울리고, 첫 등장 때 이름 카드 + 큰 흔들림
+  const rageBoss = battle?.combatants.find((c) => c.side === 'enemy' && c.aura === 'rage-violet' && c.alive) ?? null
+  const rageName = battle?.combatants.find((c) => c.side === 'enemy' && c.aura === 'rage-violet')?.name ?? null
+  const [rageIntro, setRageIntro] = useState(false)
+  useEffect(() => {
+    if (!rageName) return
+    setRageIntro(true)
+    setShake(true)
+    const t1 = setTimeout(() => setShake(false), 900)
+    const t2 = setTimeout(() => setRageIntro(false), 2600)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+    // 전투가 새로 열릴 때 한 번
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rageName, battle?.originCell.x, battle?.originCell.y])
+
   function triggerLunge(uid: string) {
     setAnimUid(uid)
     setHeroAnim('lunge')
@@ -279,7 +297,7 @@ export function BattleScreen() {
       {/* ── 상단 바: 좌측 보스 배너 + 가운데 컨트롤(자동/속도/도망) ── */}
       <div className="relative z-20 flex items-start px-3 pt-2">
         {primaryEnemy && (
-          <div className={`boss-banner ${!primaryEnemy.alive ? 'opacity-40 grayscale' : ''}`}>
+          <div className={`boss-banner ${primaryEnemy.aura === 'rage-violet' ? 'boss-banner-rage' : ''} ${!primaryEnemy.alive ? 'opacity-40 grayscale' : ''}`}>
             <div className="portrait-ring portrait-ring-enemy flex size-9 shrink-0 items-center justify-center">
               <Image src={primaryEnemy.icon} alt={primaryEnemy.name} width={20} height={20} />
             </div>
@@ -329,7 +347,21 @@ export function BattleScreen() {
       </div>
 
       {/* ── 전장 ── */}
-      <div className={`battle-stage relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : ''}`}>
+      <div className={`battle-stage relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : rageBoss ? 'battle-rumble' : ''}`}>
+        {/* 폭주 보스 — 보랏빛 그늘 + 떠오르는 불티(전장 전체) */}
+        {rageBoss && (
+          <div className="rage-stage" aria-hidden>
+            {RAGE_EMBERS.map((e, i) => (
+              <span key={i} className="rage-stage-ember" style={{ left: e.left, animationDelay: e.delay, animationDuration: e.dur }} />
+            ))}
+          </div>
+        )}
+        {rageIntro && rageName && (
+          <div className="rage-title" aria-hidden>
+            <span className="rage-title-sub">폭주</span>
+            <span className="rage-title-name">{rageName}</span>
+          </div>
+        )}
         {isForestBattle && (
           <>
             {/* 살랑이는 나무 그림자 */}
@@ -556,7 +588,9 @@ function CombatantSprite({
         ? c.appearance.sheet
         : null
   const isHero = !!heroLook
-  const spritePx = isHero ? (c.kind === 'hero' ? 150 : 138) : c.kind === 'pet' ? 84 : enemyMonsterPx(side, c.refId)
+  // 사람 보스(히어로 시트를 쓰는 적)는 아군보다 크게 — 위압감
+  const spritePx = isHero ? (c.kind === 'hero' ? 150 : side === 'enemy' ? 250 : 138) : c.kind === 'pet' ? 84 : enemyMonsterPx(side, c.refId)
+  const rage = c.aura === 'rage-violet' && c.alive
   // 히어로 시트 프레임 아래쪽 투명 여백(≈14%)만큼 끌어내려 발이 실제 좌표에 닿게 (크리처는 CreatureSprite groundPad)
   const footPad = isHero ? Math.round(spritePx * 0.14) : 0
 
@@ -633,16 +667,17 @@ function CombatantSprite({
           aria-hidden
         />
         {/* 스프라이트 */}
+        {rage && <RageAura px={spritePx} layer="back" />}
         <div
           style={{ marginBottom: -footPad }}
-          className={`relative ${active ? 'battle-active' : ''} ${
+          className={`relative ${rage ? 'rage-body' : ''} ${active ? 'battle-active' : ''} ${
             heroAnim === 'lunge' ? (side === 'player' ? 'hero-lunge-right' : 'hero-lunge-left') : ''
           }`}
         >
           {heroLook ? (
             <HeroSprite
               sheet={heroLook}
-              dir="right"
+              dir={side === 'enemy' ? 'down' : 'right'}
               walking={heroAnim === 'lunge' || (c.kind === 'ally' && active && c.alive)}
               px={spritePx}
               className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
@@ -661,6 +696,7 @@ function CombatantSprite({
           )}
         </div>
 
+        {rage && <RageAura px={spritePx} layer="front" />}
         {/* TU 뱃지 */}
         {c.alive && (
           <span className="absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/55 px-1.5 text-[8px] font-bold text-white/80">
@@ -669,6 +705,41 @@ function CombatantSprite({
         )}
         {targetable && <span className="absolute -top-2 text-xs text-red-400">▼</span>}
       </button>
+    </div>
+  )
+}
+
+/** 폭주 보스 전장 불티 위치(결정론) */
+const RAGE_EMBERS = Array.from({ length: 22 }, (_, i) => ({
+  left: `${(i * 37) % 100}%`,
+  delay: `${((i * 0.53) % 3.2).toFixed(2)}s`,
+  dur: `${(2.4 + ((i * 0.71) % 1.8)).toFixed(2)}s`,
+}))
+
+/**
+ * 폭주 오라(보랏빛 불꽃) — back: 발밑 마법진 + 몸 뒤 거대한 불꽃 실루엣 / front: 몸을 감싸는 불꽃 혀 + 튀는 불티.
+ * 순수 CSS(globals.css .rage-*) — 크기는 스프라이트 px 에 맞춘다.
+ */
+function RageAura({ px, layer }: { px: number; layer: 'back' | 'front' }) {
+  if (layer === 'back') {
+    return (
+      <div className="rage-aura-back pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ bottom: -10, width: px * 1.15, height: px * 1.05 }} aria-hidden>
+        <span className="rage-ring" />
+        <span className="rage-glow" />
+        <span className="rage-flame rage-flame-l" />
+        <span className="rage-flame rage-flame-c" />
+        <span className="rage-flame rage-flame-r" />
+      </div>
+    )
+  }
+  return (
+    <div className="rage-aura-front pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ bottom: -6, width: px * 0.9, height: px * 0.95 }} aria-hidden>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <span key={i} className="rage-tongue" style={{ left: `${8 + i * 13}%`, animationDelay: `${(i * 0.17).toFixed(2)}s`, height: `${28 + ((i * 23) % 30)}%` }} />
+      ))}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <span key={`s${i}`} className="rage-spark" style={{ left: `${(i * 29) % 100}%`, animationDelay: `${((i * 0.31) % 1.6).toFixed(2)}s` }} />
+      ))}
     </div>
   )
 }

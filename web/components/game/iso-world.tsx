@@ -15,6 +15,9 @@ import { FURNITURE_BY_ID } from '@/lib/housing'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 import { professorSpot, useClassActorEntities } from '@/components/game/class-actors'
+import { HeroSprite } from '@/components/game/pixel-hero'
+import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
+import { schoolNpcById } from '@/lib/companions'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -220,6 +223,7 @@ export function IsoWorld({
         node: (
           <g key={p.id} transform={`translate(${s.sx},${s.sy - (p.elev ?? 0)})`}>
             {p.sprite ? <RasterProp p={p} /> : null}
+            {p.glow ? <PropGlow {...p.glow} seed={p.cell.x * 7 + p.cell.y * 3} /> : null}
           </g>
         ),
       })
@@ -240,7 +244,11 @@ export function IsoWorld({
 
   // NPC — 홈 셀(npc.cell) 주변을 배회(npcWanderPosition, 몬스터와 동일한 시간기반 리사주 곡선).
   // wanderT 마다 위치 재계산되므로 static 메모 밖(몬스터와 동일 패턴)에 둔다.
-  const mapNpcsForRoam = useMemo(() => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId)), [map])
+  const mapNpcsForRoam = useMemo(
+    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [map, state.storyFlags],
+  )
   // 수업 장면 — 책상마다 학생, 칠판 앞 교수(lib/curriculum · components/game/class-actors)
   const classEntities = useClassActorEntities(state, map)
   const ND = 74 // NPC 도트 스프라이트 표시 크기
@@ -270,6 +278,38 @@ export function IsoWorld({
         </g>
       ),
     }
+  })
+
+  // 학교 동료(lib/school-roster) — 이번 주 이 방·로비에 서 있는 동료. 4등신 히어로 시트, 클릭/E 로 대화
+  const RD = 84
+  const rosterEntities = rosterOnMap(state).flatMap((spot) => {
+    const def = schoolNpcById(spot.npcId)
+    if (!def) return []
+    // 제자리 근처를 걷다 멈췄다(다른 NPC 와 같은 배회) — 멈춰 있을 땐 처음 정한 방향을 본다
+    const { pos, facing: walkDir, moving } = npcWanderState(rosterWanderNpc(spot), wanderT, map.blockers)
+    const s = isoToScreen(pos.x, pos.y)
+    const hot = interactId === def.id
+    return [
+      {
+        sortY: pos.x + pos.y + 0.2,
+        node: (
+          <g key={`roster-${def.id}`} transform={`translate(${s.sx},${s.sy})`} style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'OPEN_NPC', npcId: def.id })}>
+            <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
+            <foreignObject x={-RD / 2} y={-RD + 12} width={RD} height={RD} style={{ overflow: 'visible' }}>
+              <div style={{ width: RD, height: RD, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                <HeroSprite sheet={def.sprite} dir={moving ? walkDir : spot.facing} walking={moving} px={RD} />
+              </div>
+            </foreignObject>
+            <g transform="translate(0,-60)">
+              <rect x={-def.name.length * 5 - 5} y={-9} width={def.name.length * 10 + 10} height={14} rx={3} fill={hot ? '#e0b050' : 'rgba(10,8,16,0.68)'} />
+              <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={hot ? '#000' : '#e8dcc0'}>
+                {def.name}
+              </text>
+            </g>
+          </g>
+        ),
+      },
+    ]
   })
 
   // 필드 몬스터 — 홈 셀 반경 6.5셀 안만 렌더(연산 절약), wanderT 마다 배회 위치 재계산
@@ -327,6 +367,12 @@ export function IsoWorld({
     const seen = new Set<string>()
     const nodes: React.ReactNode[] = []
     for (const p of map.portals) {
+      // 걸어서 넘어가는 층 연결(대계단)은 표시 없음
+      if (p.walkArea) continue
+      if (p.secret) {
+        nodes.push(<SecretSparkle key={p.id} at={isoToScreen(p.cell.x, p.cell.y)} lift={p.sparkleLift ?? 40} />)
+        continue
+      }
       if (p.kind === 'gate') {
         const k = `${p.cell.x},${p.cell.y}`
         if (seen.has(k)) continue
@@ -501,7 +547,7 @@ export function IsoWorld({
     }
   })
 
-  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
+  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
   const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 
@@ -554,5 +600,41 @@ export function IsoWorld({
         {!inClass && portalNodes}
       </svg>
     </div>
+  )
+}
+
+/** 촛불 광원 — 바닥 빛 웅덩이 + 불꽃 높이의 일렁이는 후광(screen 합성) */
+function PropGlow({ color, y, r, seed }: { color: string; y: number; r: number; seed: number }) {
+  const delay = `${(seed % 10) / 7}s`
+  return (
+    <g style={{ pointerEvents: 'none', mixBlendMode: 'screen' }}>
+      <ellipse cx={0} cy={0} rx={r * 1.5} ry={r * 0.75} fill={color} opacity={0.14} />
+      <g style={{ animation: `candle-flicker 1.7s ease-in-out ${delay} infinite`, transformBox: 'fill-box', transformOrigin: 'center bottom' }}>
+        <ellipse cx={0} cy={-y} rx={r} ry={r} fill={color} opacity={0.16} />
+        <ellipse cx={0} cy={-y} rx={r * 0.5} ry={r * 0.5} fill={color} opacity={0.24} />
+      </g>
+    </g>
+  )
+}
+
+/** 숨겨진 통로 — 흰 점 몇 개가 엇갈려 반짝인다(가까이 가면 E). 클릭으로는 열리지 않음 */
+const SPARKLES = [
+  [-14, -6, 0], [9, -22, 0.5], [-4, -38, 1.1], [16, -50, 1.6], [-18, -62, 0.8], [3, -74, 2.0], [12, -8, 1.4], [-9, -88, 0.3],
+  [-22, -30, 1.9], [20, -78, 0.9], [0, -56, 2.3], [-12, -104, 1.3],
+] as const
+function SecretSparkle({ at, lift }: { at: { sx: number; sy: number }; lift: number }) {
+  return (
+    <g transform={`translate(${at.sx},${at.sy - lift})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={-50} rx={26} ry={58} fill="#eaf4ff" opacity={0.07} style={{ animation: 'portal-pulse 2.4s ease-in-out infinite', transformBox: 'fill-box', transformOrigin: 'center' }} />
+      {SPARKLES.map(([x, y, d], i) => (
+        <g key={i} transform={`translate(${x},${y}) scale(${i % 3 === 0 ? 1.6 : 1.25})`}>
+          <g style={{ animation: `secret-twinkle 2.4s ease-in-out ${d}s infinite`, transformBox: 'fill-box', transformOrigin: 'center' }}>
+            <rect x={-1} y={-3} width={2} height={6} fill="#fff" />
+            <rect x={-3} y={-1} width={6} height={2} fill="#fff" />
+            <rect x={-1} y={-1} width={2} height={2} fill="#eaf4ff" />
+          </g>
+        </g>
+      ))}
+    </g>
   )
 }

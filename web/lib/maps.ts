@@ -5,15 +5,12 @@ import { assembleFieldMaps } from '@/lib/field-specs'
 import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, atlantisWaterAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS, ATLANTIS_STRUCTURES } from '@/lib/atlantis-map'
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
-import { HALL_W, HALL_H, HALL_CX, STAIR, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, hallTileAt, hall2TileAt, hallStairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
+import { HALL_W, HALL_H, HALL_CX, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, STAIR_TO_1F, STAIR_TO_2F, hallTileAt, hall2TileAt, hallStairs, hall2Stairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
 import type { HallDoorKey, HallExt } from '@/lib/academy-hall'
 import {
-  GALLERY_STAIR,
-  GALLERY_STAIR_CX,
+  FLOOR3_ENTRY_X,
   GALLERY_WALL_SKIP,
   YEAR2_DOOR_X,
-  galleryStair,
-  galleryStairBlockers,
   galleryWallDecals,
   buildUpperFloor,
   upperPortals,
@@ -27,6 +24,7 @@ import {
 import { ACADEMY_ROOM_DEFS, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from '@/lib/academy-rooms'
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
+import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
 import { landmarkInterior, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
 
@@ -644,18 +642,18 @@ const personalSpaceTileAt = (cx: number, cy: number): TileKind =>
 
 // ════════ 마법학교 본관 — 중앙 홀(1층)·2층 회랑(lib/academy-hall.ts) + 실내 6실(lib/academy-rooms.ts) ════════
 // 사용자 규칙: 벽은 맵 끝선에 높게, 가구는 쿼터뷰(아이소) 정합 — 두 파일 머리말 참고.
-// 2층 회랑 확장(2학년 교실 문 · 동쪽 끝 3층 계단) — lib/academy-upper.ts
+// 2층 회랑 확장(2학년 교실 문 · 대강당 옆 3층 계단 입구) — lib/academy-upper.ts
 const HALL_EXT: HallExt = {
   wallDecals: galleryWallDecals,
   wallSkip: GALLERY_WALL_SKIP,
-  // 1층 맵에선 회랑 위 장식(뒤쪽 레이어), 2층 맵에선 플레이어와 깊이 정렬(올라설 수 있음)
-  structures: (zb) => galleryStair(zb).map((g, i) => (zb === 0 ? { ...g, back: 300 + i } : g)),
-  blockers: galleryStairBlockers(),
+  structures: () => [],
+  blockers: [],
 }
 const HALL1 = buildHallFloor1(HALL_EXT)
 const HALL2 = buildHallFloor2(HALL_EXT)
 const UF3 = buildUpperFloor(3)
 const UF4 = buildUpperFloor(4)
+const SECRET = buildSecretPassage()
 /** 대강당 문 앞(2층 회랑) */
 const AUD_DOOR_FRONT = { x: HALL_CX, y: 1.3 }
 
@@ -860,7 +858,7 @@ export const MAPS = {
     props: DEMON_TOWN_PROPS,
     blockers: DEMON_TOWN_BLOCKERS,
     zones: [
-      z('z-demon-village', 'demon', '마물 마을', 0, 0, DEMON_AW, DEMON_AH, '#3a1230', '화산 기슭에 자리한 마물들의 정착지. 모르스를 따르지 않는 온건파 마물이 교역한다.'),
+      z('z-demon-village', 'demon', '마물 마을', 0, 0, DEMON_AW, DEMON_AH, '#3a1230', '화산 기슭에 자리한 마물들의 정착지. 인간 사회에서 밀려난 마물과 인외종이 모르스 곁에 모여 산다.'),
     ],
     spawn: { x: DEMON_CX, y: DEMON_ENTRANCE_CY - 0.2 },
     portals: [
@@ -988,7 +986,8 @@ export const MAPS = {
     spawn: { x: HALL_CX, y: HALL_H - 2.0 },
     portals: [
       { id: 'school-hall-exit', cell: { x: HALL_CX, y: HALL_H - 0.8 }, to: 'village', toSpawn: { x: 6.9, y: 7.2 }, label: '본관 밖으로', kind: 'exit' },
-      { id: 'hall-to-2f', cell: { x: HALL_CX, y: STAIR.yTop + 0.7 }, to: 'academy-2f', toSpawn: { x: HALL_CX, y: 2.5 }, label: '2층 회랑', kind: 'portal' },
+      // 대계단을 끝까지 오르면 그대로 2층 회랑(같은 좌표계) — 확인창 없이 걸어서
+      { id: 'hall-to-2f', cell: { x: HALL_CX, y: STAIR_TO_2F.y1 }, walkArea: STAIR_TO_2F, to: 'academy-2f', label: '2층 회랑', kind: 'portal' },
       ...HALL_ROOM_PORTALS,
     ],
   },
@@ -1006,15 +1005,39 @@ export const MAPS = {
     padTop: HALL_PAD_TOP - FLOOR2,
     padBottom: HALL2_PAD_BOTTOM,
     blockers: buildBlockers(HALL2.props, HALL2.blockers),
-    stairs: [{ ...GALLERY_STAIR }],
+    stairs: hall2Stairs(),
     zones: NO_ZONES,
     spawn: { x: HALL_CX, y: 2.5 },
     portals: [
-      { id: '2f-to-hall', cell: { x: HALL_CX, y: 3.5 }, to: 'school-hall', toSpawn: { x: HALL_CX, y: STAIR.yTop + 1.8 }, label: '1층으로', kind: 'exit' },
+      // 대계단을 걸어 내려가 맨 아래에서 1층 맵으로
+      { id: '2f-to-hall', cell: { x: HALL_CX, y: STAIR_TO_1F.y0 }, walkArea: STAIR_TO_1F, to: 'school-hall', label: '1층으로', kind: 'exit' },
       { id: '2f-to-auditorium', cell: { ...AUD_DOOR_FRONT }, to: 'grand-auditorium', label: '대강당', kind: 'portal' },
       { id: '2f-to-class-year2', cell: { x: YEAR2_DOOR_X, y: 1.3 }, to: 'class-year2', label: '2학년 교실', kind: 'portal' },
-      { id: '2f-to-3f', cell: { x: GALLERY_STAIR_CX, y: GALLERY_STAIR.yTop + 0.6 }, to: 'academy-3f', toSpawn: { ...UF_SPAWN }, label: '3층으로', kind: 'portal' },
+      { id: '2f-to-3f', cell: { x: FLOOR3_ENTRY_X, y: 1.3 }, to: 'academy-3f', toSpawn: { ...UF_SPAWN }, label: '3층으로', kind: 'portal' },
+      // 서쪽 회랑 옛 벤치 자리 — 흰 반짝임, 가까이서 E
+      { id: '2f-to-secret', cell: { ...SECRET_DOOR_2F }, to: 'academy-secret', toSpawn: { ...SECRET_SPAWN }, label: '수상한 벽', kind: 'portal', secret: true, sparkleLift: 46 },
     ],
+  },
+  'academy-secret': {
+    id: 'academy-secret',
+    name: '숨겨진 통로',
+    kind: 'town',
+    grid: { w: SECRET_W, h: SECRET_H },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: secretTileAt,
+    props: SECRET.props,
+    structures: SECRET.structures,
+    padTop: SECRET_PAD_TOP,
+    blockers: buildBlockers(SECRET.props, SECRET.blockers),
+    ambientTone: 0.62,
+    zones: [
+      z('z-secret-corridor', 'school', '숨겨진 통로', 6, 14, 12, SECRET_H, '#3d5bd6', '2층 회랑 벽 너머로 이어진 좁고 어두운 복도.'),
+      z('z-secret-altar', 'school', '오망성 제단', 0, 0, SECRET_W, 14, '#3d5bd6', '푸른 촛불이 둘러싼 오망성 마법진과 낡은 제단.'),
+    ],
+    spawn: { ...SECRET_SPAWN },
+    portals: [{ id: 'secret-exit', cell: { ...SECRET_EXIT }, to: 'academy-2f', toSpawn: { ...SECRET_RETURN_2F }, label: '2층 회랑으로', kind: 'exit' }],
   },
   'academy-3f': {
     id: 'academy-3f',

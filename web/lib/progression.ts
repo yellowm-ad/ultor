@@ -33,6 +33,7 @@ import {
   createGuestMember,
   guestNpcById,
   guestStats,
+  isCompanionAway,
   schoolNpcById,
 } from '@/lib/companions'
 import { addToInventory, hasItem, removeFromInventory } from '@/lib/inventory'
@@ -60,7 +61,8 @@ export function queueBeats(state: GameState, match: (t: StoryTrigger) => boolean
   const storyFlags = { ...state.storyFlags }
   const newFlags: string[] = []
   for (const b of beats) {
-    storyFlags[`beat:${b.id}`] = true
+    // 보스전을 여는 장면은 이겼을 때 '봤음' 처리(afterBattleVictory) — 전투 중에 끄고 다시 켜도 재도전 가능
+    if (!b.battle) storyFlags[`beat:${b.id}`] = true
     for (const f of b.setFlags ?? []) {
       if (!storyFlags[f]) newFlags.push(f)
       storyFlags[f] = true
@@ -207,7 +209,7 @@ export function startClass(state: GameState, test?: { game: MiniGameType }): Gam
   if (state.classScene) return state
   const gw = state.calendar.globalWeek
   const wc = classForWeek(gw) ?? (test ? { kind: 'lecture' as const, courseId: 'FIRE_101', courseIds: ['FIRE_101'], label: '테스트 수업' } : null)
-  if (!wc) return { ...state, toast: isSemesterStoryWeek(gw) ? '이번 주는 스토리 주간이라 수업이 없습니다. 학사 수첩(J)의 스토리 미션을 확인하세요.' : '방학에는 수업이 없습니다.' }
+  if (!wc) return { ...state, toast: isSemesterStoryWeek(gw) ? '이번 주는 수업 대신 최종장 과제를 진행합니다. 학사 수첩(J)을 확인하세요.' : '방학에는 수업이 없습니다.' }
   if (state.weekly.classDone && !test) return { ...state, toast: '이번 주 수업은 이미 들었습니다.' }
   const meta = classMetaFor(wc.courseId)
   const seed = (state.playerSeed ^ (gw * 2654435761)) >>> 0
@@ -671,7 +673,10 @@ export function ensureParty(state: GameState): GameState {
   }
   const guests = (next.companions.guests ?? []).filter((g) => !!guestNpcById(g.id)).slice(0, MAX_GUESTS)
   // 4대4 — 동료 + 임시 NPC ≤ 3
-  const party = next.companions.party.filter((id) => !!next.companions.recruited[id] && !!schoolNpcById(id)?.combat).slice(0, Math.max(0, COMPANION_SLOTS - guests.length))
+  // 스토리상 자리를 비운 동료(폭주 후 도주한 루스벨 등)는 파티에서 빠진다
+  const party = next.companions.party
+    .filter((id) => !!next.companions.recruited[id] && !!schoolNpcById(id)?.combat && !isCompanionAway(next, schoolNpcById(id)))
+    .slice(0, Math.max(0, COMPANION_SLOTS - guests.length))
   return normalizeFormation({ ...next, companions: { ...next.companions, party, guests } })
 }
 
@@ -816,6 +821,7 @@ export function useExpCandy(state: GameState, itemId: string, targetId: string):
 /** 주인공 경험치는 리듀서(BATTLE_END_CONTINUE)가 battleExpShare 로 먼저 지급한 뒤 이 함수를 부른다 */
 export function afterBattleVictory(state: GameState, battle: BattleState): GameState {
   let next = syncCompanionsFromBattle(state, battle)
+  if (battle.storyBeatId) next = { ...next, storyFlags: { ...next.storyFlags, [`beat:${battle.storyBeatId}`]: true } }
   const share = battleExpShare(battle)
   // 동료 경험치 — 이번 전투에 출전한 파티 동료가 1인당 몫을 받는다(임시 NPC 제외)
   const levelUps: string[] = []

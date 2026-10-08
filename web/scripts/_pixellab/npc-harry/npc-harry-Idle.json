@@ -1,0 +1,85 @@
+{
+  "character": {
+    "id": "81f45e32-3b9c-4865-bac1-8c5d864b2e3f",
+    "name": "Idle",
+    "prompt": "Chibi 4-head-tall JRPG mage cadet, young man with messy dark brown hair, round thin wire glasses, small red lightning-shaped scar on forehead, long black academy greatcoat with crimson red lining and gold compass star emblem, grey knit vest, white shirt with crimson and gold striped tie, brown leather belt with wand holster, black trousers, brown leather boots, wizard student",
+    "size": {
+      "width": 64,
+      "height": 64
+    },
+    "directions": 8,
+    "view": "low top-down"
+  },
+  "spritesheet": {
+    "path": "npc-harry-Idle.png",
+    "cell_size": {
+      "width": 88,
+      "height": 88
+    },
+    "sheet_size": {
+      "width": 792,
+      "height": 528
+    },
+    "columns": 9,
+    "pivot": "cell-center",
+    "rows": [
+      {
+        "row": 0,
+        "type": "rotations",
+        "frame_count": 8,
+        "directions": [
+          "south",
+          "south-east",
+          "east",
+          "north-east",
+          "north",
+          "north-west",
+          "west",
+          "south-west"
+        ]
+      },
+      {
+        "row": 1,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "e10d48b7-cade-431e-b885-36c4f99ef1f9",
+        "direction": "south"
+      },
+      {
+        "row": 2,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "e10d48b7-cade-431e-b885-36c4f99ef1f9",
+        "direction": "east"
+      },
+      {
+        "row": 3,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "Walking",
+        "animation_group_id": "e10d48b7-cade-431e-b885-36c4f99ef1f9",
+        "direction": "north"
+      },
+      {
+        "row": 4,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "walking",
+        "animation_group_id": "fcb2b3c1-bfb2-41d9-a465-0283cdaa9474",
+        "direction": "south"
+      },
+      {
+        "row": 5,
+        "type": "animation",
+        "frame_count": 9,
+        "animation": "walking",
+        "animation_group_id": "fcb2b3c1-bfb2-41d9-a465-0283cdaa9474",
+        "direction": "east"
+      }
+    ]
+  },
+  "export_version": "1.0",
+  "export_date": "2026-10-08T04:25:49.316842+00:00"
+}

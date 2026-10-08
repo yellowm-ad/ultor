@@ -249,6 +249,8 @@ export interface PropDef {
   rotateDeg?: number
   /** 라벨(대형 구조물 위 표시, 선택) */
   label?: string
+  /** 불빛 — 발밑 기준 높이 y(px)에 일렁이는 광원(색·반경 r px). 촛대 등 */
+  glow?: { color: string; y: number; r: number }
   /**
    * 앵커가 footprint 중심인가(원형 구조물: 분수·콜로세움·나무).
    * true 면 깊이정렬·충돌 모두 cell 을 중심으로 계산.
@@ -357,11 +359,13 @@ export interface IsoStair {
   yTop: number
   yBottom: number
   zTop: number
+  /** 계단 아래 끝 높이(기본 0) — 2층 맵처럼 계단이 바닥보다 아래로 내려가는 경우 음수 */
+  zBase?: number
 }
 export function stairElevation(stairs: IsoStair[] | undefined, x: number, y: number): { z: number; stair: IsoStair | null } {
   for (const s of stairs ?? []) {
     if (x >= s.x0 && x <= s.x1 && y >= s.yTop && y <= s.yBottom) {
-      return { z: (s.zTop * (s.yBottom - y)) / (s.yBottom - s.yTop), stair: s }
+      return { z: (s.zBase ?? 0) + (s.zTop * (s.yBottom - y)) / (s.yBottom - s.yTop), stair: s }
     }
   }
   return { z: 0, stair: null }

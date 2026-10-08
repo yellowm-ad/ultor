@@ -160,18 +160,18 @@ export const QUEST_TEMPLATES: QuestTemplate[] = [
   { id: 'HOUSING_DECORATE', category: 'HOUSING', title: '방 꾸미기', description: '개인 공간에 가구를 하나 배치한다.', objectives: [o('PLACE_FURNITURE', 'any', 1, '가구 배치')], rewards: [exp(30), gold(50)] },
 ]
 
-// 3주 스토리 주간 미션(lib/story-episodes.ts) — 에피소드마다 필수(MAIN) 템플릿 하나. 보상엔 그 주 빠진 수업 몫의 과목 점수가 들어 있다
+// 메인 스토리 EP01~EP52 미션(lib/story-episodes.ts, v3.0) — 에피소드마다 필수(MAIN) 템플릿 하나. 스토리 주에도 수업이 있어 과목 점수는 기본 0
 for (const ep of STORY_EPISODES) {
   const year = calendarInfo(ep.week).year
   const r = ep.rewards
   QUEST_TEMPLATES.push({
     id: episodeQuestId(ep.week),
     category: 'MAIN',
-    title: `스토리 ${ep.no}화 — ${ep.title}`,
+    title: `${ep.id} — ${ep.title}`,
     // 요약이 없으면 오프닝의 교수·나레이션 대사(학생들의 말장난은 장면에서만)
     description: ep.summary || ep.brief.filter((l) => !l.hero).map((l) => l.text).join(' '),
     objectives: ep.objectives,
-    rewards: [exp(r.exp ?? 120 + year * 40), gold(r.gold ?? 120 + year * 40), course(r.course ?? 30), ...(r.items ?? []).map((it) => item(it.itemId, it.qty))],
+    rewards: [exp(r.exp ?? 120 + year * 40), gold(r.gold ?? 120 + year * 40), ...(r.course ? [course(r.course)] : []), ...(r.items ?? []).map((it) => item(it.itemId, it.qty))],
     regionId: ep.region,
     cooldownWeeks: 999,
   })

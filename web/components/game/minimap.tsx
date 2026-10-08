@@ -51,6 +51,7 @@ export function Minimap() {
       />
     ))
     const portals = map.portals.map((p) => {
+      if (p.secret) return null
       if (p.kind === 'gate') {
         if (gateShown.has(`${p.cell.x},${p.cell.y}`)) return null
         gateShown.add(`${p.cell.x},${p.cell.y}`)

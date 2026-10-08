@@ -348,8 +348,10 @@ export interface Combatant {
   supportChance?: number
   /** 임시 합류 NPC(호위 대상 'escort' · 임시 동행 'guest') — 조작 불가 자동 행동, 경험치 분배 제외 */
   guest?: 'escort' | 'guest'
-  /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다 */
+  /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다. 적도 히어로 시트를 쓸 수 있다(폭주한 루스벨) */
   appearance?: { kind: 'hero'; sheet: SpriteSheet } | { kind: 'npc'; npcId: string }
+  /** 전투 화면 연출 — 'rage-violet' = 보랏빛 불꽃·오라·흔들림(폭주 보스) */
+  aura?: 'rage-violet'
   alive: boolean
 }
 
@@ -405,6 +407,10 @@ export interface MonsterDef {
   /** 생략 시 traits 에서 유추(lib/battle-engine aiProfileOf) */
   aiProfile?: AiProfile
   isTestMonster?: boolean
+  /** 크리처 도트 대신 4등신 히어로 시트로 그린다(사람 보스 — 폭주한 루스벨) */
+  heroSheet?: SpriteSheet
+  /** 전투 화면 연출 */
+  aura?: 'rage-violet'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -505,6 +511,7 @@ export type MapId =
   | 'academy-2f' // 마법학교 2층 회랑(중앙 홀 위)
   | 'academy-3f' // 마법학교 3층 복도(3학년·어둠/빛·실습실·교수 연구실)
   | 'academy-4f' // 마법학교 4층 복도(4학년·고등 실습실·교수 회의실·교수 연구실)
+  | 'academy-secret' // 마법학교 숨겨진 통로 + 오망성 제단실(2층 서쪽 회랑 벽 너머)
   | 'class-year2' | 'class-year3' | 'class-year4' // 학년 교실
   | 'class-dark' | 'class-light' // 어둠 · 빛 수업관
   | 'practice-lab' | 'practice-lab-adv' // 마법 실습실 · 고등 마법 실습실
@@ -525,6 +532,15 @@ export interface Portal {
   requiredLevel?: number
   /** gate=군 통문(메뉴형) · portal=하위 스테이지 진입 타일 · exit=상위 맵 복귀 타일 */
   kind: 'gate' | 'portal' | 'exit'
+  /**
+   * 이 사각형 안에 들어서면 확인 없이 바로 넘어간다(같은 좌표계의 위/아래층 — 1층 대계단 ↔ 2층 회랑).
+   * 위치·방향을 그대로 유지하고 마법진도 그리지 않는다.
+   */
+  walkArea?: { x0: number; y0: number; x1: number; y1: number }
+  /** 숨겨진 통로 — 밟아도 안 열리고, 가까이에서 E 로 상호작용. 마법진 대신 흰 반짝임 */
+  secret?: boolean
+  /** 반짝임을 바닥에서 띄울 높이(px) — 벽면에 걸리게 */
+  sparkleLift?: number
 }
 
 export interface GameMap {
@@ -589,6 +605,8 @@ export interface GameMap {
   padTop?: number
   /** 화면 아래 여백(px) — 2층에서 내려다보이는 1층 등 */
   padBottom?: number
+  /** 지형 없는 실내 맵의 화면 톤(terrain.tone 과 같은 뜻) — 1 미만이면 캐릭터 주변만 남기고 어둡게 */
+  ambientTone?: number
   /** 계단 영역 — 플레이어 높이·깊이정렬 보정 */
   stairs?: import('./iso').IsoStair[]
   /** 맵 내부 라벨 구역. 단순 필드 맵은 빈 배열 */
@@ -626,6 +644,9 @@ export type NpcRole =
   | 'saint'
   | 'farmer'
   | 'craftStation'
+  | 'companion' // 학교 동료(lib/companions SCHOOL_NPCS) — 학교 안 방·로비에 매주 무작위 배치(lib/school-roster)
+  | 'royal' // 국왕
+  | 'royalGuard' // 왕실 근위병
 
 export interface NpcDef {
   id: string
@@ -642,6 +663,8 @@ export interface NpcDef {
   roam?: number
   /** 다른 NPC 의 걷기 시트를 빌려 쓸 때(전용 에셋 전 교수진 등) — `<spriteId>-walk.png` */
   spriteId?: string
+  /** 이 스토리 플래그가 켜진 뒤에만 맵에 나타난다(국왕 일행 등) */
+  visibleFlag?: string
 }
 
 export interface FieldMonster {
@@ -722,6 +745,8 @@ export interface BattleState {
   /** 사냥 활동 해금 여부 — 승리 시 계통별 부산물(huntDrops)을 추가로 굴린다 */
   huntEnabled?: boolean
   huntDrops?: string[]
+  /** 스토리 장면이 연 전투 — 지거나 도망치면 그 장면을 다시 볼 수 있게 되돌린다 */
+  storyBeatId?: string
 }
 
 export type ScreenId =

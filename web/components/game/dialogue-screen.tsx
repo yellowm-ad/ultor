@@ -8,6 +8,7 @@ import { Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
 import { coursesForWeek, nextCourseSkill } from '@/lib/academics'
 import { skillById } from '@/lib/mock-data'
+import { canRecruit, schoolNpcById } from '@/lib/companions'
 
 const ROLE_LABEL: Record<string, string> = {
   professor: '교수',
@@ -23,6 +24,9 @@ const ROLE_LABEL: Record<string, string> = {
   saint: '성녀',
   farmer: '농부',
   craftStation: '제작대',
+  companion: '동료',
+  royal: '국왕',
+  royalGuard: '왕실 근위병',
 }
 
 export function DialogueScreen() {
@@ -42,6 +46,9 @@ export function DialogueScreen() {
   const isProfessor = npc.role === 'professor'
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'
+  // 학교 동료 — 아직 합류하지 않았고 조건이 되면 대화 끝에 '파티에 합류' 권유
+  const mate = npc.role === 'companion' ? schoolNpcById(npc.id) : undefined
+  const canJoin = !!mate && !state.companions.recruited[mate.id] && canRecruit(state, mate).ok
   // 교수: 이번 학기 수업과 다음에 배울 마법 안내(전직 담당관 폐지 — 마법은 수업으로 배운다)
   const courseNotes = isProfessor
     ? coursesForWeek(state.calendar.globalWeek).flatMap((c) => {
@@ -54,7 +61,7 @@ export function DialogueScreen() {
   const lines = weekly ? [weekly, ...npc.greeting] : npc.greeting
   const lastLine = lineIdx >= lines.length - 1
 
-  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor
+  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -62,7 +69,7 @@ export function DialogueScreen() {
   return (
     <DialogueBox
       speaker={npc.name}
-      role={ROLE_LABEL[npc.role]}
+      role={mate ? mate.title : ROLE_LABEL[npc.role]}
       portrait={<Portrait id={npc.id} className="h-full w-full" />}
       text={lines[lineIdx]}
       canAdvance={canAdvance}
@@ -90,6 +97,18 @@ export function DialogueScreen() {
             {isCraftStation && (
               <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: npc.id })}>
                 제작하기
+              </button>
+            )}
+            {canJoin && (
+              <button
+                type="button"
+                className="dlg-btn"
+                onClick={() => {
+                  dispatch({ type: 'RECRUIT_COMPANION', companionId: mate!.id })
+                  close()
+                }}
+              >
+                파티에 합류시키기
               </button>
             )}
             {isElder && (
