@@ -851,10 +851,11 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'npc-potion', name: '약사 셀린', role: 'potionMerchant', icon: '/images/npc/npc-potion.png', zoneId: 'z-shops', cell: { x: 43.2, y: 19.8 }, greeting: ['신선한 물약이 방금 들어왔어요. 통문 밖으로 나가기 전엔 꼭 챙기세요!'], shopItemIds: potions.map((p) => p.id) },
   { id: 'npc-tool', name: '만물상 토비', role: 'toolMerchant', icon: '/images/npc/npc-tool.png', zoneId: 'z-shops', cell: { x: 46, y: 20.2 }, greeting: ['도구는 다 여기 있습니다. 가속의 모래, 이거 전투에서 꽤 쓸만해요.'], shopItemIds: [...tools.map((t) => t.id), 'tool-rod-basic'] },
   { id: 'npc-tamer', name: '조련사 리코', role: 'petTamer', icon: '/images/npc/npc-tamer.png', zoneId: 'z-shops', cell: { x: 48.2, y: 22.6 }, greeting: ['펫한테 새 재주를 가르쳐 볼까? 먹이도 팔고 있어.', '햇살 농가에서 펫 농장도 준비 중이라던데.'], shopItemIds: feeds.map((f) => f.id) },
-  { id: 'npc-alchemy-pot', name: '연금술 가마', role: 'craftStation', station: 'alchemy_pot', icon: '/images/npc/npc-workbench.png', zoneId: 'z-magic-hall', cell: { x: 6.4, y: 9.2 }, greeting: ['보글보글 끓는 연금술 가마다. 약초와 결정을 넣으면 물약이 된다.'] },
-  // ── 기숙사 마을 — 공동 식당 주방 ──
-  { id: 'npc-kitchen', name: '공동 식당 주방', role: 'craftStation', station: 'cooking_pot', icon: '/images/npc/npc-workbench.png', zoneId: 'z-dorm', cell: { x: 14.0, y: 22.6 }, greeting: ['기숙사 공동 식당 주방. 물고기와 고기, 약초로 든든한 한 끼를 만들 수 있다.'] },
-  { id: 'npc-workbench', name: '마도구 작업대', role: 'craftStation', icon: '/images/npc/npc-workbench.png', zoneId: 'z-magic-hall', cell: { x: 4.0, y: 7.0 }, greeting: ['재료만 모아오면 여기서 바로 조합할 수 있다네.', '필드와 보스에게서 얻은 재료를 가져오게.'] },
+  // ── 제작 장인(2026-10-08 제작대 오브젝트 → 사람 NPC, PixelLab 도트) — 말을 걸면 각자의 제작 화면이 열린다(id 는 예전 그대로) ──
+  { id: 'npc-alchemy-pot', name: '연금술 장인 이졸데', role: 'craftStation', station: 'alchemy_pot', icon: '/images/npc/npc-alchemy-pot.png', zoneId: 'z-magic-hall', cell: { x: 6.4, y: 9.2 }, roam: 0.5, greeting: ['어머, 손님이네. 가마 불 조절 중이니까 너무 가까이 오진 마.', '약초랑 결정만 가져와. 물약으로 바꾸는 건 내 몫이니까.'] },
+  // ── 기숙사 마을 — 공동 식당 ──
+  { id: 'npc-kitchen', name: '요리 장인 마르코', role: 'craftStation', station: 'cooking_pot', icon: '/images/npc/npc-kitchen.png', zoneId: 'z-dorm', cell: { x: 14.0, y: 22.6 }, roam: 0.5, greeting: ['배고픈 얼굴이구먼! 마법도 밥심이야.', '물고기든 고기든 약초든, 재료만 가져오면 든든한 한 끼로 만들어 주지.'] },
+  { id: 'npc-workbench', name: '마도구 장인 핀', role: 'craftStation', icon: '/images/npc/npc-workbench.png', zoneId: 'z-magic-hall', cell: { x: 4.0, y: 7.0 }, roam: 0.5, greeting: ['재료 가져왔어? 필드랑 보스한테서 얻은 거면 더 좋고.', '룬 망치 한 번이면 웬만한 장비는 뚝딱이야.'] },
   // ── 하우징 마을 ──
   { id: 'npc-elder', name: '촌장 헬가', role: 'housing', icon: '/images/npc/npc-elder.png', zoneId: 'z-housing', cell: { x: 42, y: 6.2 }, greeting: ['하우징 마을에 온 걸 환영하네. 집을 짓는 기능은 다음 업데이트에서 만나볼 걸세.', '지친 견습생은 여기서 쉬어 가도 좋네.'] },
   // ── 수련의 광장 ──

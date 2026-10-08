@@ -23,7 +23,7 @@ const ROLE_LABEL: Record<string, string> = {
   templePriest: '신관',
   saint: '성녀',
   farmer: '농부',
-  craftStation: '제작대',
+  craftStation: '장인',
   companion: '동료',
   royal: '국왕',
   royalGuard: '왕실 근위병',

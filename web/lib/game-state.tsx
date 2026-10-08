@@ -508,8 +508,11 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'OPEN_NPC':
       if (state.classScene) return state
-      // 대화 = 관계도(주 1회) + TALK 미션 진행
-      return talkTo({ ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'dialogue' }, action.npcId)
+      // 대화 = 관계도(주 1회) + TALK 미션 진행. 그 NPC 의 스토리 장면이 열렸으면 일반 대화 대신 장면부터
+      {
+        const talked = talkTo({ ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'dialogue' }, action.npcId)
+        return talked.storyQueue.length > state.storyQueue.length ? { ...talked, activeNpcId: null, screen: 'world' } : talked
+      }
 
     case 'OPEN_SHOP':
       return { ...state, activeNpcId: action.npcId, activeShopId: action.npcId, previousScreen: state.screen, screen: 'shop' }

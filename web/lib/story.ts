@@ -122,15 +122,23 @@ export type StoryTrigger =
   | { type: 'FLAG'; flag: string } // 플래그가 켜진 직후
   | { type: 'DEFEAT'; monsterId?: string; mapId?: string } // 전투 승리 — 특정 몬스터 및/또는 특정 맵에서
   | { type: 'STORY_SLOT'; week: number } // 3주 메인스토리 슬롯(통합 PRD §3) — 그 주를 마감할 때(주간 보상 직후)
+  | { type: 'TALK'; npcId: string } // 그 NPC 에게 말을 걸면(일반 대화 대신 장면이 바로 재생)
 
 /** 삼원 주인공 — 플레이어와 같은 속성이면 플레이어 본인, 아니면 같은 속성 동기(리안/셀라/도란)가 말한다 */
 export type HeroRole = 'fire' | 'ice' | 'earth'
 
 export interface StoryLine {
-  speaker: string // 화자 이름(또는 '' = 나레이션). hero 가 있으면 무시되고 실제 이름으로 바뀐다
+  speaker: string // 화자 이름(또는 '' = 나레이션). hero/player 가 있으면 무시되고 실제 이름으로 바뀐다
   /** 초상화 id(Portrait 컴포넌트) — NPC id 또는 동료 id */
   portraitId?: string
   hero?: HeroRole
+  /** 주인공(플레이어) 대사 — 플레이어 이름 + 주인공 도트 초상 */
+  player?: boolean
+  /**
+   * 컷신 이미지(lib/cutscenes.ts) — 이 줄부터 띄우고 다음에 다른 컷이 오거나 null 이 올 때까지 유지.
+   * 이미지가 아직 없으면 조용히 건너뛴다(대사만 진행).
+   */
+  cut?: string | null
   text: string
 }
 

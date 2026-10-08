@@ -5,8 +5,9 @@
 //   EP01~EP52 는 아래 데이터. 각 막은 정해진 globalWeek 가 시작될 때 오프닝, 그 주의 스토리 미션 보상을
 //   받으면 결말이 재생된다(lib/story.ts episodeBeats). 스토리 주간에도 수업은 그대로 있다(v3.0 §10).
 //
-//   ⚠ 이번 단계(v3.0 Phase 1)는 제목·주차·장·지역·플래그·루트·요약만 확정했다.
-//     brief/outro 는 문서의 요점(points)을 나레이션으로 읽는 임시 장면 — 대사집·컷신은 다음 작업에서 교체한다.
+//   · EP01~EP04 = 사용자 대본(울토르_메인스토리_대사_컷신_01-05.md) — 오프닝/결말은 lib/story-script EP_SCRIPT,
+//     막 중간 장면은 story-script SCRIPT_BEATS(NPC 대화·장소 진입), 컷신 이미지는 lib/cutscenes.
+//   ⚠ EP05~EP52 는 아직 제목·주차·장·지역·플래그·루트·요약만 — brief/outro 는 요점(points)을 읽는 임시 나레이션.
 //
 // ── 작성 형식(한 막 = E(…) 한 줄 묶음) ──────────────────────────────────────────
 //   E(번호, globalWeek, 장, 지역, '제목', [요점, …], [미션 목표, …], [켜질 플래그, …], { 선택 옵션 })
@@ -19,6 +20,7 @@ import type { QuestObjective, QuestObjectiveType } from '@/lib/types'
 import type { StoryChoice, StoryLine } from '@/lib/story'
 import type { RegionId } from '@/lib/regions'
 import { calendarInfo } from '@/lib/calendar'
+import { EP_SCRIPT } from '@/lib/story-script'
 
 export interface EpisodeRewards {
   exp?: number
@@ -86,15 +88,17 @@ function E(
   const routeLines = Object.entries(o.routes ?? {}).map(([r, ps]) => `[${r === 'B_OR_C' ? 'B/C' : r} 루트] ${ps.join(' · ')}`)
   const all = [...points, ...routeLines]
   const cut = Math.max(1, Math.ceil(all.length / 2))
+  // 대본이 있는 막은 대본의 오프닝/결말 대사
+  const script = EP_SCRIPT[no]
   return {
     week, no, id: `EP${String(no).padStart(2, '0')}`, chapter, status: o.status ?? '임시', title, region,
     route: o.route ?? 'ALL',
     summary: points.slice(0, 3).join(' · '),
     points, routes: o.routes,
-    brief: all.slice(0, cut).map(N),
+    brief: script?.brief ?? all.slice(0, cut).map(N),
     objectives,
-    outro: (all.slice(cut).length ? all.slice(cut) : ['(임시 결말 — 대사집 작업 예정)']).map(N),
-    choices: o.choices ?? [], requiredFlags: o.requiredFlags ?? [], setFlags, rewards: o.rewards ?? {},
+    outro: script?.outro ?? (all.slice(cut).length ? all.slice(cut) : ['(임시 결말 — 대사집 작업 예정)']).map(N),
+    choices: script?.choices ?? o.choices ?? [], requiredFlags: o.requiredFlags ?? [], setFlags, rewards: o.rewards ?? {},
   }
 }
 
@@ -103,16 +107,17 @@ const EPISODES: StoryEpisode[] = [
   // ════════ CH1 — 에르디아 숲 ════════
   E(1, 3, 'CH1', 'ACADEMY', '처음 맞는 학교생활',
     ['학생들과 첫 교류', '수업·동아리·기숙사·학사 수첩 사용', '간단한 외부 사이트 퀘스트 경험', '전투와 생활 콘텐츠를 처음 연결', "'4년을 여기서 보낸다'는 현실적인 감각"],
-    [talk('any', '학교 사람들과 인사하기', 3), visit('forest', '에르디아 숲')], ['CH1_STARTED']),
+    [talk('npc-potion', '셀린의 생활수업 듣기'), talk('npc-weapon', '반의 제작실 둘러보기')], ['CH1_STARTED']),
   E(2, 6, 'CH1', 'ERDIA', '숲에서 들려온 이상한 울음',
     ['에르디아 숲 현장 수업', '채집과 몬스터 토벌의 교육적 연결', '평소와 다른 몬스터 행동 발견', '교사는 단순한 이상기후·서식 변화로 판단', '주인공 일행은 작은 마력 잔향 발견'],
-    [visit('forest-2', '에르디아 깊은 숲'), win('ERDIA', 3, '에르디아에서 전투 승리')]),
+    [act('GATHER', 'tag:herb', 3, '숲에서 지정 약초 채집'), win('ERDIA', 2, '에르디아에서 전투 승리'), visit('forest-2', '숲 깊은 곳 조사')]),
   E(3, 9, 'CH1', 'ERDIA', '중간고사와 사라진 약초',
     ['원소 기초·산술·동식물·예절 중간평가', '학교생활과 동료 관계 강화', '실습 준비 중 희귀 약초가 사라지는 사건', '숲 몬스터의 행동과 연결됨', '오래된 가시 흔적 발견'],
-    [act('GATHER', 'tag:herb', 3, '숲에서 약초 채집'), kill('family:plant', 3, '식물형 몬스터 처치')]),
+    [talk('npc-potion', '셀린의 약초실 확인'), talk('npc-librarian', '오웬에게 기록 묻기'), visit('forest', '숲의 약초 채집 지점')]),
   E(4, 12, 'CH1', 'ERDIA', '마지막 수업, 이상한 뿌리',
     ['학기말 평가와 성적·학점 정산', '방학 전 외부활동 안내', '숲 심층부에서 거대한 뿌리 흔적 확인', '학교 측은 단순 생태 이상으로 처리', '주인공 일행은 방학 조사단 참가를 결심'],
-    [visit('forest-3', '에르디아 고목숲'), talk('npc-job-trainer', '에드릭 교수에게 방학 조사단 신청')]),
+    [talk('npc-librarian', '오웬에게 조사단 이야기 듣기'), visit('forest', '교외 숲 경계')], [],
+    { rewards: { items: [{ itemId: 'potion-hp-s', qty: 3 }, { itemId: 'potion-mp-s', qty: 2 }] } }),
   E(5, 15, 'CH1', 'ERDIA', '깊은 숲으로',
     ['에르디아 장기 원정 시작', '깊은 숲 → 고목숲 진입', '채집·사냥·생활 퀘스트가 메인 사건 조사와 결합', '몬스터 변이 흔적 다수 발견', '첫 본격적인 사건 지역 확정'],
     [visit('forest-3', '에르디아 고목숲'), win('ERDIA', 4, '고목숲 일대 전투 승리')]),
@@ -126,7 +131,7 @@ const EPISODES: StoryEpisode[] = [
   // ════════ CH2 — 에르디아 해안 / 아틀란티스 ════════
   E(8, 27, 'CH2', 'COAST', '숲을 떠나 바다로',
     ['개강 후 학교 복귀', '숲 사건 조사 결과 정리', '해안 현장실습 공지', '아틀란티스·바다 해안 지역과의 교류', '바다 생태 수업과 낚시 실습 준비'],
-    [visit('sea', '바다 해안'), act('FISH', 'any', 1, '해안에서 낚시')], ['CH2_COAST_STARTED']),
+    [visit('sea', '바다 해안'), win('COAST', 2, '해안에서 전투 승리')], ['CH2_COAST_STARTED']),
   E(9, 30, 'CH2', 'COAST', '바다는 기다리는 사람에게',
     ['낚시·채집·해양 생태 조사', '어민 NPC와 교류', '특정 시간대에만 나타나는 바다빛 발견', '폐등대 조사', '등대 안에서 숲의 봉인 흔적과 닮은 문양 발견'],
     [visit('sea-3', '암초 해안'), kill('family:aquatic', 3, '수생형 몬스터 처치')]),

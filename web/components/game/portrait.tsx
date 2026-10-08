@@ -9,8 +9,8 @@ import { schoolNpcById } from '@/lib/companions'
 // (예전 코드로 그린 절차적 SVG 초상 폴백은 NPC 도트·주인공 일러스트가 전부 갖춰져 제거 — 2026-09-28)
 // ============================================================================
 
-/** 사람이 아닌 오브젝트(작업대·가마·주방) — 전신 크롭 대신 아이콘 그대로 가운데 배치 */
-const OBJECT_ICON_IDS = new Set(['npc-workbench', 'npc-alchemy-pot', 'npc-kitchen'])
+/** 사람이 아닌 오브젝트 NPC — 전신 크롭 대신 아이콘 그대로 가운데 배치(제작대는 2026-10-08 사람 장인으로 바뀌어 지금은 없음) */
+const OBJECT_ICON_IDS = new Set<string>()
 
 /**
  * NPC 초상화. 우선순위: ① `public/images/npc/portrait-<id>.png`(대화창용 채색 일러스트 흉상 크롭)

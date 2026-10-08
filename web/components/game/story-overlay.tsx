@@ -10,6 +10,8 @@ import { SCHOOL_NPCS } from '@/lib/companions'
 import type { Gender } from '@/lib/types'
 import { HeroPortrait, Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { cutsceneById, cutsceneSrc } from '@/lib/cutscenes'
 
 /**
  * 대화집의 삼원(화염/빙결/대지) 화자 대사 — PRD v2.0 이후 주인공은 고정 속성이 없으므로,
@@ -34,20 +36,30 @@ export function StoryOverlay() {
   const choosing = last && !!beat.choices?.length
   const next = () => (choosing ? undefined : last ? dispatch({ type: 'DISMISS_STORY' }) : setLine((l) => l + 1))
   const hero = cur?.hero ? resolveHero(cur.hero) : null
-  const speaker = hero ? hero.name : cur?.speaker
-  const hasPortrait = !!(hero || cur?.portraitId)
+  const isPlayer = !!cur?.player
+  const speaker = isPlayer ? state.player.name : hero ? hero.name : cur?.speaker
+  const hasPortrait = !!(isPlayer || hero || cur?.portraitId)
+  // 컷신 — 이 줄까지 가장 마지막으로 지정된 컷(null 이면 내림)
+  let cutId: string | null = null
+  for (let i = 0; i <= line && i < beat.lines.length; i++) if (beat.lines[i].cut !== undefined) cutId = beat.lines[i].cut ?? null
 
   // ▶▶ — 선택지가 있으면 선택지 줄로, 없으면 비트를 끝낸다
   const skip = () => (beat.choices?.length ? setLine(beat.lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
 
   return (
+    <>
+    {cutId && <CutsceneLayer key={cutId} id={cutId} />}
     <DialogueBox
       zClass="z-[45]"
       title={beat.title}
       speaker={speaker}
       italic={!speaker}
       portrait={
-        hasPortrait ? hero ? <HeroPortrait element={hero.element} gender={hero.gender} className="h-full w-full" /> : <Portrait id={cur!.portraitId!} className="h-full w-full" /> : undefined
+        hasPortrait ? isPlayer ? (
+          <span className="flex h-full w-full items-end justify-center overflow-hidden bg-[#1c1822]">
+            <HeroSprite sheet={playerSheet(state.player.appearance.gender)} dir="down" px={150} />
+          </span>
+        ) : hero ? <HeroPortrait element={hero.element} gender={hero.gender} className="h-full w-full" /> : <Portrait id={cur!.portraitId!} className="h-full w-full" /> : undefined
       }
       text={cur?.text ?? ''}
       canAdvance={!choosing}
@@ -63,5 +75,23 @@ export function StoryOverlay() {
           : null
       }
     />
+    </>
+  )
+}
+
+/**
+ * 컷신 이미지 — full: 화면 전체(강조 장면) / 기본: 화면 가운데 만화 컷 패널(젠레스 존 제로식 사선 컷).
+ * 이미지 파일이 아직 없으면(제작 전) 아무것도 띄우지 않는다.
+ */
+function CutsceneLayer({ id }: { id: string }) {
+  const def = cutsceneById(id)
+  const [ok, setOk] = useState(true)
+  if (!ok) return null
+  const full = !!def?.full
+  return (
+    <div className={`cutscene-layer ${full ? 'is-full' : 'is-panel'}`} aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={cutsceneSrc(id)} alt="" className="cutscene-img" onError={() => setOk(false)} />
+    </div>
   )
 }

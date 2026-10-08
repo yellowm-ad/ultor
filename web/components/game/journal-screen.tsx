@@ -521,7 +521,7 @@ function RelationTab() {
   const { state } = useGame()
   const people = [
     ...SCHOOL_NPCS.map((c) => ({ id: c.id, name: c.name, sub: c.title })),
-    ...NPCS.filter((n) => n.role !== 'craftStation' && !n.id.startsWith('tr-')).map((n) => ({ id: n.id, name: n.name, sub: '' })),
+    ...NPCS.filter((n) => !n.id.startsWith('tr-')).map((n) => ({ id: n.id, name: n.name, sub: '' })),
   ]
   const known = people.filter((p) => state.relationships[p.id])
   return (

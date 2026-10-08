@@ -461,7 +461,9 @@ export function talkTo(state: GameState, npcId: string): GameState {
       relationships: { ...next.relationships, [npcId]: { affinity: Math.min(100, cur.affinity + 2), lastTalkWeek: gw } },
     }
   }
-  return withQuestEvents(next, [{ type: 'TALK', npcId }])
+  // 이 NPC 에게 말을 걸면 열리는 스토리 장면(대본의 '셀린의 약초실'·'오웬의 기록' 등)
+  next = queueBeats(next, (t) => t.type === 'TALK' && t.npcId === npcId)
+  return withQuestEvents(next, [{ type: 'TALK', npcId }], next.toast)
 }
 
 export function visitMap(state: GameState, mapId: MapId): GameState {
