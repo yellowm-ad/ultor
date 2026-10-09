@@ -1059,6 +1059,51 @@
     transform: rotate(-1.2deg);
     animation: cutscene-panel-in 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
   }
+  .cutscene-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: min(70vw, 760px);
+    aspect-ratio: 16 / 9;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    border: 3px dashed rgba(240, 210, 140, 0.7);
+    background: rgba(23, 19, 14, 0.85);
+    color: #f3e6c8;
+    font-size: 14px;
+    text-align: center;
+  }
+  .cutscene-placeholder span { font-size: 12px; color: rgba(243, 230, 200, 0.75); line-height: 1.5; }
+  .cutscene-placeholder small { font-size: 11px; color: rgba(240, 210, 140, 0.8); }
+  /* 스토리 연출 동작(lib/story-anims) — 대화창 위 무대 */
+  .story-anim-stage {
+    position: absolute;
+    left: 50%;
+    bottom: 168px;
+    z-index: 44;
+    display: flex;
+    gap: 8px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+    animation: cutscene-fade 0.25s ease-out both;
+  }
+  .story-anim-stage.is-side {
+    left: 7%;
+    transform: none;
+    z-index: 45;
+  }
+  .story-anim-sprite {
+    display: block;
+    image-rendering: pixelated;
+    background-repeat: no-repeat;
+    animation: story-anim-play 0.9s steps(8) infinite;
+  }
+  @keyframes story-anim-play {
+    from { background-position: 0 0; }
+    to { background-position: var(--story-anim-end) 0; }
+  }
   @keyframes cutscene-fade {
     from { opacity: 0; }
     to { opacity: 1; }

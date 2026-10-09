@@ -15,6 +15,7 @@ import { TamerScreen } from '@/components/game/tamer-screen'
 import { SettingsScreen } from '@/components/game/settings-screen'
 import { Toast } from '@/components/game/toast'
 import { AdminPanel } from '@/components/game/admin-panel'
+import { StoryOverlay } from '@/components/game/story-overlay'
 
 // 실제 인증이 아니라 우연히 /admin 으로 들어오는 걸 막는 정도의 가벼운 문지기.
 // 저장 데이터가 전혀 없는 순수 클라이언트 샌드박스라 뚫려도 실질적 피해는 없음.
@@ -116,6 +117,8 @@ function AdminShell() {
       <PartyScreen />
       <TamerScreen />
       <SettingsScreen />
+      {/* 관리자 '컷신' 탭의 장면 재생용 */}
+      {state.storyQueue.length > 0 && <StoryOverlay />}
       <AdminPanel />
     </div>
   )

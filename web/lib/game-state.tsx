@@ -163,6 +163,7 @@ export type Action =
   | { type: 'ADMIN_TOGGLE_UNLOCK_ALL' }
   | { type: 'ADMIN_RECRUIT_ALL' }
   | { type: 'ADMIN_GIVE_ITEM'; itemId: string; qty: number }
+  | { type: 'ADMIN_PLAY_BEAT'; beatId: string }
 
 const BODY_R = 0.24 // 캐릭터 반경(셀) — 이 만큼 건물 벽에서 떨어져 선다
 function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number, y: number): boolean {
@@ -333,6 +334,10 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'ADMIN_TOGGLE_UNLOCK_ALL':
       return { ...state, storyFlags: { ...state.storyFlags, DEBUG_UNLOCK_ALL: !state.storyFlags.DEBUG_UNLOCK_ALL } }
+
+    // 관리자 — 스토리 장면 바로 재생(컷신 확인용). 플래그는 바꾸지 않고 큐 맨 앞에 넣는다
+    case 'ADMIN_PLAY_BEAT':
+      return state.screen === 'world' ? { ...state, storyQueue: [action.beatId, ...state.storyQueue.filter((b) => b !== action.beatId)] } : state
 
     case 'ADMIN_GIVE_ITEM':
       return itemById(action.itemId) ? { ...state, inventory: addToInventory(state.inventory, action.itemId, action.qty) } : state

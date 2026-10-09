@@ -1,0 +1,40 @@
+# 스토리 연출 동작(EP00~EP04) — id	charId	animName	action_description   (pl-story-anims.mjs → build-story-anims.mjs)
+# 모두 남쪽(정면) 8프레임. 대사 줄의 anim: '<id>' 로 대화창 위 무대에 재생된다(lib/story-anims.ts).
+rian-yawn	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Yawn	yawning widely and covering mouth with hand, sleepy
+rian-wave	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Wave	waving one arm high and calling out energetically
+rian-sulk	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Sulk	shoulders drooping, head down, sulking dejected
+rian-pickup	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Pickup	crouching to pick up a small thorn from the ground and holding it up
+rian-reach	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Reach	reaching out a hand curiously then freezing and pulling it back
+sella-notes	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Notes	taking out a notebook and writing notes with a pen
+sella-touch	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Touch	crouching down and touching the soil with fingertips
+sella-startle	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Startle	startled, flinching back and raising a hand to stop others
+doran-look	05bde3bf-bd27-4613-a7cd-1c428c783395	Story-Look	cautiously looking left and right, scanning surroundings
+doran-down	05bde3bf-bd27-4613-a7cd-1c428c783395	Story-Down	looking down at the ground and pointing at it
+mirel-speech	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Speech	giving a graceful speech with an open hand gesture
+mirel-seal	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Seal	holding a small glowing crystal in her palm and sealing it, light fading
+mirel-protect	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Protect	rushing forward and spreading one arm wide to shield others behind her
+mirel-farewell	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Farewell	gently waving goodbye with a warm smile
+celine-mix	699883ef-d29d-4d73-b13f-5e003f1b3f35	Story-Mix	sorting herbs on a table and slipping one mushroom in mischievously
+celine-give	699883ef-d29d-4d73-b13f-5e003f1b3f35	Story-Give	holding out a small herb kit with both hands to hand it over
+van-inspect	8984f73d-dc57-4e13-b8fc-8ea6faf76391	Story-Inspect	inspecting a piece of equipment closely, turning it in his hands
+van-give	8984f73d-dc57-4e13-b8fc-8ea6faf76391	Story-Give	holding out a bag bluntly with one arm to hand it over
+owen-freeze	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Freeze	freezing in shock, stiff posture, adjusting glasses
+owen-stop	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Stop	thrusting a hand forward urgently shouting stop
+yuna-wave	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Wave	smiling and waving a hand friendly in greeting
+ruspell-smirk	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Smirk	crossing arms confidently with a smirk, a small flame flickering in hand
+# ── 감정 동작(EP05~) — 대본의 감정 지문 *(…)* 낱말로 자동 연결(scripts/build-story-script.mjs) ──
+rian-surprise	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Surprise	jumping back startled with wide eyes and raised hands
+rian-laugh	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Laugh	laughing cheerfully, grinning with hand on back of head
+rian-sad	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Sad	looking down sadly with clenched fists, shoulders shaking
+sella-surprise	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Surprise	gasping in surprise, covering mouth with one hand
+sella-think	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Think	thinking seriously, hand on chin, eyes narrowed
+doran-surprise	05bde3bf-bd27-4613-a7cd-1c428c783395	Story-Surprise	flinching in surprise and raising a guarding arm
+doran-think	05bde3bf-bd27-4613-a7cd-1c428c783395	Story-Think	arms crossed, nodding slowly in thought
+owen-surprise	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Surprise	startled, glasses slipping, leaning back in shock
+owen-think	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Think	reading a book closely and pushing up his glasses
+celine-sad	699883ef-d29d-4d73-b13f-5e003f1b3f35	Story-Sad	worried expression, hands clasped at chest, head tilted down
+kael-think	73430d04-6175-4810-9130-c492d4fd115b	Story-Think	arms crossed coolly, tapping fingers, thinking
+mirel-laugh	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Laugh	laughing gently with a hand near her mouth, warm smile
+ruspell-laugh	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Laugh	laughing smugly with hands on hips, flame flickering on shoulder
+yuna-laugh	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Laugh	laughing brightly with eyes closed, hands together
+rian-think	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Think	scratching head confused, thinking hard

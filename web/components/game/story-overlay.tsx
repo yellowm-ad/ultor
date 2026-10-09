@@ -12,6 +12,8 @@ import { HeroPortrait, Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { cutsceneById, cutsceneSrc } from '@/lib/cutscenes'
+import { STORY_ANIM_CELL, STORY_ANIM_FRAMES, storyAnimSrc } from '@/lib/story-anims'
+import { cutsceneOverrideUrl, isAdminPage, onCutsceneStoreChange } from '@/lib/cutscene-store'
 
 /**
  * 대화집의 삼원(화염/빙결/대지) 화자 대사 — PRD v2.0 이후 주인공은 고정 속성이 없으므로,
@@ -49,6 +51,7 @@ export function StoryOverlay() {
   return (
     <>
     {cutId && <CutsceneLayer key={cutId} id={cutId} />}
+    {cur?.anim && !(cutId && cutsceneById(cutId)?.full) && <StoryAnimStage key={line} ids={([] as string[]).concat(cur.anim)} side={!!cutId} />}
     <DialogueBox
       zClass="z-[45]"
       title={beat.title}
@@ -81,17 +84,72 @@ export function StoryOverlay() {
 
 /**
  * 컷신 이미지 — full: 화면 전체(강조 장면) / 기본: 화면 가운데 만화 컷 패널(젠레스 존 제로식 사선 컷).
- * 이미지 파일이 아직 없으면(제작 전) 아무것도 띄우지 않는다.
+ * 순서: 관리자 창에서 직접 넣은 이미지(lib/cutscene-store) → 정적 파일(public/images/cutscenes/<id>.png).
+ * 둘 다 없으면 일반 게임에서는 아무것도 띄우지 않고, 관리자 페이지에서는 자리 표시(슬롯 id·연출 설명)를 보여 준다.
  */
 function CutsceneLayer({ id }: { id: string }) {
   const def = cutsceneById(id)
+  const [override, setOverride] = useState<string | null | undefined>(undefined)
   const [ok, setOk] = useState(true)
-  if (!ok) return null
+  useEffect(() => {
+    let alive = true
+    const load = () => cutsceneOverrideUrl(id).then((u) => alive && setOverride(u))
+    load()
+    const off = onCutsceneStoreChange((changed) => changed === id && load())
+    return () => {
+      alive = false
+      off()
+    }
+  }, [id])
+  if (override === undefined) return null
   const full = !!def?.full
+  const src = override ?? (ok ? cutsceneSrc(id) : null)
+  if (!src) {
+    if (!isAdminPage()) return null
+    return (
+      <div className={`cutscene-layer ${full ? 'is-full' : 'is-panel'}`} aria-hidden>
+        <div className="cutscene-placeholder">
+          <b>{id} · {full ? "풀컷신" : "만화 컷"} — 이미지 없음</b>
+          <span>{def?.shot}</span>
+          <small>관리자 패널 › 컷신 › 「컷신 이미지 관리」에서 넣을 수 있다</small>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className={`cutscene-layer ${full ? 'is-full' : 'is-panel'}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={cutsceneSrc(id)} alt="" className="cutscene-img" onError={() => setOk(false)} />
+      <img src={src} alt="" className="cutscene-img" onError={() => (override ? setOverride(null) : setOk(false))} />
+    </div>
+  )
+}
+
+/** 연출 동작 무대 — 풀컷신 중엔 숨김, 만화 컷 패널 중엔 왼쪽 앞(is-side), 컷이 없으면 가운데. 대화창 바로 위에 PixelLab 동작 시트(8프레임)를 반복 재생. 시트가 없으면 그 동작만 빠진다 */
+function StoryAnimStage({ ids, side }: { ids: string[]; side?: boolean }) {
+  const [missing, setMissing] = useState<string[]>([])
+  const shown = ids.filter((id) => !missing.includes(id))
+  if (!shown.length) return null
+  const scale = 2
+  const px = STORY_ANIM_CELL * scale
+  return (
+    <div className={`story-anim-stage ${side ? 'is-side' : ''}`} aria-hidden>
+      {shown.map((id) => (
+        <span
+          key={id}
+          className="story-anim-sprite"
+          style={{
+            width: px,
+            height: px,
+            backgroundImage: `url(${storyAnimSrc(id)})`,
+            backgroundSize: `${px * STORY_ANIM_FRAMES}px ${px}px`,
+            ['--story-anim-end' as string]: `-${px * STORY_ANIM_FRAMES}px`,
+          }}
+        >
+          {/* 시트 존재 확인용 — 로드 실패하면 이 동작을 뺀다 */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={storyAnimSrc(id)} alt="" hidden onError={() => setMissing((m) => [...m, id])} />
+        </span>
+      ))}
     </div>
   )
 }

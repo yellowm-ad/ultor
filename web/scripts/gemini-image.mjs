@@ -75,7 +75,7 @@ for (let k = 0; k < opts.n; k++) {
   const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
     method: 'POST',
     headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: opts.model, input, response_format: { type: 'image', mime_type: 'image/png', aspect_ratio: opts.aspect, image_size: opts.size } }),
+    body: JSON.stringify({ model: opts.model, input, response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: opts.aspect, image_size: opts.size } }),
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(`Gemini 요청 실패 ${res.status}: ${JSON.stringify(body).slice(0, 600)}`)

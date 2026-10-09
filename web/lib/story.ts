@@ -139,6 +139,11 @@ export interface StoryLine {
    * 이미지가 아직 없으면 조용히 건너뛴다(대사만 진행).
    */
   cut?: string | null
+  /**
+   * 연출 동작(lib/story-anims) — 이 줄에서 대화창 위 무대에 캐릭터 동작을 재생한다. 여러 개면 나란히.
+   * 시트가 아직 없으면 건너뛴다.
+   */
+  anim?: string | string[]
   text: string
 }
 
@@ -221,7 +226,7 @@ function episodeBeats(): StoryBeat[] {
       {
         id: `EP_${ep.week}_END`,
         arcId: arc.id,
-        title: ep.title,
+        title: `${ep.id} — ${ep.title} (결말)`,
         trigger: { type: 'QUEST_CLAIMED', templateId: episodeQuestId(ep.week) },
         setFlags: [`EP_${ep.week}_DONE`, ...ep.setFlags],
         lines: ep.outro,

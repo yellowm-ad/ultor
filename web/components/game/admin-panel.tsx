@@ -9,6 +9,9 @@ import { GUEST_NPCS } from '@/lib/companions'
 import { MINIGAME_META } from '@/lib/curriculum'
 import { POSITION_META } from '@/lib/constants'
 import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
+import { STORY_BEATS } from '@/lib/story'
+import { ALL_CUTSCENES as CUTSCENES } from '@/lib/cutscenes'
+import { CutsceneManager } from '@/components/game/cutscene-manager'
 
 const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[number]) => boolean }[] = [
   { key: 'fire', label: '불꽃', filter: (s) => s.element === 'fire' && !s.owner },
@@ -21,7 +24,10 @@ const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[nu
   { key: 'pet', label: '펫 스킬(습득 불가)', filter: (s) => s.owner === 'pet' },
 ]
 
-type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'room' | null
+type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'story' | 'room' | null
+
+/** 컷신·연출 동작이 들어 있는 스토리 장면 — 관리자 '컷신' 탭에서 바로 재생 */
+const CUT_BEATS = STORY_BEATS.filter((b) => b.lines.some((l) => l.cut || l.anim))
 
 export function AdminPanel() {
   const { state, dispatch } = useGame()
@@ -30,6 +36,7 @@ export function AdminPanel() {
   const [levelInput, setLevelInput] = useState(String(state.player.level))
   const [goldInput, setGoldInput] = useState(String(state.player.gold))
   const [weekInput, setWeekInput] = useState(String(state.calendar.globalWeek))
+  const [cutManager, setCutManager] = useState(false)
 
   const testroomMonsters = useMemo(
     () => (state.currentMapId === 'testroom' ? state.fieldMonsters : []),
@@ -84,6 +91,7 @@ export function AdminPanel() {
             ['items', '아이템'],
             ['pets', '펫'],
             ['school', '학사'],
+            ['story', '컷신'],
             ['room', '테스트룸'],
           ] as [Section, string][]
         ).map(([key, label]) => (
@@ -291,6 +299,29 @@ export function AdminPanel() {
           </div>
         )}
 
+        {section === 'story' && (
+          <div className="space-y-3">
+            <Button size="sm" className="w-full" onClick={() => setCutManager(true)}>
+              컷신 이미지 관리 ({CUTSCENES.length}칸)
+            </Button>
+            <div className="text-white/55">이미지를 넣은 뒤 아래 장면을 재생하면 게임 화면 그대로 확인할 수 있다. 이미지가 없는 컷은 관리자 페이지에서만 점선 자리 표시로 보인다.</div>
+            <div className="space-y-1">
+              {CUT_BEATS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  disabled={state.screen !== 'world'}
+                  onClick={() => dispatch({ type: 'ADMIN_PLAY_BEAT', beatId: b.id })}
+                  className="flex w-full items-center justify-between rounded border border-gold/25 px-2 py-1 text-left hover:bg-gold/10 disabled:opacity-40"
+                >
+                  <span className="truncate">{b.title}</span>
+                  <span className="shrink-0 text-[10px] text-white/45">컷 {new Set(b.lines.map((l) => l.cut).filter(Boolean)).size} · 동작 {b.lines.filter((l) => l.anim).length}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {section === 'room' && (
           <div className="space-y-3">
             <Button
@@ -345,6 +376,7 @@ export function AdminPanel() {
           </div>
         )}
       </div>
+      {cutManager && <CutsceneManager onClose={() => setCutManager(false)} />}
     </div>
   )
 }
