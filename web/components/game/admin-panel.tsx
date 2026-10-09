@@ -9,7 +9,7 @@ import { GUEST_NPCS } from '@/lib/companions'
 import { MINIGAME_META } from '@/lib/curriculum'
 import { POSITION_META } from '@/lib/constants'
 import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
-import { STORY_BEATS } from '@/lib/story'
+import { STORY_BEATS, ENDING_EMBLEM_FLAGS, storyLineRoute } from '@/lib/story'
 import { ALL_CUTSCENES as CUTSCENES } from '@/lib/cutscenes'
 import { CutsceneManager } from '@/components/game/cutscene-manager'
 
@@ -304,6 +304,22 @@ export function AdminPanel() {
             <Button size="sm" className="w-full" onClick={() => setCutManager(true)}>
               컷신 이미지 관리 ({CUTSCENES.length}칸)
             </Button>
+            <div>
+              <div className="mb-1 text-white/60">엔딩 루트 (지금: {storyLineRoute(state)})</div>
+              <div className="flex gap-1">
+                {(
+                  [
+                    ['A', { RUSPELL_FOUND: false }],
+                    ['B', { RUSPELL_FOUND: true, EMBLEM_MONSTER_VILLAGE: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.filter((f) => f !== 'EMBLEM_MONSTER_VILLAGE').map((f) => [f, false])) }],
+                    ['C', { RUSPELL_FOUND: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.map((f) => [f, true])) }],
+                  ] as [string, Record<string, boolean>][]
+                ).map(([r, flags]) => (
+                  <Button key={r} size="sm" className="flex-1" variant={storyLineRoute(state) === r ? 'default' : 'outline'} onClick={() => dispatch({ type: 'ADMIN_SET_FLAGS', flags })}>
+                    {r} 루트
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div className="text-white/55">이미지를 넣은 뒤 아래 장면을 재생하면 게임 화면 그대로 확인할 수 있다. 이미지가 없는 컷은 관리자 페이지에서만 점선 자리 표시로 보인다.</div>
             <div className="space-y-1">
               {CUT_BEATS.map((b) => (

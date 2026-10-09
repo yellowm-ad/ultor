@@ -113,6 +113,17 @@ export function endingRoute(state: Pick<GameState, 'storyFlags'>): 'A' | 'B' | '
   return ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f)) ? 'C' : 'B'
 }
 
+/**
+ * 대사 줄 루트 판정 — 루트 전용 줄(StoryLine.route)을 보여 줄지 정한다.
+ * EP47(마물 마을, 167주)을 마치기 전에는 루스벨 발견 여부만 본다(A ↔ B/C). 그 뒤로는 endingRoute.
+ */
+export function storyLineRoute(state: Pick<GameState, 'storyFlags'>): 'A' | 'B' | 'C' {
+  if (!flagOn(state, FLAGS.RUSPELL_FOUND)) return 'A'
+  if (!flagOn(state, 'EP_167_DONE')) return ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f)) ? 'C' : 'B'
+  return endingRoute(state)
+}
+export const lineOnRoute = (l: StoryLine, r: 'A' | 'B' | 'C') => !l.route || l.route === r || (l.route === 'B_OR_C' && r !== 'A')
+
 // ── 스토리 비트 ─────────────────────────────────────────────────────────────────
 export type StoryTrigger =
   | { type: 'WEEK_START'; week: number } // 해당 globalWeek 가 시작될 때
@@ -144,6 +155,8 @@ export interface StoryLine {
    * 시트가 아직 없으면 건너뛴다.
    */
   anim?: string | string[]
+  /** 루트 전용 줄(EP45~) — 없으면 공통. 'B_OR_C' = 루스벨을 찾은 루트 */
+  route?: 'A' | 'B' | 'C' | 'B_OR_C'
   text: string
 }
 

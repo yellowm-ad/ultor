@@ -7,7 +7,7 @@
 //
 //   · EP01~EP04 = 사용자 대본(울토르_메인스토리_대사_컷신_01-05.md) — 오프닝/결말은 lib/story-script EP_SCRIPT,
 //     막 중간 장면은 story-script SCRIPT_BEATS(NPC 대화·장소 진입), 컷신 이미지는 lib/cutscenes.
-//   · EP05~EP34 = 대본 md 자동 변환(lib/story-script-gen). ⚠ EP35~EP52 는 아직 요점(points)을 읽는 임시 나레이션.
+//   · EP05~EP52 = 대본 md 자동 변환(lib/story-script-gen). 루트 전용 줄은 storyLineRoute 로 걸러 재생.
 //
 // ── 작성 형식(한 막 = E(…) 한 줄 묶음) ──────────────────────────────────────────
 //   E(번호, globalWeek, 장, 지역, '제목', [요점, …], [미션 목표, …], [켜질 플래그, …], { 선택 옵션 })

@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
-import { beatById, type HeroRole } from '@/lib/story'
+import { beatById, lineOnRoute, storyLineRoute, type HeroRole } from '@/lib/story'
 import { SCHOOL_NPCS } from '@/lib/companions'
 import type { Gender } from '@/lib/types'
 import { HeroPortrait, Portrait } from '@/components/game/portrait'
@@ -33,8 +33,11 @@ export function StoryOverlay() {
   useEffect(() => setLine(0), [beatId])
 
   if (!beat || state.screen !== 'world') return null
-  const cur = beat.lines[line]
-  const last = line >= beat.lines.length - 1
+  // 루트 전용 줄은 지금 루트(루스벨 발견·상징)에 맞는 것만
+  const route = storyLineRoute(state)
+  const lines = beat.lines.filter((l) => lineOnRoute(l, route))
+  const cur = lines[line]
+  const last = line >= lines.length - 1
   const choosing = last && !!beat.choices?.length
   const next = () => (choosing ? undefined : last ? dispatch({ type: 'DISMISS_STORY' }) : setLine((l) => l + 1))
   const hero = cur?.hero ? resolveHero(cur.hero) : null
@@ -43,10 +46,10 @@ export function StoryOverlay() {
   const hasPortrait = !!(isPlayer || hero || cur?.portraitId)
   // 컷신 — 이 줄까지 가장 마지막으로 지정된 컷(null 이면 내림)
   let cutId: string | null = null
-  for (let i = 0; i <= line && i < beat.lines.length; i++) if (beat.lines[i].cut !== undefined) cutId = beat.lines[i].cut ?? null
+  for (let i = 0; i <= line && i < lines.length; i++) if (lines[i].cut !== undefined) cutId = lines[i].cut ?? null
 
   // ▶▶ — 선택지가 있으면 선택지 줄로, 없으면 비트를 끝낸다
-  const skip = () => (beat.choices?.length ? setLine(beat.lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
+  const skip = () => (beat.choices?.length ? setLine(lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
 
   return (
     <>
@@ -124,31 +127,45 @@ function CutsceneLayer({ id }: { id: string }) {
   )
 }
 
-/** 연출 동작 무대 — 풀컷신 중엔 숨김, 만화 컷 패널 중엔 왼쪽 앞(is-side), 컷이 없으면 가운데. 대화창 바로 위에 PixelLab 동작 시트(8프레임)를 반복 재생. 시트가 없으면 그 동작만 빠진다 */
+/**
+ * 연출 동작 무대 — 풀컷신 중엔 숨김, 만화 컷 패널 중엔 왼쪽 앞(is-side), 컷이 없으면 가운데. 대화창 바로 위.
+ * 동작은 한 번만 재생하고 마지막 프레임에서 멈춘다 — 캐릭터를 누르면 다시 재생(대사는 넘어가지 않는다).
+ * 시트가 없으면 그 동작만 빠진다.
+ */
 function StoryAnimStage({ ids, side }: { ids: string[]; side?: boolean }) {
   const [missing, setMissing] = useState<string[]>([])
+  const [plays, setPlays] = useState<Record<string, number>>({})
   const shown = ids.filter((id) => !missing.includes(id))
   if (!shown.length) return null
   const scale = 2
   const px = STORY_ANIM_CELL * scale
   return (
-    <div className={`story-anim-stage ${side ? 'is-side' : ''}`} aria-hidden>
+    <div className={`story-anim-stage ${side ? 'is-side' : ''}`}>
       {shown.map((id) => (
-        <span
-          key={id}
+        <button
+          type="button"
+          key={`${id}-${plays[id] ?? 0}`}
           className="story-anim-sprite"
+          title="눌러서 다시 보기"
+          aria-label="동작 다시 보기"
+          tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault() /* 포커스를 가져가지 않아야 스페이스가 대사 넘기기로 남는다 */}
+          onClick={(e) => {
+            e.stopPropagation()
+            setPlays((p) => ({ ...p, [id]: (p[id] ?? 0) + 1 }))
+          }}
           style={{
             width: px,
             height: px,
             backgroundImage: `url(${storyAnimSrc(id)})`,
             backgroundSize: `${px * STORY_ANIM_FRAMES}px ${px}px`,
-            ['--story-anim-end' as string]: `-${px * STORY_ANIM_FRAMES}px`,
+            ['--story-anim-end' as string]: `-${px * (STORY_ANIM_FRAMES - 1)}px`,
           }}
         >
           {/* 시트 존재 확인용 — 로드 실패하면 이 동작을 뺀다 */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={storyAnimSrc(id)} alt="" hidden onError={() => setMissing((m) => [...m, id])} />
-        </span>
+        </button>
       ))}
     </div>
   )

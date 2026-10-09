@@ -52,6 +52,11 @@ function speakerOf(raw) {
 // ── 감정 → 동작 ──────────────────────────────────────────────────────────────
 const ANIM_IDS = new Set(fs.readdirSync(path.join(WEB, 'public/images/story-anims')).map((f) => f.replace(/\.png$/, '')))
 const EMOTION_RULES = [
+  ['rage', /보랏빛|폭주|태워/],
+  ['cry', /울음을 터|눈물/],
+  ['grin', /노래하듯|경박|신났|즐거워/],
+  ['hurt', /그을린|데었|붕대/],
+  ['angry', /이를 악물|주먹|노려|외친|소리친|비명처럼/],
   ['heat', /땀|관자놀이|덥|뜨거/],
   ['heal', /빛으로 감싼|치유|빛을 비/],
   ['surprise', /놀라|놀란|움찔|화들짝|굳는|굳어|비명|눈이 커|갈라진|갈라진다|목소리가 떨|입을 벌린/],
@@ -62,6 +67,12 @@ const EMOTION_RULES = [
 ]
 // 지문 문단 — '<인물>이/가/은/는 …' 으로 시작하면 그 인물의 동작(기존 연출 동작 포함)
 const NARRATION_RULES = [
+  ['dig', /감자를 캐|밭 한가운데/],
+  ['pat', /머리 위에 얹|쓰다듬/],
+  ['offer', /손바닥이 위|손을 내민/],
+  ['kneel', /무릎을 꿇/],
+  ['bow', /고개를 숙|허리를 숙|예를 표/],
+  ['cast', /마법진을 그|봉인진/],
   ['notes', /노트|받아 적|적는다|밑줄/],
   ['touch', /쪼그려|흙에 손|손을 대/],
   ['look', /두리번|둘러본|살핀다/],
@@ -73,9 +84,9 @@ const NARRATION_RULES = [
   ['think', /펼친|베낀|비춘|확인한|들여다/],
   ...EMOTION_RULES,
 ]
-const ACTOR_NAMES = { 성녀: 'saint', 리안: 'rian', 셀라: 'sella', 도란: 'doran', 오웬: 'owen', 미르엘: 'mirel', 셀린: 'celine', 반: 'van', 카엘: 'kael', 유나: 'yuna', 루스벨: 'ruspell' }
+const ACTOR_NAMES = { 모르스: 'mors', 국왕: 'king', 성녀: 'saint', 리안: 'rian', 셀라: 'sella', 도란: 'doran', 오웬: 'owen', 미르엘: 'mirel', 셀린: 'celine', 반: 'van', 카엘: 'kael', 유나: 'yuna', 루스벨: 'ruspell' }
 function narrationAnim(text) {
-  const m = text.match(/^(성녀|리안|셀라|도란|오웬|미르엘|셀린|반|카엘|유나|루스벨)(이|가|은|는|의)\s/)
+  const m = text.match(/^(모르스|국왕|성녀|리안|셀라|도란|오웬|미르엘|셀린|반|카엘|유나|루스벨)(이|가|은|는|의)\s/)
   if (!m) return undefined
   const actor = ACTOR_NAMES[m[1]]
   for (const [kind, re] of NARRATION_RULES) if (re.test(text) && ANIM_IDS.has(`${actor}-${kind}`)) return `${actor}-${kind}`
@@ -106,14 +117,19 @@ for (const file of FILES) {
   let cutShot = null // 현재 컷의 shot 을 모으는 중이면 CutsceneDef
   let scenesSeen = 0
   let sawGameplay = false
+  let sectionRoute = null // ## [ROUTE X] 구역
+  let inlineRoute = null // **[X 루트]** 표시 이후 다음 제목까지
+  const ROUTE_OF = { A: 'A', 'B/C': 'B_OR_C', B: 'B', C: 'C' }
 
   const push = (line) => {
     if (!ep || ep.no > MAX_EP || ep.no < MIN_EP) return
+    const route = inlineRoute ?? sectionRoute
+    if (route) line.route = route
     if (pendingTitle && !line.speaker && !line.player) {
       line.text = `[${pendingTitle}] ${line.text}`
       pendingTitle = null
     } else if (pendingTitle) {
-      ep[phase].push({ speaker: '', text: `[${pendingTitle}]` })
+      ep[phase].push({ speaker: '', text: `[${pendingTitle}]`, ...(line.route ? { route: line.route } : {}) })
       pendingTitle = null
     }
     if (pendingCut !== undefined) {
@@ -127,15 +143,22 @@ for (const file of FILES) {
     const l = raw.trim()
     const epHead = l.match(/^# EP(\d+) · (.+)$/)
     if (epHead) {
-      ep = { no: Number(epHead[1]), title: epHead[2], brief: [], outro: [], sceneStarts: [] }
+      ep = { no: Number(epHead[1]), title: epHead[2], brief: [], outro: [], sceneStarts: [], scenes: [] }
       if (ep.no >= MIN_EP && ep.no <= MAX_EP) episodes[ep.no] = ep
-      collect = false; phase = 'brief'; speaker = null; scenesSeen = 0; sawGameplay = false; pendingCut = undefined; cutShot = null
+      collect = false; phase = 'brief'; speaker = null; scenesSeen = 0; sawGameplay = false; pendingCut = undefined; cutShot = null; sectionRoute = null; inlineRoute = null
       continue
     }
     if (!ep) continue
-    const head = l.match(/^#{2,3} \[([A-Z /]+)(?: ([\d-]+[A-Z]?\d*))?\](.*)$/)
+    const head = l.match(/^(#{2,3}) \[([A-Z /]+)(?: ([\d-]+[A-Z]?\d*))?\](.*)$/)
     if (head) {
-      const [, kind, num, rest] = head
+      const [, hashes, kind, num, rest] = head
+      inlineRoute = null
+      if (kind.startsWith('ROUTE')) {
+        sectionRoute = ROUTE_OF[kind.slice(6).trim()] ?? null
+        collect = true; speaker = null; pendingTitle = null
+        continue
+      }
+      if (hashes === '##' && kind !== 'GAMEPLAY' && kind !== 'FLAGS' && kind !== 'STORY FLAGS') sectionRoute = null
       const title = clean(rest.replace(/^[\s—-]+/, ''))
       cutShot = null
       if (kind === 'GAMEPLAY') {
@@ -148,6 +171,7 @@ for (const file of FILES) {
         collect = true
         speaker = null; emotion = null
         scenesSeen++
+        ep.scenes.push({ at: ep.brief.length + ep.outro.length, route: sectionRoute })
         if (phase === 'brief') ep.sceneStarts.push(ep.brief.length)
         // GAMEPLAY 이 없는 막: 두 번째 장면부터 결말
         if (!sawGameplay && scenesSeen === 2 && !fileHasGameplay(lines, ep.no)) phase = 'outro'
@@ -169,8 +193,18 @@ for (const file of FILES) {
       collect = false
       continue
     }
-    if (/^#{1,4} /.test(l)) { if (/^## /.test(l)) collect = false; continue }
+    if (/^#{1,4} /.test(l)) { collect = false; inlineRoute = null; continue }
     if (!collect) continue
+    if (/^\*\*\[GAMEPLAY\]\*\*/.test(l)) continue
+    const rm = l.match(/^\*\*\[(A|B\/C|B|C)(?: 루트)?[^\]]*\]\*\*\s*(.*)$/)
+    if (rm) {
+      inlineRoute = ROUTE_OF[rm[1]]
+      if (!rm[2]) continue
+      const rest = clean(rm[2])
+      speaker = null
+      push({ speaker: '', text: rest })
+      continue
+    }
     if (!l || l === '---' || l === '\\---') { speaker = speaker; continue }
 
     const sp = l.match(/^\*\*(.+?)\*\*\s*(\*\((.+)\)\*)?\s*$/)
@@ -216,6 +250,23 @@ function fileHasGameplay(lines, no) {
     if (inEp && /^#{2,3} \[GAMEPLAY\]/.test(l.trim())) return true
   }
   return false
+}
+
+// 루트가 나뉘는 막 — 루트(공통 포함)마다 첫 장면을 오프닝, 나머지를 결말로(줄은 게임에서 루트로 거른다)
+for (const e of Object.values(episodes)) {
+  const all = [...e.brief, ...e.outro]
+  if (!all.some((l) => l.route)) continue
+  const seen = new Set()
+  const pick = new Set()
+  e.scenes.forEach((sc, i) => {
+    const key = sc.route ?? 'ALL'
+    if (seen.has(key)) return
+    seen.add(key)
+    const end = e.scenes[i + 1]?.at ?? all.length
+    for (let k = sc.at; k < end; k++) pick.add(k)
+  })
+  e.brief = all.filter((_, k) => pick.has(k))
+  e.outro = all.filter((_, k) => !pick.has(k))
 }
 
 // 결말이 비면([GAMEPLAY] 이 막 끝에 있는 경우) 장면 경계에서 나눈다 — 장면 수의 절반쯤

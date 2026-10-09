@@ -844,7 +844,7 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'prof-kael', name: '카엘 조교', role: 'professor', roam: 1.6, spriteId: 'npc-kael', icon: '/images/npc/npc-kael.png', zoneId: 'z-lab-ice', cell: { x: 9.5, y: 8.4 }, greeting: ['…무슨 일이지. 보고서라면 책상 위에.', '빙결은 정확함이 전부다.'] },
   { id: 'prof-terra', name: '테라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-elder', icon: '/images/npc/npc-elder.png', zoneId: 'z-lab-earth', cell: { x: 9.5, y: 8.4 }, greeting: ['어서 오렴. 화분에 물 좀 같이 줄래?', '땅은 서두르지 않는단다.'] },
   { id: 'prof-noella', name: '노엘라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-abandoned-scholar', icon: '/images/npc/npc-abandoned-scholar.png', zoneId: 'z-lab-dark', cell: { x: 9.5, y: 8.4 }, greeting: ['어둠을 무서워하는 건 당연해. 모르니까.', '3학년이 되면 내 수업에서 보자.'] },
-  { id: 'prof-lumen', name: '루멘 교수', role: 'professor', roam: 1.6, spriteId: 'npc-saint', icon: '/images/npc/npc-saint.png', zoneId: 'z-lab-light', cell: { x: 9.5, y: 8.4 }, greeting: ['빛은 나누면 줄지 않는 마법이에요.', '다친 곳은 없나요?'] },
+  { id: 'prof-lumen', name: '루멘 교수', role: 'professor', roam: 1.6, spriteId: 'npc-lumen', icon: '/images/npc/npc-lumen.png', zoneId: 'z-lab-light', cell: { x: 9.5, y: 8.4 }, greeting: ['빛은 나누면 줄지 않는 마법이에요.', '다친 곳은 없나요?'] },
   { id: 'npc-librarian', name: '사서 오웬', role: 'flavor', icon: '/images/npc/npc-librarian.png', zoneId: 'z-magic-hall', cell: { x: 9, y: 9.6 }, greeting: ['마법동 도서관에는 아직 정리 중인 마법서가 많단다. 조용히 둘러보렴.', '연금술동과 마도구동도 둘러보면 좋을 게야.'] },
   // ── 별빛 상점가 ──
   { id: 'npc-weapon', name: '대장장이 반', role: 'weaponMerchant', icon: '/images/npc/npc-weapon.png', zoneId: 'z-shops', cell: { x: 39, y: 20 }, greeting: ['다섯 속성 완드, 다 갖춰놨다네. 레벨에 맞는 걸로 골라 가시게.'], shopItemIds: [...wands.map((w) => w.id), ...robes.map((r) => r.id), ...hats.map((h) => h.id), ...accessories.map((a) => a.id)] },

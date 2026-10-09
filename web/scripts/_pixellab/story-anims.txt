@@ -39,10 +39,10 @@ ruspell-laugh	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Laugh	laughing smugly w
 yuna-laugh	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Laugh	laughing brightly with eyes closed, hands together
 rian-think	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Think	scratching head confused, thinking hard
 # ── EP20~34 추가(성녀·루스벨 비중 증가) ──
-saint-think	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Think	hands folded at chest, gazing thoughtfully with a calm serious face
-saint-laugh	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Laugh	smiling warmly and laughing softly, a hand near her cheek
-saint-surprise	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Surprise	surprised, stepping back slightly with hands raised to chest
-saint-heal	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Heal	casting a gentle healing light from both palms, glowing aura
+saint-think	e57ecb52-1c65-4f6d-ba4e-76e41c876281	Story-Think	hands folded at chest, gazing thoughtfully with a calm serious face
+saint-laugh	e57ecb52-1c65-4f6d-ba4e-76e41c876281	Story-Laugh	smiling warmly and laughing softly, a hand near her cheek
+saint-surprise	e57ecb52-1c65-4f6d-ba4e-76e41c876281	Story-Surprise	surprised, stepping back slightly with hands raised to chest
+saint-heal	e57ecb52-1c65-4f6d-ba4e-76e41c876281	Story-Heal	casting a gentle healing light from both palms, glowing aura
 ruspell-think	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Think	arms crossed quietly, looking away with a pensive face
 ruspell-sad	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Sad	hugging herself, head lowered, small flame flickering weakly
 ruspell-heat	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Heat	wiping sweat from forehead, pressing temple, feeling feverish
@@ -55,3 +55,23 @@ celine-laugh	699883ef-d29d-4d73-b13f-5e003f1b3f35	Story-Laugh	laughing kindly wi
 mirel-think	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Think	looking down thoughtfully with a hand on her chin
 kael-surprise	73430d04-6175-4810-9130-c492d4fd115b	Story-Surprise	eyebrows raised, slight step back in surprise
 yuna-think	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Think	tilting head with a finger on lips, thinking
+saint-sad	e57ecb52-1c65-4f6d-ba4e-76e41c876281	Story-Sad	lowering her head sadly, hands clasped in prayer
+# ── EP35~52 — 모르스·루스벨 폭주·미르엘·국왕 ──
+mors-laugh	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Laugh	laughing warmly with eyes closed into crescents, hand on chest
+mors-sad	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Sad	looking down with sorrowful eyes, a faint blue glow at her chest
+mors-think	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Think	standing calmly with arms folded, gazing into the distance
+mors-surprise	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Surprise	eyes widening slightly in quiet surprise, stepping back
+mors-dig	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Dig	crouching in a field digging up potatoes, sleeves rolled up
+mors-pat	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Pat	gently reaching out a hand to pat someone's head, careful
+mors-offer	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Offer	slowly extending an open hand palm up in a peaceful gesture
+mors-kneel	dd6d09a8-2dc4-40c5-8929-79bfd706b0b6	Story-Kneel	collapsing to one knee, exhausted, chains falling loose
+ruspell-rage	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Rage	screaming in rage, violent purple flames bursting around her
+ruspell-cry	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Cry	crying with tears, wiping eyes with her sleeve
+ruspell-surprise	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Surprise	startled confused, looking at her own trembling hands
+mirel-grin	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Grin	spreading arms wide and laughing gleefully, golden aura flaring
+mirel-hurt	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Hurt	kneeling on one knee holding her burned hands, breathing hard
+mirel-sad	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Sad	bowing her head deeply in apology
+mirel-cast	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Cast	drawing a glowing magic circle in the air with both hands
+king-think	93b4c008-6362-41e7-90b4-d1ab85f3b649	Story-Think	stroking his beard thoughtfully, serious gaze
+king-bow	93b4c008-6362-41e7-90b4-d1ab85f3b649	Story-Bow	rising and bowing his head respectfully
+rian-angry	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Angry	clenching fists and shouting angrily, stepping forward

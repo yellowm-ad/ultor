@@ -6,7 +6,7 @@
 //   · 막 중간 장면은 아래 SCRIPT_BEATS — NPC 에게 말을 걸면(TALK) 또는 장소에 들어가면(VISIT) 재생.
 //   · [CUTSCENE] 은 대사 줄의 cut: '<id>' — 이미지 목록·연출 설명은 lib/cutscenes.ts (없으면 건너뜀)
 //   · 주인공 대사 = PLAYER(플레이어 이름으로 표시). 리안·셀라·도란·유나·루스벨 = 학교 동료(comp-*) 초상.
-// EP05~EP34 = 대본 md → lib/story-script-gen.ts 자동 생성(scripts/build-story-script.mjs 34). EP35~ 는 이후 같은 방식으로.
+// EP05~EP52 = 대본 md → lib/story-script-gen.ts 자동 생성(scripts/build-story-script.mjs 52). 루트 전용 줄은 StoryLine.route.
 //   · v3.2 반전 보호: EP50 전까지 미르엘은 '가장 믿을 만한 교수' — 혼자 의미심장한 대사·미소를 넣지 않는다.
 //     단서 회수에는 항상 그 자리에서 납득되는 이유(규정·학생 안전)를 붙인다.
 //   · v3.2 공명: 1학년 숲 이상현상 = 학교 지하 '희'가 화산지대 모르스의 회복에 공명한 것(막간 04-C).
@@ -55,6 +55,11 @@ const EARTH = DORAN
  */
 export const EP_SCRIPT: Record<number, { brief: StoryLine[]; outro: StoryLine[]; choices?: StoryChoice[] }> = {
   ...EP_SCRIPT_GEN,
+  // EP37 은 장면 비트(EP37_RAGE 신전 진입 → 보스전, EP37_FLED 처치 후)가 대본 본문을 재생한다 — 주 시작·미션 보상엔 짧은 안내만
+  37: {
+    brief: [N('[EP37] 봉인이 깨진 버려진 신전. 입구에 남아 있던 루스벨이 걱정된다 — 신전 내부로 향하자.')],
+    outro: [N('루스벨은 북쪽으로 사라졌다. 신전 바닥에는 불탄 발자국만 남았다.')],
+  },
   // ═════════ EP01 · 처음 맞는 학교생활 (1학년 1학기 3주차) ═════════
   1: {
     brief: [
@@ -517,21 +522,7 @@ export const SCRIPT_BEATS: StoryBeat[] = [
     minWeek: W(3, 'semester2', 8),
     setFlags: ['RUSPELL_ENRAGED'],
     battle: { monsterIds: ['mon-ruspell-rage'] },
-    lines: [
-      N('버려진 신전 입구. 깨진 봉인진 위로 붉은 기운이 소용돌이친다. 루스벨이 그 한가운데, 등을 보인 채 서 있다.'),
-      FIRE('루스벨! 괜찮아?'),
-      RUSPELL('…다들 왜 그렇게 봐? 나 괜찮아. 조금 덥기만 해.'),
-      N('그녀의 그림자가 그녀보다 먼저 움직인다. 소용돌이치던 붉은 그림자가 루스벨에게 쏟아져 들어간다.'),
-      MIREL('피에 끌린 거다…! 루스벨, 거부해라! 받아들이지 마!'),
-      RUSPELL('시끄러워… 누가 내 안에서… 시끄러워……'),
-      FIRE('루스벨!'),
-      N('루스벨의 불꽃이 보랏빛으로 물든다. 신전 전체가 땅울림과 함께 흔들린다.'),
-      RUSPELL('시끄러워, 시끄러워, 시끄러워! 전부, 전부 태워 버릴 거야!'),
-      RUSPELL('……또 빼앗으러 왔지. 또, 또, 또!'),
-      EARTH('……저건 루스벨 목소리가 아니야.'),
-      ICE('반은 맞아. 반은 루스벨이야. 그래서 더 최악이야.'),
-      N('— 마왕 루스벨이 앞을 가로막는다.'),
-    ],
+    lines: EP_SCRIPT_GEN[37]?.brief ?? [],
   },
   {
     id: 'EP37_FLED',
@@ -539,16 +530,6 @@ export const SCRIPT_BEATS: StoryBeat[] = [
     title: '노는 사라지지 않았다',
     trigger: { type: 'DEFEAT', monsterId: 'mon-ruspell-rage' },
     setFlags: ['RUSPELL_FLED'],
-    lines: [
-      N('루스벨이 무릎을 꿇는다. 하지만 쓰러지지는 않는다.'),
-      RUSPELL('…아니야. 이건 내가 아니야. 이건…'),
-      FIRE('알아. 아니까 이리 와. 같이 돌아가자.'),
-      N('루스벨이 리안의 손을 본다. 아주 잠깐, 손을 뻗는다. 그리고 그녀 안의 목소리가 속삭인다. "……와라."'),
-      RUSPELL('가까이 오지 마! 너까지 태울 거야!'),
-      N('보랏빛 불길이 폭발하듯 치솟는다. 연기가 걷혔을 때, 루스벨은 사라지고 없었다.'),
-      ICE('…불탄 자국이 북쪽으로 이어져. 설원 쪽이야.'),
-      FIRE('……잡을 수 있었는데.'),
-      EARTH('루스벨은 살아 있어. 그러니까 아직 끝난 게 아니야.'),
-    ],
+    lines: EP_SCRIPT_GEN[37]?.outro ?? [],
   },
 ]
