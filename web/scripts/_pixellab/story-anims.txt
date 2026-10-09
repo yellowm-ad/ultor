@@ -38,3 +38,20 @@ mirel-laugh	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Laugh	laughing gently wit
 ruspell-laugh	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Laugh	laughing smugly with hands on hips, flame flickering on shoulder
 yuna-laugh	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Laugh	laughing brightly with eyes closed, hands together
 rian-think	4d9eabc7-939b-40ed-b14a-02b1c8c36b4a	Story-Think	scratching head confused, thinking hard
+# ── EP20~34 추가(성녀·루스벨 비중 증가) ──
+saint-think	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Think	hands folded at chest, gazing thoughtfully with a calm serious face
+saint-laugh	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Laugh	smiling warmly and laughing softly, a hand near her cheek
+saint-surprise	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Surprise	surprised, stepping back slightly with hands raised to chest
+saint-heal	5392cf08-bf55-4f79-afbd-7fb8440dc1da	Story-Heal	casting a gentle healing light from both palms, glowing aura
+ruspell-think	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Think	arms crossed quietly, looking away with a pensive face
+ruspell-sad	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Sad	hugging herself, head lowered, small flame flickering weakly
+ruspell-heat	d4d14b7f-007e-4176-9884-7e9b987d6707	Story-Heat	wiping sweat from forehead, pressing temple, feeling feverish
+owen-sad	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Sad	taking off his glasses and rubbing his eyes wearily
+owen-laugh	643d1585-a12f-403e-9bda-881a0dfd26dc	Story-Laugh	smiling faintly and nodding, adjusting glasses
+sella-laugh	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Laugh	stifling a laugh behind her notebook
+sella-sad	6215ba84-46ba-46e3-ba23-1bc0b16adce5	Story-Sad	clutching her notebook tightly, looking down anxiously
+doran-laugh	05bde3bf-bd27-4613-a7cd-1c428c783395	Story-Laugh	small quiet smile, scratching cheek shyly
+celine-laugh	699883ef-d29d-4d73-b13f-5e003f1b3f35	Story-Laugh	laughing kindly with hands on hips
+mirel-think	f59c7232-a759-4244-bc4d-0441afbf9403	Story-Think	looking down thoughtfully with a hand on her chin
+kael-surprise	73430d04-6175-4810-9130-c492d4fd115b	Story-Surprise	eyebrows raised, slight step back in surprise
+yuna-think	2fdce7a7-d3de-443a-a454-0257c0b5c71f	Story-Think	tilting head with a finger on lips, thinking

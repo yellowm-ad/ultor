@@ -6,7 +6,7 @@
 //   · 막 중간 장면은 아래 SCRIPT_BEATS — NPC 에게 말을 걸면(TALK) 또는 장소에 들어가면(VISIT) 재생.
 //   · [CUTSCENE] 은 대사 줄의 cut: '<id>' — 이미지 목록·연출 설명은 lib/cutscenes.ts (없으면 건너뜀)
 //   · 주인공 대사 = PLAYER(플레이어 이름으로 표시). 리안·셀라·도란·유나·루스벨 = 학교 동료(comp-*) 초상.
-// EP05~EP19 = 대본 md → lib/story-script-gen.ts 자동 생성(scripts/build-story-script.mjs 19). EP20~ 는 이후 같은 방식으로.
+// EP05~EP34 = 대본 md → lib/story-script-gen.ts 자동 생성(scripts/build-story-script.mjs 34). EP35~ 는 이후 같은 방식으로.
 //   · v3.2 반전 보호: EP50 전까지 미르엘은 '가장 믿을 만한 교수' — 혼자 의미심장한 대사·미소를 넣지 않는다.
 //     단서 회수에는 항상 그 자리에서 납득되는 이유(규정·학생 안전)를 붙인다.
 //   · v3.2 공명: 1학년 숲 이상현상 = 학교 지하 '희'가 화산지대 모르스의 회복에 공명한 것(막간 04-C).

@@ -52,10 +52,12 @@ function speakerOf(raw) {
 // ── 감정 → 동작 ──────────────────────────────────────────────────────────────
 const ANIM_IDS = new Set(fs.readdirSync(path.join(WEB, 'public/images/story-anims')).map((f) => f.replace(/\.png$/, '')))
 const EMOTION_RULES = [
+  ['heat', /땀|관자놀이|덥|뜨거/],
+  ['heal', /빛으로 감싼|치유|빛을 비/],
   ['surprise', /놀라|놀란|움찔|화들짝|굳는|굳어|비명|눈이 커|갈라진|갈라진다|목소리가 떨|입을 벌린/],
-  ['sad', /울음|울먹|눈물|창백|한숨|시무룩|쓴웃음|미안/],
-  ['laugh', /웃|피식|킥|신이 나|눈이 반짝|의기양양|뿌듯|자랑/],
-  ['think', /생각|끄덕|망설|진지|조용히|낮게|살피|들여다|베끼|받아 적|펜|노트/],
+  ['sad', /울음|울먹|눈물|창백|한숨|시무룩|쓴웃음|미안|떨린|안경을 벗/],
+  ['laugh', /웃|피식|킥|신이 나|눈이 반짝|의기양양|뿌듯|자랑|기쁘/],
+  ['think', /생각|끄덕|망설|진지|조용히|낮게|작게|살피|들여다|베끼|받아 적|펜|노트|팔짱|멍하니|한참/],
   ['wave', /손을 흔들|손을 크게|손짓/],
 ]
 // 지문 문단 — '<인물>이/가/은/는 …' 으로 시작하면 그 인물의 동작(기존 연출 동작 포함)
@@ -71,9 +73,9 @@ const NARRATION_RULES = [
   ['think', /펼친|베낀|비춘|확인한|들여다/],
   ...EMOTION_RULES,
 ]
-const ACTOR_NAMES = { 리안: 'rian', 셀라: 'sella', 도란: 'doran', 오웬: 'owen', 미르엘: 'mirel', 셀린: 'celine', 반: 'van', 카엘: 'kael', 유나: 'yuna', 루스벨: 'ruspell' }
+const ACTOR_NAMES = { 성녀: 'saint', 리안: 'rian', 셀라: 'sella', 도란: 'doran', 오웬: 'owen', 미르엘: 'mirel', 셀린: 'celine', 반: 'van', 카엘: 'kael', 유나: 'yuna', 루스벨: 'ruspell' }
 function narrationAnim(text) {
-  const m = text.match(/^(리안|셀라|도란|오웬|미르엘|셀린|반|카엘|유나|루스벨)(이|가|은|는|의)\s/)
+  const m = text.match(/^(성녀|리안|셀라|도란|오웬|미르엘|셀린|반|카엘|유나|루스벨)(이|가|은|는|의)\s/)
   if (!m) return undefined
   const actor = ACTOR_NAMES[m[1]]
   for (const [kind, re] of NARRATION_RULES) if (re.test(text) && ANIM_IDS.has(`${actor}-${kind}`)) return `${actor}-${kind}`
