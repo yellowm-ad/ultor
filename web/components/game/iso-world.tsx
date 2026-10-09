@@ -18,6 +18,8 @@ import { professorSpot, useClassActorEntities } from '@/components/game/class-ac
 import { HeroSprite } from '@/components/game/pixel-hero'
 import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { schoolNpcById } from '@/lib/companions'
+import { addProp, moveProp, useMapOverridesVersion } from '@/lib/map-overrides'
+import { setMapEditor, useMapEditor } from '@/lib/map-editor'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -117,6 +119,9 @@ export function IsoWorld({
   running?: boolean
   interactId: string | null
 }) {
+  // 관리자 오브젝트 편집 — 기록이 바뀌면 MAPS[id] 가 새 객체로 교체되므로 다시 그리기만 하면 된다
+  useMapOverridesVersion()
+  const editor = useMapEditor()
   const map = MAPS[state.currentMapId]
   const waterArt = useWaterOverlays(map)
   const [heroFrame, setHeroFrame] = useState(0)
@@ -221,9 +226,29 @@ export function IsoWorld({
         // backdrop(방 뒤쪽 벽·문) = 선언 순서대로 맨 뒤 레이어 — 긴 벽 조각이 앞의 플레이어를 덮지 않게
         sortY: p.backdrop ? -1e6 + (p.backOrder ?? backdropOrder++) : p.cell.x + p.cell.y + half,
         node: (
-          <g key={p.id} transform={`translate(${s.sx},${s.sy - (p.elev ?? 0)})`}>
+          <g
+            key={p.id}
+            transform={`translate(${s.sx},${s.sy - (p.elev ?? 0)})`}
+            style={editor.on ? { cursor: 'pointer' } : undefined}
+            onClick={
+              editor.on
+                ? (e) => {
+                    e.stopPropagation()
+                    setMapEditor({ selected: p.id, placing: null })
+                  }
+                : undefined
+            }
+          >
             {p.sprite ? <RasterProp p={p} /> : null}
             {p.glow ? <PropGlow {...p.glow} seed={p.cell.x * 7 + p.cell.y * 3} /> : null}
+            {editor.on && editor.selected === p.id && (
+              <g pointerEvents="none">
+                <ellipse cx={0} cy={0} rx={26} ry={12} fill="rgba(255,215,90,0.18)" stroke="#ffd75a" strokeWidth={2} strokeDasharray="5 3" />
+                <text x={0} y={22} textAnchor="middle" fontSize={11} fontWeight={700} fill="#ffd75a" stroke="#000" strokeWidth={3} paintOrder="stroke">
+                  {p.id}
+                </text>
+              </g>
+            )}
           </g>
         ),
       })
@@ -240,7 +265,7 @@ export function IsoWorld({
     list.sort((a, b) => a.sortY - b.sortY)
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map])
+  }, [map, editor.on, editor.selected])
 
   // NPC — 홈 셀(npc.cell) 주변을 배회(npcWanderPosition, 몬스터와 동일한 시간기반 리사주 곡선).
   // wanderT 마다 위치 재계산되므로 static 메모 밖(몬스터와 동일 패턴)에 둔다.
@@ -585,6 +610,45 @@ export function IsoWorld({
         {/* 지면 */}
         {/* 자연 지면 맵은 지면 캔버스가 대신한다(그리는 동안 옛 칸 타일이 번쩍이지 않게 비워 둠) */}
         {!map.terrain && <g>{ground}</g>}
+        {/* 관리자 오브젝트 편집 — 땅을 누르면 선택한 오브젝트를 그 자리로 옮기거나, 고른 오브젝트를 새로 놓는다 */}
+        {editor.on && (
+          <rect
+            x={bounds.minSx}
+            y={-padTop}
+            width={worldW}
+            height={worldH}
+            fill="transparent"
+            style={{ cursor: editor.placing ? 'copy' : editor.selected ? 'move' : 'crosshair' }}
+            onClick={(e) => {
+              e.stopPropagation()
+              const svg = e.currentTarget.ownerSVGElement
+              const ctm = svg?.getScreenCTM()
+              if (!svg || !ctm) return
+              const pt = svg.createSVGPoint()
+              pt.x = e.clientX
+              pt.y = e.clientY
+              const loc = pt.matrixTransform(ctm.inverse())
+              const cell = { x: (loc.y / (ISO_TILE_H / 2) + loc.x / (ISO_TILE_W / 2)) / 2, y: (loc.y / (ISO_TILE_H / 2) - loc.x / (ISO_TILE_W / 2)) / 2 }
+              if (editor.placing) {
+                const it = editor.placing
+                const fp = Math.max(0.5, Math.round((it.w / ISO_TILE_W) * 0.8 * 2) / 2)
+                const id = addProp(map.id, {
+                  kind: editor.solid ? 'statue' : 'bicycle',
+                  cell,
+                  sprite: it.src,
+                  px: { w: it.w, h: it.h },
+                  radial: true,
+                  size: { w: fp, d: fp },
+                  solid: editor.solid,
+                  label: undefined,
+                })
+                setMapEditor({ selected: id, placing: null })
+              } else if (editor.selected) {
+                moveProp(map.id, editor.selected, cell)
+              }
+            }}
+          />
+        )}
         {/* 격자 외곽 */}
         {!map.water && !map.terrain && <polygon
           points={`${isoToScreen(0, 0).sx},${isoToScreen(0, 0).sy} ${isoToScreen(VW, 0).sx},${isoToScreen(VW, 0).sy} ${isoToScreen(VW, VH).sx},${isoToScreen(VW, VH).sy} ${isoToScreen(0, VH).sx},${isoToScreen(0, VH).sy}`}

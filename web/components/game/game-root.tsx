@@ -1,5 +1,7 @@
 'use client'
 
+import { initMapOverrides } from '@/lib/map-overrides'
+import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
 import type { ScreenId } from '@/lib/types'
@@ -105,6 +107,11 @@ function GameShell() {
 }
 
 export function GameRoot() {
+  // 관리자가 고친 맵 오브젝트·대사(배포본 public/*.json + 이 브라우저 기록) 불러오기
+  useEffect(() => {
+    initMapOverrides()
+    initDialogueOverrides()
+  }, [])
   return (
     <GameProvider>
       <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">

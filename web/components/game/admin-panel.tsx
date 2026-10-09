@@ -12,6 +12,29 @@ import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
 import { STORY_BEATS, ENDING_EMBLEM_FLAGS, storyLineRoute } from '@/lib/story'
 import { ALL_CUTSCENES as CUTSCENES } from '@/lib/cutscenes'
 import { CutsceneManager } from '@/components/game/cutscene-manager'
+import { DialogueEditor } from '@/components/game/dialogue-editor'
+import { MAPS } from '@/lib/maps'
+import { PROP_CATALOG } from '@/lib/prop-catalog'
+import { setMapEditor, useMapEditor } from '@/lib/map-editor'
+import {
+  exportMapOverrides,
+  importMapOverrides,
+  localChangeCount,
+  moveProp,
+  removeProp,
+  resetLocalMap,
+  resetMapToOriginal,
+  useMapOverridesVersion,
+} from '@/lib/map-overrides'
+
+function downloadText(name: string, text: string) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+const CATALOG_GROUPS = [...new Set(PROP_CATALOG.map((c) => c.group))]
 
 const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[number]) => boolean }[] = [
   { key: 'fire', label: '불꽃', filter: (s) => s.element === 'fire' && !s.owner },
@@ -24,7 +47,7 @@ const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[nu
   { key: 'pet', label: '펫 스킬(습득 불가)', filter: (s) => s.owner === 'pet' },
 ]
 
-type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'story' | 'room' | null
+type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'story' | 'obj' | 'room' | null
 
 /** 컷신·연출 동작이 들어 있는 스토리 장면 — 관리자 '컷신' 탭에서 바로 재생 */
 const CUT_BEATS = STORY_BEATS.filter((b) => b.lines.some((l) => l.cut || l.anim))
@@ -37,6 +60,11 @@ export function AdminPanel() {
   const [goldInput, setGoldInput] = useState(String(state.player.gold))
   const [weekInput, setWeekInput] = useState(String(state.calendar.globalWeek))
   const [cutManager, setCutManager] = useState(false)
+  const [dlgEditor, setDlgEditor] = useState(false)
+  const [catGroup, setCatGroup] = useState(CATALOG_GROUPS[0] ?? '')
+  const [catQuery, setCatQuery] = useState('')
+  const editor = useMapEditor()
+  useMapOverridesVersion()
 
   const testroomMonsters = useMemo(
     () => (state.currentMapId === 'testroom' ? state.fieldMonsters : []),
@@ -92,6 +120,7 @@ export function AdminPanel() {
             ['pets', '펫'],
             ['school', '학사'],
             ['story', '컷신'],
+            ['obj', '오브젝트'],
             ['room', '테스트룸'],
           ] as [Section, string][]
         ).map(([key, label]) => (
@@ -301,6 +330,9 @@ export function AdminPanel() {
 
         {section === 'story' && (
           <div className="space-y-3">
+            <Button size="sm" className="w-full" onClick={() => setDlgEditor(true)}>
+              대사 편집
+            </Button>
             <Button size="sm" className="w-full" onClick={() => setCutManager(true)}>
               컷신 이미지 관리 ({CUTSCENES.length}칸)
             </Button>
@@ -337,6 +369,15 @@ export function AdminPanel() {
             </div>
           </div>
         )}
+
+        {section === 'obj' && <ObjectEditorSection
+          mapId={state.currentMapId}
+          catGroup={catGroup}
+          setCatGroup={setCatGroup}
+          catQuery={catQuery}
+          setCatQuery={setCatQuery}
+          editor={editor}
+        />}
 
         {section === 'room' && (
           <div className="space-y-3">
@@ -393,10 +434,151 @@ export function AdminPanel() {
         )}
       </div>
       {cutManager && <CutsceneManager onClose={() => setCutManager(false)} />}
+      {dlgEditor && (
+        <DialogueEditor
+          onClose={() => setDlgEditor(false)}
+          onPlay={(beatId) => {
+            setDlgEditor(false)
+            dispatch({ type: 'ADMIN_PLAY_BEAT', beatId })
+          }}
+        />
+      )}
     </div>
   )
 }
 
 function petName(defId: string) {
   return PET_DEFS.find((d) => d.id === defId)?.name ?? defId
+}
+
+/** 관리자 '오브젝트' 탭 — 편집 모드 켜기, 선택한 오브젝트 이동·제거, PixelLab 오브젝트 추가, 파일 저장/불러오기 */
+function ObjectEditorSection({
+  mapId,
+  catGroup,
+  setCatGroup,
+  catQuery,
+  setCatQuery,
+  editor,
+}: {
+  mapId: string
+  catGroup: string
+  setCatGroup: (g: string) => void
+  catQuery: string
+  setCatQuery: (q: string) => void
+  editor: ReturnType<typeof useMapEditor>
+}) {
+  const map = (MAPS as unknown as Record<string, (typeof MAPS)[keyof typeof MAPS]>)[mapId]
+  const sel = editor.selected ? map.props?.find((p) => p.id === editor.selected) : undefined
+  const nudge = (dx: number, dy: number) => sel && moveProp(map.id, sel.id, { x: sel.cell.x + dx, y: sel.cell.y + dy })
+  const items = PROP_CATALOG.filter((c) => (catQuery ? c.name.includes(catQuery) : c.group === catGroup))
+  return (
+    <div className="space-y-3">
+      <Button size="sm" className="w-full" variant={editor.on ? 'default' : 'outline'} onClick={() => setMapEditor({ on: !editor.on, selected: null, placing: null })}>
+        오브젝트 편집 모드 {editor.on ? 'ON' : 'OFF'}
+      </Button>
+      <div className="text-white/55">
+        {map.name} · 오브젝트 {map.props?.length ?? 0}개 · 이 브라우저 수정 {localChangeCount(map.id)}건
+        <br />
+        편집 모드: 오브젝트를 누르면 선택 → 땅을 누르면 그 자리로 이동. 아래 목록에서 고른 뒤 땅을 누르면 새로 놓는다.
+      </div>
+
+      {editor.on && (
+        <div className="rounded border border-gold/30 p-2">
+          {sel ? (
+            <>
+              <div className="mb-1 truncate text-gold-soft">선택: {sel.id}</div>
+              <div className="mb-1 text-white/55">
+                {sel.kind} · 위치 ({sel.cell.x}, {sel.cell.y}) {sel.solid ? '· 길막' : ''}
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                <Button size="sm" variant="outline" onClick={() => nudge(0, -0.25)}>↗</Button>
+                <Button size="sm" variant="outline" onClick={() => nudge(0.25, 0)}>↘</Button>
+                <Button size="sm" variant="outline" onClick={() => nudge(-0.25, 0)}>↖</Button>
+                <Button size="sm" variant="outline" onClick={() => nudge(0, 0.25)}>↙</Button>
+              </div>
+              <div className="mt-1 flex gap-1">
+                <Button size="sm" variant="outline" className="flex-1 text-red-200" onClick={() => { removeProp(map.id, sel.id); setMapEditor({ selected: null }) }}>
+                  제거
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => setMapEditor({ selected: null })}>
+                  선택 해제
+                </Button>
+              </div>
+            </>
+          ) : editor.placing ? (
+            <div className="text-gold-soft">놓을 오브젝트: {editor.placing.name} — 맵에서 놓을 자리를 누르세요</div>
+          ) : (
+            <div className="text-white/55">맵에서 오브젝트를 눌러 선택하세요</div>
+          )}
+        </div>
+      )}
+
+      {editor.on && (
+        <div>
+          <div className="mb-1 flex items-center justify-between text-white/60">
+            <span>오브젝트 추가 ({PROP_CATALOG.length}종)</span>
+            <label className="flex items-center gap-1">
+              <input type="checkbox" checked={editor.solid} onChange={(e) => setMapEditor({ solid: e.target.checked })} />
+              길막
+            </label>
+          </div>
+          <input
+            value={catQuery}
+            onChange={(e) => setCatQuery(e.target.value)}
+            placeholder="이름 검색"
+            className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1.5 py-1 text-white"
+          />
+          {!catQuery && (
+            <select value={catGroup} onChange={(e) => setCatGroup(e.target.value)} className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1 py-1 text-white">
+              {CATALOG_GROUPS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          )}
+          <div className="grid max-h-64 grid-cols-4 gap-1 overflow-y-auto scrollbar-thin">
+            {items.map((c) => (
+              <button
+                key={c.src}
+                type="button"
+                title={c.name}
+                onClick={() => setMapEditor({ placing: c, selected: null })}
+                className={`flex aspect-square items-center justify-center rounded border bg-black/30 p-0.5 ${editor.placing?.src === c.src ? 'border-gold' : 'border-white/10'}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.src} alt={c.name} className="max-h-full max-w-full" style={{ imageRendering: 'pixelated' }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-1 border-t border-gold/20 pt-2">
+        <Button size="sm" variant="outline" className="w-full" onClick={() => downloadText('map-overrides.json', exportMapOverrides())}>
+          파일로 저장 (map-overrides.json)
+        </Button>
+        <label className="block cursor-pointer rounded border border-gold/40 px-2 py-1 text-center">
+          파일 불러오기
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0]
+              if (f) importMapOverrides(await f.text())
+              e.target.value = ''
+            }}
+          />
+        </label>
+        <Button size="sm" variant="outline" className="w-full" onClick={() => resetLocalMap(map.id)}>
+          이 맵: 이 브라우저 수정 지우기
+        </Button>
+        <Button size="sm" variant="outline" className="w-full text-red-200" onClick={() => resetMapToOriginal(map.id)}>
+          이 맵: 원래 게임 배치로
+        </Button>
+        <div className="text-white/45">모두에게 반영하려면 저장한 파일을 web/public/map-overrides.json 에 넣고 배포.</div>
+      </div>
+    </div>
+  )
 }

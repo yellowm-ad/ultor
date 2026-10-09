@@ -1,5 +1,7 @@
 'use client'
 
+import { initMapOverrides } from '@/lib/map-overrides'
+import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect, useState } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { WorldScreen } from '@/components/game/world-screen'
@@ -125,6 +127,11 @@ function AdminShell() {
 }
 
 export function AdminRoot() {
+  // 관리자가 고친 맵 오브젝트·대사(배포본 public/*.json + 이 브라우저 기록) 불러오기
+  useEffect(() => {
+    initMapOverrides()
+    initDialogueOverrides()
+  }, [])
   return (
     <AdminGate>
       <GameProvider>

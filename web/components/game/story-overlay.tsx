@@ -13,6 +13,7 @@ import { DialogueBox } from '@/components/game/dialogue-box'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { cutsceneById, cutsceneSrc } from '@/lib/cutscenes'
 import { STORY_ANIM_CELL, STORY_ANIM_FRAMES, storyAnimSrc } from '@/lib/story-anims'
+import { applyLineOverride, useDialogueOverridesVersion } from '@/lib/dialogue-overrides'
 import { cutsceneOverrideUrl, isAdminPage, onCutsceneStoreChange } from '@/lib/cutscene-store'
 
 /**
@@ -30,12 +31,16 @@ export function StoryOverlay() {
   const beatId = state.storyQueue[0]
   const beat = beatId ? beatById(beatId) : undefined
   const [line, setLine] = useState(0)
+  useDialogueOverridesVersion() // 관리자 대사 편집이 바뀌면 다시 그리기
   useEffect(() => setLine(0), [beatId])
 
   if (!beat || state.screen !== 'world') return null
   // 루트 전용 줄은 지금 루트(루스벨 발견·상징)에 맞는 것만
   const route = storyLineRoute(state)
-  const lines = beat.lines.filter((l) => lineOnRoute(l, route))
+  const lines = beat.lines
+    .filter((l) => lineOnRoute(l, route))
+    .map((l) => applyLineOverride(beat.id, l))
+    .filter((l): l is NonNullable<typeof l> => !!l)
   const cur = lines[line]
   const last = line >= lines.length - 1
   const choosing = last && !!beat.choices?.length
