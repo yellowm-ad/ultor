@@ -429,7 +429,6 @@ const ACADEMY_LIBRARY: DecorItem[] = [
 
 /** 교장실 (15×13) */
 const HEADMASTER_OFFICE: DecorItem[] = [
-  ['academy/wb_rug_red', 7.5, 8.8, FLAT],
   ['academy/wb_armchair', 5.4, 9.0],
   ['academy/wb_armchair_f', 9.6, 9.0],
   ['academy/wb_clock', 13.6, 2.2],
@@ -442,7 +441,6 @@ const HEADMASTER_OFFICE: DecorItem[] = [
 
 /** 회의실 (18×14) */
 const COUNCIL_ROOM: DecorItem[] = [
-  ['academy/wb_rug_square', 9.0, 7.8, FLAT],
   ['academy/wb_armor', 16.4, 2.4],
   ['academy/wb_trophy', 11.6, 1.8],
   ['academy/wb_bust', 16.4, 6.6],
@@ -454,7 +452,6 @@ const COUNCIL_ROOM: DecorItem[] = [
 /** 대강당 (24×20) */
 const GRAND_AUDITORIUM: DecorItem[] = [
   ['academy/wb_piano', 20.6, 3.4],
-  ['academy/wb_rug_red', 12.0, 11.8, FLAT],
   ['academy/wb_candelabra', 8.4, 5.8, W],
   ['academy/wb_candelabra', 15.6, 5.8, W],
   ['academy/wb_potted_palm', 1.8, 17.6],

@@ -1,6 +1,6 @@
 'use client'
 
-import { setGuidePin } from '@/lib/guide'
+import { guideGoal, guideRoute, setGuidePin } from '@/lib/guide'
 import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
@@ -275,6 +275,10 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
   const wc = classForWeek(state.calendar.globalWeek)
   const meta = wc ? classMetaFor(wc.courseId) : null
   const badge = menuIcon(e.status === 'claimed' ? 'badge-done' : KIND_BADGE[e.kind])
+  // 지금 해야 할 목표까지 가는 길(lib/guide) — 진행 중인 미션·아직 안 들은 수업만
+  const goal = e.kind === 'class' ? (e.status !== 'claimed' ? guideGoal(state, 'class') : null) : e.q && e.status === 'active' ? guideGoal(state, e.q.instanceId) : null
+  const route = goal && (goal.kind === 'class' || goal.quest === t?.title) ? guideRoute(state, goal) : null
+  const way = route ? (route.here ? goal!.place : route.hint) : null
   return (
     <>
       <div className="gw-scroll is-fill">
@@ -315,6 +319,7 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
             })
           )}
           {t?.regionId && <div className="mt-1 text-[12px] text-[#8a7c62]">지역 · {regionById(t.regionId).name}</div>}
+          {way && <div className="mt-1 text-[12px] font-semibold text-[#8a6a1e]">가는 길 · {way}</div>}
         </div>
 
         {t && t.rewards.length > 0 && (

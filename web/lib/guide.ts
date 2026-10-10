@@ -53,20 +53,24 @@ function nearestNpc(state: S): NpcDef | undefined {
 }
 
 /** 그 몬스터가 나오는 맵 */
-function monsterMap(monsterId: string): MapId | undefined {
-  const maps = Object.values(MAPS)
+function monsterMap(monsterId: string, regionId?: string): MapId | undefined {
+  // 같은 몬스터가 여러 지역에 나오면 그 미션의 지역 맵이 먼저
+  const maps = Object.values(MAPS).sort((a, b) => Number(regionOfMap(b.id) === regionId) - Number(regionOfMap(a.id) === regionId))
   return (maps.find((m) => m.bossSpawns?.some((b) => b.monsterId === monsterId)) ?? maps.find((m) => m.monsterPool?.includes(monsterId)))?.id
 }
 
 const STATION_NPC: Record<string, string> = { COOK: 'npc-kitchen', ALCHEMY: 'npc-alchemy-pot', CRAFT: 'npc-workbench' }
 
-function objectiveGoal(state: S, ob: QuestObjective, quest: string, regionId?: string): GuideGoal {
+/** prevVisit = 같은 미션에서 앞서 '도착'하라고 한 맵 — 이어지는 전투·처치 목표는 그 자리에서 한다고 본다 */
+function objectiveGoal(state: S, ob: QuestObjective, quest: string, regionId?: string, prevVisit?: MapId): GuideGoal {
   const base = { label: ob.label, quest }
   const region = REGIONS.find((r) => r.id === regionId)
   const fieldOf = () => {
     // 이미 그 지역의 야생에 있으면 길 안내 없이 문구만
     if (region && regionOfMap(state.currentMapId) === region.id && MAPS[state.currentMapId].kind === 'field') return undefined
-    return region?.maps.find((m) => MAPS[m]?.kind === 'field')
+    if (prevVisit && MAPS[prevVisit]?.kind === 'field') return prevVisit === state.currentMapId ? undefined : prevVisit
+    // 지역이 정해지지 않은 전투·채집(‘아무 데서나’)은 첫 실습지인 숲으로
+    return region?.maps.find((m) => MAPS[m]?.kind === 'field' && m !== 'testroom') ?? 'forest'
   }
   switch (ob.type) {
     case 'TALK': {
@@ -76,15 +80,20 @@ function objectiveGoal(state: S, ob: QuestObjective, quest: string, regionId?: s
         return { ...base, kind: 'talk', place: spot ? MAPS[spot.mapId].name : '사람이 있는 곳', mapId: spot?.mapId, cell: spot?.cell, npcId: n?.id }
       }
       const spot = npcSpot(state, ob.targetId)
-      const name = npcById(ob.targetId)?.name ?? ''
-      return { ...base, kind: 'talk', place: spot ? `${MAPS[spot.mapId].name} · ${name}` : `${name} — 지금은 만날 수 없다`, mapId: spot?.mapId, cell: spot?.cell, npcId: ob.targetId }
+      const def = npcById(ob.targetId)
+      const name = def?.name ?? ''
+      // 아직 그 자리에 나타나지 않은 사람(스토리 플래그 전)은 머무는 맵까지만 안내
+      const home = !spot && def ? ZONE_MAP.get(def.zoneId) : undefined
+      return { ...base, kind: 'talk', place: spot ? `${MAPS[spot.mapId].name} · ${name}` : home ? `${MAPS[home].name} — ${name}을(를) 찾아보자` : `${name} — 지금은 만날 수 없다`, mapId: spot?.mapId ?? home, cell: spot?.cell, npcId: ob.targetId }
     }
     case 'VISIT': {
       const m = MAPS[ob.targetId as MapId]
       return { ...base, kind: 'visit', place: m?.name ?? '', mapId: m?.id }
     }
     case 'KILL': {
-      const mapId = ob.targetId.startsWith('family:') || ob.targetId === 'any' ? fieldOf() : (monsterMap(ob.targetId) ?? fieldOf())
+      const found = ob.targetId.startsWith('family:') || ob.targetId === 'any' ? undefined : monsterMap(ob.targetId, regionId)
+      // 다른 지역에서만 찾아지는 몬스터(스토리 전투로 나오는 적 등)는 앞서 도착한 맵에서
+      const mapId = found && (!regionId || regionOfMap(found) === regionId) ? found : (prevVisit ?? fieldOf())
       const boss = mapId ? MAPS[mapId].bossSpawns?.find((b) => b.monsterId === ob.targetId) : undefined
       return { ...base, kind: 'battle', place: mapId ? MAPS[mapId].name : (region?.name ?? '야생'), mapId, cell: boss?.cell }
     }
@@ -143,7 +152,9 @@ export function guideGoal(state: S, pin: string | null = null): GuideGoal | null
     const t = questTemplateById(q.templateId)
     if (!t || q.status !== 'active') return null
     const i = t.objectives.findIndex((ob, k) => (q.progress[k] ?? 0) < ob.count)
-    return i < 0 ? null : objectiveGoal(state, t.objectives[i], t.title, t.regionId)
+    if (i < 0) return null
+    const prev = t.objectives.slice(0, i).reverse().find((ob) => ob.type === 'VISIT')?.targetId as MapId | undefined
+    return objectiveGoal(state, t.objectives[i], t.title, t.regionId, prev)
   }
   const wc = classForWeek(state.calendar.globalWeek)
   const classGoal = (): GuideGoal | null => {
