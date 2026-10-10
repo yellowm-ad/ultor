@@ -9,6 +9,7 @@
 
 import type { GameMap, GameState, MapId, NpcDef, Portal, QuestObjective } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
+import { groundBlocked } from '@/lib/collision'
 import { NPCS, npcById } from '@/lib/mock-data'
 import { questTemplateById } from '@/lib/quests'
 import { classForWeek, classMetaFor } from '@/lib/curriculum'
@@ -251,8 +252,7 @@ function walkGrid(map: GameMap): { w: number; h: number; ok: Uint8Array } {
       const y = j / RES
       if (x < 0.2 || y < 0.2 || x > map.grid.w - 0.2 || y > map.grid.h - 0.2) continue
       if (bl.some((r) => x > r.x0 - BODY && x < r.x1 + BODY && y > r.y0 - BODY && y < r.y1 + BODY)) continue
-      const t = map.tileAt?.(x, y)
-      if (t === 'academy-void' || (map.kind === 'field' && t === 'demon-lava')) continue
+      if (groundBlocked(map, x, y)) continue
       ok[j * w + i] = 1
     }
   return { w, h, ok }
