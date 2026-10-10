@@ -443,6 +443,15 @@ function MazeGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
   const [pos, setPos] = useState(0)
   const [seen, setSeen] = useState<Set<number>>(() => new Set([0]))
   const left = useRef(TORCH)
+  // 여분 횃불 — 주우면 불이 20초 더 간다(입구·출구가 아닌 칸 셋)
+  const [torches, setTorches] = useState<number[]>(() => {
+    const out: number[] = []
+    while (out.length < 3) {
+      const c = 1 + Math.floor(Math.random() * (MW * MH - 1))
+      if (c !== maze.exit && !out.includes(c)) out.push(c)
+    }
+    return out
+  })
   const done = useRef(false)
   const [, redraw] = useState(0)
   const move = (bit: number, d: number) => {
@@ -451,6 +460,10 @@ function MazeGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
       if (!(maze.open[p] & bit)) return p
       const n = p + d
       setSeen((s) => new Set(s).add(n))
+      if (torches.includes(n)) {
+        left.current = Math.min(TORCH, left.current + 20)
+        setTorches((t) => t.filter((c) => c !== n))
+      }
       if (n === maze.exit && !done.current) {
         done.current = true
         window.setTimeout(() => onEnd(true), 350)
@@ -478,7 +491,7 @@ function MazeGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
     <div className="psg-play">
       <div className="psg-hud">
         <Bar label="횃불" v={(left.current / TORCH) * 100} color="#ff9a3c" />
-        <span className="psg-stat">빛이 새는 곳이 출구</span>
+        <span className="psg-stat">빛이 새는 곳이 출구 · 주황 불씨 = 여분 횃불(+20초)</span>
       </div>
       <div className="psg-stage psg-maze" style={{ gridTemplateColumns: `repeat(${MW}, 1fr)` }}>
         {Array.from({ length: MW * MH }, (_, c) => {
@@ -498,6 +511,7 @@ function MazeGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
                 boxShadow: c === maze.exit && (known || d <= 3) ? 'inset 0 0 14px 4px #fff2b0' : undefined,
               }}
             >
+              {known && c !== pos && torches.includes(c) && <span className="psg-torch" />}
               {c === pos && <span className="psg-me" />}
             </div>
           )
@@ -555,7 +569,6 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
     const next = { ...s, warm: Math.min(100, warm), food: Math.min(100, food), hp: Math.min(3, hp), log: [log, ...extra].join(' ') }
     setSt(next)
     if (next.hp <= 0) window.setTimeout(() => onEnd(false), 900)
-    else if (next.layer >= LAYERS - 1 && !next.ask) window.setTimeout(() => onEnd(true), 900)
   }
   const go = (col: number) => {
     const layer = st.layer + 1
@@ -590,6 +603,24 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
       : settle({ ...s, hp: s.hp - 1, warm: s.warm - 10 }, '서리곰의 굴이었다! 간신히 달아났지만 다쳤다.')
   }
   const alive = st.hp > 0 && st.layer < LAYERS - 1
+  // 마지막 관문 — 능선 바로 아래의 눈보라. 남은 체온·허기로 버틴다(모자라면 체력이 깎인다)
+  const atRidge = st.hp > 0 && st.layer >= LAYERS - 1 && !st.ask
+  const climb = () => {
+    let { warm, food, hp } = st
+    const notes: string[] = []
+    warm -= 40
+    food -= 25
+    if (warm < 0) {
+      hp -= 1
+      notes.push('얼어붙은 손으로 바위를 붙잡았다.')
+    }
+    if (food < 0) {
+      hp -= 1
+      notes.push('허기에 다리가 풀렸다.')
+    }
+    setSt({ ...st, warm: Math.max(0, warm), food: Math.max(0, food), hp, layer: LAYERS, log: hp > 0 ? ['마지막 눈보라를 뚫고 능선에 올랐다!', ...notes].join(' ') : ['능선을 눈앞에 두고 쓰러졌다.', ...notes].join(' ') })
+    window.setTimeout(() => onEnd(hp > 0), 1100)
+  }
   // 다음에 고를 줄이 늘 보이게(화면이 낮으면 목록이 스크롤된다)
   const nextRow = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -603,7 +634,7 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
         <Bar label="허기" v={st.food} color="#9bd36a" />
       </div>
       <div className="psg-stage psg-snow">
-        <div className="psg-goal">오로라 능선</div>
+        <div className="psg-goal">오로라 능선 — 마지막 눈보라(체온 40 · 허기 25 필요)</div>
         {map
           .map((row, l) => (
             <div key={l} className="psg-row" ref={l === st.layer + 1 ? nextRow : undefined}>
@@ -623,6 +654,13 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
         <div className="psg-goal is-start">설원 어귀</div>
       </div>
       <div className="psg-log">{st.log}</div>
+      {atRidge && st.layer === LAYERS - 1 && (
+        <div className="psg-pad">
+          <button type="button" className="gw-btn is-gold is-lg" onClick={climb}>
+            능선으로 오른다 (체온 −40 · 허기 −25)
+          </button>
+        </div>
+      )}
       {st.ask && (
         <div className="psg-pad">
           <button type="button" className="gw-btn is-gold is-lg" onClick={() => tracks(true)}>

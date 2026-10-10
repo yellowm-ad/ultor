@@ -23,7 +23,7 @@ import {
   UF_PAD_TOP,
   UF_SPAWN,
 } from '@/lib/academy-upper'
-import { ACADEMY_ROOM_DEFS, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from '@/lib/academy-rooms'
+import { ACADEMY_ROOM_DEFS, ARCHIVE_ROOM, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from '@/lib/academy-rooms'
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
@@ -870,6 +870,8 @@ export const MAPS = {
       { id: 'gate-volcano', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
       { id: 'personal-space-enter', cell: villageShift({ x: 42, y: 5 }), to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
       { id: 'school-hall-enter', cell: villageShift({ x: 6.9, y: 6.5 }), to: 'school-hall', label: '마법학교 본관', kind: 'portal' },
+      // 학교 북관 테라스의 기록관 건물 앞(지금 마을 좌표)
+      { id: 'village-archive-enter', cell: { x: 13.8, y: 6.8 }, to: 'village-archive', label: '울토르 기록관', kind: 'portal' },
     ],
   },
 
@@ -1013,6 +1015,24 @@ export const MAPS = {
       ],
     } as GameMap
   })(),
+  // 울토르 기록관(2026-10-10) — 마을 학교 북관의 기록관 건물 안. 방 = lib/academy-rooms ARCHIVE_ROOM, 소품 = lib/town-decor
+  'village-archive': {
+    id: 'village-archive',
+    name: '울토르 기록관',
+    kind: 'town',
+    grid: { w: ARCHIVE_ROOM.w, h: ARCHIVE_ROOM.h },
+    bg: 'school',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: ARCHIVE_ROOM.tileAt,
+    props: ARCHIVE_ROOM.props,
+    structures: ARCHIVE_ROOM.structures,
+    padTop: ROOM_PAD_TOP,
+    blockers: buildBlockers(ARCHIVE_ROOM.props, roomBlockersAc(ARCHIVE_ROOM.w, ARCHIVE_ROOM.h)),
+    zones: [z('z-village-archive', 'school', '울토르 기록관', 0, 0, ARCHIVE_ROOM.w, ARCHIVE_ROOM.h, '#5b6bd6', '학교의 옛 기록을 모아 둔 곳. 책장 군데군데가 비어 있다.')],
+    spawn: { x: ARCHIVE_ROOM.w / 2, y: ARCHIVE_ROOM.h - 2.2 },
+    portals: [{ id: 'village-archive-exit', cell: { x: ARCHIVE_ROOM.w / 2, y: ARCHIVE_ROOM.h - 0.8 }, to: 'village', toSpawn: { x: 13.8, y: 8.2 }, label: '밖으로', kind: 'exit' }],
+  } as GameMap,
   // 아틀란티스 대성당 지하 벽화실(2026-10-10) — 왕의 마음이 넷으로 나뉜 벽화 석판이 놓인 작은 방. 소품은 lib/town-decor
   'atlantis-crypt': (() => {
     const C = cryptRoom('atlantis')

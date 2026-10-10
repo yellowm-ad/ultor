@@ -904,6 +904,8 @@ const NPCS_BASE: NpcDef[] = [
  * 전용 도트가 아직 없어 다른 NPC 의 시트를 빌린다(spriteId). 자리는 그 맵의 지금 좌표(마을 북쪽 띠 포함).
  */
 const TOWN_DUO_NPCS: NpcDef[] = [
+  // 울토르 기록관의 기록관지기(lib/maps village-archive) — 전용 도트 전이라 촌장 시트를 빌린다
+  { id: 'npc-archivist', hue: -30, name: '기록관지기 엘다', role: 'flavor', icon: '/images/npc/npc-elder.png', spriteId: 'npc-elder', zoneId: 'z-village-archive', cell: { x: 7, y: 5 }, roam: 0.8, greeting: ['여기 있는 건 거의 다 사본이란다. 원본은 오래전에 왕립 기록원이 가져갔지.', '빈 책장? 처음부터 비어 있던 건 아니야. 누가, 언제 가져갔는지 적어 둔 장부까지 같이 없어졌을 뿐이지.'] },
   { id: 'npc-duo-baker', hue: 18, name: '제빵사 폴코', role: 'flavor', icon: '/images/npc/npc-kitchen.png', spriteId: 'npc-kitchen', zoneId: 'z-north-lot', cell: { x: 39.6, y: 7.8 }, roam: 0.25, greeting: ['마르코 형이랑 헷갈리지 마. 형은 요리, 나는 빵이야.'] },
   { id: 'npc-duo-florist', hue: -22, name: '꽃집 로잔', role: 'flavor', icon: '/images/npc/npc-atlantis-merchant.png', spriteId: 'npc-atlantis-merchant', zoneId: 'z-north-lot', cell: { x: 41, y: 7.2 }, roam: 0.25, greeting: ['오늘 들어온 꽃이 제일 예뻐요. 내일 건 내일 제일 예쁘고요.'] },
   { id: 'npc-duo-sauna', hue: 14, name: '사우나 지기 올가', role: 'flavor', icon: '/images/npc/npc-elder.png', spriteId: 'npc-elder', zoneId: 'z-aurora', cell: { x: 25.2, y: 42.8 }, roam: 0.25, greeting: ['몸이 얼었으면 들어와. 돈은 녹은 다음에 받는다.'] },

@@ -473,6 +473,7 @@ export type MapId =
   | 'deepsea'
   | 'atlantis'
   | 'atlantis-crypt'
+  | 'village-archive'
   | 'stormhaven'
   | 'stormhaven-2'
   | 'stormhaven-3'

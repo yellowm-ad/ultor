@@ -308,6 +308,26 @@ export const ACADEMY_ROOM_DEFS: Record<AcademyRoomKey, { id: MapId; name: string
   labDark: { id: 'lab-dark', name: '어둠 교수 연구실', def: LAB_DARK },
   labLight: { id: 'lab-light', name: '빛 교수 연구실', def: LAB_LIGHT },
 }
+// ── 울토르 기록관(2026-10-10) — 마을 학교 북관의 '기록관' 건물 안. 14×12, 책장 벽 · 빈 책장 줄. ──
+//    메인 스토리 EP26(벽화 뒤의 옛 '울토르 기록관' 문장)에서 이어지는 곳. 가구는 여기에 책장만 두고 나머지는 lib/town-decor.
+const ARW = 14
+const ARH = 12
+export const ARCHIVE_ROOM: RoomDef = {
+  w: ARW,
+  h: ARH,
+  tileAt: (x) => (x > ARW / 2 - 1.2 && x < ARW / 2 + 1.2 ? 'personal-rug' : 'personal-wood'),
+  structures: roomWalls('arc', ARW, ARH, wallTex('wall_library.png', 64, 160, 2.25)),
+  props: [
+    isoProp('arc-shelf0', HALL_SPR.shelf, 2.6, 1.0, 0.6, { flip: true }),
+    isoProp('arc-shelf1', HALL_SPR.shelf, 5.0, 1.0, 0.6, { flip: true }),
+    isoProp('arc-shelf2', HALL_SPR.shelf, 9.0, 1.0, 0.6, { flip: true }),
+    isoProp('arc-shelf3', HALL_SPR.shelf, 11.4, 1.0, 0.6, { flip: true }),
+    isoProp('arc-shelf4', HALL_SPR.shelf, 1.0, 4.0, 0.6),
+    isoProp('arc-shelf5', HALL_SPR.shelf, 1.0, 6.6, 0.6),
+    isoProp('arc-plant', HALL_SPR.plant, 12.4, 10.2, 0.5),
+  ],
+}
+
 export const ROOM_PAD_TOP = ROOM_WALL_H + 60
 export { roomBlockers }
 export type { RoomDef, GameMap }

@@ -27,7 +27,7 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'ACADEMY',
     name: '울토르 마법학교',
-    maps: ['village', 'school-hall', 'academy-2f', 'class-fire', 'class-ice', 'class-earth', 'grand-auditorium', 'headmaster-office', 'academy-library', 'academy-3f', 'academy-4f', 'academy-secret', 'class-year2', 'class-year3', 'class-year4', 'class-dark', 'class-light', 'practice-lab', 'practice-lab-adv', 'council-room', 'lab-fire', 'lab-ice', 'lab-earth', 'lab-dark', 'lab-light', 'personal-space', 'testroom'],
+    maps: ['village', 'village-archive', 'school-hall', 'academy-2f', 'class-fire', 'class-ice', 'class-earth', 'grand-auditorium', 'headmaster-office', 'academy-library', 'academy-3f', 'academy-4f', 'academy-secret', 'class-year2', 'class-year3', 'class-year4', 'class-dark', 'class-light', 'practice-lab', 'practice-lab-adv', 'council-room', 'lab-fire', 'lab-ice', 'lab-earth', 'lab-dark', 'lab-light', 'personal-space', 'testroom'],
     recommendedLevel: 1,
     contentProfile: { gather: 1, hunt: 1, fish: 1, craft: 4, alchemy: 3, explore: 2, story: 4 },
     description: '메인 허브. 수업·동아리·제작·하우징.',

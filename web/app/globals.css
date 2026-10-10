@@ -506,6 +506,7 @@
   /* 미로 */
   .psg-maze { display: grid; height: auto; aspect-ratio: 11 / 9; max-height: 56vh; margin: 0 auto; padding: 6px; background: #0c0a08; }
   .psg-cell { position: relative; }
+  .psg-torch { position: absolute; inset: 34%; border-radius: 50% 50% 40% 40%; background: #ff9a3c; box-shadow: 0 0 8px 3px rgba(255, 140, 50, 0.6); animation: candle-flicker 1.2s ease-in-out infinite; }
   .psg-me { position: absolute; inset: 22%; border-radius: 50%; background: #ffd84a; box-shadow: 0 0 12px 4px rgba(255, 170, 60, 0.7); }
   /* 설원 */
   .psg-snow { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; height: auto; max-height: 58vh; padding: 8px; overflow-y: auto; background: linear-gradient(180deg, #24303a 0%, #56707e 40%, #c9d8de 100%); }

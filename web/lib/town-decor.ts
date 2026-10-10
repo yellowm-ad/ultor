@@ -513,7 +513,21 @@ const ICE_CAVE_POI: DecorItem[] = [['aurora/aur_firepit', 16.8, 10], ['aurora/au
 /** 화산지대 — 용암 강 건너편의 마물 경계 표식(EP46) */
 const VOLCANO_POI: DecorItem[] = [['demon/dem_banner', 16.3, 20.4], ['demon/dem_skull_pile', 17.6, 21.0]]
 
+/** 울토르 기록관 (14×12 — 북벽·서벽 책장, 가운데 러너) */
+const VILLAGE_ARCHIVE: DecorItem[] = [
+  ['academy/wb_catalog', 12.4, 2.4],
+  ['academy/wb_table_reading', 4.4, 5.6],
+  ['academy/wb_desk_study', 10.2, 5.2],
+  ['academy/wb_case_relic', 11.6, 8.0],
+  ['academy/wb_shelf_low', 3.6, 9.4],
+  ['academy/wb_book_stack', 6.0, 7.6, W],
+  ['academy/wb_book_stack', 9.0, 9.6, W],
+  ['academy/wb_lamp_orange', 2.4, 2.6, W],
+  ['academy/wb_candelabra', 8.6, 3.4, W],
+]
+
 export const TOWN_DECOR: Record<string, DecorItem[]> = {
+  'village-archive': VILLAGE_ARCHIVE,
   sea: SEA_POI,
   'forest-3': FOREST3_POI,
   'ruins-3': RUINS3_POI,

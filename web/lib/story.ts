@@ -197,6 +197,7 @@ const ONBOARDING_BEATS: StoryBeat[] = [
     lines: [
       { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: 'W·A·S·D로 걷고(Shift를 누르고 있으면 달린단다), 사람 곁에서 E를 누르면 이야기를 나눌 수 있단다. 우선 학교 본교 쿼드에 있는 나를 찾아와 주간 보고부터 하렴.' },
       { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '매주 학사 수첩(J)에서 이번 주 미션을 확인하렴. 필수 1개와 선택 2개의 보상을 받으면 다음 주로 넘어갈 수 있단다.' },
+      { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '어디로 가야 할지 모르겠거든 바닥의 노란 빛줄기를 따라가렴. 지금 해야 할 일까지 길을 일러 준단다. 수업은 그 교실에 들어서면 시작되지.' },
       { speaker: '에드릭 교수', portraitId: 'npc-job-trainer', text: '야생으로 나갈 땐 통문 주둔지의 군 통문을 이용하고, 파티(P)에서 동기들을 동료로 데려갈 수 있어.' },
     ],
   },
@@ -217,6 +218,22 @@ const ONBOARDING_BEATS: StoryBeat[] = [
  * 루스벨을 찾았는가에 따라 갈린다. 루트 전용 비트(StoryBeat.route) 둘로 나눈다 — 미르엘 쪽은 건넌 뒤 전투.
  */
 const PASSAGE_BEATS: StoryBeat[] = [
+  // 울토르 기록관(lib/maps village-archive) — 벽화 뒤에서 기록관 문장을 본 뒤(EP26) 처음 들어가면
+  {
+    id: 'EP26_ARCHIVE',
+    arcId: 'CH3',
+    title: '잘려 나간 장부',
+    trigger: { type: 'VISIT', mapId: 'village-archive' },
+    requiredFlags: ['FOUR_EMOTIONS_DISCOVERED'],
+    lines: [
+      { speaker: '', text: '기록관. 대성당 벽화 뒤에 찍혀 있던 것과 같은 문장이 문 위에 걸려 있다 — 펼친 책 위의 깃펜.' },
+      { speaker: '기록관지기 엘다', portraitId: 'npc-elder', text: '그 문장을 바다 밑 성당에서 봤다고? …이리 와 보렴. 보여 줄 게 있단다.' },
+      { speaker: '', text: '엘다가 맨 아래 서랍에서 꺼낸 것은 표지만 남은 장부였다. 속지는 칼로 반듯하게 도려져 있다.' },
+      { speaker: '기록관지기 엘다', portraitId: 'npc-elder', text: '「인마대전 이전 기록 대출 장부」. 누가 무엇을 가져갔는지 적는 책이지. 내가 이 자리에 앉기 전부터 이 모양이었단다.' },
+      { speaker: '', player: true, text: '찢은 게 아니라 잘랐네요. 급하게 한 일이 아니에요.' },
+      { speaker: '기록관지기 엘다', portraitId: 'npc-elder', text: '그래. 시간이 넉넉했던 사람의 솜씨지. 이 학교에서 시간이 그렇게 넉넉한 사람이 누가 있었을꼬.' },
+    ],
+  },
   // 아틀란티스 대성당 지하 벽화실(lib/maps atlantis-crypt) — EP26 을 시작한 뒤 처음 내려가면 벽화를 살핀다
   {
     id: 'EP26_MURAL',
