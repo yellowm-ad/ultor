@@ -187,7 +187,7 @@ const EPISODES: StoryEpisode[] = [
     [visit('atlantis', '아틀란티스'), visit('atlantis-temple', '아틀란티스 대성당')]),
   E(26, 91, 'CH3', 'COAST', '네 개로 나뉜 마음',
     ['성당 지하의 오래된 벽화 조사', '왕의 마음이 희·노·애·락 네 상징으로 분리된 묘사 확인', '오웬은 기록이 의도적으로 잘려 있다고 판단', "벽화 뒤에서 옛 '울토르 기록관' 문장 발견"],
-    [visit('atlantis-temple', '아틀란티스 대성당'), talk('npc-librarian', '사서 오웬에게 벽화 기록 전달')], ['CATHEDRAL_RECORD_FOUND', 'FOUR_EMOTIONS_DISCOVERED']),
+    [visit('atlantis-crypt', '대성당 지하 벽화실'), talk('npc-librarian', '사서 오웬에게 벽화 기록 전달')], ['CATHEDRAL_RECORD_FOUND', 'FOUR_EMOTIONS_DISCOVERED']),
   E(27, 95, 'CH3', 'ACADEMY', '읽지 못한 문장',
     ['성녀가 일부 문장을 해독하려 하지만 완전하지 않음', '폭풍 해일 경보로 겨울 원정 중단', '학교 공식 역사와 오래된 기록이 충돌한다는 확신', '3학년부터 유적 자체를 직접 조사하기로 결심'],
     [talk('npc-saint', '성녀와 문장 해독 시도'), talk('npc-mirel', '미르엘 교수의 지시 듣기')]),

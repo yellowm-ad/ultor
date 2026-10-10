@@ -472,6 +472,7 @@ export type MapId =
   | 'sea-cave'
   | 'deepsea'
   | 'atlantis'
+  | 'atlantis-crypt'
   | 'stormhaven'
   | 'stormhaven-2'
   | 'stormhaven-3'

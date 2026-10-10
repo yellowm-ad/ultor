@@ -153,6 +153,39 @@ function build(t: Theme): { props: PropDef[]; structures: IsoStructGroup[]; bloc
   return { props, structures, blockers }
 }
 
+// ── 지하실(2026-10-10) — 랜드마크 아래의 작은 방. 벽은 같은 테마 텍스처를 어둡게, 가운데 러너 한 줄. ──
+//    가구·유물은 lib/town-decor 의 목록으로 놓는다(관리자 오브젝트 편집으로 손볼 수 있게).
+export const CRYPT_W = 16
+export const CRYPT_H = 14
+const CRYPT_WALL = 300
+export const CRYPT_PAD_TOP = CRYPT_WALL + 60
+export const CRYPT_SPAWN = { x: CRYPT_W / 2, y: CRYPT_H - 2 }
+export const CRYPT_EXIT = { x: CRYPT_W / 2, y: CRYPT_H - 0.8 }
+export function cryptRoom(key: Theme['key']) {
+  const t = THEMES[key]
+  const structures: IsoStructGroup[] = [
+    {
+      id: `${key}-crypt-walls`,
+      back: 0,
+      parts: [
+        { kind: 'face', plane: 'y', at: 0, from: 0, to: CRYPT_W, z0: 0, z1: CRYPT_WALL, tex: t.wall, shade: 0.3 },
+        { kind: 'face', plane: 'x', at: 0, from: 0, to: CRYPT_H, z0: 0, z1: CRYPT_WALL, tex: t.wall, shade: 0.42 },
+        { kind: 'face', plane: 'y', at: 0, from: 0, to: CRYPT_W, z0: 0, z1: 12, fill: '#000', opacity: 0.4 },
+        { kind: 'face', plane: 'x', at: 0, from: 0, to: CRYPT_H, z0: 0, z1: 12, fill: '#000', opacity: 0.45 },
+      ],
+    },
+    { id: `${key}-crypt-floor`, back: 5, parts: [{ kind: 'top', x0: CRYPT_W / 2 - 1.2, y0: 2.5, x1: CRYPT_W / 2 + 1.2, y1: CRYPT_H, z: 0, tex: t.runner }] },
+  ]
+  const blockers: Blocker[] = [
+    { x0: 0, y0: 0, x1: CRYPT_W, y1: 0.5 },
+    { x0: 0, y0: 0, x1: 0.5, y1: CRYPT_H },
+    { x0: CRYPT_W - 0.3, y0: 0, x1: CRYPT_W, y1: CRYPT_H },
+    { x0: 0, y0: CRYPT_H - 0.3, x1: CRYPT_W / 2 - 1.4, y1: CRYPT_H },
+    { x0: CRYPT_W / 2 + 1.4, y0: CRYPT_H - 0.3, x1: CRYPT_W, y1: CRYPT_H },
+  ]
+  return { structures, blockers, tileAt: (): TileKind => t.tile }
+}
+
 export const LANDMARK_PAD_TOP = WALL_Z + 60
 export const LM_SPAWN = { x: LM_W / 2, y: LM_H - 2.2 }
 export const LM_EXIT = { x: LM_W / 2, y: LM_H - 0.8 }

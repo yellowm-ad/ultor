@@ -106,7 +106,10 @@ const VILLAGE: DecorItem[] = [
   ['village/vil_planter', 5.2, 6.4, W],
   ['village/vil_planter', 9.6, 6.2, W],
   ['village/vil_planter', 14.2, 6.4, W],
-  ['academy/wb_flowerbox', 12.8, 11.2],
+  // 관측대 — 안뜰 동쪽 잔디에 망원경과 지구본(옛 회색 성곽 탑 자리)
+  ['academy/wb_telescope', 14.6, 9.4],
+  ['academy/wb_globe', 15.8, 10.6],
+  ['village/vil_signpost', 13.4, 10.2, W],
   ['village/vil_flowerbed', 5.0, 12.0],
   ['academy/ac_cafe', 12.4, 8.2],
   // ── 학교 본교 쿼드 (y15–26) ──
@@ -168,7 +171,7 @@ const AURORA: DecorItem[] = [
   ['aurora/aur_well', 35.2, 25.8],
   ['aurora/aur_sled', 35.4, 35.8],
   ['aurora/aur_ice_sculpture', 26.4, 35.2],
-  ['aurora/aur_ice_arch', 28.6, 37],
+  ['aurora/aur_ice_arch', 32, 17.4, W], // 성소로 올라가는 길의 얼음 문(지나다닐 수 있다)
   ['aurora/aur_stall_soup', 32, 28.2],
   ['aurora/aur_fish_rack', 24.4, 36.6],
   ['aurora/aur_pine_big', 41.6, 36.8],
@@ -177,7 +180,7 @@ const AURORA: DecorItem[] = [
   ['aurora/aur_pine_lights', 26.4, 23],
   ['aurora/aur_firepit', 14.2, 41.4],
   ['aurora/aur_fish_rack_f', 21.8, 50.2],
-  ['aurora/aur_sled_f', 32, 46.8],
+  ['aurora/aur_sled_f', 26.6, 44.6],
   ['aurora/aur_ice_sculpture_f', 37.8, 34.4],
   ['aurora/aur_stall_soup_f', 38, 23.6],
   ['aurora/aur_fence', 24.6, 18],
@@ -214,7 +217,7 @@ const DEMON: DecorItem[] = [
   ['demon/dem_house_b', 14, 36.8],
   ['demon/dem_house_c_f', 10.6, 36.8],
   ['demon/dem_well', 45, 37.4],
-  ['demon/dem_gate_arch', 31.4, 29],
+  ['demon/dem_gate_arch', 32, 17.4, W], // 성채로 올라가는 길의 뿔 문
   ['demon/dem_gargoyle', 26.4, 23.8],
   ['demon/dem_gargoyle_f', 9.2, 34.6],
   ['demon/dem_stall_curio', 28, 21.2],
@@ -261,7 +264,7 @@ const SKY: DecorItem[] = [
   ['skytemple/sky_house_d', 34.6, 25.4],
   ['skytemple/sky_house_e_f', 35.2, 20],
   ['skytemple/sky_well', 53.8, 34.2],
-  ['skytemple/sky_arch', 49.8, 18],
+  ['skytemple/sky_arch', 32, 17.4, W], // 대신전으로 올라가는 길의 구름 문
   ['skytemple/sky_colonnade', 45.2, 29.6],
   ['skytemple/sky_colonnade_f', 23.8, 17.2],
   ['skytemple/sky_bell', 25.4, 29.8],
@@ -283,7 +286,7 @@ const SKY: DecorItem[] = [
   ['skytemple/sky_signpost', 15.4, 26.2],
   ['skytemple/sky_signpost', 48.6, 45.2],
   ['skytemple/sky_crates', 44.8, 37.2],
-  ['skytemple/sky_crates', 32.8, 47],
+  ['skytemple/sky_crates', 49.8, 18],
   ['skytemple/sky_cloud_bench', 15.4, 34.4],
   ['skytemple/sky_cloud_bench_f', 14.8, 40.6],
   ['skytemple/sky_cloud_bench', 21.8, 50.2],
@@ -306,7 +309,7 @@ const RUIN: DecorItem[] = [
   ['templeruin/rui_house_a_f', 45, 39.4],
   ['templeruin/rui_house_c_f', 26.6, 38],
   ['templeruin/rui_well', 10.8, 38.2],
-  ['templeruin/rui_broken_arch', 45.2, 26],
+  ['templeruin/rui_broken_arch', 32, 17.4, W], // 신전으로 올라가는 길의 무너진 문
   ['templeruin/rui_broken_arch_f', 25.2, 47.6],
   ['templeruin/rui_columns', 34, 28],
   ['templeruin/rui_columns', 24.2, 37],
@@ -476,7 +479,27 @@ const PRACTICE_LAB: DecorItem[] = [
   ['academy/wb_book_stack', 2.6, 13.6, W],
 ]
 
+/** 아틀란티스 대성당 지하 벽화실 (16×14 — 북벽 앞에 네 장의 석판, 가운데 러너) */
+const ATLANTIS_CRYPT: DecorItem[] = [
+  // 네 장의 벽화 석판(희·노·애·락) — 북벽을 따라
+  ['templeruin/rui_rune_stone', 3.6, 2.0],
+  ['templeruin/rui_rune_stone', 6.4, 1.8],
+  ['templeruin/rui_rune_stone', 9.6, 1.8],
+  ['templeruin/rui_rune_stone', 12.4, 2.0],
+  ['atlantis/atx_statue_mermaid', 8.0, 4.4],
+  ['templeruin/rui_columns', 2.2, 6.4],
+  ['templeruin/rui_columns', 13.8, 6.4],
+  ['atlantis/atx_bubble_lamp', 5.4, 5.2, W],
+  ['atlantis/atx_bubble_lamp', 10.6, 5.2, W],
+  ['atlantis/atx_bubble_lamp', 5.4, 10.6, W],
+  ['atlantis/atx_bubble_lamp', 10.6, 10.6, W],
+  ['atlantis/atx_coral_blue', 2.0, 11.6],
+  ['atlantis/atx_treasure', 13.6, 11.2],
+  ['academy/wb_book_stack', 12.2, 4.0, W],
+]
+
 export const TOWN_DECOR: Record<string, DecorItem[]> = {
+  'atlantis-crypt': ATLANTIS_CRYPT,
   village: VILLAGE,
   'aurora-village': AURORA,
   'demon-village': DEMON,

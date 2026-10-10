@@ -846,7 +846,8 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'prof-terra', name: '테라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-elder', icon: '/images/npc/npc-elder.png', zoneId: 'z-lab-earth', cell: { x: 9.5, y: 8.4 }, greeting: ['어서 오렴. 화분에 물 좀 같이 줄래?', '땅은 서두르지 않는단다.'] },
   { id: 'prof-noella', name: '노엘라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-abandoned-scholar', icon: '/images/npc/npc-abandoned-scholar.png', zoneId: 'z-lab-dark', cell: { x: 9.5, y: 8.4 }, greeting: ['어둠을 무서워하는 건 당연해. 모르니까.', '3학년이 되면 내 수업에서 보자.'] },
   { id: 'prof-lumen', name: '루멘 교수', role: 'professor', roam: 1.6, spriteId: 'npc-lumen', icon: '/images/npc/npc-lumen.png', zoneId: 'z-lab-light', cell: { x: 9.5, y: 8.4 }, greeting: ['빛은 나누면 줄지 않는 마법이에요.', '다친 곳은 없나요?'] },
-  { id: 'npc-librarian', name: '사서 오웬', role: 'flavor', icon: '/images/npc/npc-librarian.png', zoneId: 'z-magic-hall', cell: { x: 9, y: 9.6 }, greeting: ['마법동 도서관에는 아직 정리 중인 마법서가 많단다. 조용히 둘러보렴.', '연금술동과 마도구동도 둘러보면 좋을 게야.'] },
+  // 사서 오웬은 도서관 안(2026-10-10) — 스토리 대사('도서관입니다.')·미션('도서관 도착 → 오웬과 기록 대조')과 맞춘다
+  { id: 'npc-librarian', name: '사서 오웬', role: 'flavor', roam: 0.8, icon: '/images/npc/npc-librarian.png', zoneId: 'z-academy-library', cell: { x: 10, y: 5.2 }, greeting: ['마법동 도서관에는 아직 정리 중인 마법서가 많단다. 조용히 둘러보렴.', '연금술동과 마도구동도 둘러보면 좋을 게야.'] },
   // ── 별빛 상점가 ──
   { id: 'npc-weapon', name: '대장장이 반', role: 'weaponMerchant', icon: '/images/npc/npc-weapon.png', zoneId: 'z-shops', cell: { x: 39, y: 20 }, greeting: ['다섯 속성 완드, 다 갖춰놨다네. 레벨에 맞는 걸로 골라 가시게.'], shopItemIds: [...wands.map((w) => w.id), ...robes.map((r) => r.id), ...hats.map((h) => h.id), ...accessories.map((a) => a.id)] },
   { id: 'npc-potion', name: '약사 셀린', role: 'potionMerchant', icon: '/images/npc/npc-potion.png', zoneId: 'z-shops', cell: { x: 43.2, y: 19.8 }, greeting: ['신선한 물약이 방금 들어왔어요. 통문 밖으로 나가기 전엔 꼭 챙기세요!'], shopItemIds: potions.map((p) => p.id) },
@@ -865,7 +866,8 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'npc-guard', name: '경비대장 로한', role: 'guard', icon: '/images/npc/npc-guard.png', zoneId: 'z-barracks', cell: { x: 43.5, y: 34 }, greeting: ['야생으로 나가려면 저 군 통문을 통해야 한다.', '숲은 견습생도 견딜 만하지만, 폐허와 화산지대는 준비가 단단히 되어 있어야 살아 돌아온다.'] },
   // ── 성역 신전 ──
   { id: 'npc-priest', name: '신관 세드릭', role: 'templePriest', icon: '/images/npc/npc-priest.png', zoneId: 'z-temple', cell: { x: 8.5, y: 30.2 }, greeting: ['성역에 온 것을 환영하네, 젊은 마법사여.', '이곳은 지친 영혼이 쉬어 가는 곳. 통문 밖에서 쓰러지면 이 신전에서 눈을 뜨게 될 걸세.'] },
-  { id: 'npc-saint', name: '성녀 리아나', role: 'saint', icon: '/images/npc/npc-saint.png', zoneId: 'z-temple', cell: { x: 11.5, y: 32.6 }, greeting: ['빛이 그대와 함께하기를.', '언젠가 이 손으로 그대에게 축복을 내릴 날이 오겠지요. 지금은 준비 중이랍니다.'] },
+  // 성녀는 EP21(75주) '성녀와 첫 대화'가 시작돼 울토르를 방문한 뒤부터 성역 신전에 머문다
+  { id: 'npc-saint', name: '성녀 리아나', role: 'saint', icon: '/images/npc/npc-saint.png', zoneId: 'z-temple', visibleFlag: 'beat:EP_75_OPEN', cell: { x: 11.5, y: 32.6 }, greeting: ['빛이 그대와 함께하기를.', '언젠가 이 손으로 그대에게 축복을 내릴 날이 오겠지요. 지금은 준비 중이랍니다.'] },
   // ── 햇살 농가 ──
   { id: 'npc-farmer', name: '농부 하름', role: 'farmer', icon: '/images/npc/npc-farmer.png', zoneId: 'z-farm', cell: { x: 26, y: 29.2 }, greeting: ['어이, 견습생! 여기가 햇살 농가일세.', '밭농사에 펫 농장까지 해볼 생각인데, 아직은 삽질만 하고 있다네. 곧 열 테니 기대하게.'] },
 

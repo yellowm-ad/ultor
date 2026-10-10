@@ -27,7 +27,7 @@ import { ACADEMY_ROOM_DEFS, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from 
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
-import { landmarkInterior, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
+import { landmarkInterior, cryptRoom, CRYPT_W, CRYPT_H, CRYPT_SPAWN, CRYPT_EXIT, CRYPT_PAD_TOP, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
 
 type Blocker = { x0: number; y0: number; x1: number; y1: number }
@@ -626,7 +626,7 @@ function villageProps(): PropDef[] {
   P.push({ id: 'b-north-hallA', kind: 'hall', cell: { x: 3.2, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '실습동' })
   P.push({ id: 'b-north-lab', kind: 'hall', cell: { x: 7.6, y: -10.0 }, size: { w: 2.8, d: 2.6 }, label: '마법 연구동' })
   P.push({ id: 'b-north-hallB', kind: 'hall', cell: { x: 12.4, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '기록관' })
-  P.push({ id: 'b-north-tower', kind: 'tower', cell: { x: 14.6, y: -3.6 }, size: { w: 1.1, d: 1.1 }, label: '관측탑' })
+  // (관측탑 자리에는 회색 성곽 탑 대신 망원경·지구본을 놓았다 — lib/town-decor VILLAGE '학교 북관')
   P.push({ id: 'b-north-statue', kind: 'statue', cell: { x: NORTH_COURT.x, y: NORTH_COURT.y }, size: { w: 1.0, d: 1.0 }, label: '초대 교장 상' })
   P.push({ id: 'be-nc0', kind: 'bench', cell: { x: NORTH_COURT.x - 2.4, y: NORTH_COURT.y + 0.4 }, variant: 'l' })
   P.push({ id: 'be-nc1', kind: 'bench', cell: { x: NORTH_COURT.x + 2.4, y: NORTH_COURT.y + 0.4 }, variant: 'r' })
@@ -969,7 +969,33 @@ export const MAPS = {
       blockers: buildBlockers(L.props, L.blockers),
       zones: NO_ZONES,
       spawn: { ...LM_SPAWN },
-      portals: [{ id: 'atlantis-temple-exit', cell: { ...LM_EXIT }, to: 'atlantis', toSpawn: { x: 26, y: 10.2 }, label: '대성당 밖으로', kind: 'exit' }],
+      portals: [
+        { id: 'atlantis-temple-exit', cell: { ...LM_EXIT }, to: 'atlantis', toSpawn: { x: 26, y: 10.2 }, label: '대성당 밖으로', kind: 'exit' },
+        // 단상 오른쪽 구석의 내려가는 계단 — 지하 벽화실(EP26 '네 개로 나뉜 마음')
+        { id: 'atlantis-crypt-enter', cell: { x: 22.2, y: 5.6 }, to: 'atlantis-crypt', label: '지하 벽화실로 내려가기', kind: 'portal' },
+      ],
+    } as GameMap
+  })(),
+  // 아틀란티스 대성당 지하 벽화실(2026-10-10) — 왕의 마음이 넷으로 나뉜 벽화 석판이 놓인 작은 방. 소품은 lib/town-decor
+  'atlantis-crypt': (() => {
+    const C = cryptRoom('atlantis')
+    return {
+      id: 'atlantis-crypt',
+      name: '대성당 지하 벽화실',
+      kind: 'town',
+      grid: { w: CRYPT_W, h: CRYPT_H },
+      bg: 'atlantis',
+      render: 'iso',
+      assets: 'raster',
+      tileAt: C.tileAt,
+      props: [],
+      structures: C.structures,
+      padTop: CRYPT_PAD_TOP,
+      ambientTone: 0.82,
+      blockers: C.blockers,
+      zones: NO_ZONES,
+      spawn: { ...CRYPT_SPAWN },
+      portals: [{ id: 'atlantis-crypt-exit', cell: { ...CRYPT_EXIT }, to: 'atlantis-temple', toSpawn: { x: 22.2, y: 7 }, label: '대성당으로 올라가기', kind: 'exit' }],
     } as GameMap
   })(),
   'demon-temple': (() => {

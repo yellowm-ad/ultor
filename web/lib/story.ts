@@ -215,6 +215,20 @@ const ONBOARDING_BEATS: StoryBeat[] = [
  * 루스벨을 찾았는가에 따라 갈린다. 루트 전용 줄(route)로 한 비트 안에서 나눈다.
  */
 const PASSAGE_BEATS: StoryBeat[] = [
+  // 아틀란티스 대성당 지하 벽화실(lib/maps atlantis-crypt) — EP26 을 시작한 뒤 처음 내려가면 벽화를 살핀다
+  {
+    id: 'EP26_MURAL',
+    arcId: 'CH3',
+    title: '지하의 벽화',
+    trigger: { type: 'VISIT', mapId: 'atlantis-crypt' },
+    requiredFlags: ['beat:EP_91_OPEN'],
+    lines: [
+      { speaker: '', text: '단상 옆 좁은 계단을 내려가자 물기 어린 공기가 감돈다. 북쪽 벽을 따라 네 장의 석판이 나란히 서 있다.' },
+      { speaker: '', text: '첫 석판에는 웃는 얼굴, 둘째에는 이를 드러낸 얼굴, 셋째에는 눈을 감은 얼굴, 넷째에는 고개를 젖힌 얼굴. 네 얼굴 모두 같은 왕관을 쓰고 있다.' },
+      { speaker: '', player: true, text: '같은 사람이야… 한 사람의 마음을 넷으로 나눠 그린 거야.' },
+      { speaker: '', text: '석판 아래에는 닳아 버린 글자가 한 줄. 읽을 수 있는 것은 군데군데 남은 획뿐이다. 본을 떠서 오웬에게 가져가야 한다.' },
+    ],
+  },
   {
     id: 'CH6_LAVA_CROSSING',
     arcId: 'CH6',

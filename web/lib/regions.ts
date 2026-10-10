@@ -43,7 +43,7 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'COAST',
     name: '바다 해안 · 아틀란티스',
-    maps: ['sea', 'sea-2', 'sea-3', 'deepsea', 'sea-cave', 'atlantis', 'atlantis-temple'],
+    maps: ['sea', 'sea-2', 'sea-3', 'deepsea', 'sea-cave', 'atlantis', 'atlantis-temple', 'atlantis-crypt'],
     recommendedLevel: 3,
     contentProfile: { gather: 3, hunt: 3, fish: 5, craft: 2, alchemy: 3, explore: 5, story: 4 },
     description: "CH2 무대. 폐등대·해저 유적·심해, 해파리 여왕과 암초왕. '모르스'라는 이름이 '마왕'으로 기록된 채 처음 등장.",
