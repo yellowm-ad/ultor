@@ -1,5 +1,6 @@
 'use client'
 
+import { PASSAGES } from '@/lib/passages'
 import { useMemo, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
@@ -277,7 +278,7 @@ export function AdminPanel() {
               이번 주 강제 마감 → 다음 주
             </Button>
             <Button size="sm" variant={state.storyFlags.DEBUG_UNLOCK_ALL ? 'default' : 'outline'} className="w-full" onClick={() => dispatch({ type: 'ADMIN_TOGGLE_UNLOCK_ALL' })}>
-              생활 시스템 전체 해금 {state.storyFlags.DEBUG_UNLOCK_ALL ? 'ON' : 'OFF'}
+              생활 시스템 · 지역 전체 해금 {state.storyFlags.DEBUG_UNLOCK_ALL ? 'ON' : 'OFF'}
             </Button>
             <Button size="sm" className="w-full" onClick={() => dispatch({ type: 'ADMIN_RECRUIT_ALL' })}>
               동료 전원 합류
@@ -287,6 +288,14 @@ export function AdminPanel() {
               {(Object.keys(MINIGAME_META) as (keyof typeof MINIGAME_META)[]).map((g) => (
                 <Button key={g} size="sm" variant="outline" onClick={() => dispatch({ type: 'ADMIN_CLASS_TEST', game: g })}>
                   {MINIGAME_META[g].name}
+                </Button>
+              ))}
+            </div>
+            {/* 첫 이동 연출 미니게임 테스트(lib/passages) — 이동 없이 한 판 */}
+            <div className="grid grid-cols-2 gap-1">
+              {PASSAGES.map((p) => (
+                <Button key={p.id} size="sm" variant="outline" onClick={() => dispatch({ type: 'ADMIN_PASSAGE_TEST', id: p.id })}>
+                  {p.title}
                 </Button>
               ))}
             </div>

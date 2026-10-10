@@ -105,7 +105,8 @@ export type Action =
   | { type: 'ENCOUNTER_FIGHT' }
   | { type: 'ENCOUNTER_FLEE' }
   | { type: 'USE_PORTAL'; portalId: string }
-  | { type: 'PASSAGE_DONE' }
+  | { type: 'PASSAGE_DONE'; fish?: number }
+  | { type: 'ADMIN_PASSAGE_TEST'; id: import('@/lib/passages').PassageId }
   | { type: 'SPOT_USE'; spotId: string }
   | { type: 'PASSAGE_CANCEL' }
   | { type: 'PORTAL_CONFIRM' }
@@ -494,9 +495,17 @@ function reducer(state: GameState, action: Action): GameState {
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
     }
 
+    case 'ADMIN_PASSAGE_TEST':
+      return state.passage || state.classScene || state.battle ? state : { ...state, screen: 'world', passage: { id: action.id, portalId: '' } }
+
     case 'PASSAGE_DONE': {
       if (!state.passage) return state
       const { id, portalId } = state.passage
+      // 함선에서 잡은 물고기는 가방으로(최대 5마리)
+      if (action.fish && action.fish > 0) {
+        const n = Math.min(5, action.fish)
+        return reducer({ ...state, inventory: addToInventory(state.inventory, 'fish-mackerel', n), toast: `고등어 ${n}마리를 챙겼다.` }, { type: 'PASSAGE_DONE' })
+      }
       // 놀이 지점의 연습 판 — 이동 없이 용돈만
       if (!portalId) return { ...state, passage: null, player: { ...state.player, gold: state.player.gold + ARCADE_REWARD_GOLD }, toast: `훈련 통과! ${ARCADE_REWARD_GOLD}G 를 받았다.` }
       return travelThroughPortal({ ...state, passage: null, storyFlags: { ...state.storyFlags, [passageFlag(id)]: true } }, portalId)

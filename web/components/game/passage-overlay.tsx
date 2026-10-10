@@ -68,7 +68,11 @@ export function PassageOverlay() {
   const { state, dispatch } = useGame()
   const [phase, setPhase] = useState<Phase>('intro')
   const [round, setRound] = useState(0)
-  const end = useCallback((ok: boolean) => setPhase(ok ? 'won' : 'lost'), [])
+  const [fish, setFish] = useState(0)
+  const end = useCallback((ok: boolean, caught = 0) => {
+    setFish(caught)
+    setPhase(ok ? 'won' : 'lost')
+  }, [])
   if (!state.passage) return null
   const def = passageById(state.passage.id)
   const Game = GAMES[def.id]
@@ -102,9 +106,12 @@ export function PassageOverlay() {
         {phase === 'play' && <Game key={round} onEnd={end} />}
         {phase === 'won' && (
           <div className="psg-card">
-            <p className="psg-intro">{WON_TEXT[def.id]}</p>
+            <p className="psg-intro">
+              {WON_TEXT[def.id]}
+              {fish > 0 && ` 갑판에서 잡은 물고기 ${Math.min(5, fish)}마리는 가방에 챙겼다.`}
+            </p>
             <div className="psg-actions">
-              <button type="button" className="gw-btn is-gold is-lg" onClick={() => dispatch({ type: 'PASSAGE_DONE' })}>
+              <button type="button" className="gw-btn is-gold is-lg" onClick={() => dispatch({ type: 'PASSAGE_DONE', fish })}>
                 계속
               </button>
             </div>
@@ -154,7 +161,7 @@ const LOST_TEXT: Record<PassageId, string> = {
 const FISH = ['fish-mackerel', 'fish-snapper', 'fish-pearlray', 'fish-trout', 'fish-minnow']
 interface Fish { id: number; x: number; y: number; vx: number; vy: number; icon: string }
 
-function VoyageGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
+function VoyageGame({ onEnd }: { onEnd: (ok: boolean, caught?: number) => void }) {
   const TOTAL = 36
   const s = useRef({ t: 0, fish: [] as Fish[], nextFish: 1.2, nextWave: 6, wave: null as null | { t: number; grip: boolean }, lives: 3, caught: 0, flash: 0, note: '', noteT: 0, id: 0, done: false })
   const [, redraw] = useState(0)
@@ -215,7 +222,7 @@ function VoyageGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
       onEnd(false)
     } else if (g.t >= TOTAL) {
       g.done = true
-      onEnd(true)
+      onEnd(true, g.caught)
     }
     redraw((n) => n + 1)
   }, true)
@@ -630,7 +637,7 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
   )
 }
 
-const GAMES: Record<PassageId, (p: { onEnd: (ok: boolean) => void }) => React.ReactNode> = {
+const GAMES: Record<PassageId, (p: { onEnd: (ok: boolean, caught?: number) => void }) => React.ReactNode> = {
   voyage: VoyageGame,
   spiral: SpiralGame,
   maze: MazeGame,

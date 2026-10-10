@@ -285,7 +285,8 @@ export function IsoWorld({
   const ND = 74 // NPC 도트 스프라이트 표시 크기
   const npcEntities = mapNpcsForRoam.map((npc) => {
     const { pos, facing: dir, moving } = npcWanderState(npc, wanderT, map.blockers)
-    const s = isoToScreen(pos.x, pos.y)
+    const s0 = isoToScreen(pos.x, pos.y)
+    const s = { sx: s0.sx, sy: s0.sy - stairElevation(map.stairs, pos.x, pos.y).z }
     return {
       sortY: pos.x + pos.y + 0.2,
       node: (
