@@ -32,7 +32,7 @@ const PAD_BOTTOM = 60
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 /** 맵의 월드 사각형(svg 좌표) — 자연 지면 캔버스 범위. 아래 IsoWorld 의 worldW/worldH 계산과 같다 */
-function worldRectOf(m: GameMap) {
+export function worldRectOf(m: GameMap) {
   const b = isoBounds(m.grid.w, m.grid.h)
   const pt = Math.max(PAD_TOP, m.padTop ?? 0)
   return { x: b.minSx, y: -pt, w: b.width, h: b.height + pt + Math.max(PAD_BOTTOM, m.padBottom ?? 0) }

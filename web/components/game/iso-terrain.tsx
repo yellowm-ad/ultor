@@ -112,6 +112,16 @@ function paintCached(map: GameMap, rect: TerrainRect) {
 }
 
 /**
+ * 미리 그려 두기 — 타이틀 화면에서 곧 들어갈 맵의 지면을 먼저 그려, 게임에 들어서자마자 바닥이 보이게 한다.
+ * 아직 급한 맵이 없으면 이 맵을 서둘러 그린다.
+ */
+export function prewarmTerrain(map: GameMap, rect: TerrainRect) {
+  if (!map.terrain || typeof document === 'undefined') return
+  if (!URGENT) URGENT = keyOf(map, rect)
+  void paintCached(map, rect)
+}
+
+/**
  * 지면을 맵마다 한 번 그린다. rect = svg 좌표의 월드 사각형(카메라가 보여 줄 수 있는 전 범위).
  * 다 그리면 next(포탈로 이어진 맵들)를 차례로 미리 그려 두어 맵을 옮길 때 바로 보이게 한다.
  */

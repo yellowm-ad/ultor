@@ -168,6 +168,39 @@ function villageTileAt(x: number, y: number): TileKind {
   return y < VN ? villageNorthTileAt(x, y - VN) : villageBaseTileAt(x, y - VN)
 }
 
+// ── 이어 그리는 마을 지면(2026-10-10) — 야생맵과 같은 방식(components/game/iso-terrain.tsx)으로 한 장에 그린다 ──
+const vHash = (x: number, y: number) => {
+  let n = (Math.imul(x, 374761393) + Math.imul(y, 668265263)) >>> 0
+  n = Math.imul(n ^ (n >>> 13), 1274126177) >>> 0
+  return ((n ^ (n >>> 16)) >>> 0) / 4294967295
+}
+/** 부드러운 얼룩 무늬(0~1) — 잔디 짙은 얼룩을 칸 네모 대신 둥글게 */
+const vNoise = (x: number, y: number, cell: number) => {
+  const gx = Math.floor(x / cell)
+  const gy = Math.floor(y / cell)
+  const sm = (t: number) => t * t * (3 - 2 * t)
+  const fx = sm(x / cell - gx)
+  const fy = sm(y / cell - gy)
+  const a = vHash(gx, gy)
+  const b = vHash(gx + 1, gy)
+  const c = vHash(gx, gy + 1)
+  const d = vHash(gx + 1, gy + 1)
+  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy
+}
+/** 마법학교 지구(본교 쿼드 + 북관) — 흙·잔디 대신 포장된 교정. 지금 좌표 */
+const onSchoolGrounds = (x: number, y: number) => x > 2.5 && x < AV_L.a && y > 2.5 && y < ST_N.a + VN
+/**
+ * 마을 지면(이어 그리는 지면용) — 길·포석 자리는 칸 타일과 같고,
+ * 학교 지구의 맨땅은 포장석('academy-marble' → pave-school), 잔디 얼룩은 둥근 얼룩으로.
+ */
+function villageTerrainAt(x: number, y: number): TileKind {
+  const k = villageTileAt(x, y)
+  // 교정 안은 길까지 같은 포장석으로(안뜰 포석 'plaza' 는 그대로 둔다)
+  if (onSchoolGrounds(x, y) && k !== 'plaza') return 'academy-marble'
+  if (k !== 'grass' && k !== 'grass-dark') return k
+  return vNoise(x, y, 3.4) * 0.7 + vNoise(x + 40, y + 17, 1.3) * 0.3 > 0.62 ? 'grass-dark' : 'grass'
+}
+
 /** 옛 3×3 지구 지면 타일(옛 좌표) */
 function villageBaseTileAt(x: number, y: number): TileKind {
   // 외곽 순환 보도 (2.5셀 폭)
@@ -853,6 +886,12 @@ export const MAPS = {
     render: 'iso',
     assets: 'raster', // Phase 2 테스트: 가로등만 PNG, 나머지는 sprite 없어 SVG 폴백
     tileAt: villageTileAt,
+    // 지면은 한 장으로 이어 그린다 — 길 = 조약돌, 광장 = 판석, 학교 = 푸른 포장석, 밭 = 이랑 흙
+    terrain: {
+      at: villageTerrainAt,
+      pool: () => null,
+      tex: { path: 'cobble', plaza: 'pave-plaza', field: 'field-soil', 'academy-marble': 'pave-school' },
+    },
     props: VILLAGE_PROPS,
     zones: VILLAGE_ZONES,
     blockers: [...VILLAGE_BLOCKERS, ...VILLAGE_TERRACE.blockers],

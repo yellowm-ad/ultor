@@ -27,6 +27,10 @@ import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
 import { PassageOverlay } from '@/components/game/passage-overlay'
 import { ScreenGuard } from '@/components/game/screen-guard'
+import { MAPS } from '@/lib/maps'
+import { getActiveSlot, readSave } from '@/lib/save'
+import { prewarmTerrain } from '@/components/game/iso-terrain'
+import { worldRectOf } from '@/components/game/iso-world'
 
 // e.code(물리 키) 기준 — 한글 IME 상태에서도 동작. 이동 W/A/S/D·상호작용 E·달리기 Shift 와 겹치지 않게 유지할 것
 const OVERLAY_HOTKEYS: Record<string, ScreenId> = { KeyI: 'inventory', KeyC: 'character', KeyP: 'party', KeyM: 'worldmap', KeyJ: 'journal' }
@@ -76,6 +80,17 @@ function GameShell() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [state.screen, state.classScene, dispatch])
+
+  // 타이틀에 머무는 동안 곧 들어갈 맵(이어하기 = 저장된 맵, 새 게임 = 마을)의 지면을 미리 그려 둔다
+  useEffect(() => {
+    if (state.screen !== 'title') return
+    const slot = getActiveSlot()
+    const savedMap = slot != null ? readSave(slot)?.state.currentMapId : undefined
+    for (const id of new Set([savedMap ?? 'village', 'village'])) {
+      const m = MAPS[id as keyof typeof MAPS]
+      if (m) prewarmTerrain(m, worldRectOf(m))
+    }
+  }, [state.screen])
 
   if (state.screen === 'title') return <TitleScreen />
   if (state.screen === 'create') return <CreateScreen />

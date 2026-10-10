@@ -369,4 +369,73 @@ await make('grave-soil', (cv) => {
   blades(cv, 77, 70, [104, 112, 92], [78, 86, 72], [32, 30, 36])
   specks(cv, 79, 90, [[30, 26, 32], [96, 90, 96]])
 })
+// ── 마을 포장(2026-10-10) — 칸 타일 대신 이어 그리는 지면용. 쿼터뷰 축(2:1)에 맞춘 반듯한 포석 ──
+/**
+ * 반듯한 포석 — 쿼터뷰 두 축(u = x/2 + y, v = y - x/2)으로 자른 벽돌 줄눈. su×sv = 돌 하나 크기(px),
+ * stagger = 줄마다 반 칸 어긋나게. 돌마다 밝기가 조금씩 다르고, 위쪽 모서리는 밝게·아래쪽은 어둡게.
+ */
+function pavers(cv, pal, seed, { su = 16, sv = 16, mortar, light, dark, stagger = true, vary = 0.5, worn = null } = {}) {
+  const P = 128
+  const n = periodicNoise(seed + 1, 16, 8)
+  const big = periodicNoise(seed + 2, 4, 2)
+  const hsh = (a, b) => {
+    let h = (a * 374761393 + b * 668265263 + seed * 2246822519) >>> 0
+    h = ((h ^ (h >>> 13)) * 1274126177) >>> 0
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295
+  }
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const v = (((y - x / 2) % P) + P) % P
+      const iv = Math.floor(v / sv)
+      const u = (((x / 2 + y + (stagger && iv % 2 ? su / 2 : 0)) % P) + P) % P
+      const iu = Math.floor(u / su)
+      const fu = u - iu * su
+      const fv = v - iv * sv
+      if (fu < 1 || fv < 1) {
+        cv.set(x, y, mortar)
+        continue
+      }
+      if (fu < 2.2 || fv < 2.2) {
+        cv.set(x, y, light)
+        continue
+      }
+      if (fu > su - 1.2 || fv > sv - 1.2) {
+        cv.set(x, y, dark)
+        continue
+      }
+      const stone = hsh(iu, iv)
+      // 닳은 돌 — 드물게 다른 색 돌이 섞인다
+      if (worn && stone < worn.rate) {
+        cv.set(x, y, worn.pal[Math.min(worn.pal.length - 1, Math.floor(n(x, y) * worn.pal.length))])
+        continue
+      }
+      const t = stone * vary + n(x, y) * (0.75 - vary * 0.5) + big(x, y) * 0.25 + (BAYER[(y % 4) * 4 + (x % 4)] - 0.5) * 0.12
+      cv.set(x, y, pal[Math.max(0, Math.min(pal.length - 1, Math.floor(t * pal.length)))])
+    }
+}
+const COBBLE = [[126, 114, 100], [138, 126, 110], [150, 138, 120], [162, 150, 131], [174, 162, 142]]
+const PAVE_PLAZA = [[188, 176, 152], [200, 188, 164], [210, 199, 176], [220, 210, 188], [230, 221, 200]]
+const PAVE_SCHOOL = [[134, 134, 156], [146, 146, 167], [158, 158, 178], [170, 170, 189], [182, 182, 200]]
+const SOIL = [[82, 58, 38], [94, 68, 44], [106, 78, 50], [118, 88, 58], [130, 98, 66]]
+// 길 — 잔 조약돌(따뜻한 회갈색). 흙길처럼 보이지 않게 줄눈을 또렷이
+await make('cobble', (cv) => {
+  pavers(cv, COBBLE, 921, { su: 8, sv: 8, mortar: [88, 78, 68], light: [188, 177, 157], dark: [112, 101, 89], vary: 0.6, worn: { rate: 0.08, pal: [[98, 104, 92], [110, 116, 100]] } })
+  specks(cv, 81, 50, [[86, 100, 62], [176, 168, 150]])
+})
+// 광장 — 큼직한 크림색 판석
+await make('pave-plaza', (cv) => {
+  pavers(cv, PAVE_PLAZA, 922, { su: 16, sv: 16, mortar: [142, 130, 110], light: [240, 232, 212], dark: [172, 160, 138], stagger: false, vary: 0.35 })
+  cracks(cv, 83, 6, [156, 144, 124], [236, 228, 208])
+})
+// 마법학교 — 푸른 기 도는 다듬은 돌, 드문드문 금빛 상감
+await make('pave-school', (cv) => {
+  pavers(cv, PAVE_SCHOOL, 923, { su: 16, sv: 8, mortar: [96, 96, 122], light: [204, 204, 220], dark: [120, 120, 144], vary: 0.4, worn: { rate: 0.05, pal: [[150, 140, 110], [170, 158, 120], [190, 176, 132]] } })
+  specks(cv, 85, 24, [[214, 190, 120], [196, 204, 224]])
+})
+// 밭 — 이랑이 보이는 짙은 흙
+await make('field-soil', (cv) => {
+  base(cv, SOIL, 924, { dither: 0.16 })
+  ripples(cv, 87, [150, 116, 80], [60, 42, 28])
+  specks(cv, 89, 40, [[64, 46, 30], [142, 110, 76]])
+})
 console.log('terrain textures ->', OUT)
