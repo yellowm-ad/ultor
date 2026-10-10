@@ -489,7 +489,33 @@ const ATLANTIS_CRYPT: DecorItem[] = [
   ['academy/wb_book_stack', 12.2, 4.0, W],
 ]
 
+// ── 야생의 이야기 표식(2026-10-10) — 메인 스토리가 가리키는 장소를 눈에 보이게. 맵 한가운데 길가의 빈자리 ──
+/** 바다 해안 — CH2 의 폐등대 */
+const SEA_POI: DecorItem[] = [['atlantis/atx_lighthouse', 9.5, 9.6], ['atlantis/atx_anchor', 11.4, 10.6], ['atlantis/atx_net_rack', 8.0, 11.4]]
+/** 에르디아 고목숲 — 봉인의 흔적(EP05~07) */
+const FOREST3_POI: DecorItem[] = [['templeruin/rui_rune_stone', 18.6, 12], ['templeruin/rui_mushroom_ring', 20.0, 13.0, W]]
+/** 망각의 광장 — 쓰러진 왕의 석상(EP30~) */
+const RUINS3_POI: DecorItem[] = [['templeruin/rui_fallen_statue', 18.2, 14.4], ['templeruin/rui_columns', 20.6, 13.2]]
+/** 뇌운 고원 — 천공 신전으로 이어지는 옛 열주(EP23) */
+const STORM3_POI: DecorItem[] = [['skytemple/sky_colonnade', 18.6, 14.8]]
+/** 루미나 설원 — 원정대 야영지(EP40) */
+const SNOWFIELD_POI: DecorItem[] = [['aurora/aur_firepit', 22.8, 11.2], ['aurora/aur_sled', 24.4, 11.8], ['aurora/aur_woodpile', 21.6, 12.4]]
+/** 얼어붙은 호수 — 만년설 아래에서 드러난 석비(EP43) */
+const FROZEN_LAKE_POI: DecorItem[] = [['templeruin/rui_rune_stone', 14, 9.9], ['aurora/aur_lantern_post', 12.8, 10.6, W], ['aurora/aur_lantern_post', 15.2, 10.6, W]]
+/** 얼음 동굴 — 루스벨이 숨어 지낸 자리(EP44~45): 꺼진 모닥불과 장작 */
+const ICE_CAVE_POI: DecorItem[] = [['aurora/aur_firepit', 16.8, 10], ['aurora/aur_woodpile_f', 18.2, 10.6], ['aurora/aur_crates', 16.0, 11.4]]
+/** 화산지대 — 용암 강 건너편의 마물 경계 표식(EP46) */
+const VOLCANO_POI: DecorItem[] = [['demon/dem_banner', 16.3, 20.4], ['demon/dem_skull_pile', 17.6, 21.0]]
+
 export const TOWN_DECOR: Record<string, DecorItem[]> = {
+  sea: SEA_POI,
+  'forest-3': FOREST3_POI,
+  'ruins-3': RUINS3_POI,
+  'stormhaven-3': STORM3_POI,
+  snowfield: SNOWFIELD_POI,
+  'frozen-lake': FROZEN_LAKE_POI,
+  'ice-cave': ICE_CAVE_POI,
+  volcano: VOLCANO_POI,
   'atlantis-crypt': ATLANTIS_CRYPT,
   village: VILLAGE,
   'aurora-village': AURORA,

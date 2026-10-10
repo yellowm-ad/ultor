@@ -289,7 +289,22 @@ export function npcWanderRadius(npc: NpcDef): number {
 
 const NPC_BODY_R = 0.28
 
+/** 순찰(NpcDef.patrol) — 한쪽 끝에서 쉬고 → 걸어가고 → 반대쪽에서 쉬고 → 돌아온다 */
+const PATROL_SPEED = 0.85 // 칸/초
+const PATROL_REST = 4
+function patrolState(npc: NpcDef, timeMs: number): { pos: { x: number; y: number }; dx: number; dy: number; moving: boolean } {
+  const [a, b] = npc.patrol!
+  const walk = Math.hypot(b.x - a.x, b.y - a.y) / PATROL_SPEED
+  const phase = (timeMs / 1000 + (npcSeed(npc.id) % 17)) % (2 * (walk + PATROL_REST))
+  const at = (k: number) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k })
+  if (phase < PATROL_REST) return { pos: a, dx: b.x - a.x, dy: b.y - a.y, moving: false }
+  if (phase < PATROL_REST + walk) return { pos: at((phase - PATROL_REST) / walk), dx: b.x - a.x, dy: b.y - a.y, moving: true }
+  if (phase < 2 * PATROL_REST + walk) return { pos: b, dx: a.x - b.x, dy: a.y - b.y, moving: false }
+  return { pos: at(1 - (phase - 2 * PATROL_REST - walk) / walk), dx: a.x - b.x, dy: a.y - b.y, moving: true }
+}
+
 export function npcWanderPosition(npc: NpcDef, timeMs: number, blockers?: Blocker[]): { x: number; y: number } {
+  if (npc.patrol) return patrolState(npc, timeMs).pos
   const seed = npcSeed(npc.id)
   const t = timeMs / 1000 + (seed % 1000)
   const { effectiveT } = pauseCycle(t, 6 + (seed % 4), 0.55)
@@ -325,6 +340,10 @@ export function npcWanderState(
   timeMs: number,
   blockers?: Blocker[],
 ): { pos: { x: number; y: number }; facing: 'down' | 'up' | 'left' | 'right'; moving: boolean } {
+  if (npc.patrol) {
+    const p = patrolState(npc, timeMs)
+    return { pos: p.pos, facing: p.moving ? facingFromDelta(p.dx, p.dy) : 'down', moving: p.moving }
+  }
   const seed = npcSeed(npc.id)
   const t = timeMs / 1000 + (seed % 1000)
   const { effectiveT, moving } = pauseCycle(t, 6 + (seed % 4), 0.55)

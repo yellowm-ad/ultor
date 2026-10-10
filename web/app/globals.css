@@ -481,6 +481,12 @@
   .psg-trap i { padding: 1px 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); font-style: normal; font-size: 11px; color: #f3e6c4; }
   .psg-trap.is-side { left: 34%; }
   .psg-trap.is-boulder { border-radius: 999px; padding: 9px 16px; }
+  /* 함정 그림 — 이름표 앞에 모양을 붙인다 */
+  .psg-trap::before { content: ''; flex: none; }
+  .psg-trap.is-spike::before { width: 44px; height: 20px; background: linear-gradient(180deg, #f1ece0, #8d8676); clip-path: polygon(0 100%, 12.5% 0, 25% 100%, 37.5% 0, 50% 100%, 62.5% 0, 75% 100%, 87.5% 0, 100% 100%); }
+  .psg-trap.is-side::before { width: 22px; height: 40px; background: linear-gradient(90deg, #a3582c, #ffb27a); clip-path: polygon(0 0, 100% 12.5%, 0 25%, 100% 37.5%, 0 50%, 100% 62.5%, 0 75%, 100% 87.5%, 0 100%); }
+  .psg-trap.is-boulder::before { width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #b7a48e 0%, #7a6753 55%, #3d3228 100%); box-shadow: inset -4px -5px 0 rgba(0, 0, 0, 0.25); animation: mill-spin 0.9s linear infinite; }
+  .psg-trap.is-rune::before { width: 26px; height: 26px; transform: rotate(45deg); border: 3px solid #d9c2ff; background: radial-gradient(circle, #f3e8ff 0%, #8f5bff 60%, #3b1f7a 100%); box-shadow: 0 0 14px 4px rgba(160, 110, 255, 0.7); animation: portal-pulse 0.8s ease-in-out infinite; }
   .psg-trap.is-ok { opacity: 0.25; }
   .psg-trap.is-hit { background: #5a1f1a; }
   .psg-runner { position: absolute; left: 50%; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, 4px); transition: transform 0.12s; pointer-events: none; }

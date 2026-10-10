@@ -666,6 +666,8 @@ export interface NpcDef {
   spriteId?: string
   /** 이 스토리 플래그가 켜진 뒤에만 맵에 나타난다(국왕 일행 등) */
   visibleFlag?: string
+  /** 순찰 — 두 점 사이를 걸어서 오간다(양 끝에서 잠깐 선다). 있으면 배회 대신 이 길을 따른다 */
+  patrol?: [{ x: number; y: number }, { x: number; y: number }]
 }
 
 export interface FieldMonster {

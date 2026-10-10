@@ -863,7 +863,7 @@ const NPCS_BASE: NpcDef[] = [
   // ── 수련의 광장 ──
   { id: 'npc-arena', name: '투기장장 그로먼', role: 'arenaMaster', icon: '/images/npc/npc-arena.png', zoneId: 'z-plaza', cell: { x: 30.6, y: 24.0 }, greeting: ['콜로세움 대전은 준비 중이다! 조금만 기다려다오.'] },
   // ── 통문 주둔지 ──
-  { id: 'npc-guard', name: '경비대장 로한', role: 'guard', icon: '/images/npc/npc-guard.png', zoneId: 'z-barracks', cell: { x: 43.5, y: 34 }, greeting: ['야생으로 나가려면 저 군 통문을 통해야 한다.', '숲은 견습생도 견딜 만하지만, 폐허와 화산지대는 준비가 단단히 되어 있어야 살아 돌아온다.'] },
+  { id: 'npc-guard', name: '경비대장 로한', role: 'guard', patrol: [{ x: 43.5, y: 34 }, { x: 43.5, y: 28 }], icon: '/images/npc/npc-guard.png', zoneId: 'z-barracks', cell: { x: 43.5, y: 34 }, greeting: ['야생으로 나가려면 저 군 통문을 통해야 한다.', '숲은 견습생도 견딜 만하지만, 폐허와 화산지대는 준비가 단단히 되어 있어야 살아 돌아온다.'] },
   // ── 성역 신전 ──
   { id: 'npc-priest', name: '신관 세드릭', role: 'templePriest', icon: '/images/npc/npc-priest.png', zoneId: 'z-temple', cell: { x: 8.5, y: 30.2 }, greeting: ['성역에 온 것을 환영하네, 젊은 마법사여.', '이곳은 지친 영혼이 쉬어 가는 곳. 통문 밖에서 쓰러지면 이 신전에서 눈을 뜨게 될 걸세.'] },
   // 성녀는 EP21(75주) '성녀와 첫 대화'가 시작돼 울토르를 방문한 뒤부터 성역 신전에 머문다
@@ -874,7 +874,7 @@ const NPCS_BASE: NpcDef[] = [
   // ── 아틀란티스 마을 (안전지대) ──
   { id: 'npc-atlantis-elder', name: '해류사제 넬리아', role: 'flavor', icon: '/images/npc/npc-atlantis-elder.png', zoneId: 'z-atlantis', cell: { x: 18.6, y: 23.2 }, greeting: ['숨은 걱정 말게 — 이 돔 안은 뭍과 같으니.', '아틀란티스는 심해가 삼키기 전, 삼원을 가장 먼저 연구한 도시였네.'] },
   { id: 'npc-atlantis-merchant', name: '진주상인 카로', role: 'potionMerchant', icon: '/images/npc/npc-atlantis-merchant.png', zoneId: 'z-atlantis', cell: { x: 43.6, y: 23.4 }, greeting: ['해저에서 건진 물약이라네. 뭍 것보다 훨씬 잘 들어.'], shopItemIds: potions.map((p) => p.id) },
-  { id: 'npc-atlantis-child', name: '인어 아이 피오', role: 'flavor', icon: '/images/npc/npc-atlantis-child.png', zoneId: 'z-atlantis', cell: { x: 32.0, y: 40.0 }, greeting: ['위쪽 세계 사람이다! 다리로 걷는 거 신기해요.'] },
+  { id: 'npc-atlantis-child', name: '인어 아이 피오', role: 'flavor', patrol: [{ x: 32, y: 40 }, { x: 26, y: 40 }], icon: '/images/npc/npc-atlantis-child.png', zoneId: 'z-atlantis', cell: { x: 32.0, y: 40.0 }, greeting: ['위쪽 세계 사람이다! 다리로 걷는 거 신기해요.'] },
 
   // ── 천공 신전 (안전지대) ──
   { id: 'npc-sky-priest', name: '바람사제 이엘', role: 'templePriest', icon: '/images/npc/npc-sky-priest.png', zoneId: 'z-sky-temple', cell: { x: 32.0, y: 12.8 }, greeting: ['폭풍 위에 온 걸 환영하네, 순례자여.', '바람의 결을 읽으면 삼원의 다음 장이 보인다 — 그렇게들 믿지.'] },
@@ -891,12 +891,12 @@ const NPCS_BASE: NpcDef[] = [
   // ── 오로라 마을 (안전지대) ──
   { id: 'npc-aurora-chief', name: '설인족장 보르', role: 'housing', icon: '/images/npc/npc-aurora-chief.png', zoneId: 'z-aurora', cell: { x: 32.0, y: 13.0 }, greeting: ['얼음집 안은 따뜻하다. 불 쬐고 가라, 여행자.', '밤이 오면 하늘을 봐라 — 오로라가 설원의 길을 밝혀 준다.'] },
   { id: 'npc-aurora-trader', name: '설원상인 미카', role: 'toolMerchant', icon: '/images/npc/npc-aurora-trader.png', zoneId: 'z-aurora', cell: { x: 43.8, y: 20.0 }, greeting: ['설원에서 얼어 죽지 않으려면 장비가 생명이야. 좋은 거 있어.'], shopItemIds: tools.map((t) => t.id) },
-  { id: 'npc-aurora-hunter', name: '서리사냥꾼 룬', role: 'flavor', icon: '/images/npc/npc-aurora-hunter.png', zoneId: 'z-aurora', cell: { x: 32.0, y: 21.6 }, greeting: ['설원 바깥은 서리 짐승 천지야. 마을 안에선 안심해도 돼.'] },
+  { id: 'npc-aurora-hunter', name: '서리사냥꾼 룬', role: 'flavor', patrol: [{ x: 32, y: 21.6 }, { x: 38, y: 21.6 }], icon: '/images/npc/npc-aurora-hunter.png', zoneId: 'z-aurora', cell: { x: 32.0, y: 21.6 }, greeting: ['설원 바깥은 서리 짐승 천지야. 마을 안에선 안심해도 돼.'] },
 
   // ── 마물 마을 (안전지대) ──
   { id: 'npc-demon-elder', name: '온건파 장로 카즈', role: 'flavor', icon: '/images/npc/npc-demon-elder.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 13.0 }, greeting: ['인간의 책에 적힌 마왕과 우리가 아는 모르스님은 다른 분이다.', '여기선 칼을 거둬라. 교역하러 온 거라면 환영이다.'] },
   { id: 'npc-demon-smith', name: '용암대장장이 그롯', role: 'weaponMerchant', icon: '/images/npc/npc-demon-smith.png', zoneId: 'z-demon-village', cell: { x: 18.6, y: 23.2 }, greeting: ['화산 불로 벼린 물건이다. 뭍 대장간 것과는 격이 달라.'], shopItemIds: [...wands.map((w) => w.id)] },
-  { id: 'npc-demon-child', name: '꼬마 마물 삐약', role: 'flavor', icon: '/images/npc/npc-demon-child.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 21.6 }, greeting: ['인간이다! 뿔 없는 거 진짜였네…'] },
+  { id: 'npc-demon-child', name: '꼬마 마물 삐약', role: 'flavor', patrol: [{ x: 32, y: 21.6 }, { x: 38, y: 21.6 }], icon: '/images/npc/npc-demon-child.png', zoneId: 'z-demon-village', cell: { x: 32.0, y: 21.6 }, greeting: ['인간이다! 뿔 없는 거 진짜였네…'] },
 ]
 
 /**
@@ -924,6 +924,7 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
   const cols = 6
   return base.map((n, i) => ({
     ...n,
+    patrol: undefined,
     id: `${n.id}-tr`,
     zoneId: 'z-testroom',
     cell: { x: 3 + (i % cols) * 3, y: 3 + Math.floor(i / cols) * 3 },
@@ -931,7 +932,7 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
 }
 
 // 마을 NPC 자리는 위 목록에 옛 마을 좌표로 적혀 있다 → 북쪽 확장만큼 민다(lib/village-layout.ts)
-const NPCS_PLACED: NpcDef[] = NPCS_BASE.map((n) => (VILLAGE_BASE_ZONE_IDS.has(n.zoneId) ? { ...n, cell: villageShift(n.cell) } : n))
+const NPCS_PLACED: NpcDef[] = NPCS_BASE.map((n) => (VILLAGE_BASE_ZONE_IDS.has(n.zoneId) ? { ...n, cell: villageShift(n.cell), ...(n.patrol ? { patrol: [villageShift(n.patrol[0]), villageShift(n.patrol[1])] as NpcDef['patrol'] } : {}) } : n))
 export const NPCS: NpcDef[] = [...NPCS_PLACED, ...TOWN_DUO_NPCS, ...testRoomNpcs(NPCS_BASE)]
 /**
  * 학교 동료(lib/companions SCHOOL_NPCS)의 대화용 NPC 정의 — 맵 구역에 묶이지 않고(lib/school-roster 가 매주 배치)
