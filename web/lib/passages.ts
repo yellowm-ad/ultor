@@ -84,9 +84,15 @@ export function regionOpenWeek(region: RegionId): number {
   return weeks.length ? Math.min(...weeks) : 0
 }
 
+/**
+ * 임시 전체 개방(2026-10-10) — 맵 점검 동안 지역 잠금을 꺼 둔다. 점검이 끝나면 false 로 되돌리면
+ * 다시 메인 스토리 진행에 따라 열린다.
+ */
+export const REGION_LOCK_OFF = true
+
 /** 아직 갈 수 없는 맵이면 그 이유(갈 수 있으면 null) */
 export function mapLockReason(state: S, mapId: MapId): string | null {
-  if (state.storyFlags.DEBUG_UNLOCK_ALL) return null
+  if (REGION_LOCK_OFF || state.storyFlags.DEBUG_UNLOCK_ALL) return null
   const region = regionOfMap(mapId)
   const open = regionOpenWeek(region)
   if (state.calendar.globalWeek >= open) return null
