@@ -1,17 +1,18 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
-import { SKILLS, itemById, monsterById } from '@/lib/mock-data'
+import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
-import { SkillFxLayer, fxTier, type FxPos } from '@/components/game/skill-fx'
+import { SkillFxLayer, type FxPos } from '@/components/game/skill-fx'
+import { skillMotion } from '@/lib/skill-motion'
 import { DiamondMark } from '@/components/game/ui-motifs'
 import { MAPS } from '@/lib/maps'
-import type { BattleAction, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
+import type { BattleAction, BattleLogEntry, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
 import { POSITION_META } from '@/lib/constants'
 import { FlaskConical, Shield, Sparkles, Swords } from 'lucide-react'
 
@@ -165,14 +166,18 @@ export function BattleScreen() {
   const auto = !!battle?.auto
   const companionAuto = !!state.settings.companionAuto
   // 주인공·파티 동료 턴 = 직접 조작(자동 전투 / 동료 자동이면 AI)
-  const isHeroTurn = !!battle && !!actor && !battle.isOver && awaitsPlayerInput(battle, actor, companionAuto)
+  const heroTurnRaw = !!battle && !!actor && !battle.isOver && awaitsPlayerInput(battle, actor, companionAuto)
   const speed = state.settings.battleAnimSpeed
 
   // 행동 순서(TU) 자동 진행
   useEffect(() => {
     if (!battle || battle.isOver) return
     const delay = speed === 2 ? 200 : 430
-    const timer = setInterval(() => dispatch({ type: 'BATTLE_TICK' }), delay)
+    // 스킬 연출이 도는 동안에는 다음 행동으로 넘어가지 않는다
+    const timer = setInterval(() => {
+      if (performance.now() < busyUntilRef.current) return
+      dispatch({ type: 'BATTLE_TICK' })
+    }, delay)
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [battle?.isOver, speed])
@@ -182,14 +187,47 @@ export function BattleScreen() {
     setPending(null)
   }, [battle?.activeUid])
 
-  // 궁극기(tier4) 연출 발동 시 전장을 짧게 흔든다
+  // ── 스킬 연출 시계 ──
+  // 행동은 리듀서에서 즉시 계산되지만, 화면은 연출에 맞춰 따라간다:
+  //  · 첫 타격(impactMs) 전까지는 직전 HP·로그를 그대로 보여 주고(hold)
+  //  · 연출이 끝날 때(totalMs)까지 다음 행동·입력을 멈춘다(busy)
+  const fx = battle?.lastFx
+  const motion = fx ? skillMotion(fx, speed) : null
+  const [, bumpFx] = useReducer((n: number) => n + 1, 0)
+  const committedRef = useRef<{ combatants: Combatant[]; log: BattleLogEntry[] } | null>(null)
+  const fxClockRef = useRef<{ fxId: string; start: number; prev: { combatants: Combatant[]; log: BattleLogEntry[] } | null } | null>(null)
+  const busyUntilRef = useRef(0)
+  if (fx && motion && fxClockRef.current?.fxId !== fx.fxId) {
+    const now = performance.now()
+    fxClockRef.current = { fxId: fx.fxId, start: now, prev: committedRef.current }
+    busyUntilRef.current = now + motion.totalMs
+  }
   useEffect(() => {
-    const fx = battle?.lastFx
-    if (!fx || fxTier(fx) < 4) return
-    setShake(true)
-    const t = setTimeout(() => setShake(false), 520)
-    return () => clearTimeout(t)
-  }, [battle?.lastFx])
+    if (battle) committedRef.current = { combatants: battle.combatants, log: battle.log }
+  })
+  const fxElapsed = fx && fxClockRef.current ? performance.now() - fxClockRef.current.start : Infinity
+  const fxHolding = !!motion && fxElapsed < motion.impactMs
+  const fxBusy = !!motion && fxElapsed < motion.totalMs
+  const fxCasting = !!motion && motion.castMs > 0 && fxElapsed < motion.castMs
+  /** 맞는 순간 — 대상이 번쩍이며 밀린다 */
+  const fxHitting = !!motion && !fxHolding && fxElapsed < motion.impactMs + 450
+  useEffect(() => {
+    if (!fx || !motion) return
+    const timers: ReturnType<typeof setTimeout>[] = []
+    const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, Math.max(0, ms)))
+    for (const ms of [motion.castMs, motion.impactMs, motion.impactMs + 450, motion.totalMs]) at(ms + 15, bumpFx)
+    // 강한 기술은 맞는 순간, 궁극기는 마무리 폭발에서 전장을 흔든다
+    const shakeAt = motion.ultimate ? motion.finaleMs : motion.tier >= 3 ? motion.impactMs : -1
+    if (shakeAt >= 0) {
+      at(shakeAt, () => setShake(true))
+      at(shakeAt + 520, () => setShake(false))
+    }
+    return () => {
+      timers.forEach(clearTimeout)
+      setShake(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fx?.fxId])
 
   // 자동 전투는 리듀서(BATTLE_TICK)가 AI 로 처리한다 — battle.auto
 
@@ -217,14 +255,20 @@ export function BattleScreen() {
     setTimeout(() => setHeroAnim('idle'), speed === 2 ? 260 : 460)
   }
 
+  // 연출이 도는 동안에는 명령을 받지 않는다
+  const isHeroTurn = heroTurnRaw && !fxBusy
+
   if (!battle) return null
+  // 화면에 보이는 전투원·로그 — 타격 전까지는 직전 상태
+  const view = fxHolding && fxClockRef.current?.prev ? fxClockRef.current.prev : { combatants: battle.combatants, log: battle.log }
+  const showResult = battle.isOver && !fxBusy
 
   const zoneBg = MAPS[state.currentMapId]?.bg
   const isForestBattle = zoneBg === 'forest'
   const customBattleBg = zoneBg ? CUSTOM_BATTLE_BG[zoneBg] : undefined
   const particleKind = zoneBg ? ZONE_PARTICLE_KIND[zoneBg] : undefined
-  const enemies = battle.combatants.filter((c) => c.side === 'enemy')
-  const players = battle.combatants.filter((c) => c.side === 'player')
+  const enemies = view.combatants.filter((c) => c.side === 'enemy')
+  const players = view.combatants.filter((c) => c.side === 'player')
   const hero = players.find((c) => c.kind === 'hero')
 
   const posMap: Record<string, FxPos> = {}
@@ -234,10 +278,19 @@ export function BattleScreen() {
     const p = posMap[uid]
     return p && { left: p.left, top: p.top - FX_BODY_LIFT }
   }
+  const fxGroundOf = (uid: string) => posMap[uid]
+  /** 연출 속 역할 — 기를 모으는 시전자 / 지금 맞는 대상 */
+  const fxRoleOf = (uid: string): 'cast' | 'hit' | undefined => {
+    if (!fx) return undefined
+    if (fxCasting && uid === fx.sourceUid) return 'cast'
+    if (fxHitting && (fx.archetype === 'attack' || fx.archetype === 'magicAttack') && fx.targetUids.includes(uid)) return 'hit'
+    return undefined
+  }
 
   function submit(action: BattleAction) {
     if (!actor) return
-    if (action.type === 'attack' || action.type === 'skill') triggerLunge(actor.uid)
+    // 몸으로 치는 행동만 돌진한다 — 마법은 제자리에서 기를 모은다(fxRoleOf 'cast')
+    if (action.type === 'attack' || (action.type === 'skill' && skillById(action.skillId)?.physical)) triggerLunge(actor.uid)
     dispatch({ type: 'BATTLE_ACTOR_ACTION', actorUid: actor.uid, action })
     setPending(null)
     setMenu('root')
@@ -287,7 +340,15 @@ export function BattleScreen() {
   // 키보드 — 1~4 = 공격·스킬·물약·방어, 펼친 상태에선 1~9 = 그 순서의 스킬/물약, Space·Enter = 첫 대상 고르기, Esc = 취소
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {})
   keyRef.current = (e) => {
-    if (battle.isOver || !isHeroTurn || e.repeat) return
+    if (e.repeat) return
+    // 결과 화면 — Space·Enter = 계속하기
+    if (battle.isOver) {
+      if (fxBusy || (e.code !== 'Space' && e.code !== 'Enter')) return
+      e.preventDefault()
+      dispatch({ type: 'BATTLE_END_CONTINUE' })
+      return
+    }
+    if (!isHeroTurn) return
     const n = e.code.startsWith('Digit') ? Number(e.code.slice(5)) : e.code.startsWith('Numpad') ? Number(e.code.slice(6)) : NaN
     if (e.key === 'Escape') {
       if (pending) setPending(null)
@@ -326,7 +387,7 @@ export function BattleScreen() {
   }, [])
 
   // 타임라인: 살아있는 전투원을 TU 오름차순으로
-  const order = battle.combatants
+  const order = view.combatants
     .filter((c) => c.alive)
     .map((c) => ({ c, tu: c.uid === battle.activeUid ? -1 : tuUntil(c) }))
     .sort((a, b) => a.tu - b.tu)
@@ -442,6 +503,7 @@ export function BattleScreen() {
             active={actor?.uid === c.uid}
             targetable={targetableSide === 'enemy' && c.alive}
             onClick={() => handleTargetClick(c)}
+            fxRole={fxRoleOf(c.uid)}
           />
         ))}
         {/* 아군: 앞(좌하) */}
@@ -456,14 +518,15 @@ export function BattleScreen() {
             onClick={() => handleTargetClick(c)}
             heroSheet={c.kind === 'hero' ? playerSheet(state.player.appearance.gender) : undefined}
             heroAnim={c.uid === animUid ? heroAnim : undefined}
+            fxRole={fxRoleOf(c.uid)}
           />
         ))}
-        <SkillFxLayer fx={battle.lastFx} posOf={fxPosOf} />
+        <SkillFxLayer fx={battle.lastFx} posOf={fxPosOf} groundOf={fxGroundOf} speed={speed} />
       </div>
 
       {/* ── 로그 스트립 — 상단 가운데(하늘 쪽). 바닥에 두면 앞줄 전투원 발밑을 가려서 위로 올림 ── */}
       <div className="battle-log absolute left-1/2 top-11 z-20 w-[min(34rem,56%)] -translate-x-1/2 max-h-12 overflow-y-auto rounded-lg border border-gold/30 bg-black/50 px-2.5 py-1.5 text-[11px] leading-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] scrollbar-thin">
-        {battle.log.slice(-3).map((l) => (
+        {view.log.slice(-3).map((l) => (
           <div
             key={l.id}
             className={
@@ -513,7 +576,7 @@ export function BattleScreen() {
 
         {/* 명령창 — 한 줄에 네 칸(공격·스킬·물약·방어). 스킬·물약 칸을 누르면 그 위로 아이콘이 차례로 펼쳐진다 */}
         <div className="battle-cmd panel-royal">
-          {battle.isOver ? (
+          {showResult ? (
             <BattleResult />
           ) : (
             <>
@@ -632,6 +695,7 @@ function CombatantSprite({
   onClick,
   heroSheet,
   heroAnim,
+  fxRole,
 }: {
   c: Combatant
   side: 'player' | 'enemy'
@@ -641,6 +705,7 @@ function CombatantSprite({
   onClick: () => void
   heroSheet?: SpriteSheet
   heroAnim?: 'idle' | 'lunge' | 'hit'
+  fxRole?: 'cast' | 'hit'
 }) {
   // pos = 발밑 좌표. 래퍼 하단 중앙을 그 점에 맞추고, 축소도 발밑 기준으로 해서 바닥에 붙어 있게 한다.
   const { left, top } = pos
@@ -736,7 +801,7 @@ function CombatantSprite({
         <div
           style={{ marginBottom: -footPad }}
           className={`relative ${rage ? 'rage-body' : ''} ${active ? 'battle-active' : ''} ${
-            heroAnim === 'lunge' ? (side === 'player' ? 'hero-lunge-right' : 'hero-lunge-left') : ''
+            heroAnim === 'lunge' ? (side === 'player' ? 'hero-lunge-right' : 'hero-lunge-left') : fxRole === 'cast' ? 'battle-casting' : fxRole === 'hit' && c.alive ? (side === 'enemy' ? 'battle-hit-right' : 'battle-hit-left') : ''
           }`}
         >
           {heroLook ? (
@@ -862,7 +927,7 @@ function BattleResult() {
           ))}
         </div>
       )}
-      <Button size="sm" onClick={() => dispatch({ type: 'BATTLE_END_CONTINUE' })}>계속하기</Button>
+      <Button size="sm" onClick={() => dispatch({ type: 'BATTLE_END_CONTINUE' })}>계속하기 <span className="opacity-60">· Space</span></Button>
     </div>
   )
 }

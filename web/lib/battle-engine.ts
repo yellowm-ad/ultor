@@ -532,6 +532,8 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
       aoe,
       power,
       mpCost: skill.mpCost,
+      skillName: skill.name,
+      physical: !!skill.physical,
     })
     /** 적 대상 목록 — 단일 대상은 은신·환술 보정 */
     const enemyTargets = (): Combatant[] => {

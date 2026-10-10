@@ -725,6 +725,10 @@ export interface BattleFx {
   aoe: boolean
   power: number // 연출 스케일(파티클 양·크기) 근거
   mpCost?: number // 연출 등급(tier) 산정 근거 — 클수록 더 화려하고 광범위한 연출
+  /** 스킬 이름 — 궁극기 연출에서 화면에 띄운다 */
+  skillName?: string
+  /** 물리 기술 — 기를 모으지 않고 바로 친다 */
+  physical?: boolean
 }
 
 export interface BattleState {

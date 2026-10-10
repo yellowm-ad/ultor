@@ -1062,6 +1062,176 @@
     100% { opacity: 0; }
   }
 
+  /* ── 긴 스킬 모션(2026-10-10): 기 모으기·발밑 마법진·빔·낙하·솟구침 — 길이는 --d (lib/skill-motion.ts) ── */
+  .fx-dim {
+    background: radial-gradient(ellipse at 50% 55%, rgba(10, 6, 20, 0.35), rgba(6, 3, 12, 0.72));
+    opacity: 0;
+    animation: fx-dim var(--d) ease-out forwards;
+  }
+  @keyframes fx-dim {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .fx-ult-name {
+    position: absolute; left: 50%; top: 17%;
+    white-space: nowrap;
+    font-family: var(--font-display, serif);
+    font-size: clamp(18px, 3.2vw, 34px);
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    opacity: 0;
+    animation: fx-ult-name var(--d) ease-out forwards;
+  }
+  @keyframes fx-ult-name {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(1.5); letter-spacing: 0.7em; }
+    16% { opacity: 1; transform: translate(-50%, 0) scale(1); letter-spacing: 0.18em; }
+    82% { opacity: 1; transform: translate(-50%, 0) scale(1.03); }
+    100% { opacity: 0; transform: translate(-50%, -10px) scale(1.06); }
+  }
+  .fx-floor {
+    border-radius: 50%;
+    opacity: 0;
+    animation: fx-floor var(--d) ease-out forwards;
+  }
+  @keyframes fx-floor {
+    0% { opacity: 0; transform: translate(-50%, -50%) scaleY(0.42) scale(0.15); }
+    14% { opacity: 1; transform: translate(-50%, -50%) scaleY(0.42) scale(1.06); }
+    22% { opacity: 1; transform: translate(-50%, -50%) scaleY(0.42) scale(1); }
+    86% { opacity: 1; transform: translate(-50%, -50%) scaleY(0.42) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scaleY(0.42) scale(1.25); }
+  }
+  .fx-gather {
+    width: 5px; height: 5px;
+    opacity: 0;
+    animation-name: fx-gather;
+    animation-timing-function: ease-in;
+  }
+  @keyframes fx-gather {
+    0% { opacity: 0; transform: translate(calc(-50% + var(--fx-dx)), calc(-50% + var(--fx-dy))) scale(1.2); }
+    25% { opacity: 1; }
+    100% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.3); }
+  }
+  .fx-charge {
+    opacity: 0;
+    animation: fx-charge var(--d) ease-in forwards;
+  }
+  @keyframes fx-charge {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); }
+    15% { opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(0.85); }
+    80% { transform: translate(-50%, -50%) scale(1.05); }
+    90% { opacity: 1; transform: translate(-50%, -50%) scale(0.95); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+  }
+  .fx-aura-col {
+    width: 58px; height: 150px;
+    border-radius: 50% 50% 30% 30% / 80% 80% 20% 20%;
+    filter: blur(3px);
+    transform-origin: 50% 100%;
+    opacity: 0;
+    animation: fx-aura-col var(--d) ease-in-out forwards;
+  }
+  @keyframes fx-aura-col {
+    0% { opacity: 0; transform: translate(-50%, -100%) scale(0.5, 0.2); }
+    18% { opacity: 0.75; transform: translate(-50%, -100%) scale(1, 0.9); }
+    40% { opacity: 0.55; transform: translate(-50%, -100%) scale(0.85, 1.1); }
+    60% { opacity: 0.8; transform: translate(-50%, -100%) scale(1.05, 0.95); }
+    85% { opacity: 0.7; transform: translate(-50%, -100%) scale(0.9, 1.15); }
+    100% { opacity: 0; transform: translate(-50%, -100%) scale(1.3, 1.3); }
+  }
+  .fx-travel {
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    animation: fx-travel var(--d) ease-in;
+  }
+  .fx-travel-shard {
+    clip-path: polygon(50% 0%, 100% 30%, 60% 100%, 40% 100%, 0% 30%);
+    transform: translate(-50%, -80%) rotate(-14deg);
+  }
+  @keyframes fx-travel {
+    0% { left: var(--fx-x0); top: var(--fx-y0); opacity: 1; }
+    100% { left: var(--fx-x1); top: var(--fx-y1); opacity: 1; }
+  }
+  .fx-beam {
+    opacity: 0;
+    transform-origin: 0 50%;
+    transform: rotate(var(--ang)) scale(0, 0.4);
+    animation: fx-beam var(--d) linear forwards;
+  }
+  @keyframes fx-beam {
+    0% { opacity: 1; transform: rotate(var(--ang)) scale(0, 0.4); }
+    9% { opacity: 1; transform: rotate(var(--ang)) scale(1, 1.4); }
+    16% { transform: rotate(var(--ang)) scale(1, 0.92); }
+    30% { transform: rotate(var(--ang)) scale(1, 1.14); }
+    45% { transform: rotate(var(--ang)) scale(1, 0.9); }
+    60% { transform: rotate(var(--ang)) scale(1, 1.12); }
+    75% { transform: rotate(var(--ang)) scale(1, 0.94); }
+    86% { opacity: 1; transform: rotate(var(--ang)) scale(1, 1.05); }
+    100% { opacity: 0; transform: rotate(var(--ang)) scale(1, 0.04); }
+  }
+  .fx-beam-head {
+    position: absolute; left: 0; top: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: fx-beam-head 0.22s ease-in-out infinite alternate;
+  }
+  @keyframes fx-beam-head {
+    from { transform: translate(-50%, -50%) scale(0.85); }
+    to { transform: translate(-50%, -50%) scale(1.15); }
+  }
+  .fx-beam-ripple {
+    position: absolute; left: 0; top: 8%;
+    height: 84%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 70%);
+    filter: blur(1px);
+    opacity: 0;
+    animation: fx-beam-ripple 0.38s linear infinite;
+  }
+  @keyframes fx-beam-ripple {
+    0% { left: 0; opacity: 0.7; }
+    100% { left: 100%; opacity: 0.1; }
+  }
+  .fx-spike {
+    position: absolute; bottom: 0;
+    clip-path: polygon(50% 0%, 78% 38%, 100% 100%, 0% 100%, 20% 45%);
+    transform-origin: 50% 100%;
+    opacity: 0;
+    animation: fx-spike var(--d) ease-out forwards;
+  }
+  @keyframes fx-spike {
+    0% { opacity: 1; transform: scaleY(0); }
+    9% { opacity: 1; transform: scaleY(1.18); }
+    15% { transform: scaleY(1); }
+    84% { opacity: 1; transform: scaleY(1); }
+    100% { opacity: 0; transform: scaleY(0.55) translateY(6px); }
+  }
+  /* 시전자 — 기를 모으는 동안 살짝 떠올라 빛난다 / 맞은 쪽 — 번쩍이며 밀린다 */
+  .battle-casting { animation: battle-casting 0.5s ease-in-out infinite alternate; }
+  @keyframes battle-casting {
+    from { transform: translateY(0); filter: brightness(1.1); }
+    to { transform: translateY(-4px); filter: brightness(1.45) drop-shadow(0 0 7px rgba(255, 240, 200, 0.85)); }
+  }
+  .battle-hit-right { animation: battle-hit-right 0.42s ease-out; }
+  .battle-hit-left { animation: battle-hit-left 0.42s ease-out; }
+  @keyframes battle-hit-right {
+    0% { transform: translateX(0); filter: brightness(3) saturate(0.2); }
+    25% { transform: translateX(9px); filter: brightness(2); }
+    55% { transform: translateX(-4px); filter: brightness(1.2); }
+    100% { transform: translateX(0); filter: none; }
+  }
+  @keyframes battle-hit-left {
+    0% { transform: translateX(0); filter: brightness(3) saturate(0.2); }
+    25% { transform: translateX(-9px); filter: brightness(2); }
+    55% { transform: translateX(4px); filter: brightness(1.2); }
+    100% { transform: translateX(0); filter: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .battle-casting, .fx-beam-head { animation: none; }
+  }
+
   /* ════════ 폭주 보스(마왕 루스벨) — 보랏빛 불꽃 · 오라 · 흔들림 ════════ */
   /* 전장이 낮게 계속 울린다 */
   .battle-rumble {
