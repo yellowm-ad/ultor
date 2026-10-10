@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { npcById } from '@/lib/mock-data'
 import { npcWeeklyLine } from '@/lib/npc-weekly-lines'
@@ -34,7 +34,13 @@ const ROLE_LABEL: Record<string, string> = {
 export function DialogueScreen() {
   const { state, dispatch } = useGame()
   const npc = state.activeNpcId ? npcById(state.activeNpcId) : null
-  const [lineIdx, setLineIdx] = useState(0)
+  const [rawLineIdx, setLineIdx] = useState(0)
+  // 대화가 새로 열릴 때마다 첫 줄부터 — 상점·휴식·스토리로 빠져나가면 줄 번호가 남아 있다가,
+  // 대사가 더 짧은 다른 NPC 에게 말을 걸 때 없는 줄을 읽어 화면이 죽던 문제(2026-10-10)
+  const talking = state.screen === 'dialogue' ? state.activeNpcId : null
+  useEffect(() => {
+    setLineIdx(0)
+  }, [talking])
 
   if (!npc || state.screen !== 'dialogue') return null
 
@@ -44,7 +50,7 @@ export function DialogueScreen() {
 
   const close = () => {
     // 장면을 마지막 줄까지 봤으면 다음엔 다음 장면
-    if (duo && banter && lineIdx >= banter.length - 1) banterAdvance(duo, banter)
+    if (duo && banter && rawLineIdx >= banter.length - 1) banterAdvance(duo, banter)
     setLineIdx(0)
     dispatch({ type: 'CLOSE_OVERLAY' })
   }
@@ -68,8 +74,9 @@ export function DialogueScreen() {
   const weekly = npcWeeklyLine(npc.id, state)
   const lines = banter ? banter.map((l) => l.text) : weekly ? [weekly, ...npc.greeting] : npc.greeting
   // 지금 줄을 말하는 사람(둘의 장면에서는 줄마다 바뀐다)
-  const speaker = (banter && npcById(banter[Math.min(lineIdx, banter.length - 1)].who)) || npc
+  const speaker = (banter && npcById(banter[Math.min(rawLineIdx, banter.length - 1)].who)) || npc
   const speakerMate = speaker.role === 'companion' ? schoolNpcById(speaker.id) : undefined
+  const lineIdx = Math.min(rawLineIdx, Math.max(0, lines.length - 1))
   const lastLine = lineIdx >= lines.length - 1
 
   const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin
@@ -86,7 +93,7 @@ export function DialogueScreen() {
           <Portrait id={speaker.spriteId ?? speaker.id} className="h-full w-full" />
         </span>
       }
-      text={lines[lineIdx]}
+      text={lines[lineIdx] ?? ''}
       canAdvance={canAdvance}
       onAdvance={advance}
       onSkip={lastLine ? undefined : () => setLineIdx(lines.length - 1)}

@@ -26,6 +26,7 @@ import { ClassSceneOverlay } from '@/components/game/class-scene'
 import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
 import { PassageOverlay } from '@/components/game/passage-overlay'
+import { ScreenGuard } from '@/components/game/screen-guard'
 
 // e.code(물리 키) 기준 — 한글 IME 상태에서도 동작. 이동 W/A/S/D·상호작용 E·달리기 Shift 와 겹치지 않게 유지할 것
 const OVERLAY_HOTKEYS: Record<string, ScreenId> = { KeyI: 'inventory', KeyC: 'character', KeyP: 'party', KeyM: 'worldmap', KeyJ: 'journal' }
@@ -90,6 +91,7 @@ function GameShell() {
           나머지는 로컬 state가 없어 필요할 때만 마운트해도 동작이 완전히 동일 — 이동 중 매 프레임
           쓸데없이 리렌더되는 걸 막는다(useGame() 컨텍스트를 구독하면 화면이 'world'로 안 열려 있어도
           모든 디스패치마다 리렌더되기 때문). */}
+      <ScreenGuard onCrash={() => dispatch({ type: 'CLOSE_OVERLAY' })}>
       <DialogueScreen />
       <InventoryScreen />
       {state.screen === 'shop' && <ShopScreen />}
@@ -100,6 +102,7 @@ function GameShell() {
       {state.screen === 'settings' && <SettingsScreen />}
       {state.screen === 'worldmap' && <WorldMapScreen />}
       {state.screen === 'journal' && <JournalScreen />}
+      </ScreenGuard>
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}
       {state.passage && <PassageOverlay />}

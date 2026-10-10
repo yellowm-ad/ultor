@@ -1123,7 +1123,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
     ;(window as unknown as { __game?: typeof value }).__game = value
     // 생활 시스템 디버그 — 채집 노드 좌표 등(크롬 자동화 테스트용)
-    ;(window as unknown as { __life?: unknown }).__life = { gatherNodesForMap, isNearWater, MAPS }
+    ;(window as unknown as { __life?: unknown }).__life = { gatherNodesForMap, isNearWater, MAPS, NPCS }
   }
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
 }

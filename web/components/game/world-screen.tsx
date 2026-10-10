@@ -251,7 +251,8 @@ export function WorldScreen() {
       guide={guideOn ? guide : null}
     />
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}
-    {map.terrain?.weather && <WeatherLayer kind={map.terrain.weather} />}
+    {/* 눈은 화면에 붙어서 걸을 때마다 따라오는 느낌이라 돌아다닐 때는 뺀다 — WeatherLayer 'snow' 는 컷신용으로 남겨 둔다 */}
+    {map.terrain?.weather && map.terrain.weather !== 'snow' && <WeatherLayer kind={map.terrain.weather} />}
     {/* 골든아워 따뜻한 앰비언트 — 밝은 지역(map.terrain.tone > 1)은 햇살을 더 세게 */}
     <div
       className="pointer-events-none absolute inset-0 z-10"
