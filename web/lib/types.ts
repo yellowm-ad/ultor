@@ -666,6 +666,8 @@ export interface NpcDef {
   spriteId?: string
   /** 이 스토리 플래그가 켜진 뒤에만 맵에 나타난다(국왕 일행 등) */
   visibleFlag?: string
+  /** 빌려 쓴 시트의 색을 돌려 다른 사람처럼 보이게(색상 회전 각도) — 전용 도트가 생기면 지운다 */
+  hue?: number
   /** 순찰 — 두 점 사이를 걸어서 오간다(양 끝에서 잠깐 선다). 있으면 배회 대신 이 길을 따른다 */
   patrol?: [{ x: number; y: number }, { x: number; y: number }]
 }

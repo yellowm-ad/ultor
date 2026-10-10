@@ -296,7 +296,7 @@ export function IsoWorld({
           onClick={() => dispatch({ type: 'OPEN_NPC', npcId: npc.id })}
         >
           <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
-          <foreignObject x={-ND / 2} y={-ND + 7} width={ND} height={ND} style={{ overflow: 'visible' }}>
+          <foreignObject x={-ND / 2} y={-ND + 7} width={ND} height={ND} style={{ overflow: 'visible', filter: npc.hue ? `hue-rotate(${npc.hue}deg)` : undefined }}>
             <NpcSprite npcId={`${npc.spriteId ?? npc.id}-walk`} fallbackSrc={npc.icon} dir={dir} walking={moving} px={ND} />
           </foreignObject>
           <g transform="translate(0,-58)">

@@ -81,7 +81,11 @@ export function DialogueScreen() {
     <DialogueBox
       speaker={speaker.name}
       role={speakerMate ? speakerMate.title : ROLE_LABEL[speaker.role]}
-      portrait={<Portrait id={speaker.spriteId ?? speaker.id} className="h-full w-full" />}
+      portrait={
+        <span className="block h-full w-full" style={speaker.hue ? { filter: `hue-rotate(${speaker.hue}deg)` } : undefined}>
+          <Portrait id={speaker.spriteId ?? speaker.id} className="h-full w-full" />
+        </span>
+      }
       text={lines[lineIdx]}
       canAdvance={canAdvance}
       onAdvance={advance}

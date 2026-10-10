@@ -583,6 +583,11 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
       : settle({ ...s, hp: s.hp - 1, warm: s.warm - 10 }, '서리곰의 굴이었다! 간신히 달아났지만 다쳤다.')
   }
   const alive = st.hp > 0 && st.layer < LAYERS - 1
+  // 다음에 고를 줄이 늘 보이게(화면이 낮으면 목록이 스크롤된다)
+  const nextRow = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    nextRow.current?.scrollIntoView({ block: 'nearest' })
+  }, [st.layer])
   return (
     <div className="psg-play">
       <div className="psg-hud">
@@ -594,7 +599,7 @@ function SurvivalGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
         <div className="psg-goal">오로라 능선</div>
         {map
           .map((row, l) => (
-            <div key={l} className="psg-row">
+            <div key={l} className="psg-row" ref={l === st.layer + 1 ? nextRow : undefined}>
               {row.map((k, c) => {
                 const here = l === st.layer && c === st.col
                 const can = alive && !st.ask && l === st.layer + 1 && (st.layer < 0 || Math.abs(c - st.col) <= 1)
