@@ -75,7 +75,7 @@ export function HeroSprite({
     const flipX = walking && dir === 'left'
     return (
       <div
-        className={className}
+        className={`${className ?? ''} ${walking ? '' : 'idle-breathe'}`}
         style={{
           width: px,
           height: px,
@@ -85,6 +85,7 @@ export function HeroSprite({
           backgroundSize: `${px * SHEET_COLS}px auto`,
           backgroundPosition: `-${col * px}px -${row * px}px`,
           imageRendering: 'pixelated',
+          animationDelay: `-${((sheet.length * 37 + sheet.charCodeAt(sheet.length - 1) * 11) % 26) / 10}s`,
         }}
         role="img"
         aria-label="주인공 스프라이트"

@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
@@ -284,6 +284,47 @@ export function BattleScreen() {
 
   const primaryEnemy = enemies.find((c) => c.alive) ?? enemies[0]
 
+  // 키보드 — 1~4 = 공격·스킬·물약·방어, 펼친 상태에선 1~9 = 그 순서의 스킬/물약, Space·Enter = 첫 대상 고르기, Esc = 취소
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {})
+  keyRef.current = (e) => {
+    if (battle.isOver || !isHeroTurn || e.repeat) return
+    const n = e.code.startsWith('Digit') ? Number(e.code.slice(5)) : e.code.startsWith('Numpad') ? Number(e.code.slice(6)) : NaN
+    if (e.key === 'Escape') {
+      if (pending) setPending(null)
+      else setMenu('root')
+      return
+    }
+    if (pending) {
+      if (e.code !== 'Space' && e.code !== 'Enter') return
+      e.preventDefault()
+      const pool = targetableSide === 'enemy' ? enemies.filter((c) => c.alive) : targetableSide === 'player' ? players.filter((c) => c.kind !== 'pet' && (reviveTargeting ? !c.alive : c.alive)) : []
+      if (pool[0]) handleTargetClick(pool[0])
+      return
+    }
+    if (!(n >= 1 && n <= 9)) return
+    if (menu === 'skill') {
+      const s = availableSkills[n - 1]
+      if (!s || !actor || actor.mp < s.mpCost) return
+      setMenu('root')
+      if (s.targeting === 'allEnemies' || s.targeting === 'allAllies' || s.targeting === 'self') submit({ type: 'skill', skillId: s.id, targetUid: actor.uid })
+      else setPending({ kind: 'skill', skill: s })
+    } else if (menu === 'item') {
+      const it = availableItems[n - 1]
+      if (!it || !actor) return
+      setMenu('root')
+      if (it.item!.useEffect?.reviveOnly) setPending({ kind: 'item', itemId: it.slot.itemId, needsTarget: true })
+      else submit({ type: 'item', itemId: it.slot.itemId, targetUid: actor.uid })
+    } else if (n === 1) setPending({ kind: 'attack' })
+    else if (n === 2) setMenu('skill')
+    else if (n === 3) setMenu('item')
+    else if (n === 4) submit({ type: 'defend' })
+  }
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => keyRef.current(e)
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])
+
   // 타임라인: 살아있는 전투원을 TU 오름차순으로
   const order = battle.combatants
     .filter((c) => c.alive)
@@ -482,7 +523,7 @@ export function BattleScreen() {
                   <span className="text-white/60">{actor ? `${actor.name}의 턴...` : '행동 순서 대기 중...'}</span>
                 ) : pending ? (
                   <>
-                    <span>{actor?.name} — 대상을 선택하세요</span>
+                    <span>{actor?.name} — 대상을 선택하세요 <span className="opacity-60">(눌러서 고르기 · Space = 첫 대상 · Esc = 취소)</span></span>
                     <button type="button" className="battle-cmd-cancel" onClick={() => setPending(null)}>
                       취소
                     </button>
@@ -494,7 +535,7 @@ export function BattleScreen() {
                 )}
               </div>
               <div className="battle-cmd-row">
-                <CmdBtn icon={<Swords className="size-5" />} label="공격" hint="기본 공격" disabled={!canAct} onClick={() => { setMenu('root'); setPending({ kind: 'attack' }) }} />
+                <CmdBtn icon={<Swords className="size-5" />} label="공격" hint="1 · 기본 공격" disabled={!canAct} onClick={() => { setMenu('root'); setPending({ kind: 'attack' }) }} />
                 <div className="battle-cmd-slot">
                   {canAct && menu === 'skill' && (
                     <div className="battle-fan">
@@ -517,6 +558,7 @@ export function BattleScreen() {
                         >
                           <Image src={s.icon} alt={s.name} width={26} height={26} />
                           <span className="battle-fan-mp">{s.mpCost}</span>
+                          {i < 9 && <span className="battle-fan-key">{i + 1}</span>}
                           <span className="battle-tip">
                             <b>{s.name}</b>
                             <i>MP {s.mpCost}{actor && actor.mp < s.mpCost ? ' · MP 부족' : ''}</i>
@@ -526,7 +568,7 @@ export function BattleScreen() {
                       ))}
                     </div>
                   )}
-                  <CmdBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`${availableSkills.length}개`} active={menu === 'skill'} disabled={!canAct} onClick={() => setMenu(menu === 'skill' ? 'root' : 'skill')} />
+                  <CmdBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`2 · ${availableSkills.length}개`} active={menu === 'skill'} disabled={!canAct} onClick={() => setMenu(menu === 'skill' ? 'root' : 'skill')} />
                 </div>
                 <div className="battle-cmd-slot">
                   {canAct && menu === 'item' && (
@@ -546,6 +588,7 @@ export function BattleScreen() {
                         >
                           <Image src={item!.icon} alt={item!.name} width={26} height={26} />
                           <span className="battle-fan-mp is-qty">×{slot.qty}</span>
+                          {i < 9 && <span className="battle-fan-key">{i + 1}</span>}
                           <span className="battle-tip">
                             <b>{item!.name}</b>
                             <i>{slot.qty}개 보유</i>
@@ -555,9 +598,9 @@ export function BattleScreen() {
                       ))}
                     </div>
                   )}
-                  <CmdBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`${availableItems.length}개`} active={menu === 'item'} disabled={!canAct} onClick={() => setMenu(menu === 'item' ? 'root' : 'item')} />
+                  <CmdBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`3 · ${availableItems.length}개`} active={menu === 'item'} disabled={!canAct} onClick={() => setMenu(menu === 'item' ? 'root' : 'item')} />
                 </div>
-                <CmdBtn icon={<Shield className="size-5" />} label="방어" hint="피해 감소" disabled={!canAct} onClick={() => { setMenu('root'); submit({ type: 'defend' }) }} />
+                <CmdBtn icon={<Shield className="size-5" />} label="방어" hint="4 · 피해 감소" disabled={!canAct} onClick={() => { setMenu('root'); submit({ type: 'defend' }) }} />
               </div>
             </>
           )}

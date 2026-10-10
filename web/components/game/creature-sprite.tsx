@@ -98,7 +98,7 @@ export function CreatureSprite({
     const flipX = (walking && dir === 'left') !== flip // XOR
     return (
       <div
-        className={className}
+        className={`${className ?? ''} ${walking ? '' : 'idle-breathe'}`}
         style={{
           width: px,
           height: px,
@@ -108,6 +108,8 @@ export function CreatureSprite({
           backgroundSize: `${px * SHEET_COLS}px ${px * SHEET_ROWS}px`,
           backgroundPosition: `-${col * px}px -${row * px}px`,
           imageRendering: 'pixelated',
+          // 숨쉬기 박자를 개체마다 어긋나게
+          animationDelay: `-${((spriteId.length * 37 + spriteId.charCodeAt(spriteId.length - 1) * 11) % 26) / 10}s`,
         }}
         role="img"
         aria-label={label}
@@ -117,14 +119,14 @@ export function CreatureSprite({
 
   if (fallbackSrc) {
     return (
-      <div className={className} style={{ width: px, height: px, transform: flip ? 'scaleX(-1)' : undefined }}>
+      <div className={`${className ?? ''} ${walking ? '' : 'idle-breathe'}`} style={{ width: px, height: px, transform: flip ? 'scaleX(-1)' : undefined }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={fallbackSrc} alt="" className="h-full w-full object-contain" style={{ imageRendering: 'pixelated' }} />
       </div>
     )
   }
 
-  return <div className={className} style={{ width: px, height: px }} />
+  return <div className={`${className ?? ''} ${walking ? '' : 'idle-breathe'}`} style={{ width: px, height: px }} />
 }
 
 /** NPC 도트 스프라이트 — CreatureSprite와 동일 시트 규격(8열×4행), public/images/npc/<npcId>.png */
