@@ -905,17 +905,17 @@ const NPCS_BASE: NpcDef[] = [
  */
 const TOWN_DUO_NPCS: NpcDef[] = [
   { id: 'npc-duo-baker', name: '제빵사 폴코', role: 'flavor', icon: '/images/npc/npc-kitchen.png', spriteId: 'npc-kitchen', zoneId: 'z-north-lot', cell: { x: 39.6, y: 7.8 }, roam: 0.25, greeting: ['마르코 형이랑 헷갈리지 마. 형은 요리, 나는 빵이야.'] },
-  { id: 'npc-duo-florist', name: '꽃집 로잔', role: 'flavor', icon: '/images/npc/npc-atlantis-merchant.png', spriteId: 'npc-atlantis-merchant', zoneId: 'z-north-lot', cell: { x: 40.8, y: 8.2 }, roam: 0.25, greeting: ['오늘 들어온 꽃이 제일 예뻐요. 내일 건 내일 제일 예쁘고요.'] },
+  { id: 'npc-duo-florist', name: '꽃집 로잔', role: 'flavor', icon: '/images/npc/npc-atlantis-merchant.png', spriteId: 'npc-atlantis-merchant', zoneId: 'z-north-lot', cell: { x: 41, y: 7.2 }, roam: 0.25, greeting: ['오늘 들어온 꽃이 제일 예뻐요. 내일 건 내일 제일 예쁘고요.'] },
   { id: 'npc-duo-sauna', name: '사우나 지기 올가', role: 'flavor', icon: '/images/npc/npc-elder.png', spriteId: 'npc-elder', zoneId: 'z-aurora', cell: { x: 25.2, y: 42.8 }, roam: 0.25, greeting: ['몸이 얼었으면 들어와. 돈은 녹은 다음에 받는다.'] },
-  { id: 'npc-duo-carver', name: '얼음 조각가 니플', role: 'flavor', icon: '/images/npc/npc-workbench.png', spriteId: 'npc-workbench', zoneId: 'z-aurora', cell: { x: 26.4, y: 43.2 }, roam: 0.25, greeting: ['만지지 마세요. 체온에 녹아요.'] },
+  { id: 'npc-duo-carver', name: '얼음 조각가 니플', role: 'flavor', icon: '/images/npc/npc-workbench.png', spriteId: 'npc-workbench', zoneId: 'z-aurora', cell: { x: 26.6, y: 42.2 }, roam: 0.25, greeting: ['만지지 마세요. 체온에 녹아요.'] },
   { id: 'npc-duo-peddler', name: '행상 로비', role: 'flavor', icon: '/images/npc/npc-tool.png', spriteId: 'npc-tool', zoneId: 'z-demon-village', cell: { x: 29.4, y: 23.4 }, roam: 0.25, greeting: ['토비 형이 사촌이야. 형은 학교 앞, 나는 화산 앞.'] },
-  { id: 'npc-duo-imp', name: '수습 점원 뿔리', role: 'flavor', icon: '/images/npc/npc-demon-child.png', spriteId: 'npc-demon-child', zoneId: 'z-demon-village', cell: { x: 30.6, y: 23.8 }, roam: 0.25, greeting: ['어서 와라, 인간. 도망치지 않아도 된다.'] },
+  { id: 'npc-duo-imp', name: '수습 점원 뿔리', role: 'flavor', icon: '/images/npc/npc-demon-child.png', spriteId: 'npc-demon-child', zoneId: 'z-demon-village', cell: { x: 30.8, y: 22.8 }, roam: 0.25, greeting: ['어서 와라, 인간. 도망치지 않아도 된다.'] },
   { id: 'npc-duo-balloon', name: '풍선 장수 파랑', role: 'flavor', icon: '/images/npc/npc-farmer.png', spriteId: 'npc-farmer', zoneId: 'z-sky-temple', cell: { x: 15, y: 44.4 }, roam: 0.25, greeting: ['하늘 위에서 풍선을 팔면 뭐가 좋냐고? 놓쳐도 안 아까워.'] },
-  { id: 'npc-duo-harp', name: '하프 수리공 리라', role: 'flavor', icon: '/images/npc/npc-sky-keeper.png', spriteId: 'npc-sky-keeper', zoneId: 'z-sky-temple', cell: { x: 16.2, y: 44.8 }, roam: 0.25, greeting: ['줄은 팽팽해야 하고, 사람은 느슨해야 해요.'] },
+  { id: 'npc-duo-harp', name: '하프 수리공 리라', role: 'flavor', icon: '/images/npc/npc-sky-keeper.png', spriteId: 'npc-sky-keeper', zoneId: 'z-sky-temple', cell: { x: 16.4, y: 43.8 }, roam: 0.25, greeting: ['줄은 팽팽해야 하고, 사람은 느슨해야 해요.'] },
   { id: 'npc-duo-sexton', name: '묘지기 돌브', role: 'flavor', icon: '/images/npc/npc-priest.png', spriteId: 'npc-priest', zoneId: 'z-abandoned-temple', cell: { x: 19.2, y: 42.6 }, roam: 0.25, greeting: ['조용히 다녀라. 여긴 자는 사람이 많다.'] },
-  { id: 'npc-duo-candle', name: '양초 장수 미미', role: 'flavor', icon: '/images/npc/npc-tamer.png', spriteId: 'npc-tamer', zoneId: 'z-abandoned-temple', cell: { x: 20.4, y: 43 }, roam: 0.25, greeting: ['초 사세요! 어두운 데서 제일 잘 팔려요. …이론상으론.'] },
+  { id: 'npc-duo-candle', name: '양초 장수 미미', role: 'flavor', icon: '/images/npc/npc-tamer.png', spriteId: 'npc-tamer', zoneId: 'z-abandoned-temple', cell: { x: 20.6, y: 42 }, roam: 0.25, greeting: ['초 사세요! 어두운 데서 제일 잘 팔려요. …이론상으론.'] },
   { id: 'npc-duo-diver', name: '잠수부 보글', role: 'flavor', icon: '/images/npc/npc-aurora-hunter.png', spriteId: 'npc-aurora-hunter', zoneId: 'z-atlantis', cell: { x: 23.4, y: 50.2 }, roam: 0.25, greeting: ['숨을 오래 참는 비결? 말을 줄이는 거다.'] },
-  { id: 'npc-duo-ice', name: '얼음과자 장수 소르', role: 'flavor', icon: '/images/npc/npc-atlantis-child.png', spriteId: 'npc-atlantis-child', zoneId: 'z-atlantis', cell: { x: 24.6, y: 50.6 }, roam: 0.25, greeting: ['얼음과자 하나에 조개 세 닢! 외상은 장부에 적어.'] },
+  { id: 'npc-duo-ice', name: '얼음과자 장수 소르', role: 'flavor', icon: '/images/npc/npc-atlantis-child.png', spriteId: 'npc-atlantis-child', zoneId: 'z-atlantis', cell: { x: 24.8, y: 49.6 }, roam: 0.25, greeting: ['얼음과자 하나에 조개 세 닢! 외상은 장부에 적어.'] },
 ]
 
 // 관리자 테스트룸 — 기존 NPC 전원(상점·대화 전부)을 zoneId만 z-testroom 으로 바꿔 한 방에 복제.
