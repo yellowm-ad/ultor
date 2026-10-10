@@ -11,6 +11,7 @@ import { MAPS } from '@/lib/maps'
 import { isCompanionAway, SCHOOL_NPCS } from '@/lib/companions'
 import { stairElevation } from '@/lib/iso'
 import { mulberry32 } from '@/lib/rng'
+import { BANTER_DUOS, duoPartner } from '@/lib/npc-banter'
 import type { NpcDef } from '@/lib/types'
 
 /** 배회 반경(셀) — 제자리 근처를 천천히 걷다 멈췄다 한다(lib/field npcWanderState) */
@@ -72,9 +73,38 @@ export function schoolRoster(state: RosterState): RosterSpot[] {
       break
     }
   }
+  // 짝(lib/npc-banter) — 네 주 중 세 주는 둘이 같은 자리에 마주 서 있다(말을 걸면 둘의 장면이 나온다)
+  for (const duo of BANTER_DUOS) {
+    const a = out.find((s) => s.npcId === duo.a)
+    const b = out.find((s) => s.npcId === duo.b)
+    if (!a || !b) continue
+    const pr = mulberry32((state.playerSeed ^ (state.calendar.globalWeek * 40503) ^ 0x5eed) >>> 0)
+    if (pr() < 0.25) continue
+    const rest = out.filter((s) => s !== b)
+    for (const [dx, dy] of [[1.3, 0.2], [-1.3, -0.2], [0.2, 1.3], [-0.2, -1.3]] as const) {
+      if (!freeCell(a.mapId, a.x + dx, a.y + dy, rest.filter((s) => s !== a))) continue
+      b.mapId = a.mapId
+      b.x = a.x + dx
+      b.y = a.y + dy
+      // 화면에서 서로를 보게 — 칸 x+ 는 화면 오른쪽 아래, y+ 는 왼쪽 아래
+      a.facing = dx > 0 || dy < 0 ? 'right' : 'left'
+      b.facing = a.facing === 'right' ? 'left' : 'right'
+      break
+    }
+  }
   cacheKey = key
   cache = out
   return out
+}
+
+/** 이 학교 동료가 이번 주에 짝과 붙어 서 있는가(둘의 장면이 나오는 조건) */
+export function rosterDuoTogether(state: RosterState, npcId: string): boolean {
+  const other = duoPartner(npcId)
+  if (!other) return false
+  const r = schoolRoster(state)
+  const a = r.find((s) => s.npcId === npcId)
+  const b = r.find((s) => s.npcId === other)
+  return !!a && !!b && a.mapId === b.mapId && Math.hypot(a.x - b.x, a.y - b.y) < 2.2
 }
 
 /** 지금 맵에 있는 학교 동료 — 수업 중인 교실에는 내보내지 않는다(학생 배우와 겹침) */

@@ -1,5 +1,6 @@
 'use client'
 
+import { GuideArrow, GuideTrail, type useGuide } from '@/components/game/guide-trail'
 import { useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
@@ -110,6 +111,7 @@ export function IsoWorld({
   moving,
   running = false,
   interactId,
+  guide = null,
 }: {
   state: GameState
   dispatch: Dispatch<Action>
@@ -118,6 +120,8 @@ export function IsoWorld({
   /** Shift 달리기 — 달리기 행(4/5/6) + 빠른 프레임 */
   running?: boolean
   interactId: string | null
+  /** 퀘스트 길찾기(lib/guide) — 바닥 안내선과 목표 표식 */
+  guide?: ReturnType<typeof useGuide>
 }) {
   // 관리자 오브젝트 편집 — 기록이 바뀌면 MAPS[id] 가 새 객체로 교체되므로 다시 그리기만 하면 된다
   useMapOverridesVersion()
@@ -300,6 +304,7 @@ export function IsoWorld({
             </text>
           </g>
           <circle cx={0} cy={-52} r={2.2} fill={interactId === npc.id ? '#e8dcc0' : '#ffffffaa'} />
+          {guide?.goal.npcId === npc.id && <GuideArrow lift={76} />}
         </g>
       ),
     }
@@ -331,6 +336,7 @@ export function IsoWorld({
                 {def.name}
               </text>
             </g>
+            {guide?.goal.npcId === def.id && <GuideArrow lift={80} />}
           </g>
         ),
       },
@@ -573,7 +579,9 @@ export function IsoWorld({
   })
 
   const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
-  const behind = allEntities.filter((e) => e.sortY <= playerSortY).map((e) => e.node)
+  // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
+  const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
+  const behind = allEntities.filter((e) => e.sortY >= -1e5 && e.sortY <= playerSortY).map((e) => e.node)
   const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
 
   // 개발 모드 전용: window.__isoScale 로 카메라 배율을 바꿔 전체 구도를 확인(크롬 자동화 스크린샷용)
@@ -656,6 +664,9 @@ export function IsoWorld({
           stroke="rgba(217,164,65,0.35)"
           strokeWidth={3}
         />}
+        {backLayer}
+        {/* 퀘스트 길찾기 안내선 — 지면·바닥 깔개 위, 오브젝트 아래 */}
+        {guide && !inClass && <GuideTrail guide={guide} />}
         {/* 오브젝트 (뒤 → 플레이어 → 앞) */}
         {behind}
         {playerNode}

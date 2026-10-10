@@ -9,6 +9,8 @@ import { DialogueBox } from '@/components/game/dialogue-box'
 import { coursesForWeek, nextCourseSkill } from '@/lib/academics'
 import { skillById } from '@/lib/mock-data'
 import { canRecruit, schoolNpcById } from '@/lib/companions'
+import { banterAdvance, banterScene, duoOf } from '@/lib/npc-banter'
+import { rosterDuoTogether } from '@/lib/school-roster'
 
 const ROLE_LABEL: Record<string, string> = {
   professor: '교수',
@@ -36,7 +38,13 @@ export function DialogueScreen() {
 
   if (!npc || state.screen !== 'dialogue') return null
 
+  // 짝이 있는 NPC(lib/npc-banter) — 둘이 붙어 서 있으면 평소 인사 대신 둘의 장면. 학교 동료 짝은 이번 주에 같이 서 있을 때만
+  const duo = duoOf(npc.id)
+  const banter = duo && (npc.role !== 'companion' || rosterDuoTogether(state, npc.id)) ? banterScene(duo) : null
+
   const close = () => {
+    // 장면을 마지막 줄까지 봤으면 다음엔 다음 장면
+    if (duo && banter && lineIdx >= banter.length - 1) banterAdvance(duo)
     setLineIdx(0)
     dispatch({ type: 'CLOSE_OVERLAY' })
   }
@@ -58,7 +66,10 @@ export function DialogueScreen() {
     : []
   // 이번 주 대사(주간 풀)를 첫 줄로, 이어서 기본 인사
   const weekly = npcWeeklyLine(npc.id, state)
-  const lines = weekly ? [weekly, ...npc.greeting] : npc.greeting
+  const lines = banter ? banter.map((l) => l.text) : weekly ? [weekly, ...npc.greeting] : npc.greeting
+  // 지금 줄을 말하는 사람(둘의 장면에서는 줄마다 바뀐다)
+  const speaker = (banter && npcById(banter[Math.min(lineIdx, banter.length - 1)].who)) || npc
+  const speakerMate = speaker.role === 'companion' ? schoolNpcById(speaker.id) : undefined
   const lastLine = lineIdx >= lines.length - 1
 
   const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin
@@ -68,9 +79,9 @@ export function DialogueScreen() {
 
   return (
     <DialogueBox
-      speaker={npc.name}
-      role={mate ? mate.title : ROLE_LABEL[npc.role]}
-      portrait={<Portrait id={npc.id} className="h-full w-full" />}
+      speaker={speaker.name}
+      role={speakerMate ? speakerMate.title : ROLE_LABEL[speaker.role]}
+      portrait={<Portrait id={speaker.spriteId ?? speaker.id} className="h-full w-full" />}
       text={lines[lineIdx]}
       canAdvance={canAdvance}
       onAdvance={advance}

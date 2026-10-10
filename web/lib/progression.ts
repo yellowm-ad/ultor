@@ -471,7 +471,11 @@ export function visitMap(state: GameState, mapId: MapId): GameState {
   const visited = state.visitedMaps ?? []
   const withVisit = visited.includes(mapId) ? state : { ...state, visitedMaps: [...visited, mapId] }
   const next = queueBeats(withVisit, (t) => t.type === 'VISIT' && t.mapId === mapId)
-  return withQuestEvents(next, [{ type: 'VISIT', mapId }], next.toast)
+  const out = withQuestEvents(next, [{ type: 'VISIT', mapId }], next.toast)
+  // 이번 주 수업이 열리는 교실에 걸어 들어오면 바로 수업 시작(길 안내 '수업 듣기'의 도착점)
+  const wc = classForWeek(out.calendar.globalWeek)
+  if (wc && !out.weekly.classDone && !out.classScene && out.storyQueue.length === 0 && out.currentMapId === mapId && classMetaFor(wc.courseId).room === mapId) return startClass(out)
+  return out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

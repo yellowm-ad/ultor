@@ -10,6 +10,7 @@ import { npcWanderPosition } from '@/lib/field'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
+import { useGuide } from '@/components/game/guide-trail'
 import { WeatherLayer } from '@/components/game/weather-layer'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
@@ -163,6 +164,26 @@ export function WorldScreen() {
     return best
   }
 
+  // 퀘스트 길찾기 — 켜고 끄기는 브라우저에 기억
+  const [guideOn, setGuideOn] = useState(true)
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem('ultor-guide') === 'off') setGuideOn(false)
+    } catch {
+      // 저장소 접근 불가 — 기본값(켬)
+    }
+  }, [])
+  const toggleGuide = () =>
+    setGuideOn((on) => {
+      try {
+        window.localStorage.setItem('ultor-guide', on ? 'off' : 'on')
+      } catch {
+        // 무시
+      }
+      return !on
+    })
+  const guide = useGuide(state, map, true)
+
   // 군 통문(gate) 목적지 목록
   const gatePortals = useMemo(() => map.portals.filter((p) => p.kind === 'gate'), [map])
 
@@ -208,6 +229,7 @@ export function WorldScreen() {
       moving={moving}
       running={running}
       interactId={interactTarget?.id ?? nearNode?.key ?? null}
+      guide={guideOn ? guide : null}
     />
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}
     {map.terrain?.weather && <WeatherLayer kind={map.terrain.weather} />}
@@ -247,6 +269,19 @@ export function WorldScreen() {
           ) : null}
         </div>
       </div>
+
+      {/* 퀘스트 길찾기 — 지금 목표와 가는 길(누르면 바닥 안내선 켜고 끄기) */}
+      {guide && !state.classScene && (
+        <button type="button" onClick={toggleGuide} className="guide-chip absolute left-3 top-[168px] z-20 text-left" title="길 안내 켜기/끄기">
+          <span className="guide-chip-head">
+            <span className={`guide-chip-dot ${guideOn ? 'is-on' : ''}`} />
+            {guide.goal.quest || '이번 주 목표'}
+          </span>
+          <span className="guide-chip-label">{guide.goal.label}</span>
+          <span className="guide-chip-route">{guide.route.here ? guide.goal.place : guide.route.hint}</span>
+          {!guideOn && <span className="guide-chip-route">길 안내 꺼짐 — 누르면 켜짐</span>}
+        </button>
+      )}
 
       {/* 상호작용 프롬프트 */}
       {interactTarget && !state.pendingEncounterUid && !state.pendingPortalId && !state.gateOpen && (

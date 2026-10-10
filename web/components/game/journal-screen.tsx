@@ -1,5 +1,6 @@
 'use client'
 
+import { setGuidePin } from '@/lib/guide'
 import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
@@ -327,8 +328,16 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
 
       <div className="flex gap-2 pt-3">
         {e.kind === 'class' && e.status !== 'claimed' && (
-          <button type="button" className="gw-btn is-gold is-lg flex-1" onClick={() => dispatch({ type: 'START_CLASS' })}>
-            수업 참석
+          <button
+            type="button"
+            className="gw-btn is-gold is-lg flex-1"
+            onClick={() => {
+              // 수업은 교실에 직접 걸어 들어가야 시작된다 — 바닥 안내선을 수업 교실로 돌리고 수첩을 닫는다
+              setGuidePin('class')
+              dispatch({ type: 'CLOSE_OVERLAY' })
+            }}
+          >
+            교실로 길 안내
           </button>
         )}
         {e.q && e.status === 'offered' && (
@@ -339,6 +348,18 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
         {e.q && e.status === 'complete' && (
           <button type="button" className="gw-btn is-gold is-lg flex-1" onClick={() => dispatch({ type: 'CLAIM_QUEST', instanceId: e.q!.instanceId })}>
             보상 받기
+          </button>
+        )}
+        {e.q && e.status === 'active' && (
+          <button
+            type="button"
+            className="gw-btn is-gold is-lg flex-1"
+            onClick={() => {
+              setGuidePin(e.q!.instanceId)
+              dispatch({ type: 'CLOSE_OVERLAY' })
+            }}
+          >
+            길 안내
           </button>
         )}
         {e.q && e.status === 'active' && e.kind !== 'main' && (
