@@ -119,7 +119,7 @@ const VILLAGE_BASE_ZONES: ZoneDef[] = [
 const VILLAGE_NORTH_ZONES: ZoneDef[] = [
   z('z-north-school', 'school', '학교 북관', 2, 2, 17, VILLAGE_NORTH, '#6a5bd6', '연구동과 실습동이 안뜰을 둘러싼 학교 북쪽 별관.'),
   z('z-north-garden', 'park', '학교 정원', 20, 2, 33, VILLAGE_NORTH, '#4e9c4a', '중앙 대광장 북쪽으로 이어지는 학교 정원.'),
-  z('z-north-lot', 'village', '북쪽 빈터', 36, 2, 50, VILLAGE_NORTH, '#7fae6d', '아직 비어 있는 너른 잔디 부지.'),
+  z('z-north-lot', 'shopStreet', '꽃길 장터', 36, 2, 50, VILLAGE_NORTH, '#d98aa0', '빵집·꽃집·책방이 우물 마당을 둘러싼 작은 장터.'),
 ]
 const VILLAGE_ZONES: ZoneDef[] = [
   ...VILLAGE_NORTH_ZONES,
@@ -131,6 +131,8 @@ const VH = 40 // 옛(확장 전) 세로 칸 수 — 아래 배치 코드의 기�
 const VN = VILLAGE_NORTH
 /** 학교 북관 안뜰 중심(옛 좌표 — y<0 이 북쪽 띠) */
 const NORTH_COURT = { x: 9.5, y: -4.4 }
+/** 북쪽 장터 마당 중심(옛 좌표) — 가게·노점은 lib/town-decor.ts */
+const NORTH_MARKET = { x: 43, y: -5.2 }
 const FOUNTAIN = { x: 26.5, y: 7.5 }
 const LIBRARY = { x: 26.5, y: 20.5 }
 /** 대도서관 앞마당 포석(건물 기단 + 둘레) — 셀 공간 사각형 */
@@ -154,6 +156,10 @@ function villageNorthTileAt(x: number, y: number): TileKind {
   // 학교 북관 안뜰 포석 + 남쪽 길로 나가는 통로
   if (Math.hypot((x - NORTH_COURT.x) * 0.85, y - NORTH_COURT.y) < 3.4) return 'plaza'
   if (Math.abs(x - NORTH_COURT.x) < 1.2 && y > NORTH_COURT.y) return 'path'
+  // 북쪽 장터 마당 포석 + 남쪽 길·서쪽 대로로 나가는 통로
+  if (Math.hypot((x - NORTH_MARKET.x) * 0.8, y - NORTH_MARKET.y) < 2.9) return 'plaza'
+  if (Math.abs(x - NORTH_MARKET.x) < 1.1 && y > NORTH_MARKET.y) return 'path'
+  if (Math.abs(y - NORTH_MARKET.y) < 0.9 && x > AV_R.b - 0.1 && x < NORTH_MARKET.x) return 'path'
   return (Math.floor(x) * 7 + Math.floor(y + VN) * 13) % 9 === 0 ? 'grass-dark' : 'grass'
 }
 
@@ -614,7 +620,7 @@ function villageProps(): PropDef[] {
   place('tb-pk0', 'trashbin', 23.0, 30.9)
   place('tb-pk1', 'trashbin', 30.2, 29.0)
 
-  // ════════ 북쪽 확장 띠 (옛 좌표 y -10.5–0) — 학교 북관 / 학교 정원 / 빈터 ════════
+  // ════════ 북쪽 확장 띠 (옛 좌표 y -10.5–0) — 학교 북관 / 학교 정원 / 꽃길 장터(가게·노점은 lib/town-decor.ts) ════════
   // place() 는 y<2.5 를 외곽 순환로로 보고 걸러내므로 여기는 직접 push 한다.
   // 학교 북관 (x2.5–16.8) — 북쪽에 건물 3동, 남쪽에 안뜰
   P.push({ id: 'b-north-hallA', kind: 'hall', cell: { x: 3.2, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '실습동' })
@@ -637,7 +643,6 @@ function villageProps(): PropDef[] {
     [5.0, -5.6, 'c'], [3.6, -2.2, 'a'], [13.6, -1.6, 'g'], [15.6, -6.2, 'a'], // 학교 북관
     [20.8, -8.6, 'c'], [23.0, -8.8, 'a'], [20.8, -5.2, 'g'], [22.6, -2.2, 'c'], [20.6, -1.8, 'a'], // 정원 서편
     [29.6, -8.8, 'a'], [32.2, -8.6, 'c'], [32.4, -2.4, 'o'], [29.4, -2.0, 'a'], // 정원 동편
-    [37.2, -9.4, 'c'], [48.6, -9.4, 'a'], [37.2, -1.4, 'g'], [48.6, -1.4, 'c'], // 빈터 네 귀퉁이만
   ]
   northTrees.forEach(([x, y, v], i) => P.push({ id: `t-n${i}`, kind: 'tree', cell: { x, y }, variant: v }))
   for (const [i, ex] of [AV_L.a - 0.6, AV_L.b + 0.6, AV_R.a - 0.6, AV_R.b + 0.6].entries())

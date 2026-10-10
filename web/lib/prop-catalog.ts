@@ -220,7 +220,7 @@ export const PROP_CATALOG: PropCatalogItem[] = [{"src":"/images/map/landmark/ch_
   {"src":"/images/map/props/academy/wb_radiator_f.png","name":"wb_radiator_f","group":"props/academy","w":54,"h":60},
   {"src":"/images/map/props/academy/wb_rug_red.png","name":"wb_rug_red","group":"props/academy","w":95,"h":62},
   {"src":"/images/map/props/academy/wb_rug_red_f.png","name":"wb_rug_red_f","group":"props/academy","w":95,"h":62},
-  {"src":"/images/map/props/academy/wb_rug_round.png","name":"wb_rug_round","group":"props/academy","w":107,"h":107},
+  {"src":"/images/map/props/academy/wb_rug_round.png","name":"wb_rug_round","group":"props/academy","w":107,"h":54},
   {"src":"/images/map/props/academy/wb_rug_runner.png","name":"wb_rug_runner","group":"props/academy","w":76,"h":44},
   {"src":"/images/map/props/academy/wb_rug_runner_f.png","name":"wb_rug_runner_f","group":"props/academy","w":76,"h":44},
   {"src":"/images/map/props/academy/wb_rug_square.png","name":"wb_rug_square","group":"props/academy","w":118,"h":70},
