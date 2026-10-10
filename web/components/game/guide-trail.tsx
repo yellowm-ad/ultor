@@ -4,7 +4,7 @@
 // IsoWorld 의 svg 안(지면 위 · 오브젝트 아래)에 그린다.
 import { useMemo, useSyncExternalStore } from 'react'
 import type { GameMap, GameState } from '@/lib/types'
-import { isoToScreen } from '@/lib/iso'
+import { isoToScreen, stairElevation, type IsoStair } from '@/lib/iso'
 import { guideGoal, guidePath, guidePin, guideRoute, subscribeGuidePin } from '@/lib/guide'
 
 const GOLD = '#ffd84a'
@@ -41,14 +41,19 @@ function Spark({ s }: { s: number }) {
   )
 }
 
-export function GuideTrail({ guide }: { guide: NonNullable<ReturnType<typeof useGuide>> }) {
+export function GuideTrail({ guide, stairs }: { guide: NonNullable<ReturnType<typeof useGuide>>; stairs?: IsoStair[] }) {
+  // 계단·테라스 위에서는 그 높이만큼 띄운다
+  const at = (x: number, y: number) => {
+    const s = isoToScreen(x, y)
+    return { sx: s.sx, sy: s.sy - stairElevation(stairs, x, y).z }
+  }
   const { path, route, goal } = guide
   // 발밑 두 점은 캐릭터에 가려 지저분하므로 건너뛴다
   const pts = path.slice(2)
   const n = pts.length
-  const line = pts.map((p) => { const s = isoToScreen(p.x, p.y); return `${s.sx.toFixed(1)},${s.sy.toFixed(1)}` }).join(' ')
+  const line = pts.map((p) => { const s = at(p.x, p.y); return `${s.sx.toFixed(1)},${s.sy.toFixed(1)}` }).join(' ')
   const end = route.target
-  const endS = end ? isoToScreen(end.x, end.y) : null
+  const endS = end ? at(end.x, end.y) : null
   // 길 끝이 목적지에 닿았을 때만 도착 표식(멀리 있으면 안내선이 도중에 흐려진다)
   const reaches = !!end && path.length > 0 && Math.hypot(path[path.length - 1].x - end.x, path[path.length - 1].y - end.y) < 3.4
   return (
@@ -61,7 +66,7 @@ export function GuideTrail({ guide }: { guide: NonNullable<ReturnType<typeof use
         </>
       )}
       {pts.map((p, k) => {
-        const s = isoToScreen(p.x, p.y)
+        const s = at(p.x, p.y)
         // 끝으로 갈수록(목적지에 닿지 않는 긴 길) 흐려진다
         const fade = reaches ? 1 : Math.min(1, (n - k) / 10)
         const big = k % 4 === 0

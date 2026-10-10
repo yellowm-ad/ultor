@@ -1,13 +1,13 @@
 import type { GameMap, MapId, ZoneDef, ZoneKind } from '@/lib/types'
-import type { PropDef, TileKind } from '@/lib/iso'
-import { propAABB } from '@/lib/iso'
+import type { IsoStair, IsoStructGroup, PropDef, TileKind } from '@/lib/iso'
+import { isoBox, propAABB } from '@/lib/iso'
 import { assembleFieldMaps } from '@/lib/field-specs'
 import { VILLAGE_NORTH, villageShift } from '@/lib/village-layout'
 import { TOWN_DECOR, decorProps } from '@/lib/town-decor'
 import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, atlantisWaterAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS, ATLANTIS_STRUCTURES } from '@/lib/atlantis-map'
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
-import { HALL_W, HALL_H, HALL_CX, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, STAIR_TO_1F, STAIR_TO_2F, hallTileAt, hall2TileAt, hallStairs, hall2Stairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
+import { HALL_TEX, HALL_W, HALL_H, HALL_CX, FLOOR2, HALL_PAD_TOP, HALL2_PAD_BOTTOM, STAIR_TO_1F, STAIR_TO_2F, hallTileAt, hall2TileAt, hallStairs, hall2Stairs, hallDoorFront, buildHallFloor1, buildHallFloor2 } from '@/lib/academy-hall'
 import type { HallDoorKey, HallExt } from '@/lib/academy-hall'
 import {
   FLOOR3_ENTRY_X,
@@ -680,6 +680,41 @@ const VILLAGE_PROPS = villageProps()
 // 블로커 = solid 프롭들의 footprint 에서 자동 생성 → 보이는 벽 = 막히는 벽
 const VILLAGE_BLOCKERS = buildBlockers(VILLAGE_PROPS)
 
+// ── 학교 북관 테라스(2026-10-10) — 마을 북서 모서리(학교 북관 지구)를 낮은 대리석 단 위로 올린다. ──
+//    남쪽 가운데 계단으로 오르내린다(나머지 가장자리는 막힘). 단 위의 프롭은 맨 끝(MAPS 조립 뒤)에서 높이만큼 올린다.
+//    좌표는 지금 마을 좌표(북쪽 확장 뒤).
+const NORTH_TERRACE = { x1: 17.4, y1: 11.4, z: 26, stairX0: 7.6, stairX1: 11.4, stairY1: 12.6 }
+const onNorthTerrace = (x: number, y: number) => x < NORTH_TERRACE.x1 && y < NORTH_TERRACE.y1
+function northTerrace(): { structures: IsoStructGroup[]; stairs: IsoStair[]; blockers: Blocker[] } {
+  const T = NORTH_TERRACE
+  const steps = 3
+  const d = (T.stairY1 - T.y1) / steps
+  return {
+    // 맵의 맨 뒤 모서리라 뒤 레이어에 그린다(길찾기 안내선이 단 위에도 보이게)
+    structures: [
+      { id: 'north-terrace', back: 1, parts: isoBox(0, 0, T.x1, T.y1, 0, T.z, { top: HALL_TEX.marble, side: HALL_TEX.wall, shadeY: 0.18, shadeX: 0.34 }) },
+      ...Array.from({ length: steps }, (_, k) => ({
+        id: `north-terrace-step${k}`,
+        back: 2 + k,
+        parts: isoBox(T.stairX0, T.y1 + d * k, T.stairX1, T.y1 + d * (k + 1), 0, (T.z * (steps - k)) / (steps + 1), { top: HALL_TEX.marble, side: HALL_TEX.riser }),
+      })),
+    ],
+    stairs: [
+      { x0: 0, x1: T.x1, yTop: 0, yBottom: T.y1, zTop: 0, zBase: T.z, flat: true },
+      { x0: T.stairX0, x1: T.stairX1, yTop: T.y1, yBottom: T.stairY1, zTop: T.z },
+    ],
+    blockers: [
+      // 단의 남쪽 턱(계단 양옆) · 동쪽 턱 · 계단 옆면
+      { x0: 0, y0: T.y1 - 0.1, x1: T.stairX0, y1: T.y1 + 0.25 },
+      { x0: T.stairX1, y0: T.y1 - 0.1, x1: T.x1 + 0.25, y1: T.y1 + 0.25 },
+      { x0: T.x1 - 0.1, y0: 0, x1: T.x1 + 0.25, y1: T.y1 + 0.25 },
+      { x0: T.stairX0 - 0.25, y0: T.y1, x1: T.stairX0, y1: T.stairY1 },
+      { x0: T.stairX1, y0: T.y1, x1: T.stairX1 + 0.25, y1: T.stairY1 },
+    ],
+  }
+}
+const VILLAGE_TERRACE = northTerrace()
+
 // 야생 필드 맵은 라벨 구역을 두지 않고 맵 이름/배경으로 표시한다.
 const NO_ZONES: ZoneDef[] = []
 
@@ -820,7 +855,9 @@ export const MAPS = {
     tileAt: villageTileAt,
     props: VILLAGE_PROPS,
     zones: VILLAGE_ZONES,
-    blockers: VILLAGE_BLOCKERS,
+    blockers: [...VILLAGE_BLOCKERS, ...VILLAGE_TERRACE.blockers],
+    structures: VILLAGE_TERRACE.structures,
+    stairs: VILLAGE_TERRACE.stairs,
     // 아래 좌표는 옛 좌표로 적고 villageShift 로 민다
     spawn: villageShift({ x: 26.5, y: 12.2 }),
     respawn: villageShift({ x: 9.5, y: 30.0 }),
@@ -1235,6 +1272,8 @@ for (const [id, items] of Object.entries(TOWN_DECOR)) {
   m.props = [...(m.props ?? []), ...extra]
   m.blockers = [...(m.blockers ?? []), ...extra.map(propBlocker).filter((b): b is Blocker => !!b)]
 }
+// 학교 북관 테라스 위의 프롭(건물·동상·나무·꾸미기 소품)은 단 높이만큼 올려 그린다
+MAPS.village.props = (MAPS.village.props ?? []).map((p) => (onNorthTerrace(p.cell.x, p.cell.y) ? { ...p, elev: (p.elev ?? 0) + NORTH_TERRACE.z } : p))
 
 // 스프라이트 없이 남은 점배치 소품(실내 대홀 조명 등)에 PixelLab 도트를 붙인다 —
 // 코드로 그린 SVG 건물/소품(iso-sprites) 폴백을 없애면서 모든 소품이 라스터로 그려지게.

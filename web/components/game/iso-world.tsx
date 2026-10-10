@@ -465,7 +465,7 @@ export function IsoWorld({
   const onStair = stairElevation(map.stairs, state.position.x, state.position.y)
   const ps0 = isoToScreen(state.position.x, state.position.y)
   const ps = { sx: ps0.sx, sy: ps0.sy - onStair.z }
-  const playerSortY = onStair.stair ? onStair.stair.x0 + state.position.y + 0.25 : state.position.x + state.position.y
+  const playerSortY = onStair.stair && !onStair.stair.flat ? onStair.stair.x0 + state.position.y + 0.25 : state.position.x + state.position.y
   // 주인공 PixelLab 4등신 시트(scripts/build-hero-sheets.mjs): 88px 셀, 8열 × 11행.
   //   row0 = 8방향 회전 (s0 se1 e2 ne3 n4 nw5 w6 sw7)
   //   row1~3 = 걷기 S/E/N · row4~6 = 달리기 S/E/N · row7/8 = 대각 걷기 SE/NE · row9/10 = 대각 달리기 SE/NE
@@ -733,7 +733,7 @@ export function IsoWorld({
         />}
         {backLayer}
         {/* 퀘스트 길찾기 안내선 — 지면·바닥 깔개 위, 오브젝트 아래 */}
-        {guide && !inClass && <GuideTrail guide={guide} />}
+        {guide && !inClass && <GuideTrail guide={guide} stairs={map.stairs} />}
         {/* 오브젝트 (뒤 → 플레이어 → 앞) */}
         {behind}
         {playerNode}

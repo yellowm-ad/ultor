@@ -361,6 +361,8 @@ export interface IsoStair {
   zTop: number
   /** 계단 아래 끝 높이(기본 0) — 2층 맵처럼 계단이 바닥보다 아래로 내려가는 경우 음수 */
   zBase?: number
+  /** 평평한 단(테라스) — zTop 0, zBase 가 단 높이. 깊이정렬은 평지와 같게 한다 */
+  flat?: boolean
 }
 export function stairElevation(stairs: IsoStair[] | undefined, x: number, y: number): { z: number; stair: IsoStair | null } {
   for (const s of stairs ?? []) {
