@@ -88,13 +88,25 @@ export interface TerrainArt {
 const CACHE = new Map<string, Promise<TerrainArt>>()
 const CACHE_MAX = 6
 
+const keyOf = (map: GameMap, rect: TerrainRect) => `${map.id}:${rect.x},${rect.y},${rect.w},${rect.h}`
+/** 지금 화면에 필요한 맵 — 이 맵은 서둘러 그리고, 나머지(미리 그려 두는 이웃 맵)는 게임이 끊기지 않게 틈틈이 그린다 */
+let URGENT: string | null = null
+
 function paintCached(map: GameMap, rect: TerrainRect) {
-  const key = `${map.id}:${rect.x},${rect.y},${rect.w},${rect.h}`
+  const key = keyOf(map, rect)
   let job = CACHE.get(key)
-  if (!job) {
-    job = paintTerrain(map, rect)
+  if (job) {
+    // 최근에 쓴 것을 뒤로 — 오래 안 쓴 맵부터 버린다(지금 맵이 밀려나 바닥이 다시 비는 일을 막는다)
+    CACHE.delete(key)
     CACHE.set(key, job)
-    if (CACHE.size > CACHE_MAX) CACHE.delete(CACHE.keys().next().value!)
+    return job
+  }
+  job = paintTerrain(map, rect, key)
+  CACHE.set(key, job)
+  while (CACHE.size > CACHE_MAX) {
+    const oldest = [...CACHE.keys()].find((k) => k !== URGENT && k !== key)
+    if (!oldest) break
+    CACHE.delete(oldest)
   }
   return job
 }
@@ -108,12 +120,14 @@ export function useTerrainArt(map: GameMap, rect: TerrainRect, next: { map: Game
   useEffect(() => {
     let alive = true
     ;(async () => {
+      URGENT = map.terrain ? keyOf(map, rect) : null
       if (map.terrain) {
         const r = await paintCached(map, rect)
         if (!alive) return
         setArt({ id: map.id, ...r })
       }
-      for (const n of next) {
+      // 이웃 맵은 가까운 몇 곳만 미리 — 전부 그리면 캐시가 넘쳐 서로 밀어낸다
+      for (const n of next.slice(0, PRELOAD_MAX)) {
         if (!alive) return
         if (n.map.terrain) await paintCached(n.map, n.rect)
       }
@@ -134,6 +148,11 @@ const yieldNow = () =>
     c.port2.postMessage(0)
   })
 const SLICE_MS = 24
+/** 미리 그리기(이웃 맵)는 5ms 일하고 40ms 쉰다 — 걷는 동안 프레임을 잡아먹지 않게 */
+const BG_SLICE_MS = 5
+const BG_REST_MS = 40
+const PRELOAD_MAX = 4
+const restNow = () => new Promise<void>((r) => setTimeout(r, BG_REST_MS))
 
 /** 지면 캔버스를 월드 층(HTML)에 붙인다 — 수면 층 위, 오브젝트 SVG 아래 */
 export function TerrainCanvas({ canvas, w, h }: { canvas: HTMLCanvasElement; w: number; h: number }) {
@@ -150,7 +169,7 @@ export function TerrainCanvas({ canvas, w, h }: { canvas: HTMLCanvasElement; w: 
   return <div ref={ref} style={{ position: 'absolute', left: 0, top: 0, width: w, height: h, pointerEvents: 'none' }} />
 }
 
-async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
+async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<TerrainArt> {
   const T = map.terrain!
   const liquid = T.liquid ?? 'water'
   const LIQ: TileKind = liquid === 'lava' ? 'demon-lava' : liquid === 'ice' ? 'ice' : 'water'
@@ -159,8 +178,9 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
   const texFile = (k: TileKind) => T.tex?.[k] ?? TEX_FILE[k] ?? 'grass'
   let last = performance.now()
   const breathe = async () => {
-    if (performance.now() - last > SLICE_MS) {
-      await yieldNow()
+    const bg = URGENT !== key
+    if (performance.now() - last > (bg ? BG_SLICE_MS : SLICE_MS)) {
+      await (bg ? restNow() : yieldNow())
       last = performance.now()
     }
   }
@@ -174,7 +194,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
   const GH = H * SS
   const grid = new Uint8Array(GW * GH)
   for (let gy = 0; gy < GH; gy++) {
-    if ((gy & 7) === 0) await breathe()
+    if ((gy & 1) === 0) await breathe()
     for (let gx = 0; gx < GW; gx++) {
       const k = T.at((gx + 0.5) / SS, (gy + 0.5) / SS)
       let i = k === LIQ ? WATER : kindIdx.get(k)
@@ -279,7 +299,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
   const Wm = W - 1e-3
   const Hm = H - 1e-3
   for (let py = 0; py < PH; py++) {
-    if ((py & 15) === 0) await breathe()
+    if ((py & 3) === 0) await breathe()
     const sy = R.y + py + 0.5
     // 셀 좌표는 x 로 1px 갈 때 cx += 1/64, cy -= 1/64 — 곱셈 없이 더해 간다
     let cx0 = (R.x + 0.5) / 64 + sy / 32
@@ -357,7 +377,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect): Promise<TerrainArt> {
   const isWater = (j: number) => j < 0 || j >= N || K[j] === WATER
   const wetAt = liquid !== 'water' ? () => false : (j: number) => j >= 0 && j < N && K[j] === WATER && (P[j] === 1 || P[j] === 4)
   for (let py = 0; py < PH; py++) {
-    if ((py & 15) === 0) await breathe()
+    if ((py & 3) === 0) await breathe()
     const sy = Math.floor(R.y + py)
     const ty = ((sy % 128) + 128) % 128
     for (let px = 0; px < PW; px++) {

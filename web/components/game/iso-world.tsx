@@ -1,17 +1,18 @@
 'use client'
 
 import { GuideArrow, GuideTrail, type useGuide } from '@/components/game/guide-trail'
-import { useMemo, useState, useEffect, type Dispatch } from 'react'
+import { Fragment, useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { NPCS, MONSTERS } from '@/lib/mock-data'
 import { wanderState, npcWanderState } from '@/lib/field'
-import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation, TILE_COLORS, TILE_SPRITES } from '@/lib/iso'
+import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation } from '@/lib/iso'
 import { IsoStructNode } from '@/components/game/iso-structures'
 import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/iso-water'
 import { useTerrainArt, TerrainWaterBackdrop, TerrainCanvas } from '@/components/game/iso-terrain'
-import type { TileKind, PropDef } from '@/lib/iso'
+import type { PropDef } from '@/lib/iso'
+import { useGroundArt, groundFallbackColor } from '@/components/game/iso-ground'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { spotsOnMap } from '@/lib/activity-spots'
 import { duoOf } from '@/lib/npc-banter'
@@ -162,55 +163,13 @@ export function IsoWorld({
   )
   const terrainArt = useTerrainArt(map, worldRectOf(map), terrainNext)
 
-  // 지면 (정적 — 메모)
+  // 칸 타일 지면(마을·실내) — 한 장의 캔버스로(components/game/iso-ground.tsx)
+  const groundArt = useGroundArt(map, worldRectOf(map))
+
+  // 지면 위 장식(정적 — 메모)
   const ground = useMemo(() => {
     const tiles: React.ReactNode[] = []
     if (map.terrain) return tiles
-    for (let y = 0; y < VH; y++) {
-      for (let x = 0; x < VW; x++) {
-        // 물 지형 맵: 바다·수로 칸은 WaterLayer 가 이어진 수면으로 그린다
-        const wk = map.water?.at(x + 0.5, y + 0.5)
-        if (wk === 'sea' || wk === 'canal') continue
-        const kind: TileKind = map.tileAt ? map.tileAt(x + 0.5, y + 0.5) : 'grass'
-        const a = isoToScreen(x, y)
-        const sprite = map.assets === 'raster' ? TILE_SPRITES[kind] : undefined
-        if (sprite) {
-          // 다이메트릭 타일 PNG: 상단 꼭짓점(a)에 맞춰 배치.
-          // 셀 해시로 좌우/상하 뒤집어 반복 패턴(솔기) 완화.
-          const h = map.tileFlip === false ? 0 : ((x * 73856093) ^ (y * 19349663)) >>> 0
-          const fx = h & 1 ? -1 : 1
-          const fy = h & 2 ? -1 : 1
-          const px = fx < 0 ? 2 * a.sx : 0
-          const py = fy < 0 ? 2 * (a.sy + ISO_TILE_H / 2) : 0
-          tiles.push(
-            <g key={`${x}-${y}`} transform={`translate(${px},${py}) scale(${fx},${fy})`}>
-              <image
-                href={sprite}
-                x={a.sx - ISO_TILE_W / 2}
-                y={a.sy}
-                width={ISO_TILE_W}
-                height={ISO_TILE_H * 2}
-                style={{ imageRendering: 'pixelated' }}
-              />
-            </g>,
-          )
-          continue
-        }
-        const col = TILE_COLORS[kind]
-        const b = isoToScreen(x + 1, y)
-        const c = isoToScreen(x + 1, y + 1)
-        const d = isoToScreen(x, y + 1)
-        tiles.push(
-          <polygon
-            key={`${x}-${y}`}
-            points={`${a.sx},${a.sy} ${b.sx},${b.sy} ${c.sx},${c.sy} ${d.sx},${d.sy}`}
-            fill={col.top}
-            stroke={col.edge}
-            strokeWidth={0.6}
-          />,
-        )
-      }
-    }
     // 상감 마법진(마법학교 홀) — 셀 좌표계를 그대로 쓰도록 아이소 투영 행렬로 변환해 그린다
     for (const [i, c] of (map.floorInlay ?? []).entries()) {
       tiles.push(<FloorInlay key={`inlay-${i}`} {...c} />)
@@ -221,7 +180,7 @@ export function IsoWorld({
 
   // 정적 오브젝트(건물·나무·NPC·포탈) — 깊이정렬 목록
   const staticEntities = useMemo(() => {
-    const list: { sortY: number; node: React.ReactNode }[] = []
+    const list: { sortY: number; node: React.ReactNode; at?: { sx: number; sy: number; reach: number } }[] = []
 
     let backdropOrder = 0
     for (const p of map.props ?? []) {
@@ -229,6 +188,8 @@ export function IsoWorld({
       const half = p.radial ? 0 : ((p.size?.w ?? 0.4) + (p.size?.d ?? 0.4)) / 2
       const s = isoToScreen(p.cell.x, p.cell.y)
       list.push({
+        // 화면 밖 소품은 그리지 않는다(아래 visibleStatic) — 자리와 그림 크기
+        at: { sx: s.sx, sy: s.sy - (p.elev ?? 0), reach: Math.max(p.px?.w ?? 96, p.px?.h ?? 96) },
         // backdrop(방 뒤쪽 벽·문) = 선언 순서대로 맨 뒤 레이어 — 긴 벽 조각이 앞의 플레이어를 덮지 않게
         sortY: p.backdrop ? -1e6 + (p.backOrder ?? backdropOrder++) : p.cell.x + p.cell.y + half,
         node: (
@@ -625,12 +586,6 @@ export function IsoWorld({
     }
   })
 
-  const allEntities = [...spotEntities, ...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
-  // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
-  const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
-  const behind = allEntities.filter((e) => e.sortY >= -1e5 && e.sortY <= playerSortY).map((e) => e.node)
-  const front = allEntities.filter((e) => e.sortY > playerSortY).map((e) => e.node)
-
   // 개발 모드 전용: window.__isoScale 로 카메라 배율을 바꿔 전체 구도를 확인(크롬 자동화 스크린샷용)
   const devScale = process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' ? (window as unknown as { __isoScale?: number }).__isoScale : undefined
   const SCALE = devScale ?? BASE_SCALE
@@ -641,6 +596,33 @@ export function IsoWorld({
   const camX = clamp(viewportSize.w / 2 - (originX + focus.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
   const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
+  // 화면에 보이는 소품만 그린다 — 마을처럼 소품이 수백 개인 맵에서 걷는 동안 따질 것이 크게 준다.
+  // 보이는 범위는 64px 눈금으로 끊어서, 카메라가 조금 움직일 때마다 목록을 다시 만들지 않는다.
+  const viewCx = Math.round(((viewportSize.w / 2 - camX) / SCALE + bounds.minSx) / 64) * 64
+  const viewCy = Math.round(((viewportSize.h / 2 - camY) / SCALE - padTop) / 64) * 64
+  const viewHw = viewportSize.w / 2 / SCALE + 96
+  const viewHh = viewportSize.h / 2 / SCALE + 96
+  const visibleStatic = useMemo(
+    () => (editor.on ? staticEntities : staticEntities.filter((e) => !e.at || (Math.abs(e.at.sx - viewCx) < viewHw + e.at.reach && Math.abs(e.at.sy - viewCy) < viewHh + e.at.reach * 1.5))),
+    [staticEntities, viewCx, viewCy, viewHw, viewHh, editor.on],
+  )
+
+  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
+  // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
+  const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
+  // 플레이어 앞뒤를 한 목록으로 — 따로 두면 플레이어가 소품을 지나칠 때마다 그 소품이 통째로 새로 만들어진다
+  const depthSorted: React.ReactNode[] = []
+  let playerPlaced = false
+  for (const e of allEntities) {
+    if (e.sortY < -1e5) continue
+    if (!playerPlaced && e.sortY > playerSortY) {
+      depthSorted.push(<Fragment key="__player">{playerNode}</Fragment>)
+      playerPlaced = true
+    }
+    depthSorted.push(e.node)
+  }
+  if (!playerPlaced) depthSorted.push(<Fragment key="__player">{playerNode}</Fragment>)
+
   // 수면 층은 화면에 보이는 영역만(텍스처 주기 단위로 맞춰 카메라가 조금 움직여선 다시 만들지 않는다)
   const waterViewRect = map.water || terrainArt.surface ? waterView(camX, camY, SCALE, viewportSize.w, viewportSize.h, worldW, worldH) : null
 
@@ -649,6 +631,8 @@ export function IsoWorld({
       {waterViewRect && terrainArt.surface && <TerrainWaterBackdrop surface={terrainArt.surface} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
       {terrainArt.canvas && <TerrainCanvas canvas={terrainArt.canvas} w={worldW} h={worldH} />}
       {waterViewRect && map.water && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
+      {/* 칸 타일 지면 — 수면 층 위, 오브젝트 SVG 아래 */}
+      {groundArt && <TerrainCanvas canvas={groundArt} w={worldW} h={worldH} />}
       <svg
         width={worldW}
         height={worldH}
@@ -664,6 +648,13 @@ export function IsoWorld({
         </defs>
         {/* 지면 */}
         {/* 자연 지면 맵은 지면 캔버스가 대신한다(그리는 동안 옛 칸 타일이 번쩍이지 않게 비워 둠) */}
+        {/* 지면이 아직 그려지는 중이면 바탕색으로 채워 둔다 — 맵에 들어설 때 바닥이 통째로 비어 보이지 않게 */}
+        {!groundArt && !terrainArt.canvas && !map.water && (
+          <polygon
+            points={`${isoToScreen(0, 0).sx},${isoToScreen(0, 0).sy} ${isoToScreen(VW, 0).sx},${isoToScreen(VW, 0).sy} ${isoToScreen(VW, VH).sx},${isoToScreen(VW, VH).sy} ${isoToScreen(0, VH).sx},${isoToScreen(0, VH).sy}`}
+            fill={groundFallbackColor(map)}
+          />
+        )}
         {!map.terrain && <g>{ground}</g>}
         {/* 관리자 오브젝트 편집 — 땅을 누르면 선택한 오브젝트를 그 자리로 옮기거나, 고른 오브젝트를 새로 놓는다 */}
         {editor.on && (
@@ -736,9 +727,7 @@ export function IsoWorld({
         {/* 퀘스트 길찾기 안내선 — 지면·바닥 깔개 위, 오브젝트 아래 */}
         {guide && !inClass && <GuideTrail guide={guide} stairs={map.stairs} />}
         {/* 오브젝트 (뒤 → 플레이어 → 앞) */}
-        {behind}
-        {playerNode}
-        {front}
+        {depthSorted}
         {/* 마법진 포탈 — 건물보다 위에 그려 클릭 보장(수업 중엔 숨김) */}
         {!inClass && portalNodes}
       </svg>
