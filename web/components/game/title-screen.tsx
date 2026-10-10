@@ -89,9 +89,10 @@ export function TitleScreen() {
         </div>
         {picking ? (
           // CONTINUE → 세이브 슬롯 4칸 중 선택
-          <div className="screen-fade-in flex w-[min(92vw,380px)] flex-col items-center gap-2">
-            <div className="font-display text-sm tracking-widest text-[#f3e6c4]">불러올 기록을 선택하세요</div>
-            <SaveSlotList mode="load" onPick={handleLoad} />
+          <div className="save-window screen-fade-in">
+            <div className="save-window-head">학생 기록부</div>
+            <div className="save-window-sub">불러올 기록을 선택하세요</div>
+            <SaveSlotList mode="load" onPick={handleLoad} rich />
             <button type="button" onClick={() => setPicking(false)} className="title-start-text mt-1 text-sm">
               BACK
             </button>

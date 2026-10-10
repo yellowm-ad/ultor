@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { MAPS } from '@/lib/maps'
 import { calendarLabel } from '@/lib/calendar'
 import { getActiveSlot, listSaves, type SaveFile } from '@/lib/save'
+import { arcForWeek } from '@/lib/story'
+import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 
 /** 세이브 슬롯의 진행도 요약 — 학사 캘린더(학년·학기·주차) · 레벨 · 위치 */
 function progressOf(file: SaveFile) {
@@ -13,6 +15,9 @@ function progressOf(file: SaveFile) {
     level: st.player?.level ?? 1,
     when: calendarLabel(st.calendar?.globalWeek ?? 1),
     where: (st.currentMapId && MAPS[st.currentMapId]?.name) || '',
+    gender: st.player?.appearance?.gender ?? 'male',
+    gw: st.calendar?.globalWeek ?? 1,
+    chapter: arcForWeek(st.calendar?.globalWeek ?? 1).name,
     savedAt: new Date(file.savedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
   }
 }
@@ -28,11 +33,14 @@ export function SaveSlotList({
   onPick,
   refreshKey = 0,
   tone = 'dark',
+  rich = false,
 }: {
   mode: 'load' | 'save'
   onPick: (slot: number, file: SaveFile | null) => void
   refreshKey?: number
   tone?: 'dark' | 'panel'
+  /** 타이틀의 기록부 창 — 주인공 모습·장 이름·4년 진행 막대를 함께 보여 준다 */
+  rich?: boolean
 }) {
   // localStorage 는 브라우저에만 있으므로 마운트 후에 읽는다(SSR 불일치 방지)
   const [saves, setSaves] = useState<(SaveFile | null)[] | null>(null)
@@ -60,6 +68,9 @@ export function SaveSlotList({
             } ${disabled ? 'cursor-default' : 'hover:border-gold/70 hover:bg-gold/10'} ${active === slot ? 'ring-1 ring-gold/60' : ''}`}
           >
             <span className="font-display w-6 shrink-0 text-center text-base text-gold-soft">{slot}</span>
+            {rich && (
+              <span className="save-slot-face">{p ? <span style={{ transform: 'translateY(26px)' }}><HeroSprite sheet={playerSheet(p.gender)} dir="down" px={96} /></span> : <span className="save-slot-empty">＋</span>}</span>
+            )}
             {p ? (
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-[13px] text-[#f3e6c4]">
@@ -71,6 +82,14 @@ export function SaveSlotList({
                   {p.when}
                   {p.where ? ` · ${p.where}` : ''}
                 </span>
+                {rich && (
+                  <span className="save-slot-prog">
+                    <span className="save-slot-bar">
+                      <span style={{ width: `${Math.min(100, (p.gw / 192) * 100)}%` }} />
+                    </span>
+                    <span className="truncate">{p.chapter}</span>
+                  </span>
+                )}
               </span>
             ) : (
               <span className="flex-1 text-[12px] text-white/45">빈 슬롯</span>

@@ -386,6 +386,15 @@
     0%, 100% { opacity: 0.5; transform: scale(1); }
     50% { opacity: 0.9; transform: scale(1.12); }
   }
+  /* ── 타이틀 기록부 창(components/game/title-screen · save-slots) ── */
+  .save-window { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(92vw, 460px); padding: 16px 18px 14px; border: 2px solid #c79a3e; border-radius: 12px; background: linear-gradient(180deg, rgba(28, 22, 16, 0.94), rgba(19, 15, 11, 0.96)); box-shadow: 0 0 0 4px rgba(20, 16, 12, 0.9), 0 0 0 5px rgba(199, 154, 62, 0.4), 0 20px 50px rgba(0, 0, 0, 0.6); }
+  .save-window-head { font-family: var(--font-display, serif); font-size: 18px; letter-spacing: 0.24em; color: #f3e6c4; }
+  .save-window-sub { margin-bottom: 4px; font-size: 11px; letter-spacing: 0.1em; color: #a8997a; }
+  .save-slot-face { display: flex; align-items: flex-end; justify-content: center; width: 46px; height: 46px; flex: none; border: 1px solid rgba(199, 154, 62, 0.4); border-radius: 8px; overflow: hidden; background: radial-gradient(circle at 50% 80%, rgba(232, 196, 106, 0.25), rgba(0, 0, 0, 0.3)); }
+  .save-slot-empty { align-self: center; font-size: 18px; color: rgba(255, 255, 255, 0.25); }
+  .save-slot-prog { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 10px; color: #c9b88e; }
+  .save-slot-bar { width: 86px; height: 5px; flex: none; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, 0.12); }
+  .save-slot-bar > span { display: block; height: 100%; background: linear-gradient(90deg, #c79a3e, #ffe9a8); }
   /* ── 낚시 장면(components/game/fishing-overlay) ── */
   .fish-scene { position: relative; height: 96px; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #9fd3e6 0%, #9fd3e6 34%, #2f7fa8 34%, #1d5c82 100%); }
   .fish-scene::after { content: ''; position: absolute; left: 0; right: 0; top: 34%; height: 3px; background: rgba(255, 255, 255, 0.55); }
