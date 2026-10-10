@@ -146,6 +146,13 @@ const VILLAGE: DecorItem[] = [
   ['village/vil_wagon_f', 46.6, 37.0],
   ['village/vil_planter', 41.4, 31.2, W],
   ['village/vil_planter', 46.0, 31.2, W],
+  // ── 통문 주둔지 (x36–50, y41–51) — 경비대 훈련 마당: 무기 거치대·갑옷 훈련대·건초 과녁 ──
+  ['housing/weaponrack', 46.2, 43.6],
+  ['housing/weaponrack', 47.2, 44.2],
+  ['academy/wb_armor', 45.6, 45.6],
+  ['village/vil_haystack', 44.9, 46.9],
+  ['village/vil_crates', 41.2, 43.4],
+  ['banner', 45.0, 43.0, W],
   // ── 햇살 농가 (y41–51) ──
   ['village/vil_scarecrow', 26.6, 48.0],
   // 농가 연못 낚시터(lib/activity-spots fish-village) · 경비대 훈련장(arc-village)
