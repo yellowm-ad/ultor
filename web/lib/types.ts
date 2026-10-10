@@ -793,6 +793,8 @@ export interface GameState {
   fieldMonsters: FieldMonster[] // 현재 맵의 몬스터만 보유
   pendingEncounterUid: string | null // 접촉 시 전투 여부를 묻는 대상
   pendingPortalId: string | null // 접촉 시 이동 여부를 묻는 포탈
+  /** 진행 중인 첫 이동 연출(lib/passages) — 통과하면 이 포탈로 넘어간다. 저장하지 않는다 */
+  passage?: { id: import('./passages').PassageId; portalId: string } | null
   gateOpen: boolean // 군 통문 목적지 선택 오버레이
   activeNpcId: string | null
   activeShopId: string | null
@@ -1018,9 +1020,13 @@ export interface PlacedFurniture {
   id: string
   defId: string
   cell: { x: number; y: number }
+  /** 좌우 반전해서 놓았는가 */
+  flip?: boolean
 }
 
 export interface HousingState {
   editMode: boolean
   placed: PlacedFurniture[]
+  /** 배치 모드에서 고른 가구(옮기기·뒤집기·치우기 대상) */
+  selectedId?: string | null
 }

@@ -11,6 +11,7 @@ import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } 
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
 import { useGuide } from '@/components/game/guide-trail'
+import { mapLockReason } from '@/lib/passages'
 import { WeatherLayer } from '@/components/game/weather-layer'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
@@ -184,6 +185,8 @@ export function WorldScreen() {
     })
   const guide = useGuide(state, map, true)
 
+  const furnOwned = (itemId: string) => state.inventory.find((s) => s.itemId === itemId)?.qty ?? 0
+
   // 군 통문(gate) 목적지 목록
   const gatePortals = useMemo(() => map.portals.filter((p) => p.kind === 'gate'), [map])
 
@@ -309,7 +312,7 @@ export function WorldScreen() {
             <div className="pointer-events-auto absolute inset-x-0 bottom-16 z-20 flex justify-center">
               <div className="panel-gilded flex max-w-[92vw] items-center gap-2 overflow-x-auto px-3 py-2">
                 <span className="shrink-0 text-[11px] text-muted-foreground">바라보는 방향 앞에 놓기 →</span>
-                {FURNITURE_CATALOG.map((f) => (
+                {FURNITURE_CATALOG.filter((f) => !f.itemId || furnOwned(f.itemId) > 0).map((f) => (
                   <button
                     key={f.id}
                     className="flex shrink-0 flex-col items-center gap-0.5 rounded-md border border-white/10 bg-black/30 px-2 py-1 text-[10px] text-gold-soft hover:bg-white/10"
@@ -317,11 +320,28 @@ export function WorldScreen() {
                   >
                     <img src={f.sprite.s} alt={f.label} className="h-8 w-8 object-contain" style={{ imageRendering: 'pixelated' }} />
                     {f.label}
+                    {f.itemId && <span className="text-[9px] text-white/60">{furnOwned(f.itemId) - state.housing.placed.filter((p) => p.defId === f.id).length}개 남음</span>}
                   </button>
                 ))}
-                <span className="mx-1 shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <X className="size-3" /> 배치된 가구 클릭 시 제거
-                </span>
+              </div>
+            </div>
+          )}
+          {state.housing.editMode && (
+            <div className="pointer-events-auto absolute inset-x-0 bottom-[172px] z-20 flex justify-center">
+              <div className="panel-gilded flex items-center gap-2 px-3 py-1.5 text-[11px] text-gold-soft">
+                {state.housing.selectedId ? (
+                  <>
+                    <span className="text-muted-foreground">바닥을 누르면 그 자리로 옮겨집니다</span>
+                    <Button size="sm" variant="outline" onClick={() => dispatch({ type: 'HOUSING_FLIP' })}>
+                      좌우 반전
+                    </Button>
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => dispatch({ type: 'HOUSING_REMOVE', id: state.housing.selectedId! })}>
+                      <X className="size-3" /> 치우기
+                    </Button>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">가구를 누르면 옮기기 · 뒤집기 · 치우기 — 새 가구는 마도구 작업대(장인 핀)에서 제작</span>
+                )}
               </div>
             </div>
           )}
@@ -338,15 +358,19 @@ export function WorldScreen() {
             <div className="grid grid-cols-2 gap-2">
               {gatePortals.map((p) => {
                 const under = p.requiredLevel != null && state.player.level < p.requiredLevel
+                const lock = mapLockReason(state, p.to)
                 return (
                   <Button
                     key={p.id}
-                    variant={under ? 'outline' : 'default'}
+                    variant={under || lock ? 'outline' : 'default'}
+                    title={lock ?? undefined}
                     className="flex-col gap-0.5 py-3"
                     onClick={() => dispatch({ type: 'USE_PORTAL', portalId: p.id })}
                   >
                     <span>{p.label}</span>
-                    {p.requiredLevel ? (
+                    {lock ? (
+                      <span className="text-[10px] text-red-300">메인 스토리 진행 후 개방</span>
+                    ) : p.requiredLevel ? (
                       <span className={`text-[10px] ${under ? 'text-red-300' : 'text-black/60'}`}>
                         권장 Lv.{p.requiredLevel}+
                       </span>

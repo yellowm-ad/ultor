@@ -519,20 +519,31 @@ export function IsoWorld({
           const prop: PropDef = {
             id: f.id, kind: 'cottage', cell: f.cell, sprite: def.sprite.s, px: { w, h },
             anchor: def.iso ? { x: w / 2, y: h - 8 * (fw + fd) } : undefined,
-            facing: def.flip ? 'left' : undefined,
+            facing: !!def.flip !== !!f.flip ? 'left' : undefined,
           }
           const half = (def.sprite.fw + def.sprite.fd) / 2
+          const picked = state.housing.editMode && state.housing.selectedId === f.id
           return [
             {
-              sortY: f.cell.x + f.cell.y + half,
+              // 러그는 맨 뒤 레이어(사람·가구 아래)
+              sortY: def.flat ? -1e6 + 500 : f.cell.x + f.cell.y + half,
               node: (
                 <g
                   key={f.id}
                   transform={`translate(${s.sx},${s.sy})`}
                   style={state.housing.editMode ? { cursor: 'pointer' } : undefined}
-                  onClick={state.housing.editMode ? () => dispatch({ type: 'HOUSING_REMOVE', id: f.id }) : undefined}
+                  onClick={
+                    state.housing.editMode
+                      ? (e) => {
+                          e.stopPropagation()
+                          dispatch({ type: 'HOUSING_SELECT', id: picked ? null : f.id })
+                        }
+                      : undefined
+                  }
                 >
+                  {picked && <ellipse cx={0} cy={0} rx={def.sprite.w * 0.75} ry={def.sprite.w * 0.375} fill="rgba(255,216,74,0.22)" stroke="#ffd84a" strokeWidth={2} strokeDasharray="5 4" />}
                   <RasterProp p={prop} />
+                  {picked && <GuideArrow lift={def.sprite.h + 4} />}
                 </g>
               ),
             },
@@ -654,6 +665,27 @@ export function IsoWorld({
               } else if (editor.selected) {
                 moveProp(map.id, editor.selected, cell)
               }
+            }}
+          />
+        )}
+        {/* 개인 공간 가구 배치 — 가구를 고른 뒤 바닥을 누르면 그 자리로 옮긴다 */}
+        {state.currentMapId === 'personal-space' && state.housing.editMode && state.housing.selectedId && (
+          <rect
+            x={bounds.minSx}
+            y={-padTop}
+            width={worldW}
+            height={worldH}
+            fill="transparent"
+            style={{ cursor: 'move' }}
+            onClick={(e) => {
+              const svg = e.currentTarget.ownerSVGElement
+              const ctm = svg?.getScreenCTM()
+              if (!svg || !ctm) return
+              const pt = svg.createSVGPoint()
+              pt.x = e.clientX
+              pt.y = e.clientY
+              const loc = pt.matrixTransform(ctm.inverse())
+              dispatch({ type: 'HOUSING_MOVE', cell: { x: (loc.y / (ISO_TILE_H / 2) + loc.x / (ISO_TILE_W / 2)) / 2, y: (loc.y / (ISO_TILE_H / 2) - loc.x / (ISO_TILE_W / 2)) / 2 } })
             }}
           />
         )}

@@ -25,6 +25,7 @@ import { JournalScreen } from '@/components/game/journal-screen'
 import { ClassSceneOverlay } from '@/components/game/class-scene'
 import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
+import { PassageOverlay } from '@/components/game/passage-overlay'
 
 // e.code(물리 키) 기준 — 한글 IME 상태에서도 동작. 이동 W/A/S/D·상호작용 E·달리기 Shift 와 겹치지 않게 유지할 것
 const OVERLAY_HOTKEYS: Record<string, ScreenId> = { KeyI: 'inventory', KeyC: 'character', KeyP: 'party', KeyM: 'worldmap', KeyJ: 'journal' }
@@ -101,6 +102,7 @@ function GameShell() {
       {state.screen === 'journal' && <JournalScreen />}
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}
+      {state.passage && <PassageOverlay />}
       {state.classScene && <ClassSceneOverlay />}
     </div>
   )

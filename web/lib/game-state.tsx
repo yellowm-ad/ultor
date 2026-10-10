@@ -16,6 +16,7 @@ import { MAPS, zoneAt } from '@/lib/maps'
 import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
+import { mapLockReason, passageFlag, passageFor } from '@/lib/passages'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
@@ -103,12 +104,17 @@ export type Action =
   | { type: 'ENCOUNTER_FIGHT' }
   | { type: 'ENCOUNTER_FLEE' }
   | { type: 'USE_PORTAL'; portalId: string }
+  | { type: 'PASSAGE_DONE' }
+  | { type: 'PASSAGE_CANCEL' }
   | { type: 'PORTAL_CONFIRM' }
   | { type: 'PORTAL_CANCEL' }
   | { type: 'TELEPORT'; mapId: MapId }
   | { type: 'HOUSING_TOGGLE_EDIT' }
   | { type: 'HOUSING_PLACE'; defId: string }
   | { type: 'HOUSING_REMOVE'; id: string }
+  | { type: 'HOUSING_SELECT'; id: string | null }
+  | { type: 'HOUSING_MOVE'; cell: { x: number; y: number } }
+  | { type: 'HOUSING_FLIP' }
   | { type: 'OPEN_GATE' }
   | { type: 'CLOSE_GATE' }
   | { type: 'BATTLE_ACTOR_ACTION'; actorUid: string; action: EngineBattleAction }
@@ -181,6 +187,7 @@ function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number
     for (const f of state.housing.placed) {
       const def = FURNITURE_BY_ID[f.defId]
       if (!def) continue
+      if (def.flat) continue
       const hw = def.sprite.fw / 2
       const hd = def.sprite.fd / 2
       if (hits({ x0: f.cell.x - hw, y0: f.cell.y - hd, x1: f.cell.x + hw, y1: f.cell.y + hd })) return true
@@ -373,6 +380,7 @@ function reducer(state: GameState, action: Action): GameState {
         state.pendingPortalId ||
         state.gateOpen ||
         state.fishing ||
+        state.passage ||
         state.storyQueue.length > 0
       )
         return state
@@ -474,6 +482,15 @@ function reducer(state: GameState, action: Action): GameState {
       if (state.classScene) return state
       return travelThroughPortal(state, action.portalId)
 
+    // 첫 이동 연출(lib/passages) — 통과하면 플래그를 켜고 그 포탈로 넘어간다 / 포기하면 제자리
+    case 'PASSAGE_DONE': {
+      if (!state.passage) return state
+      const { id, portalId } = state.passage
+      return travelThroughPortal({ ...state, passage: null, storyFlags: { ...state.storyFlags, [passageFlag(id)]: true } }, portalId)
+    }
+    case 'PASSAGE_CANCEL':
+      return state.passage ? { ...state, passage: null, toast: '발길을 돌렸다.' } : state
+
     case 'PORTAL_CONFIRM':
       return state.pendingPortalId ? travelThroughPortal(state, state.pendingPortalId) : state
 
@@ -499,7 +516,7 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'HOUSING_TOGGLE_EDIT': {
       if (state.currentMapId !== 'personal-space') return state
-      return { ...state, housing: { ...state.housing, editMode: !state.housing.editMode } }
+      return { ...state, housing: { ...state.housing, editMode: !state.housing.editMode, selectedId: null } }
     }
 
     case 'HOUSING_PLACE': {
@@ -512,14 +529,50 @@ function reducer(state: GameState, action: Action): GameState {
           return { x: v.x * 0.9, y: v.y * 0.9 }
         })()
       const cell = { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
-      if (blockedAt(state, 'personal-space', cell.x, cell.y)) return state
+      // 제작 가구는 가방에 가진 개수만큼만(놓아도 가방에서 빠지지 않는다 — 치우면 다시 놓을 수 있다)
+      if (def.itemId) {
+        const own = state.inventory.find((s) => s.itemId === def.itemId)?.qty ?? 0
+        const used = state.housing.placed.filter((p) => p.defId === def.id).length
+        if (used >= own) return { ...state, toast: `${def.label}을(를) 더 가지고 있지 않습니다. 마도구 작업대에서 만들 수 있어요.` }
+      }
+      if (!def.flat && blockedAt(state, 'personal-space', cell.x, cell.y)) return state
       const placed = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, defId: action.defId, cell }
-      return withQuestEvents({ ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed] } }, [{ type: 'PLACE_FURNITURE' }])
+      return withQuestEvents({ ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed], selectedId: placed.id } }, [{ type: 'PLACE_FURNITURE' }])
     }
 
     case 'HOUSING_REMOVE': {
       if (state.currentMapId !== 'personal-space' || !state.housing.editMode) return state
-      return { ...state, housing: { ...state.housing, placed: state.housing.placed.filter((p) => p.id !== action.id) } }
+      return { ...state, housing: { ...state.housing, placed: state.housing.placed.filter((p) => p.id !== action.id), selectedId: null } }
+    }
+
+    case 'HOUSING_SELECT': {
+      if (state.currentMapId !== 'personal-space' || !state.housing.editMode) return state
+      return { ...state, housing: { ...state.housing, selectedId: action.id } }
+    }
+
+    // 고른 가구를 누른 바닥으로 옮긴다(1/4칸 단위). 벽·방 밖·서 있는 자리에는 못 놓는다
+    case 'HOUSING_MOVE': {
+      const sel = state.housing.selectedId
+      if (state.currentMapId !== 'personal-space' || !state.housing.editMode || !sel) return state
+      const map = MAPS['personal-space']
+      const cell = { x: Math.round(action.cell.x * 4) / 4, y: Math.round(action.cell.y * 4) / 4 }
+      if (cell.x < 0.4 || cell.y < 0.4 || cell.x > map.grid.w - 0.4 || cell.y > map.grid.h - 0.4) return state
+      const def = FURNITURE_BY_ID[state.housing.placed.find((p) => p.id === sel)?.defId ?? '']
+      if (!def) return state
+      if (!def.flat) {
+        const hw = def.sprite.fw / 2
+        const hd = def.sprite.fd / 2
+        const wall = (map.blockers ?? []).some((b) => cell.x + hw > b.x0 && cell.x - hw < b.x1 && cell.y + hd > b.y0 && cell.y - hd < b.y1)
+        const onMe = Math.abs(state.position.x - cell.x) < hw + BODY_R && Math.abs(state.position.y - cell.y) < hd + BODY_R
+        if (wall || onMe) return { ...state, toast: wall ? '벽에 걸려서 놓을 수 없습니다.' : '서 있는 자리에는 놓을 수 없습니다.' }
+      }
+      return { ...state, housing: { ...state.housing, placed: state.housing.placed.map((p) => (p.id === sel ? { ...p, cell } : p)) } }
+    }
+
+    case 'HOUSING_FLIP': {
+      const sel = state.housing.selectedId
+      if (state.currentMapId !== 'personal-space' || !state.housing.editMode || !sel) return state
+      return { ...state, housing: { ...state.housing, placed: state.housing.placed.map((p) => (p.id === sel ? { ...p, flip: !p.flip } : p)) } }
     }
 
     case 'OPEN_NPC':
@@ -936,6 +989,12 @@ function travelThroughPortal(state: GameState, portalId: string): GameState {
   const portal = fromMap.portals.find((p) => p.id === portalId)
   if (!portal) return state
   const destMap = MAPS[portal.to]
+  // 메인 스토리가 아직 닿지 않은 지역은 잠겨 있다
+  const lock = mapLockReason(state, destMap.id)
+  if (lock) return { ...state, pendingPortalId: null, gateOpen: false, toast: lock }
+  // 처음 가는 길이면 건너는 연출부터(통과하면 PASSAGE_DONE 이 다시 이 함수를 부른다)
+  const passage = passageFor(state, destMap.id)
+  if (passage) return { ...state, pendingPortalId: null, gateOpen: false, passage: { id: passage.id, portalId } }
   const pos = portal.toSpawn ?? destMap.spawn
   // 방문 = VISIT 미션 + 첫 진입 스토리 비트
   return visitMap(

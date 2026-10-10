@@ -11,6 +11,7 @@
 // PixelLab 으로 교체할 때는 같은 경로에 PNG 를 두고 ITEM 의 icon 만 바꾸면 된다.
 // ============================================================================
 
+import { CRAFT_FURNITURE, craftFurnitureItemId } from '@/lib/housing'
 import type { GameMap, GameState, ItemDef, MapId, MaterialTag, MonsterFamily, RecipeCategory, RecipeDef } from '@/lib/types'
 import { calendarInfo, globalWeekOf } from '@/lib/calendar'
 import type { TermType } from '@/lib/types'
@@ -38,7 +39,7 @@ export const ACTIVITY_META: Record<ActivityId, { name: string; year: number; ter
   alchemy: { name: '연금술', year: 2, term: 'semester1' },
   cooking: { name: '요리', year: 2, term: 'semester1' },
   hunting: { name: '사냥', year: 2, term: 'semester2' },
-  furniture: { name: '가구 제작', year: 3, term: 'semester1' },
+  furniture: { name: '가구 제작', year: 1, term: 'semester2' },
   magicTool: { name: '마도구 제작', year: 3, term: 'semester2' },
   costume: { name: '코스튬 제작', year: 3, term: 'semester2' },
 }
@@ -393,7 +394,19 @@ export function rollHuntDrops(family: MonsterFamily, rand = Math.random): string
 // ─────────────────────────────────────────────────────────────────────────────
 // 신규 레시피 — 재료 itemId 가 'tag:herb' 처럼 태그면 그 태그의 아무 재료나 소모
 // ─────────────────────────────────────────────────────────────────────────────
+// 개인 공간 제작 가구(lib/housing CRAFT_FURNITURE) — 아이템과 레시피를 목록에서 만든다
+const FURNITURE_ITEMS: ItemDef[] = CRAFT_FURNITURE.map((c) => ({
+  id: craftFurnitureItemId(c.id), name: c.label, type: 'furniture', icon: `/images/map/props/academy/${c.file}.png`,
+  description: `${c.desc} 내 개인 공간의 가구 배치에서 가진 개수만큼 놓을 수 있다.`, price: 0, sellPrice: 30 + c.ingredients.reduce((s, [, q]) => s + q, 0) * 12, stackable: true, maxStack: 10, shopBuyable: false,
+}))
+LIFE_ITEMS.push(...FURNITURE_ITEMS)
+const FURNITURE_RECIPES: RecipeDef[] = CRAFT_FURNITURE.map((c) => ({
+  id: craftFurnitureItemId(c.id), station: 'magic_workbench', category: 'furniture',
+  ingredients: c.ingredients.map(([itemId, quantity]) => ({ itemId, quantity })), outputItemId: craftFurnitureItemId(c.id), outputQuantity: 1,
+}))
+
 export const LIFE_RECIPES: RecipeDef[] = [
+  ...FURNITURE_RECIPES,
   // ── 마력캔디(제작대) ──
   { id: 'candy-mana-s', station: 'magic_workbench', category: 'candy', ingredients: [{ itemId: 'tag:flower', quantity: 2 }, { itemId: 'tag:crystal', quantity: 1 }], outputItemId: 'candy-mana-s', outputQuantity: 2 },
   { id: 'candy-mana', station: 'magic_workbench', category: 'candy', ingredients: [{ itemId: 'candy-mana-s', quantity: 3 }, { itemId: 'crystal-mana', quantity: 2 }, { itemId: 'mush-glow', quantity: 1 }], outputItemId: 'candy-mana', outputQuantity: 1 },
