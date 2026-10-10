@@ -2,6 +2,8 @@ import type { GameMap, MapId, ZoneDef, ZoneKind } from '@/lib/types'
 import type { PropDef, TileKind } from '@/lib/iso'
 import { propAABB } from '@/lib/iso'
 import { assembleFieldMaps } from '@/lib/field-specs'
+import { VILLAGE_NORTH, villageShift } from '@/lib/village-layout'
+import { TOWN_DECOR, decorProps } from '@/lib/town-decor'
 import { AW, AH, ACX, ENTRANCE_CY, atlantisTileAt, atlantisWaterAt, ATLANTIS_PROPS, ATLANTIS_BLOCKERS, ATLANTIS_STRUCTURES } from '@/lib/atlantis-map'
 import { TOWN_W, TOWN_H, TOWN_CX, TOWN_ENTRANCE_CY } from '@/lib/town-builder'
 import { RUIN_TOWN_TILE_AT, RUIN_TOWN_PROPS, RUIN_TOWN_BLOCKERS, AUR_TOWN_TILE_AT, AUR_TOWN_PROPS, AUR_TOWN_BLOCKERS, DEMON_TOWN_TILE_AT, DEMON_TOWN_PROPS, DEMON_TOWN_BLOCKERS } from '@/lib/theme-towns'
@@ -93,11 +95,13 @@ function z(
   return { id, kind, name, cell: { x0, y0, x1, y1 }, color, description, hasMonsters: false }
 }
 
-// ── 메인 마을 (52 × 40) — 아이소메트릭 도트 엔진 ────────────────────────────
+// ── 메인 마을 (52 × 53) — 아이소메트릭 도트 엔진 ────────────────────────────
+// 2026-10-10 북쪽 확장: 아래 3×3 지구(옛 52×40 좌표로 적혀 있다) 위에 지구 한 줄(3칸)을 더 붙였다.
+// 옛 좌표 기준 y<0 이 새 북쪽 띠이고, 맵을 내보낼 때 전부 VILLAGE_NORTH 만큼 남쪽으로 민다(lib/village-layout.ts).
 // 3×3 지구를 넓게: [학교 쿼드·중앙 광장·하우징] / [기숙사·중앙 대도서관+공원·상점가]
 //                 / [대성당 성역·햇살 농가·통문 주둔지]
 // 대로는 폭 3셀, 외곽 순환로 2.5셀. 지구 사이는 넉넉한 녹지 완충.
-const VILLAGE_ZONES: ZoneDef[] = [
+const VILLAGE_BASE_ZONES: ZoneDef[] = [
   z('z-magic-hall', 'school', '학교 본교 쿼드', 2, 2, 17, 13, '#5b6bd6', '마법동·연금술동·마도구동이 안뜰을 둘러싼 본교. 시계탑과 대강당, 도서관 별관이 있다.'),
   z('z-quad', 'plaza', '중앙 대광장', 20, 2, 33, 13, '#8891b5', '분수와 동상이 선 마을 심장부. 사방으로 대로가 뻗는다.'),
   z('z-housing', 'village', '하우징 마을', 36, 2, 50, 13, '#6fae5d', '지붕색이 제각각인 저층 주거 블록과 뒷마당 정원.'),
@@ -111,8 +115,22 @@ const VILLAGE_ZONES: ZoneDef[] = [
   z('z-barracks', 'military', '통문 주둔지', 36, 27, 50, 38, '#8a8f9c', '성벽과 망루로 두른 주둔지. 웅장한 군 통문이 야생으로 통한다.'),
 ]
 
+/** 북쪽 확장 지구 — 지금 좌표(밀린 뒤) 기준 */
+const VILLAGE_NORTH_ZONES: ZoneDef[] = [
+  z('z-north-school', 'school', '학교 북관', 2, 2, 17, VILLAGE_NORTH, '#6a5bd6', '연구동과 실습동이 안뜰을 둘러싼 학교 북쪽 별관.'),
+  z('z-north-garden', 'park', '학교 정원', 20, 2, 33, VILLAGE_NORTH, '#4e9c4a', '중앙 대광장 북쪽으로 이어지는 학교 정원.'),
+  z('z-north-lot', 'village', '북쪽 빈터', 36, 2, 50, VILLAGE_NORTH, '#7fae6d', '아직 비어 있는 너른 잔디 부지.'),
+]
+const VILLAGE_ZONES: ZoneDef[] = [
+  ...VILLAGE_NORTH_ZONES,
+  ...VILLAGE_BASE_ZONES.map((zn) => ({ ...zn, cell: { ...zn.cell, y0: zn.cell.y0 + VILLAGE_NORTH, y1: zn.cell.y1 + VILLAGE_NORTH } })),
+]
+
 const VW = 52
-const VH = 40
+const VH = 40 // 옛(확장 전) 세로 칸 수 — 아래 배치 코드의 기준
+const VN = VILLAGE_NORTH
+/** 학교 북관 안뜰 중심(옛 좌표 — y<0 이 북쪽 띠) */
+const NORTH_COURT = { x: 9.5, y: -4.4 }
 const FOUNTAIN = { x: 26.5, y: 7.5 }
 const LIBRARY = { x: 26.5, y: 20.5 }
 /** 대도서관 앞마당 포석(건물 기단 + 둘레) — 셀 공간 사각형 */
@@ -127,8 +145,25 @@ const ST_S = { a: 24.8, b: 27.8 } // 가로 대로 (남측 지구 경계)
 const GATE_WAY = { a: 41.5, b: 45.5 } // 주둔지 의전 대로 (ST_S → 군 통문)
 const between = (v: number, r: { a: number; b: number }) => v > r.a && v < r.b
 
-/** 마을 지면 타일 */
+/** 북쪽 확장 띠 지면(옛 좌표 y<0) — 외곽 순환로·세로 대로를 그대로 잇고 나머지는 잔디 */
+function villageNorthTileAt(x: number, y: number): TileKind {
+  if (x < 2.5 || x > VW - 2.5 || y < -VN + 2.5) return 'path'
+  if (between(x, AV_L) || between(x, AV_R)) return 'path'
+  // 중앙 대광장 북쪽 진입로를 정원 한가운데로 연장
+  if (Math.abs(x - FOUNTAIN.x) < 1.5) return 'path'
+  // 학교 북관 안뜰 포석 + 남쪽 길로 나가는 통로
+  if (Math.hypot((x - NORTH_COURT.x) * 0.85, y - NORTH_COURT.y) < 3.4) return 'plaza'
+  if (Math.abs(x - NORTH_COURT.x) < 1.2 && y > NORTH_COURT.y) return 'path'
+  return (Math.floor(x) * 7 + Math.floor(y + VN) * 13) % 9 === 0 ? 'grass-dark' : 'grass'
+}
+
+/** 마을 지면 타일(지금 좌표) */
 function villageTileAt(x: number, y: number): TileKind {
+  return y < VN ? villageNorthTileAt(x, y - VN) : villageBaseTileAt(x, y - VN)
+}
+
+/** 옛 3×3 지구 지면 타일(옛 좌표) */
+function villageBaseTileAt(x: number, y: number): TileKind {
   // 외곽 순환 보도 (2.5셀 폭)
   if (x < 2.5 || x > VW - 2.5 || y < 2.5 || y > VH - 2.5) return 'path'
   // 중앙 대도서관 앞마당 포석
@@ -230,6 +265,10 @@ const BUILDING_SPRITE: Record<string, Rs> = {
   'b-statue': B_('b_statue', 86, 156, 43, 134),
   'b-statue-saint': B_('b_statue', 86, 156, 43, 134),
   'b-gazebo': B_('b_gazebo', 120, 143, 60, 114),
+  // 북쪽 확장 — 학교 북관
+  'b-north-lab': B_('b_guildhall', 173, 204, 87, 118),
+  'b-north-hallA': B_('b_hall_small', 157, 178, 79, 100),
+  'b-north-hallB': B_('b_hall_small', 157, 178, 79, 100),
 }
 // kind 별 (동일 스프라이트 반복)
 const KIND_BUILDING_SPRITE: Partial<Record<PropDef['kind'], Rs>> = {
@@ -273,7 +312,7 @@ const WALL_SPRITE: Record<'left' | 'right', Rs> = {
   left: B_('b_wall_sw', 46, 40, 23, 40), // +y 축 (화면 좌하)
 }
 
-/** 마을 오브젝트 배치 — 모든 좌표는 격자(0..VW, 0..VH) 안에 있고 대로를 침범하지 않는다 */
+/** 마을 오브젝트 배치 — 옛 좌표(0..VW, 0..VH)로 놓고 마지막에 북쪽 확장만큼 민다. 북쪽 띠는 y<0 */
 function villageProps(): PropDef[] {
   const P: PropDef[] = []
   const TEMPLE_GARDEN: [number, number][] = [] // 대성당 앞광장 화단 좌표 — furniture 단계에서 배치
@@ -575,6 +614,35 @@ function villageProps(): PropDef[] {
   place('tb-pk0', 'trashbin', 23.0, 30.9)
   place('tb-pk1', 'trashbin', 30.2, 29.0)
 
+  // ════════ 북쪽 확장 띠 (옛 좌표 y -10.5–0) — 학교 북관 / 학교 정원 / 빈터 ════════
+  // place() 는 y<2.5 를 외곽 순환로로 보고 걸러내므로 여기는 직접 push 한다.
+  // 학교 북관 (x2.5–16.8) — 북쪽에 건물 3동, 남쪽에 안뜰
+  P.push({ id: 'b-north-hallA', kind: 'hall', cell: { x: 3.2, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '실습동' })
+  P.push({ id: 'b-north-lab', kind: 'hall', cell: { x: 7.6, y: -10.0 }, size: { w: 2.8, d: 2.6 }, label: '마법 연구동' })
+  P.push({ id: 'b-north-hallB', kind: 'hall', cell: { x: 12.4, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '기록관' })
+  P.push({ id: 'b-north-tower', kind: 'tower', cell: { x: 14.6, y: -3.6 }, size: { w: 1.1, d: 1.1 }, label: '관측탑' })
+  P.push({ id: 'b-north-statue', kind: 'statue', cell: { x: NORTH_COURT.x, y: NORTH_COURT.y }, size: { w: 1.0, d: 1.0 }, label: '초대 교장 상' })
+  P.push({ id: 'be-nc0', kind: 'bench', cell: { x: NORTH_COURT.x - 2.4, y: NORTH_COURT.y + 0.4 }, variant: 'l' })
+  P.push({ id: 'be-nc1', kind: 'bench', cell: { x: NORTH_COURT.x + 2.4, y: NORTH_COURT.y + 0.4 }, variant: 'r' })
+  // 학교 정원 (x19.8–33) — 가운데 길 양옆으로 나무·관목·벤치, 동쪽에 정자
+  P.push({ id: 'b-north-gazebo', kind: 'gazebo', cell: { x: 30.2, y: -5.4 }, size: { w: 1.8, d: 1.8 } })
+  for (const [i, bx] of [20.4, 21.2, 22.0, 22.8, 23.6, 24.4, 28.6, 29.4, 30.2, 31.0, 31.8, 32.6].entries()) {
+    P.push({ id: `hd-ngN-${i}`, kind: 'bush', cell: { x: bx, y: -10.0 } })
+    P.push({ id: `hd-ngS-${i}`, kind: 'bush', cell: { x: bx, y: -0.4 } })
+  }
+  P.push({ id: 'be-ng0', kind: 'bench', cell: { x: 24.4, y: -7.0 }, variant: 'r' })
+  P.push({ id: 'be-ng1', kind: 'bench', cell: { x: 24.4, y: -3.4 }, variant: 'r' })
+  P.push({ id: 'be-ng2', kind: 'bench', cell: { x: 28.6, y: -7.0 }, variant: 'l' })
+  const northTrees: [number, number, string][] = [
+    [5.0, -5.6, 'c'], [3.6, -2.2, 'a'], [13.6, -1.6, 'g'], [15.6, -6.2, 'a'], // 학교 북관
+    [20.8, -8.6, 'c'], [23.0, -8.8, 'a'], [20.8, -5.2, 'g'], [22.6, -2.2, 'c'], [20.6, -1.8, 'a'], // 정원 서편
+    [29.6, -8.8, 'a'], [32.2, -8.6, 'c'], [32.4, -2.4, 'o'], [29.4, -2.0, 'a'], // 정원 동편
+    [37.2, -9.4, 'c'], [48.6, -9.4, 'a'], [37.2, -1.4, 'g'], [48.6, -1.4, 'c'], // 빈터 네 귀퉁이만
+  ]
+  northTrees.forEach(([x, y, v], i) => P.push({ id: `t-n${i}`, kind: 'tree', cell: { x, y }, variant: v }))
+  for (const [i, ex] of [AV_L.a - 0.6, AV_L.b + 0.6, AV_R.a - 0.6, AV_R.b + 0.6].entries())
+    for (const [k, y] of [-8.6, -4.4].entries()) P.push({ id: `l-n${i}${k}`, kind: 'lamp', cell: { x: ex, y } })
+
   // 종류 기반 플래그 + 라스터 스프라이트 일괄 부여 (개별 push 에서 누락 방지)
   for (const p of P) {
     if (SOLID_KINDS.has(p.kind)) p.solid = true
@@ -599,7 +667,8 @@ function villageProps(): PropDef[] {
   // 대성당 회랑·좌측 연못·봉헌 조상을 빼자 그 자리에 막혀 있던 자동 배치 소품(가로등·쓰레기통·나무·관목)이
   // 새로 튀어나옴 → 제거 전 모습 그대로 두도록 명시적으로 뺀다.
   const SUPPRESSED = new Set(['l6', 'l65', 'l67', 'tb2', 't7', 'tg-bush3', 'tg-bush9'])
-  return P.filter((p) => !SUPPRESSED.has(p.id))
+  // 옛 좌표 → 지금 좌표(북쪽 확장만큼 남쪽으로)
+  return P.filter((p) => !SUPPRESSED.has(p.id)).map((p) => ({ ...p, cell: villageShift(p.cell) }))
 }
 
 const VILLAGE_PROPS = villageProps()
@@ -739,7 +808,7 @@ export const MAPS = {
     id: 'village',
     name: '울토르 마법학교 마을',
     kind: 'town',
-    grid: { w: VW, h: VH },
+    grid: { w: VW, h: VH + VN },
     bg: 'school',
     render: 'iso',
     assets: 'raster', // Phase 2 테스트: 가로등만 PNG, 나머지는 sprite 없어 SVG 폴백
@@ -747,17 +816,18 @@ export const MAPS = {
     props: VILLAGE_PROPS,
     zones: VILLAGE_ZONES,
     blockers: VILLAGE_BLOCKERS,
-    spawn: { x: 26.5, y: 12.2 },
-    respawn: { x: 9.5, y: 30.0 },
+    // 아래 좌표는 옛 좌표로 적고 villageShift 로 민다
+    spawn: villageShift({ x: 26.5, y: 12.2 }),
+    respawn: villageShift({ x: 9.5, y: 30.0 }),
     portals: [
-      { id: 'gate-forest', cell: { x: 43.5, y: 36.6 }, to: 'forest', label: '에르디아 숲', kind: 'gate' },
-      { id: 'gate-sea', cell: { x: 43.5, y: 36.6 }, to: 'sea', label: '바다', kind: 'gate', requiredLevel: 5 },
-      { id: 'gate-stormhaven', cell: { x: 43.5, y: 36.6 }, to: 'stormhaven', label: '스톰헤이븐', kind: 'gate', requiredLevel: 15 },
-      { id: 'gate-ruins', cell: { x: 43.5, y: 36.6 }, to: 'ruins', label: '버려진 폐허', kind: 'gate', requiredLevel: 21 },
-      { id: 'gate-snowfield', cell: { x: 43.5, y: 36.6 }, to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 31 },
-      { id: 'gate-volcano', cell: { x: 43.5, y: 36.6 }, to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
-      { id: 'personal-space-enter', cell: { x: 42, y: 5 }, to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
-      { id: 'school-hall-enter', cell: { x: 6.9, y: 6.5 }, to: 'school-hall', label: '마법학교 본관', kind: 'portal' },
+      { id: 'gate-forest', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'forest', label: '에르디아 숲', kind: 'gate' },
+      { id: 'gate-sea', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'sea', label: '바다', kind: 'gate', requiredLevel: 5 },
+      { id: 'gate-stormhaven', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'stormhaven', label: '스톰헤이븐', kind: 'gate', requiredLevel: 15 },
+      { id: 'gate-ruins', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'ruins', label: '버려진 폐허', kind: 'gate', requiredLevel: 21 },
+      { id: 'gate-snowfield', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'snowfield', label: '루미나 설원', kind: 'gate', requiredLevel: 31 },
+      { id: 'gate-volcano', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
+      { id: 'personal-space-enter', cell: villageShift({ x: 42, y: 5 }), to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
+      { id: 'school-hall-enter', cell: villageShift({ x: 6.9, y: 6.5 }), to: 'school-hall', label: '마법학교 본관', kind: 'portal' },
     ],
   },
 
@@ -994,7 +1064,7 @@ export const MAPS = {
     zones: NO_ZONES,
     spawn: { x: HALL_CX, y: HALL_H - 2.0 },
     portals: [
-      { id: 'school-hall-exit', cell: { x: HALL_CX, y: HALL_H - 0.8 }, to: 'village', toSpawn: { x: 6.9, y: 7.2 }, label: '본관 밖으로', kind: 'exit' },
+      { id: 'school-hall-exit', cell: { x: HALL_CX, y: HALL_H - 0.8 }, to: 'village', toSpawn: villageShift({ x: 6.9, y: 7.2 }), label: '본관 밖으로', kind: 'exit' },
       // 대계단을 끝까지 오르면 그대로 2층 회랑(같은 좌표계) — 확인창 없이 걸어서
       { id: 'hall-to-2f', cell: { x: HALL_CX, y: STAIR_TO_2F.y1 }, walkArea: STAIR_TO_2F, to: 'academy-2f', label: '2층 회랑', kind: 'portal' },
       ...HALL_ROOM_PORTALS,
@@ -1101,7 +1171,7 @@ export const MAPS = {
     zones: NO_ZONES,
     spawn: { ...PERSONAL_ROOM_SPAWN },
     portals: [
-      { id: 'personal-space-exit', cell: { ...PERSONAL_ROOM_EXIT }, to: 'village', toSpawn: { x: 42, y: 6.4 }, label: '마을로 나가기', kind: 'exit' },
+      { id: 'personal-space-exit', cell: { ...PERSONAL_ROOM_EXIT }, to: 'village', toSpawn: villageShift({ x: 42, y: 6.4 }), label: '마을로 나가기', kind: 'exit' },
     ],
   },
 
@@ -1125,6 +1195,15 @@ export const MAPS = {
     ],
   },
 } as Record<MapId, GameMap>
+
+// 마을 꾸미기 소품(lib/town-decor.ts) — 각 마을 props 뒤에 덧붙이고, 길막 소품은 충돌도 함께 더한다
+for (const [id, items] of Object.entries(TOWN_DECOR)) {
+  const m = (MAPS as Record<string, GameMap>)[id]
+  if (!m) continue
+  const extra = decorProps(items)
+  m.props = [...(m.props ?? []), ...extra]
+  m.blockers = [...(m.blockers ?? []), ...extra.map(propBlocker).filter((b): b is Blocker => !!b)]
+}
 
 // 스프라이트 없이 남은 점배치 소품(실내 대홀 조명 등)에 PixelLab 도트를 붙인다 —
 // 코드로 그린 SVG 건물/소품(iso-sprites) 폴백을 없애면서 모든 소품이 라스터로 그려지게.

@@ -7,10 +7,11 @@
 // ============================================================================
 
 import type { MapId } from '@/lib/types'
+import { villageShift } from '@/lib/village-layout'
 import { buildFieldMap, oppositeSide, type BuiltFieldMap, type FieldMapSpec, type Side } from '@/lib/field-maps'
 
 /** 마을 군 통문 앞(야생 1단계 → 마을 복귀 위치) */
-export const VILLAGE_GATE_ARRIVAL = { x: 43.5, y: 35.4 }
+export const VILLAGE_GATE_ARRIVAL = villageShift({ x: 43.5, y: 35.4 }) // 옛 마을 좌표로 적고 북쪽 확장만큼 민다
 
 type Node = Omit<FieldMapSpec, 'entry' | 'exits'> & {
   entryLabel: string

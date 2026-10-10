@@ -78,6 +78,7 @@ import {
 } from '@/lib/progression'
 import { COMBAT_NPCS } from '@/lib/companions'
 import { mergeSave, migrateLoadedState, writeSave } from '@/lib/save'
+import { VILLAGE_LAYOUT, villageShift } from '@/lib/village-layout'
 
 export type Action =
   | { type: 'START_GAME'; name: string; appearance: Partial<PlayerAppearance>; starterPetId: string }
@@ -222,6 +223,11 @@ function reducer(state: GameState, action: Action): GameState {
         loaded.housing = { ...loaded.housing, placed: fresh.housing.placed }
       }
       const map = MAPS[loaded.currentMapId] ?? MAPS.village
+      // 마을 북쪽 확장(2026-10-10) 전 세이브는 마을 안 위치가 옛 좌표 → 같은 자리에 서도록 민다
+      if (action.saved.villageLayout !== VILLAGE_LAYOUT) {
+        if (map.id === 'village') loaded.position = villageShift(loaded.position)
+        loaded.villageLayout = VILLAGE_LAYOUT
+      }
       return ensureWeek({
         ...loaded,
         currentMapId: map.id,

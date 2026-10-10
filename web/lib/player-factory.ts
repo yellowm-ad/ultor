@@ -1,4 +1,5 @@
 import type { GameState, Pet, PlayerAppearance, PlayerCharacter } from '@/lib/types'
+import { VILLAGE_LAYOUT } from '@/lib/village-layout'
 import { computeStatsForLevel, STARTING_GOLD, DEFAULT_SETTINGS } from '@/lib/constants'
 import { MAPS } from '@/lib/maps'
 import { createPet, DEFAULT_STARTER_PET } from '@/lib/pets'
@@ -95,6 +96,7 @@ export function createInitialGameState(): GameState {
     },
     // ── 4년제 학사·생활 시스템 — START_GAME 에서 시드/주간 퀘스트를 새로 채운다 ──
     playerSeed: 1,
+    villageLayout: VILLAGE_LAYOUT,
     calendar: createInitialCalendar(),
     weekly: { week: 0, quests: [], lastSeen: {} },
     academics: createInitialAcademics(),

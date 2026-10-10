@@ -803,6 +803,8 @@ export interface GameState {
   // ── 4년제 학사·생활 시스템(§학사 PRD) ──────────────────────────────────────
   /** 세이브마다 고정 — 주간 퀘스트 시드 등 재현 가능한 랜덤에 쓴다 */
   playerSeed: number
+  /** 마을 배치 판 번호(lib/village-layout VILLAGE_LAYOUT) — 없는 옛 세이브는 마을 위치를 북쪽 확장만큼 민다 */
+  villageLayout?: number
   calendar: CalendarState
   weekly: WeeklyState
   academics: AcademicState

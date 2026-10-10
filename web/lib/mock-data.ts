@@ -4,6 +4,7 @@ import { legacyMonsterBaseExp, monsterBaseExp } from '@/lib/exp-table'
 import { COURSES } from '@/lib/academics'
 import { LIFE_ITEMS, LIFE_RECIPES } from '@/lib/life'
 import { SCHOOL_NPCS } from '@/lib/companions'
+import { VILLAGE_BASE_ZONE_IDS, villageShift } from '@/lib/village-layout'
 
 const FIRE = '/images/elements/fire-crest.png'
 const ICE = '/images/elements/ice-crest.png'
@@ -908,7 +909,9 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
   }))
 }
 
-export const NPCS: NpcDef[] = [...NPCS_BASE, ...testRoomNpcs(NPCS_BASE)]
+// 마을 NPC 자리는 위 목록에 옛 마을 좌표로 적혀 있다 → 북쪽 확장만큼 민다(lib/village-layout.ts)
+const NPCS_PLACED: NpcDef[] = NPCS_BASE.map((n) => (VILLAGE_BASE_ZONE_IDS.has(n.zoneId) ? { ...n, cell: villageShift(n.cell) } : n))
+export const NPCS: NpcDef[] = [...NPCS_PLACED, ...testRoomNpcs(NPCS_BASE)]
 /**
  * 학교 동료(lib/companions SCHOOL_NPCS)의 대화용 NPC 정의 — 맵 구역에 묶이지 않고(lib/school-roster 가 매주 배치)
  * npcById 로만 찾는다. 인사말 = 평소 대사 + 합류 권유 대사.

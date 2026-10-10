@@ -10,6 +10,7 @@ import { useSyncExternalStore } from 'react'
 import type { GameMap } from '@/lib/types'
 import type { PropDef } from '@/lib/iso'
 import { MAPS, propBlocker } from '@/lib/maps'
+import { VILLAGE_LAYOUT, villageShift } from '@/lib/village-layout'
 
 export interface MapOverride {
   /** 원래 프롭 id → 새 발밑 셀 */
@@ -22,6 +23,8 @@ export interface MapOverride {
 export type MapOverrides = Record<string, MapOverride>
 
 const LS_KEY = 'ultor-map-overrides'
+/** 이 브라우저 기록이 어느 마을 배치 판 좌표로 적혔는지 */
+const LS_LAYOUT_KEY = 'ultor-map-overrides-village-layout'
 const EVENT = 'ultor-map-overrides'
 const MAP_TABLE = MAPS as unknown as Record<string, GameMap>
 const ORIGINAL = new Map<string, GameMap>()
@@ -31,9 +34,28 @@ let local: MapOverrides = {}
 let version = 0
 let started = false
 
+/** 마을 북쪽 확장 전 기록(옛 좌표)이면 마을 프롭 자리를 확장만큼 민다 */
+function shiftVillage(all: MapOverrides): MapOverrides {
+  const v = all.village
+  if (!v) return all
+  return {
+    ...all,
+    village: {
+      ...v,
+      moved: v.moved && Object.fromEntries(Object.entries(v.moved).map(([id, c]) => [id, villageShift(c)])),
+      added: v.added?.map((p) => ({ ...p, cell: villageShift(p.cell) })),
+    },
+  }
+}
+
 function readLocal(): MapOverrides {
   try {
-    return JSON.parse(localStorage.getItem(LS_KEY) || '{}') as MapOverrides
+    const all = JSON.parse(localStorage.getItem(LS_KEY) || '{}') as MapOverrides
+    if (localStorage.getItem(LS_LAYOUT_KEY) === String(VILLAGE_LAYOUT)) return all
+    const shifted = shiftVillage(all)
+    localStorage.setItem(LS_KEY, JSON.stringify(shifted))
+    localStorage.setItem(LS_LAYOUT_KEY, String(VILLAGE_LAYOUT))
+    return shifted
   } catch {
     return {}
   }
