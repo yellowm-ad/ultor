@@ -489,7 +489,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'SPOT_USE': {
       const spot = activitySpotById(action.spotId)
       if (!spot || spot.mapId !== state.currentMapId || state.screen !== 'world' || state.fishing || state.passage || state.classScene) return state
-      if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > 2.4) return state
+      if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > 2.4) return { ...state, toast: `${spot.label} — 조금 더 가까이 가야 한다.` }
       if (spot.kind === 'fishing') return startFishing(state, true)
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
     }

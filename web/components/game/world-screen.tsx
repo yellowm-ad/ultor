@@ -116,7 +116,7 @@ export function WorldScreen() {
 
   /** E 상호작용 우선순위: NPC → 채집 지점 → 물가 낚시 */
   function tryInteract() {
-    if (state.screen !== 'world' || state.fishing || state.storyQueue.length > 0) return
+    if (state.screen !== 'world' || state.fishing || state.passage || state.storyQueue.length > 0) return
     const near = nearestNpc()
     if (near) {
       dispatch({ type: 'OPEN_NPC', npcId: near.id })

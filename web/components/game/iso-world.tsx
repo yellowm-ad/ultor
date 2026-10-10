@@ -14,11 +14,12 @@ import { useTerrainArt, TerrainWaterBackdrop, TerrainCanvas } from '@/components
 import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { spotsOnMap } from '@/lib/activity-spots'
+import { duoOf } from '@/lib/npc-banter'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 import { professorSpot, useClassActorEntities } from '@/components/game/class-actors'
 import { HeroSprite } from '@/components/game/pixel-hero'
-import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
+import { rosterDuoTogether, rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { schoolNpcById } from '@/lib/companions'
 import { addProp, moveProp, useMapOverridesVersion } from '@/lib/map-overrides'
 import { setMapEditor, useMapEditor } from '@/lib/map-editor'
@@ -305,7 +306,7 @@ export function IsoWorld({
             </text>
           </g>
           <circle cx={0} cy={-52} r={2.2} fill={interactId === npc.id ? '#e8dcc0' : '#ffffffaa'} />
-          {guide?.goal.npcId === npc.id && <GuideArrow lift={76} />}
+          {guide?.goal.npcId === npc.id ? <GuideArrow lift={76} /> : duoOf(npc.id) && <ChatBubble second={duoOf(npc.id)!.b === npc.id} lift={72} />}
         </g>
       ),
     }
@@ -337,7 +338,7 @@ export function IsoWorld({
                 {def.name}
               </text>
             </g>
-            {guide?.goal.npcId === def.id && <GuideArrow lift={80} />}
+            {guide?.goal.npcId === def.id ? <GuideArrow lift={80} /> : rosterDuoTogether(state, def.id) && <ChatBubble second={duoOf(def.id)?.b === def.id} lift={76} />}
           </g>
         ),
       },
@@ -741,6 +742,19 @@ export function IsoWorld({
         {!inClass && portalNodes}
       </svg>
     </div>
+  )
+}
+
+/** 둘이 떠드는 중 표시(lib/npc-banter) — 말풍선 속 점 세 개가 차례로 켜진다. 짝의 두 번째 사람은 반 박자 늦게 */
+function ChatBubble({ second, lift }: { second: boolean; lift: number }) {
+  return (
+    <g transform={`translate(${second ? -12 : 12},${-lift})`} style={{ pointerEvents: 'none', animation: `chat-bubble 3.2s ease-in-out ${second ? 1.6 : 0}s infinite` }}>
+      <rect x={-11} y={-9} width={22} height={14} rx={5} fill="#fffaf0" stroke="#3a2f22" strokeWidth={1.5} />
+      <polygon points={second ? '4,5 9,5 8,10' : '-9,5 -4,5 -8,10'} fill="#fffaf0" stroke="#3a2f22" strokeWidth={1.5} />
+      <rect x={-6} y={-3} width={3} height={3} fill="#3a2f22" />
+      <rect x={-1.5} y={-3} width={3} height={3} fill="#3a2f22" />
+      <rect x={3} y={-3} width={3} height={3} fill="#3a2f22" />
+    </g>
   )
 }
 

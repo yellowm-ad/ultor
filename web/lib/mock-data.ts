@@ -912,8 +912,8 @@ const TOWN_DUO_NPCS: NpcDef[] = [
   { id: 'npc-duo-imp', name: '수습 점원 뿔리', role: 'flavor', icon: '/images/npc/npc-demon-child.png', spriteId: 'npc-demon-child', zoneId: 'z-demon-village', cell: { x: 30.6, y: 23.8 }, roam: 0.25, greeting: ['어서 와라, 인간. 도망치지 않아도 된다.'] },
   { id: 'npc-duo-balloon', name: '풍선 장수 파랑', role: 'flavor', icon: '/images/npc/npc-farmer.png', spriteId: 'npc-farmer', zoneId: 'z-sky-temple', cell: { x: 15, y: 44.4 }, roam: 0.25, greeting: ['하늘 위에서 풍선을 팔면 뭐가 좋냐고? 놓쳐도 안 아까워.'] },
   { id: 'npc-duo-harp', name: '하프 수리공 리라', role: 'flavor', icon: '/images/npc/npc-sky-keeper.png', spriteId: 'npc-sky-keeper', zoneId: 'z-sky-temple', cell: { x: 16.2, y: 44.8 }, roam: 0.25, greeting: ['줄은 팽팽해야 하고, 사람은 느슨해야 해요.'] },
-  { id: 'npc-duo-sexton', name: '묘지기 돌브', role: 'flavor', icon: '/images/npc/npc-priest.png', spriteId: 'npc-priest', zoneId: 'z-abandoned-temple', cell: { x: 25.8, y: 18.8 }, roam: 0.25, greeting: ['조용히 다녀라. 여긴 자는 사람이 많다.'] },
-  { id: 'npc-duo-candle', name: '양초 장수 미미', role: 'flavor', icon: '/images/npc/npc-tamer.png', spriteId: 'npc-tamer', zoneId: 'z-abandoned-temple', cell: { x: 27, y: 19.2 }, roam: 0.25, greeting: ['초 사세요! 어두운 데서 제일 잘 팔려요. …이론상으론.'] },
+  { id: 'npc-duo-sexton', name: '묘지기 돌브', role: 'flavor', icon: '/images/npc/npc-priest.png', spriteId: 'npc-priest', zoneId: 'z-abandoned-temple', cell: { x: 19.2, y: 42.6 }, roam: 0.25, greeting: ['조용히 다녀라. 여긴 자는 사람이 많다.'] },
+  { id: 'npc-duo-candle', name: '양초 장수 미미', role: 'flavor', icon: '/images/npc/npc-tamer.png', spriteId: 'npc-tamer', zoneId: 'z-abandoned-temple', cell: { x: 20.4, y: 43 }, roam: 0.25, greeting: ['초 사세요! 어두운 데서 제일 잘 팔려요. …이론상으론.'] },
   { id: 'npc-duo-diver', name: '잠수부 보글', role: 'flavor', icon: '/images/npc/npc-aurora-hunter.png', spriteId: 'npc-aurora-hunter', zoneId: 'z-atlantis', cell: { x: 23.4, y: 50.2 }, roam: 0.25, greeting: ['숨을 오래 참는 비결? 말을 줄이는 거다.'] },
   { id: 'npc-duo-ice', name: '얼음과자 장수 소르', role: 'flavor', icon: '/images/npc/npc-atlantis-child.png', spriteId: 'npc-atlantis-child', zoneId: 'z-atlantis', cell: { x: 24.6, y: 50.6 }, roam: 0.25, greeting: ['얼음과자 하나에 조개 세 닢! 외상은 장부에 적어.'] },
 ]

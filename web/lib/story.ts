@@ -171,6 +171,8 @@ export interface StoryBeat {
   title: string
   trigger: StoryTrigger
   requiredFlags?: string[]
+  /** 루트 전용 장면 — 그 루트일 때만 발생한다(storyLineRoute). 없으면 공통 */
+  route?: 'A' | 'B' | 'C' | 'B_OR_C'
   /** 이 주차(globalWeek) 이전에는 조건이 맞아도 발생하지 않는다 — 방문/전투 트리거 페이싱용 */
   minWeek?: number
   /** 재생 후 켜질 플래그 */
@@ -212,7 +214,7 @@ const ONBOARDING_BEATS: StoryBeat[] = [
 
 /**
  * 화산지대 첫 진입(lib/passages 의 '첫 이동 연출' 가운데 장면으로 처리하는 것) — 용암 강을 건너는 방법이
- * 루스벨을 찾았는가에 따라 갈린다. 루트 전용 줄(route)로 한 비트 안에서 나눈다.
+ * 루스벨을 찾았는가에 따라 갈린다. 루트 전용 비트(StoryBeat.route) 둘로 나눈다 — 미르엘 쪽은 건넌 뒤 전투.
  */
 const PASSAGE_BEATS: StoryBeat[] = [
   // 아틀란티스 대성당 지하 벽화실(lib/maps atlantis-crypt) — EP26 을 시작한 뒤 처음 내려가면 벽화를 살핀다
@@ -229,25 +231,38 @@ const PASSAGE_BEATS: StoryBeat[] = [
       { speaker: '', text: '석판 아래에는 닳아 버린 글자가 한 줄. 읽을 수 있는 것은 군데군데 남은 획뿐이다. 본을 떠서 오웬에게 가져가야 한다.' },
     ],
   },
+  // 화산지대 첫 진입 — 루스벨을 찾은 루트: 루스벨이 불길을 갈라 싸움 없이 건넌다
   {
     id: 'CH6_LAVA_CROSSING',
     arcId: 'CH6',
     title: '용암 강을 건너다',
     trigger: { type: 'VISIT', mapId: 'volcano' },
+    route: 'B_OR_C',
     lines: [
       { speaker: '', text: '화산지대 어귀. 길은 붉게 끓는 용암 강 앞에서 끊겨 있다. 건너편 검은 바위 너머로 마물 마을의 연기가 보인다.' },
       { speaker: '', player: true, text: '다리도, 돌아갈 길도 없어. 여길 어떻게 건너지…' },
-      // 루스벨을 찾은 루트 — 루스벨이 불길을 가른다
-      { speaker: '루스벨', portraitId: 'comp-rusbel', route: 'B_OR_C', text: '비켜 봐. 불은… 이제 내 말을 조금은 들어.' },
-      { speaker: '', route: 'B_OR_C', text: '루스벨이 손을 뻗자 용암이 양쪽으로 갈라지며 식어, 검은 돌길이 강 한가운데를 가로질러 떠오른다.' },
-      { speaker: '루스벨', portraitId: 'comp-rusbel', route: 'B_OR_C', text: '오래는 못 버텨. 뛰어! …그리고 고마워. 날 찾으러 와 줘서.' },
-      { speaker: '', route: 'B_OR_C', text: '마지막 한 사람이 건너자마자 돌길은 다시 붉게 녹아내렸다. 싸움 없이, 모두 무사히 건넜다.' },
-      // 루스벨을 찾지 못한 루트 — 미르엘이 길을 얼리고, 건너편에서 싸움이 기다린다
-      { speaker: '미르엘 교수', portraitId: 'npc-mirel', route: 'A', text: '물러서 있거라. 이 정도 불은 내가 잠재우마.' },
-      { speaker: '', route: 'A', text: '미르엘의 지팡이 끝에서 서리가 번지더니, 용암 위로 얼음 다리가 놓인다. 다리는 김을 내뿜으며 금세 갈라지기 시작한다.' },
-      { speaker: '미르엘 교수', portraitId: 'npc-mirel', route: 'A', text: '서두르렴. 그리고 건너편에선 검을 뽑아 두는 게 좋겠구나. 마물들은 우리를 손님으로 맞지 않을 테니.' },
-      { speaker: '', route: 'A', text: '다리가 무너지는 소리를 등지고 건너편에 닿았다. 불길 사이에서 화산의 마물들이 이쪽을 노려본다 — 여기서부터는 싸워서 길을 열어야 한다.' },
+      { speaker: '루스벨', portraitId: 'comp-rusbel', text: '비켜 봐. 불은… 이제 내 말을 조금은 들어.' },
+      { speaker: '', text: '루스벨이 손을 뻗자 용암이 양쪽으로 갈라지며 식어, 검은 돌길이 강 한가운데를 가로질러 떠오른다.' },
+      { speaker: '루스벨', portraitId: 'comp-rusbel', text: '오래는 못 버텨. 뛰어! …그리고 고마워. 날 찾으러 와 줘서.' },
+      { speaker: '', text: '마지막 한 사람이 건너자마자 돌길은 다시 붉게 녹아내렸다. 싸움 없이, 모두 무사히 건넜다.' },
     ],
+  },
+  // 루스벨을 찾지 못한 루트: 미르엘이 얼음 다리를 놓고, 건너편에서 마물들과 싸워 길을 연다
+  {
+    id: 'CH6_LAVA_CROSSING_MIREL',
+    arcId: 'CH6',
+    title: '용암 강을 건너다',
+    trigger: { type: 'VISIT', mapId: 'volcano' },
+    route: 'A',
+    lines: [
+      { speaker: '', text: '화산지대 어귀. 길은 붉게 끓는 용암 강 앞에서 끊겨 있다. 건너편 검은 바위 너머로 마물 마을의 연기가 보인다.' },
+      { speaker: '', player: true, text: '다리도, 돌아갈 길도 없어. 여길 어떻게 건너지…' },
+      { speaker: '미르엘 교수', portraitId: 'npc-mirel', text: '물러서 있거라. 이 정도 불은 내가 잠재우마.' },
+      { speaker: '', text: '미르엘의 지팡이 끝에서 서리가 번지더니, 용암 위로 얼음 다리가 놓인다. 다리는 김을 내뿜으며 금세 갈라지기 시작한다.' },
+      { speaker: '미르엘 교수', portraitId: 'npc-mirel', text: '서두르렴. 그리고 건너편에선 지팡이를 들어 두는 게 좋겠구나. 마물들은 우리를 손님으로 맞지 않을 테니.' },
+      { speaker: '', text: '다리가 무너지는 소리를 등지고 건너편에 닿았다. 불길 사이에서 화산의 마물들이 달려든다 — 싸워서 길을 열어야 한다!' },
+    ],
+    battle: { monsterIds: ['mon-flame-warden', 'mon-ash-hound', 'mon-ember-imp'] },
   },
 ]
 
@@ -315,6 +330,7 @@ export function beatsFor(state: Pick<GameState, 'storyFlags' | 'calendar'>, matc
       match(b.trigger) &&
       !flagOn(state, `beat:${b.id}`) &&
       flagsAllOn(state, b.requiredFlags) &&
+      (!b.route || lineOnRoute({ speaker: '', text: '', route: b.route }, storyLineRoute(state))) &&
       (b.minWeek === undefined || state.calendar.globalWeek >= b.minWeek),
   )
 }
