@@ -456,6 +456,20 @@ const ACADEMY_3F: DecorItem[] = [
   ['academy/wb_potted_tree', 40.5, 8.6],
 ]
 
+/** 2층 회랑 (40×36 — 북벽·서벽을 따라 도는 좁은 회랑. 통로를 막지 않게 벽 쪽엔 작은 것, 난간 쪽엔 지나갈 수 있는 것만) */
+const ACADEMY_2F: DecorItem[] = [
+  ['academy/wb_potted_fern', 6.4, 3.3, W],
+  ['academy/wb_bench_purple', 13.2, 2.0],
+  ['academy/wb_candelabra', 20.6, 3.3, W],
+  ['academy/wb_potted_fern', 28.0, 3.3, W],
+  ['academy/wb_statue_urn', 35.4, 1.7],
+  ['academy/wb_bench_purple_f', 2.0, 11.2],
+  ['academy/wb_candelabra', 3.3, 12.4, W],
+  ['academy/wb_bust', 1.7, 25.6],
+  ['academy/wb_potted_fern', 3.3, 29.6, W],
+  ['academy/wb_easel', 1.8, 31.6, W],
+]
+
 /** 4층 복도 (46×10 — 남쪽 벽을 따라, 벤치·탁자 사이) */
 const ACADEMY_4F: DecorItem[] = [
   ['academy/wb_statue_urn', 6.0, 8.6],
@@ -545,6 +559,7 @@ export const TOWN_DECOR: Record<string, DecorItem[]> = {
   'headmaster-office': HEADMASTER_OFFICE,
   'council-room': COUNCIL_ROOM,
   'grand-auditorium': GRAND_AUDITORIUM,
+  'academy-2f': ACADEMY_2F,
   'academy-3f': ACADEMY_3F,
   'academy-4f': ACADEMY_4F,
   'practice-lab': PRACTICE_LAB,

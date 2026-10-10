@@ -386,6 +386,23 @@
     0%, 100% { opacity: 0.5; transform: scale(1); }
     50% { opacity: 0.9; transform: scale(1.12); }
   }
+  /* ── 낚시 장면(components/game/fishing-overlay) ── */
+  .fish-scene { position: relative; height: 96px; margin-bottom: 10px; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #9fd3e6 0%, #9fd3e6 34%, #2f7fa8 34%, #1d5c82 100%); }
+  .fish-scene::after { content: ''; position: absolute; left: 0; right: 0; top: 34%; height: 3px; background: rgba(255, 255, 255, 0.55); }
+  .fish-line { position: absolute; left: 50%; top: -20px; width: 1px; height: 62px; background: rgba(40, 30, 20, 0.7); transform-origin: top; animation: fish-sway 2.6s ease-in-out infinite; }
+  .fish-bobber { position: absolute; left: 50%; top: 30px; width: 12px; height: 16px; margin-left: -6px; border-radius: 50%; background: linear-gradient(180deg, #e0504a 0 50%, #fff6e8 50% 100%); border: 1.5px solid #3a2a1c; animation: fish-bob 1.6s ease-in-out infinite; }
+  .fish-ripple { position: absolute; left: 50%; top: 40px; width: 46px; height: 12px; margin-left: -23px; border: 2px solid rgba(255, 255, 255, 0.7); border-radius: 50%; opacity: 0; animation: fish-ripple 2.2s ease-out infinite; }
+  .fish-ripple.is-late { animation-delay: 1.1s; }
+  .fish-scene.is-bite .fish-bobber { animation: fish-dunk 0.32s ease-in-out infinite; }
+  .fish-scene.is-bite .fish-ripple { animation-duration: 0.6s; }
+  .fish-scene.is-win .fish-bobber, .fish-scene.is-win .fish-line { display: none; }
+  .fish-scene.is-lose .fish-bobber { animation: none; opacity: 0.5; }
+  .fish-catch { position: absolute; left: 50%; top: 34px; width: 46px; height: 46px; margin-left: -23px; animation: fish-leap 0.9s cubic-bezier(0.2, 0.8, 0.4, 1) both; }
+  @keyframes fish-bob { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(4px) rotate(4deg); } }
+  @keyframes fish-dunk { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(16px); } }
+  @keyframes fish-sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+  @keyframes fish-ripple { 0% { opacity: 0.8; transform: scale(0.2); } 100% { opacity: 0; transform: scale(1.5); } }
+  @keyframes fish-leap { 0% { transform: translateY(20px) rotate(40deg) scale(0.5); opacity: 0; } 55% { transform: translateY(-34px) rotate(-18deg) scale(1.15); opacity: 1; } 100% { transform: translateY(-14px) rotate(-8deg) scale(1); opacity: 1; } }
   /* ── 주인공 생성 창(components/game/create-screen) — 삽화 위에 뜨는 가운데 창 ── */
   .create-dim { position: absolute; inset: 0; background: radial-gradient(120% 100% at 50% 40%, rgba(11, 9, 7, 0.45) 0%, rgba(11, 9, 7, 0.86) 100%); backdrop-filter: blur(3px); }
   .create-window { position: relative; z-index: 2; display: flex; flex-direction: column; width: min(100%, 900px); max-height: 100%; border: 2px solid #c79a3e; border-radius: 12px; background: linear-gradient(180deg, #1c1610 0%, #130f0b 100%); box-shadow: 0 0 0 4px #14100c, 0 0 0 5px rgba(199, 154, 62, 0.45), 0 24px 60px rgba(0, 0, 0, 0.7); overflow: hidden; }

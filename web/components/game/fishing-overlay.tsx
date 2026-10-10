@@ -95,6 +95,17 @@ export function FishingOverlay() {
     <div className="pointer-events-auto absolute inset-0 z-[46] flex items-end justify-center bg-black/35 p-4 pb-24">
       <div className="panel-royal w-full max-w-md p-4 text-center">
         <div className="mb-2 font-display text-gold-soft">낚시</div>
+        {/* 물가 장면 — 찌가 까딱이다가 입질이 오면 물속으로 꺼지고, 낚으면 물고기가 튀어 오른다 */}
+        <div className={`fish-scene is-${phase} ${phase === 'result' ? (result ? 'is-win' : 'is-lose') : ''}`}>
+          <span className="fish-line" />
+          <span className="fish-bobber" />
+          <span className="fish-ripple" />
+          <span className="fish-ripple is-late" />
+          {phase === 'result' && result && fish && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={fish.icon} alt="" className="fish-catch" />
+          )}
+        </div>
         {phase === 'waiting' && <div className="py-4 text-sm text-white/80">찌를 바라보며 입질을 기다리는 중… (지금 당기면 놓친다)</div>}
         {phase !== 'waiting' && (
           <div className="relative mx-auto my-3 h-6 w-full overflow-hidden rounded-full border border-gold/50 bg-black/50">
