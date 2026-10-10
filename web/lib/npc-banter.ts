@@ -21,6 +21,8 @@ export interface BanterDuo {
   scenes: BanterLine[][]
   /** 끝까지 본 뒤 되풀이할 장면 수(뒤에서부터) */
   loop: number
+  /** 메인 스토리의 사건 뒤에 한 번씩 나오는 장면 — 그 플래그가 켜져 있고 아직 안 봤으면 평소 장면보다 먼저 */
+  special?: { flag: string; scene: BanterLine[] }[]
 }
 
 const M = 'comp-milfoy'
@@ -34,6 +36,31 @@ export const BANTER_DUOS: BanterDuo[] = [
     a: M,
     b: H,
     loop: 2,
+    special: [
+      {
+        // 루스벨이 폭주해 달아난 뒤
+        flag: 'RUSPELL_ENRAGED',
+        scene: [
+          L(H, '루스벨 얘기 들었어? 다들 "마왕의 하수인"이라고 불러.'),
+          L(M, '웃기지도 않아. 그 애는 실습 때 내 망토에 불똥을 튀기고 사흘을 사과하러 따라다녔어. 하수인이 그런 짓을 해?'),
+          L(H, '…너, 걱정하는구나.'),
+          L(M, '걱정이 아니라 사실을 말하는 거야. 뱀 문장 기숙사는 소문보다 눈으로 본 걸 믿어.'),
+          L(H, '그럼 같이 찾아보자. 누가 뭐라든.'),
+          L(M, '당연하지. 네가 혼자 가면 길부터 잃을 테니까.'),
+        ],
+      },
+      {
+        // 오로라 마을에 다녀온 뒤
+        flag: 'EP_147_DONE',
+        scene: [
+          L(M, '설원은 어땠어. 얼어 죽을 뻔했다며.'),
+          L(H, '조금. 그래도 네가 준 손수건을 목에 두르니까 버틸 만하더라.'),
+          L(M, '그건 손수건이야. 목도리가 아니라.'),
+          L(H, '따뜻했는데.'),
+          L(M, '……다음엔 제대로 된 걸 짜 줄 테니까, 그런 걸로 버티지 마. 바보야.'),
+        ],
+      },
+    ],
     scenes: [
       [
         L(M, '포탈. 너 또 내 자리에 서 있어.'),
@@ -154,6 +181,19 @@ export const BANTER_DUOS: BanterDuo[] = [
     a: 'comp-kyle',
     b: 'comp-jade',
     loop: 2,
+    special: [
+      {
+        flag: 'RUSPELL_ENRAGED',
+        scene: [
+          L('comp-kyle', '루스벨은 내 맞수였어. 화염 수업관에서 걔만큼 나를 열받게 한 녀석이 없었다고.'),
+          L('comp-jade', '과거형으로 말하지 마.'),
+          L('comp-kyle', '…뭐?'),
+          L('comp-jade', '"였어"가 아니라 "이야". 달아난 거지, 사라진 게 아니야.'),
+          L('comp-kyle', '그래. 맞수야. 돌아오면 제일 먼저 한 판 붙을 거야. 그러니까 그때까지 네가 내 상대 해.'),
+          L('comp-jade', '원래 하고 있었어.'),
+        ],
+      },
+    ],
     scenes: [
       [
         L('comp-kyle', '제이드! 오늘이야말로 결판을 내자. 대련장으로 와!'),
@@ -410,20 +450,25 @@ function readSeen(): Record<string, number> {
   }
 }
 
-/** 이번에 보여 줄 장면 — 아직 안 본 장면이 있으면 그다음 것, 다 봤으면 뒤쪽 loop 개를 돌아가며 */
-export function banterScene(duo: BanterDuo): BanterLine[] {
-  const seen = readSeen()[duo.id] ?? 0
+/** 이번에 보여 줄 장면 — (스토리 사건 뒤의 특별 장면) → 아직 안 본 장면이 있으면 그다음 것 → 다 봤으면 뒤쪽 loop 개를 돌아가며 */
+export function banterScene(duo: BanterDuo, flags: Record<string, boolean | number> = {}): BanterLine[] {
+  const all = readSeen()
+  const sp = duo.special?.find((s) => flags[s.flag] && !all[`${duo.id}:${s.flag}`])
+  if (sp) return sp.scene
+  const seen = all[duo.id] ?? 0
   const n = duo.scenes.length
   if (seen < n) return duo.scenes[seen]
   const loop = Math.max(1, Math.min(duo.loop, n))
   return duo.scenes[n - loop + ((seen - n) % loop)]
 }
 
-/** 장면을 끝까지 봤다 — 다음엔 다음 장면 */
-export function banterAdvance(duo: BanterDuo) {
+/** 장면을 끝까지 봤다 — 다음엔 다음 장면(방금 본 것이 특별 장면이면 그것만 봤다고 적는다) */
+export function banterAdvance(duo: BanterDuo, shown?: BanterLine[]) {
   try {
     const seen = readSeen()
-    seen[duo.id] = (seen[duo.id] ?? 0) + 1
+    const sp = duo.special?.find((s) => s.scene === shown)
+    if (sp) seen[`${duo.id}:${sp.flag}`] = 1
+    else seen[duo.id] = (seen[duo.id] ?? 0) + 1
     window.localStorage.setItem(KEY, JSON.stringify(seen))
   } catch {
     // 저장소 접근 불가 — 같은 장면이 다시 나온다

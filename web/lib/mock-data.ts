@@ -904,6 +904,11 @@ const NPCS_BASE: NpcDef[] = [
  * 전용 도트가 아직 없어 다른 NPC 의 시트를 빌린다(spriteId). 자리는 그 맵의 지금 좌표(마을 북쪽 띠 포함).
  */
 const TOWN_DUO_NPCS: NpcDef[] = [
+  // ── 이야기가 그 주에 이르면 마을에 나타나는 사람들(visibleFlag = 그 막의 오프닝을 본 뒤) ──
+  // EP20 '여름밤의 성녀' — 성녀보다 먼저 도착한 사절. 성역 신전 앞
+  { id: 'npc-envoy', hue: 24, name: '성녀의 사절 루카', role: 'flavor', icon: '/images/npc/npc-sky-priest.png', spriteId: 'npc-sky-priest', zoneId: 'z-temple', visibleFlag: 'beat:EP_71_OPEN', cell: { x: 9.8, y: 46.8 }, roam: 0.6, greeting: ['스톰헤이븐에서 왔습니다. 성녀님께서 머무실 곳을 미리 살피는 중이지요.', '이 학교의 신전은 작지만 종소리가 맑군요. 성녀님께서 좋아하실 겁니다.', '성녀님은 기록을 "읽는" 분이 아니라 "듣는" 분입니다. 만나 보시면 무슨 말인지 아실 겁니다.'] },
+  // EP39 '기록을 바꾼 사람' — 공식 발표문을 들고 온 왕립 기록원 서기. 중앙 대광장
+  { id: 'npc-royal-clerk', hue: -40, name: '왕립 기록원 서기', role: 'flavor', icon: '/images/npc/npc-royal-guard.png', spriteId: 'npc-royal-guard', zoneId: 'z-plaza', visibleFlag: 'beat:EP_132_OPEN', cell: { x: 23.4, y: 33.6 }, roam: 0.3, greeting: ['공식 발표를 전합니다. "버려진 신전의 사고는 마왕의 하수인 루스벨의 소행이다." 이상입니다.', '질문은 받지 않습니다. 저는 읽으라고 받은 것을 읽을 뿐입니다.', '…개인적인 의견요? 서기에게 그런 건 없습니다. 있었다 해도, 적어 두지 않았을 겁니다.'] },
   // 울토르 기록관의 기록관지기(lib/maps village-archive) — 전용 도트 전이라 촌장 시트를 빌린다
   { id: 'npc-archivist', hue: -30, name: '기록관지기 엘다', role: 'flavor', icon: '/images/npc/npc-elder.png', spriteId: 'npc-elder', zoneId: 'z-village-archive', cell: { x: 7, y: 5 }, roam: 0.8, greeting: ['여기 있는 건 거의 다 사본이란다. 원본은 오래전에 왕립 기록원이 가져갔지.', '빈 책장? 처음부터 비어 있던 건 아니야. 누가, 언제 가져갔는지 적어 둔 장부까지 같이 없어졌을 뿐이지.'] },
   { id: 'npc-duo-baker', hue: 18, name: '제빵사 폴코', role: 'flavor', icon: '/images/npc/npc-kitchen.png', spriteId: 'npc-kitchen', zoneId: 'z-north-lot', cell: { x: 39.6, y: 7.8 }, roam: 0.25, greeting: ['마르코 형이랑 헷갈리지 마. 형은 요리, 나는 빵이야.'] },

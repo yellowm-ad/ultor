@@ -40,11 +40,11 @@ export function DialogueScreen() {
 
   // 짝이 있는 NPC(lib/npc-banter) — 둘이 붙어 서 있으면 평소 인사 대신 둘의 장면. 학교 동료 짝은 이번 주에 같이 서 있을 때만
   const duo = duoOf(npc.id)
-  const banter = duo && (npc.role !== 'companion' || rosterDuoTogether(state, npc.id)) ? banterScene(duo) : null
+  const banter = duo && (npc.role !== 'companion' || rosterDuoTogether(state, npc.id)) ? banterScene(duo, state.storyFlags) : null
 
   const close = () => {
     // 장면을 마지막 줄까지 봤으면 다음엔 다음 장면
-    if (duo && banter && lineIdx >= banter.length - 1) banterAdvance(duo)
+    if (duo && banter && lineIdx >= banter.length - 1) banterAdvance(duo, banter)
     setLineIdx(0)
     dispatch({ type: 'CLOSE_OVERLAY' })
   }
