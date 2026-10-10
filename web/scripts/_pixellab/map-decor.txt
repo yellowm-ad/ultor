@@ -1,0 +1,242 @@
+# 2026-10-10 맵 꾸미기용 오브젝트 — 위치브룩풍 내부 가구(wb_) + 마을별 건물·소품(x_)
+# 형식: group/name | 캔버스 | 설명 [| flip]   (실제 그림은 캔버스의 60~70% 크기로 나온 뒤 여백이 잘린다)
+# 실행: PIXELLAB_TOKEN=... node scripts/_pixellab/pl-map-objects.mjs scripts/_pixellab/map-decor.txt 4
+
+$wb = isometric pixel art, cozy magic academy interior furniture, warm walnut wood, cream stone, teal and gold accents, soft warm lighting, single object
+$vil = isometric pixel art, cozy medieval fantasy village, half-timbered walls, cobblestone, warm colors, single object
+$aur = isometric pixel art, snowy nordic fantasy town, dark timber and log walls, blue slate roof covered in snow, glowing teal ice crystals, single object
+$dem = isometric pixel art, dark demon realm town, black obsidian stone, crimson roof tiles, glowing orange lava cracks, purple accents, single object
+$sky = isometric pixel art, heavenly sky city, white marble, teal blue roof with gold trim, fluffy clouds, bright pastel colors, single object
+$rui = isometric pixel art, ancient ruined gothic temple town, weathered grey stone, moss and ivy, dark slate roof, glowing purple magic crystals, single object
+$atl = isometric pixel art, underwater atlantis seaside town, white stone, pastel pink and teal, seashells, coral and pearls, single object
+# 소품 전용(건물·지붕 단어를 빼야 작은 소품이 오두막으로 나오지 않는다)
+$prop = isometric pixel art game prop, small outdoor decoration only, no building, no house, transparent background
+$aurd = snowy nordic style, dark timber, snow on top, teal ice glow, {prop}
+$demd = dark demon realm style, black obsidian and iron, glowing orange lava, {prop}
+$ruid = ancient ruin style, weathered grey stone, moss and ivy, faint purple glow, {prop}
+$skyd = heavenly sky city style, white marble with gold trim, pastel colors, {prop}
+$vild = cozy medieval village style, warm colors, {prop}
+
+# ───────── 아카데미 내부 (참고1·2: 전시 케이스, 꽃 테이블, 벤치, 난간, 석상 …) ─────────
+academy/wb_case_relic | 96 | museum display case, glass box with brass frame on carved walnut cabinet with drawers, ancient golden relic inside, {wb} | flip
+academy/wb_case_crystal | 96 | museum display case, glass box with brass frame on walnut cabinet, glowing blue crystals inside, {wb} | flip
+academy/wb_case_fossil | 96 | museum display case, glass box with brass frame on walnut cabinet, small dragon skull fossil inside, {wb} | flip
+academy/wb_case_potion | 96 | museum display case, glass box with brass frame on walnut cabinet, colorful potion bottles and vases inside, {wb} | flip
+academy/wb_case_wide | 128 | long wide museum display case, glass top with brass frame on walnut cabinet, old weapons and artifacts inside, {wb} | flip
+academy/wb_table_tulip | 96 | small round wooden pedestal table with a stone vase of red yellow and purple tulips on top, {wb}
+academy/wb_table_hydrangea | 128 | round wooden table with a large potted hydrangea tree with big purple blue blossoms in a wooden barrel pot, fallen petals, {wb}
+academy/wb_table_bouquet | 96 | small round wooden table with a big mixed flower bouquet in a white vase, pink and blue flowers, {wb}
+academy/wb_potted_palm | 96 | tall potted palm plant in terracotta pot, {wb}
+academy/wb_potted_fern | 64 | lush potted fern in a ceramic teal pot, {wb}
+academy/wb_potted_tree | 96 | small indoor tree with pink blossoms in a stone planter, {wb}
+academy/wb_bench_purple | 96 | long tufted bench with purple velvet cushion and wooden legs, no backrest, {wb} | flip
+academy/wb_bench_double | 112 | double sided tufted bench with purple velvet cushions and a wooden backrest in the middle, {wb} | flip
+academy/wb_sofa_grey | 96 | grey tufted two seat sofa with wooden frame, {wb} | flip
+academy/wb_armchair | 64 | cozy teal velvet armchair with wooden legs, {wb} | flip
+academy/wb_candelabra | 96 | tall standing brass candelabra with five lit candles, {wb}
+academy/wb_lamp_orange | 64 | brass standing floor lamp with a glowing orange fabric shade, {wb}
+academy/wb_owl_statue | 112 | carved stone owl statue wearing a wreath of pink and white flowers, sitting on a stone plinth with a brass plaque, {wb}
+academy/wb_bust | 96 | white marble bust of an old wizard on a tall stone pedestal, {wb}
+academy/wb_statue_urn | 96 | large carved stone urn statue on a pedestal in a wall niche, {wb}
+academy/wb_shelf_crest | 128 | tall walnut bookshelf full of colorful books with a blue and gold crest banner hanging on its side, potted plant on top, {wb} | flip
+academy/wb_shelf_low | 96 | low walnut bookshelf full of colorful books, a globe and candle on top, {wb} | flip
+academy/wb_shelf_potion | 112 | tall wooden shelf full of potion bottles, jars and herbs, {wb} | flip
+academy/wb_book_stack | 48 | messy stack of old colorful books on the floor, {wb}
+academy/wb_desk_study | 112 | wooden study desk with green banker lamp, open book, inkwell and quill, {wb} | flip
+academy/wb_table_reading | 128 | long wooden library reading table with two green banker lamps and open books, {wb} | flip
+academy/wb_table_display | 128 | large square wooden display table covered with books, plants, candles and flower petals, drawers below, {wb}
+academy/wb_catalog | 96 | wooden card catalogue cabinet with many small brass handled drawers, {wb} | flip
+academy/wb_easel | 64 | wooden painting easel with a canvas, {wb}
+academy/wb_mannequin | 48 | small wooden artist mannequin figure on a stand, {wb}
+academy/wb_globe | 64 | large antique globe on a carved wooden stand, {wb}
+academy/wb_telescope | 96 | brass telescope on a wooden tripod, {wb} | flip
+academy/wb_clock | 96 | tall grandfather clock, walnut wood with brass pendulum, {wb} | flip
+academy/wb_piano | 128 | upright piano of dark walnut with a stool and sheet music, {wb} | flip
+academy/wb_trophy | 112 | glass trophy cabinet with golden cups and medals, walnut frame, {wb} | flip
+academy/wb_notice | 96 | wooden notice board on legs covered with pinned papers and ribbons, {wb} | flip
+academy/wb_radiator | 64 | old dark teal cast iron radiator, {wb} | flip
+academy/wb_cauldron | 64 | black iron cauldron with bubbling green potion on a small fire, {wb}
+academy/wb_crystal_ball | 64 | glowing crystal ball on a carved stone plinth, {wb}
+academy/wb_armor | 96 | decorative suit of knight armor on a wooden stand, {wb}
+academy/wb_teatable | 96 | small round tea table with teapot, cups and cake stand, two chairs, {wb}
+academy/wb_balustrade | 128 | straight section of carved wooden balustrade railing with turned vase shaped balusters on a cream stone base, {wb} | flip
+academy/wb_stairs | 160 | wide wooden staircase with carved balustrade railings on both sides, red brown steps, cream stone base, {wb} | flip
+academy/wb_arch_curtain | 160 | cream carved stone archway with teal curtains tied back with orange tassels, {wb} | flip
+academy/wb_window_ivy | 144 | tall arched leaded glass window with pale blue diamond panes, cream stone frame, ivy and purple wisteria flowers hanging over it, {wb} | flip
+academy/wb_rug_round | 128 | flat round rug seen from above at an isometric angle, teal and cream with gold border and a flower medallion in the center, just the rug with nothing on it, floor decoration, {wb}
+academy/wb_rug_square | 128 | square teal carpet with gold border and star pattern, flat floor mat, isometric pixel art game prop, single flat object, no room, no walls, no furniture
+academy/wb_rug_runner | 144 | flat long narrow runner rug seen from above at an isometric angle, green checker pattern with cream border, just the rug with nothing on it, floor decoration, {wb} | flip
+academy/wb_rug_red | 128 | flat rectangular red rug seen from above at an isometric angle with gold trim and tassels, just the rug with nothing on it, floor decoration, {wb} | flip
+academy/wb_flowerbox | 96 | long cream stone planter box full of pink and blue hydrangea flowers, {wb} | flip
+academy/wb_planter_round | 96 | round cream stone brick planter with a wooden lid and pink flowers around it, {wb}
+academy/wb_hedge_glass | 112 | round trimmed topiary bush in a square cream stone planter, isometric pixel art game prop, single small object, no room, no walls | flip
+
+# ───────── 시작 마을 (중세 반목조) ─────────
+village/vil_house_a | 104 | small two story half-timbered cottage with orange tiled roof, flower boxes under windows, facing south-west, {vil} | flip
+village/vil_house_b | 104 | small half-timbered cottage with purple slate roof and a round window, ivy on the wall, facing south-east, {vil} | flip
+village/vil_house_c | 104 | narrow tall half-timbered townhouse with teal roof and a chimney with smoke, facing south-west, {vil} | flip
+village/vil_bakery | 120 | cozy bakery shop with striped red awning, bread display window and a hanging pretzel sign, orange roof, {vil} | flip
+village/vil_florist | 120 | flower shop with green awning, buckets of colorful flowers outside, hanging baskets, teal roof, {vil} | flip
+village/vil_potion | 120 | crooked witch potion shop with purple roof, round glowing window and a hanging bottle sign, {vil} | flip
+village/vil_bookshop | 120 | little bookshop with bay window full of books, blue roof and a hanging book sign, {vil} | flip
+village/vil_smithy | 120 | blacksmith workshop with open forge, anvil, stone chimney and brown shingle roof, {vil} | flip
+village/vil_cafe | 120 | small cafe with outdoor tables and a striped parasol, flower pots, cream walls and red roof, {vil} | flip
+village/vil_well | 96 | stone water well with wooden roof and bucket, {vil}
+village/vil_cart_flower | 96 | wooden flower cart with buckets of tulips and a striped canopy, {vil} | flip
+village/vil_cart_fruit | 96 | wooden market cart full of apples, pumpkins and vegetables, {vil} | flip
+village/vil_wagon | 112 | covered wooden wagon with canvas top, {vil} | flip
+village/vil_signpost | 64 | wooden crossroads signpost with three arrow signs, {vil}
+village/vil_crates | 64 | stack of wooden crates and a barrel with a sack of grain, {vil}
+village/vil_planter | 64 | wooden barrel planter overflowing with red and yellow flowers, {vil}
+village/vil_flowerbed | 96 | low stone bordered flower bed with tulips and daisies, {vil} | flip
+village/vil_hedge | 96 | neatly trimmed green hedge section with small pink flowers, {vild} | flip
+village/vil_fence | 96 | white wooden picket fence section with climbing roses, {vil} | flip
+village/vil_arch_rose | 112 | wooden garden arch covered in climbing pink roses, {vil} | flip
+village/vil_bunting | 112 | two wooden poles with colorful festival bunting flags strung between them, {vil} | flip
+village/vil_cafe_table | 64 | round cafe table with two chairs and a striped parasol, {vil}
+village/vil_tree_blossom | 112 | cherry blossom tree with pink flowers and fallen petals, {vil}
+village/vil_tree_apple | 112 | round apple tree with red apples, {vil}
+village/vil_haystack | 64 | hay bales with a pitchfork, {vil}
+village/vil_laundry | 96 | clothesline between two poles with colorful laundry hanging, {vil} | flip
+village/vil_stall_cloth | 112 | market stall with blue striped awning selling fabric rolls and ribbons, {vil} | flip
+village/vil_scarecrow | 64 | friendly scarecrow with straw hat in a tiny pumpkin patch, {vil}
+
+# ───────── 오로라 (설원) ─────────
+aurora/aur_house_a | 104 | small log cabin with steep snowy roof, warm glowing windows, firewood stack beside the door, facing south-west, {aur} | flip
+aurora/aur_house_b | 104 | tall narrow timber house with snowy blue roof, balcony and hanging lantern, facing south-east, {aur} | flip
+aurora/aur_house_c | 104 | cozy stone and timber cottage with round door, snowy roof and smoking chimney, facing south-west, {aur} | flip
+aurora/aur_bakery | 120 | snowy bakery with striped blue awning, warm bread window and hanging pretzel sign, {aur} | flip
+aurora/aur_fur_shop | 120 | fur and coat shop with wooden porch, hanging lanterns and a snowy roof, {aur} | flip
+aurora/aur_ice_smith | 120 | ice crystal workshop with glowing teal forge, big crystal on the roof, snowy timber walls, {aur} | flip
+aurora/aur_sauna | 104 | small round wooden sauna hut with snowy roof and steam rising, {aur} | flip
+aurora/aur_teahouse | 120 | warm tea house with outdoor bench, hanging lanterns, snowy roof and steaming kettle sign, {aur} | flip
+aurora/aur_well | 96 | frozen stone well with icicles and a snowy wooden roof, {aur}
+aurora/aur_sled | 96 | wooden sled loaded with wrapped supplies and furs, {aur} | flip
+aurora/aur_snowman | 64 | cheerful snowman with a blue scarf and bucket hat, {aur}
+aurora/aur_firepit | 64 | stone campfire pit with burning logs and log seats around it in snow, {aurd}
+aurora/aur_woodpile | 64 | stacked firewood pile covered in snow with an axe in a stump, {aurd} | flip
+aurora/aur_signpost | 64 | snowy wooden signpost with arrow signs and a hanging lantern, {aur}
+aurora/aur_crates | 64 | wooden crates and a barrel covered with snow, {aurd}
+aurora/aur_ice_sculpture | 96 | ice sculpture of a leaping stag on a snowy pedestal, {aur} | flip
+aurora/aur_ice_arch | 112 | glowing teal ice crystal archway, {aurd} | flip
+aurora/aur_fence | 96 | snowy wooden log fence section, {aurd} | flip
+aurora/aur_pine_big | 112 | tall snow covered pine tree, {aur}
+aurora/aur_pine_lights | 112 | snowy pine tree decorated with glowing lanterns and ribbons, {aur}
+aurora/aur_bush | 64 | snow covered bush with red winter berries, {aurd}
+aurora/aur_fish_rack | 96 | wooden fish drying rack with hanging fish and an ice fishing hole, {aur} | flip
+aurora/aur_stall_soup | 112 | market stall with snowy blue awning selling hot soup with a steaming pot, {aur} | flip
+aurora/aur_lantern_post | 64 | wooden post with two hanging glowing teal crystal lanterns, snow on top, {aur}
+aurora/aur_bench_fur | 64 | wooden bench with a fur blanket and snow, {aur} | flip
+aurora/aur_bridge | 128 | small arched wooden bridge with snowy railings over frozen ice, {aurd} | flip
+
+# ───────── 마계 ─────────
+demon/dem_house_a | 104 | small obsidian stone house with crimson roof, horn ornaments and glowing orange windows, facing south-west, {dem} | flip
+demon/dem_house_b | 104 | narrow tall gothic house with spiked purple roof and red lantern, facing south-east, {dem} | flip
+demon/dem_house_c | 104 | squat dark brick cottage with skull above the door and smoking crooked chimney, facing south-west, {dem} | flip
+demon/dem_alchemy | 120 | sinister alchemy shop with bubbling green vials in the window, crimson awning and hanging potion sign, {dem} | flip
+demon/dem_armory | 120 | demon weapon shop with swords and shields displayed outside, black iron walls and red banners, {dem} | flip
+demon/dem_butcher | 120 | monster meat shop with hanging hooks, crimson striped awning and bone sign, {dem} | flip
+demon/dem_tavern2 | 120 | rowdy demon tavern with barrels outside, glowing orange windows and a horned skull sign, {dem} | flip
+demon/dem_shrine | 104 | small dark shrine with red candles, obsidian altar and purple flame, {dem} | flip
+demon/dem_well | 96 | black stone well glowing with orange lava inside, chains and bucket, {dem}
+demon/dem_cage | 64 | hanging iron cage on a crooked black post, {dem}
+demon/dem_brazier | 64 | spiked iron brazier with purple fire, {dem}
+demon/dem_signpost | 64 | crooked black signpost with bone arrow signs, {dem}
+demon/dem_crates | 64 | dark wooden crates and a barrel bound with iron and chains, {dem}
+demon/dem_skull_pile | 64 | pile of monster skulls and bones with red candles, {dem}
+demon/dem_banner | 96 | tall black iron pole with a tattered crimson war banner, {dem}
+demon/dem_gate_arch | 128 | spiked obsidian archway with glowing lava runes, {dem} | flip
+demon/dem_fence | 96 | spiked black iron fence section, {demd} | flip
+demon/dem_tree_ember | 112 | twisted dead black tree with glowing ember leaves, {dem}
+demon/dem_thorn_bush | 64 | dark thorn bush with small glowing red flowers, {demd}
+demon/dem_mushrooms | 64 | cluster of glowing purple and red poison mushrooms, {dem}
+demon/dem_lava_pool | 96 | small round lava pool with black rock rim, {dem}
+demon/dem_gargoyle | 96 | crouching winged gargoyle statue on a black stone pedestal, {dem} | flip
+demon/dem_stall_curio | 112 | market stall with tattered purple awning selling skulls, bottled eyes and cursed trinkets, {dem} | flip
+demon/dem_wagon | 112 | black iron prison wagon with barred windows, {dem} | flip
+demon/dem_anvil | 64 | black anvil with glowing hot sword and hammer next to a small lava forge, {demd}
+demon/dem_bridge | 128 | short black stone bridge with spiked railings over lava, {dem} | flip
+
+# ───────── 천공 신전 ─────────
+skytemple/sky_house_c | 104 | small white marble house with teal dome roof, gold trim and flower balcony, facing south-west, {sky} | flip
+skytemple/sky_house_d | 104 | pastel pink townhouse with blue roof, gold weather vane and arched windows, facing south-east, {sky} | flip
+skytemple/sky_house_e | 104 | cream cottage with sky blue shingle roof and a small cloud resting on the chimney, facing south-west, {sky} | flip
+skytemple/sky_bakery | 120 | heavenly bakery with white and gold striped awning, cloud shaped bread sign, teal roof, {sky} | flip
+skytemple/sky_harp_shop | 120 | music shop with golden harp on display, white marble walls and blue roof, {sky} | flip
+skytemple/sky_feather_shop | 120 | feather and wing tailor shop with white wings hanging in the window, pastel yellow walls, teal roof, {sky} | flip
+skytemple/sky_observatory | 104 | small observatory tower with golden telescope dome, white marble, {sky} | flip
+skytemple/sky_teahouse | 120 | open air tea pavilion with white columns, blue roof and little tables, {sky} | flip
+skytemple/sky_well | 96 | white marble wishing well with gold roof and sparkling water, {sky}
+skytemple/sky_planter | 64 | white marble planter with blue and white flowers, {sky}
+skytemple/sky_flowerbed | 96 | low marble bordered flower bed with white lilies and blue bells, {skyd} | flip
+skytemple/sky_hedge | 96 | neat trimmed hedge section with white flowers and gold lantern, {skyd} | flip
+skytemple/sky_signpost | 64 | white and gold signpost with feather shaped arrow signs, {sky}
+skytemple/sky_crates | 64 | white wooden crates with gold bands and a blue cloth bundle, {sky}
+skytemple/sky_cloud_bench | 64 | bench made of fluffy cloud with gold armrests, {sky} | flip
+skytemple/sky_arch | 128 | white marble archway with gold wings on top and hanging blue banners, {sky} | flip
+skytemple/sky_colonnade | 128 | short row of three white marble columns joined by a lintel with ivy, {sky} | flip
+skytemple/sky_bell | 96 | golden bell hanging in a small white marble frame, {sky}
+skytemple/sky_wind_chime | 64 | tall gold pole with hanging crystal wind chimes and ribbons, {sky}
+skytemple/sky_tree_gold | 112 | elegant tree with golden leaves on a small cloud ringed stone base, {sky}
+skytemple/sky_tree_blossom | 112 | white blossom tree with drifting petals, {sky}
+skytemple/sky_balloon_cart | 96 | small cart carried by pastel balloons selling sweets, {sky} | flip
+skytemple/sky_stall_fruit | 112 | market stall with white and teal awning selling golden fruits and star candies, {sky} | flip
+skytemple/sky_statue_wing | 96 | marble statue of a pair of large angel wings on a gold pedestal, {sky}
+skytemple/sky_sundial | 64 | golden sundial on a white marble pedestal, {sky}
+skytemple/sky_bridge | 128 | short white marble bridge with gold railings over clouds, {skyd} | flip
+
+# ───────── 폐허 신전 ─────────
+templeruin/rui_house_a | 104 | small weathered stone cottage with mossy slate roof, ivy and glowing purple window, facing south-west, {rui} | flip
+templeruin/rui_house_b | 104 | narrow old gothic house with pointed arch windows, cracked walls and a crooked chimney, facing south-east, {rui} | flip
+templeruin/rui_house_c | 104 | half collapsed stone house repaired with wooden planks, moss roof and lantern, facing south-west, {rui} | flip
+templeruin/rui_relic_shop | 120 | antique relic shop with dusty window, hanging purple lantern and old stone walls covered in ivy, {rui} | flip
+templeruin/rui_scribe | 120 | scribe and scroll shop with stacked scrolls outside, gothic arched door and dark teal roof, {rui} | flip
+templeruin/rui_herbalist | 120 | herbalist hut with hanging dried herbs, glowing mushrooms in pots and mossy roof, {rui} | flip
+templeruin/rui_chapel | 104 | tiny ruined chapel with a broken bell tower and purple stained glass, {rui} | flip
+templeruin/rui_crypt | 104 | small stone crypt entrance with iron gate and moss, {rui} | flip
+templeruin/rui_well | 96 | old mossy stone well with a faint purple glow, {rui}
+templeruin/rui_broken_arch | 128 | broken gothic stone arch with ivy, {rui} | flip
+templeruin/rui_broken_wall | 112 | crumbling stone wall section with a gothic window hole and vines, {ruid} | flip
+templeruin/rui_columns | 112 | three broken stone columns of different heights with moss, {rui}
+templeruin/rui_fallen_statue | 96 | fallen broken statue head half buried in the ground, mossy, {ruid} | flip
+templeruin/rui_signpost | 64 | old leaning wooden signpost with a purple lantern, {rui}
+templeruin/rui_crates | 64 | old crates, clay urns and a broken barrel, {ruid}
+templeruin/rui_tombstones | 64 | three old leaning tombstones with moss and a candle, {rui}
+templeruin/rui_rune_stone | 64 | standing stone carved with glowing purple runes, {rui}
+templeruin/rui_fence | 96 | rusty wrought iron graveyard fence section with stone posts, {ruid} | flip
+templeruin/rui_tree_willow | 112 | gloomy weeping willow tree with pale purple leaves, {rui}
+templeruin/rui_tree_gnarled | 112 | gnarled old oak tree with dark green leaves and hanging lantern, {rui}
+templeruin/rui_bush | 64 | overgrown bush with purple night flowers, {ruid}
+templeruin/rui_mushroom_ring | 64 | ring of glowing purple mushrooms, {rui}
+templeruin/rui_altar_small | 96 | small cracked stone offering altar with candles and a floating purple crystal, {rui}
+templeruin/rui_stall_candle | 112 | market stall with patched grey awning selling candles and lanterns, {rui} | flip
+templeruin/rui_cart | 96 | broken wooden cart overgrown with vines and flowers, {ruid} | flip
+templeruin/rui_bridge | 128 | short cracked stone bridge with moss and missing railings, {ruid} | flip
+
+# ───────── 아틀란티스 ─────────
+atlantis/atx_house_a | 104 | small white stone house with pink scallop shell roof and round porthole windows, facing south-west, {atl} | flip
+atlantis/atx_house_b | 104 | tall narrow teal townhouse with coral growing on the roof and a pearl lantern, facing south-east, {atl} | flip
+atlantis/atx_house_c | 104 | round cottage built from a giant spiral conch shell with a small door, facing south-west, {atl} | flip
+atlantis/atx_pearl_shop | 120 | pearl jewelry shop with open clam display, pink and white striped awning and teal roof, {atl} | flip
+atlantis/atx_fishmonger | 120 | fish market shop with ice counter of fish, blue striped awning and hanging nets, {atl} | flip
+atlantis/atx_dive_shop | 120 | diving gear shop with brass diving helmet sign, hanging fins and barrels, teal roof, {atl} | flip
+atlantis/atx_lighthouse | 144 | small white and red striped lighthouse on rocks with a glowing lamp, {atl}
+atlantis/atx_teahouse | 120 | seaside tea house with pink parasols, shell decorations and a wooden deck, {atl} | flip
+atlantis/atx_well | 96 | white stone well decorated with seashells and a teal tiled roof, {atl}
+atlantis/atx_planter | 64 | giant open clam shell used as a planter with pink sea anemones, {atl}
+atlantis/atx_coral_big | 96 | large branching pink and orange coral cluster, {atl}
+atlantis/atx_coral_blue | 64 | blue and purple tube coral cluster with tiny fish, {atl}
+atlantis/atx_signpost | 64 | driftwood signpost with arrow signs and a hanging starfish, {atl}
+atlantis/atx_net_rack | 96 | wooden rack with fishing nets, glass floats and buoys drying, {atl} | flip
+atlantis/atx_anchor | 64 | big rusty ship anchor leaning on a rope coil, {atl} | flip
+atlantis/atx_shell_arch | 128 | archway made of two giant seashells and coral with hanging pearls, {atl} | flip
+atlantis/atx_fence | 96 | white rope and post fence section with seashells, {atl} | flip
+atlantis/atx_palm | 112 | leaning palm tree with coconuts on a small sandy mound, {atl}
+atlantis/atx_seaweed_tree | 112 | tall swaying teal kelp tree with glowing bulbs, {atl}
+atlantis/atx_statue_mermaid | 96 | white marble mermaid statue holding a pearl on a shell pedestal, {atl} | flip
+atlantis/atx_statue_seahorse | 96 | golden seahorse statue on a white pedestal, {atl} | flip
+atlantis/atx_stall_shell | 112 | market stall with pink scallop awning selling seashells and necklaces, {atl} | flip
+atlantis/atx_cart_ice | 96 | small shaved ice cart with teal parasol, {atl} | flip
+atlantis/atx_treasure | 64 | open sunken treasure chest with gold coins and pearls, covered in barnacles, {atl}
+atlantis/atx_bubble_lamp | 64 | street lamp made of a glowing bubble on a coral post, {atl}
+atlantis/atx_cafe_table | 64 | round white cafe table with two chairs and a pink shell parasol, {atl}
