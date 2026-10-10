@@ -462,6 +462,15 @@ const ACADEMY_3F: DecorItem[] = [
   ['academy/wb_potted_tree', 40.5, 8.6],
 ]
 
+/** 4층 복도 (46×10 — 남쪽 벽을 따라, 벤치·탁자 사이) */
+const ACADEMY_4F: DecorItem[] = [
+  ['academy/wb_statue_urn', 6.0, 8.6],
+  ['academy/wb_case_relic', 13.6, 8.6],
+  ['academy/wb_bust', 21.4, 8.6],
+  ['academy/wb_trophy', 29.0, 8.6],
+  ['academy/wb_armor', 36.4, 8.6],
+]
+
 /** 실습실 (20×16) */
 const PRACTICE_LAB: DecorItem[] = [
   ['academy/wb_shelf_potion', 8.0, 1.8],
@@ -529,5 +538,6 @@ export const TOWN_DECOR: Record<string, DecorItem[]> = {
   'council-room': COUNCIL_ROOM,
   'grand-auditorium': GRAND_AUDITORIUM,
   'academy-3f': ACADEMY_3F,
+  'academy-4f': ACADEMY_4F,
   'practice-lab': PRACTICE_LAB,
 }

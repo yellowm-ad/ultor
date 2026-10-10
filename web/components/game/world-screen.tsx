@@ -191,6 +191,13 @@ export function WorldScreen() {
     })
   const guide = useGuide(state, map, true)
 
+  // 이번 주 수업 교실 안에 이미 서 있으면(세이브를 교실에서 불러왔을 때 등) 수업을 바로 시작한다 — 평소에는 들어오는 순간 시작(lib/progression visitMap)
+  const inPendingClassRoom = guide?.goal.kind === 'class' && guide.goal.mapId === state.currentMapId
+  useEffect(() => {
+    if (inPendingClassRoom && state.screen === 'world' && !state.classScene && state.storyQueue.length === 0) dispatch({ type: 'START_CLASS' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inPendingClassRoom, state.screen, state.storyQueue.length])
+
   const furnOwned = (itemId: string) => state.inventory.find((s) => s.itemId === itemId)?.qty ?? 0
 
   // 군 통문(gate) 목적지 목록
