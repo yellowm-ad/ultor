@@ -13,6 +13,7 @@ import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/is
 import { useTerrainArt, TerrainWaterBackdrop, TerrainCanvas } from '@/components/game/iso-terrain'
 import type { TileKind, PropDef } from '@/lib/iso'
 import { FURNITURE_BY_ID } from '@/lib/housing'
+import { spotsOnMap } from '@/lib/activity-spots'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 import { professorSpot, useClassActorEntities } from '@/components/game/class-actors'
@@ -589,7 +590,40 @@ export function IsoWorld({
     }
   })
 
-  const allEntities = [...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
+  // 마을 놀이 지점(lib/activity-spots) — 바닥 고리 + 통통 튀는 표식 + 이름표. 누르면(가까이 있을 때) 시작
+  const spotEntities = spotsOnMap(map.id).map((sp) => {
+    const s = isoToScreen(sp.cell.x, sp.cell.y)
+    const hot = interactId === sp.id
+    const color = sp.kind === 'fishing' ? '#7fd0e8' : '#ffb84a'
+    return {
+      sortY: sp.cell.x + sp.cell.y - 0.3,
+      node: (
+        <g key={sp.id} transform={`translate(${s.sx},${s.sy})`} style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'SPOT_USE', spotId: sp.id })}>
+          <ellipse cx={0} cy={0} rx={24} ry={12} fill={color} opacity={0.14} />
+          <ellipse cx={0} cy={0} rx={24} ry={12} fill="none" stroke={color} strokeWidth={2} strokeDasharray="6 5" opacity={0.9} />
+          <ellipse cx={0} cy={0} rx={24} ry={12} fill="none" stroke={color} strokeWidth={2} style={{ animation: 'guide-ring 2s ease-out infinite', transformBox: 'fill-box', transformOrigin: 'center' }} />
+          <g transform="translate(0,-34)" style={{ pointerEvents: 'none' }}>
+            <g style={{ animation: 'guide-bob 1.1s ease-in-out infinite' }}>
+              <circle cx={0} cy={0} r={9} fill="#1b1510" stroke={color} strokeWidth={2} />
+              {sp.kind === 'fishing' ? (
+                <path d="M-5 0 Q0 -5 4 0 Q0 5 -5 0 Z M4 0 L7 -3 L7 3 Z" fill={color} />
+              ) : (
+                <path d="M0 -5.5 L1.7 -1.7 L5.5 -1.7 L2.4 0.9 L3.6 5 L0 2.6 L-3.6 5 L-2.4 0.9 L-5.5 -1.7 L-1.7 -1.7 Z" fill={color} />
+              )}
+            </g>
+          </g>
+          <g transform="translate(0,-54)" style={{ pointerEvents: 'none' }}>
+            <rect x={-sp.label.length * 5 - 6} y={-9} width={sp.label.length * 10 + 12} height={14} rx={3} fill={hot ? color : 'rgba(10,8,6,0.72)'} />
+            <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={hot ? '#000' : '#f3e6c4'}>
+              {sp.label}
+            </text>
+          </g>
+        </g>
+      ),
+    }
+  })
+
+  const allEntities = [...spotEntities, ...staticEntities, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
   // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
   const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
   const behind = allEntities.filter((e) => e.sortY >= -1e5 && e.sortY <= playerSortY).map((e) => e.node)

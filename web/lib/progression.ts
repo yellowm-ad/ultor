@@ -504,7 +504,12 @@ export function gatherAt(state: GameState, nodeKey: string): GameState {
   return withQuestEvents(next, got.map((g) => ({ type: 'GATHER' as const, itemId: g.itemId, qty: g.qty })), `채집: ${label}`)
 }
 
-export function startFishing(state: GameState): GameState {
+/** atSpot = 마을 낚시터(lib/activity-spots) — 낚싯대를 빌려 주므로 해금·낚싯대·물가 조건을 보지 않는다 */
+export function startFishing(state: GameState, atSpot = false): GameState {
+  if (atSpot) {
+    const roll = rollFish(state.currentMapId, hasItem(state.inventory, 'tool-rod-silver'))
+    return { ...state, fishing: { fishId: roll.fishId, difficulty: roll.difficulty } }
+  }
   if (!isActivityUnlocked(state, 'fishing')) return { ...state, toast: `낚시는 ${ACTIVITY_META.fishing.year}학년 겨울방학에 해금됩니다.` }
   const hasRod = hasItem(state.inventory, 'tool-rod-basic') || hasItem(state.inventory, 'tool-rod-silver')
   if (!hasRod) return { ...state, toast: '낚싯대가 필요합니다. (별빛 상점가 만물상 토비)' }

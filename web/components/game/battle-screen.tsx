@@ -258,6 +258,8 @@ export function BattleScreen() {
     }
   }
 
+  /** 지금 명령을 고를 수 있는가(내 차례이고 대상 고르는 중이 아님) */
+  const canAct = isHeroTurn && !pending
   const availableSkills = actor ? SKILLS.filter((s) => actor.skills.includes(s.id)) : []
   const availableItems = state.inventory
     .map((slot) => ({ slot, item: itemById(slot.itemId) }))
@@ -437,10 +439,10 @@ export function BattleScreen() {
       </div>
 
       {/* ── 하단: 타임라인 + 액션 ── */}
-      <div className="relative z-20 mt-auto flex items-end gap-2 px-3 pb-3">
+      <div className="relative z-20 mt-auto flex flex-col gap-1.5 px-3 pb-3">
         {/* 타임라인 */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <span className="battle-timeline-label flex items-center gap-1 text-xs font-display text-white/60">
+        <div className="battle-timeline flex min-w-0 items-center gap-2">
+          <span className="battle-timeline-label shrink-0 flex items-center gap-1 text-xs font-display text-white/60">
             <DiamondMark size={9} />
             행동 순서
           </span>
@@ -468,76 +470,96 @@ export function BattleScreen() {
           </div>
         </div>
 
-        {/* 액션 패널 */}
-        <div className="battle-action-panel panel-royal w-[48%] max-w-[360px] shrink-0 p-2.5">
+        {/* 명령창 — 한 줄에 네 칸(공격·스킬·물약·방어). 스킬·물약 칸을 누르면 그 위로 아이콘이 차례로 펼쳐진다 */}
+        <div className="battle-cmd panel-royal">
           {battle.isOver ? (
             <BattleResult />
-          ) : !isHeroTurn ? (
-            <div className="flex h-16 items-center justify-center text-xs text-white/60">
-              {actor ? `${actor.name}의 턴...` : '행동 순서 대기 중...'}
-            </div>
-          ) : pending ? (
-            <div className="flex h-16 flex-col items-center justify-center gap-1 text-center text-xs">
-              <span className="text-gold-soft">{actor?.name} — 대상을 선택하세요</span>
-              <Button size="sm" variant="ghost" onClick={() => setPending(null)}>취소</Button>
-            </div>
-          ) : menu === 'root' ? (
-            <div className="battle-root-menu grid grid-cols-2 gap-2">
-              <div className="col-span-2 -mb-1 flex items-center gap-1 text-[11px] font-display text-gold-soft">
-                <DiamondMark size={8} />
-                {actor?.name}의 차례 · Lv.{actor?.level} · MP {actor?.mp}/{actor?.stats.maxMp}
-              </div>
-              <RingBtn icon={<Swords className="size-5" />} label="공격" hint="기본 공격" onClick={() => setPending({ kind: 'attack' })} />
-              <RingBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`${availableSkills.length}개`} onClick={() => setMenu('skill')} />
-              <RingBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`${availableItems.length}개`} onClick={() => setMenu('item')} />
-              <RingBtn icon={<Shield className="size-5" />} label="방어" hint="피해 감소" onClick={() => submit({ type: 'defend' })} />
-            </div>
-          ) : menu === 'skill' ? (
-            <div className="flex max-h-28 flex-wrap content-start gap-1.5 overflow-y-auto scrollbar-thin">
-              {availableSkills.length === 0 && <span className="text-xs opacity-60">사용 가능한 스킬이 없습니다.</span>}
-              {availableSkills.map((s) => (
-                <button
-                  key={s.id}
-                  disabled={!actor || actor.mp < s.mpCost}
-                  title={s.description}
-                  onClick={() => {
-                    if (s.targeting === 'allEnemies' || s.targeting === 'allAllies' || s.targeting === 'self') {
-                      submit({ type: 'skill', skillId: s.id, targetUid: actor!.uid })
-                    } else {
-                      setPending({ kind: 'skill', skill: s })
-                    }
-                  }}
-                  style={{ ['--gem-bg' as string]: GEM_ELEMENT_BG[s.element ?? 'none'] }}
-                  className="gem-btn flex w-[30%] min-w-16 flex-col items-center gap-0.5 px-1.5 py-1.5 text-white/90"
-                >
-                  <Image src={s.icon} alt={s.name} width={22} height={22} />
-                  <span className="text-center text-[10px] leading-tight">{s.name}</span>
-                  <span className="rounded-full bg-black/40 px-1.5 text-[9px] font-bold text-mp">{s.mpCost}MP</span>
-                </button>
-              ))}
-              <button onClick={() => setMenu('root')} className="self-center rounded-md px-2 py-1 text-[11px] text-white/60">뒤로</button>
-            </div>
           ) : (
-            <div className="flex max-h-28 flex-wrap content-start gap-1.5 overflow-y-auto scrollbar-thin">
-              {availableItems.length === 0 && <span className="text-xs opacity-60">보유한 물약/도구가 없습니다.</span>}
-              {availableItems.map(({ slot, item }) => (
-                <button
-                  key={slot.itemId}
-                  title={item!.description}
-                  onClick={() => {
-                    if (item!.useEffect?.reviveOnly) setPending({ kind: 'item', itemId: slot.itemId, needsTarget: true })
-                    else submit({ type: 'item', itemId: slot.itemId, targetUid: actor!.uid })
-                  }}
-                  style={{ ['--gem-bg' as string]: 'linear-gradient(160deg, #3a3560, #201c3c)' }}
-                  className="gem-btn flex w-[30%] min-w-16 flex-col items-center gap-0.5 px-1.5 py-1.5 text-white/90"
-                >
-                  <Image src={item!.icon} alt={item!.name} width={22} height={22} />
-                  <span className="text-center text-[10px] leading-tight">{item!.name}</span>
-                  <span className="rounded-full bg-black/40 px-1.5 text-[9px] font-bold text-gold-soft">×{slot.qty}</span>
-                </button>
-              ))}
-              <button onClick={() => setMenu('root')} className="self-center rounded-md px-2 py-1 text-[11px] text-white/60">뒤로</button>
-            </div>
+            <>
+              <div className="battle-cmd-line">
+                <DiamondMark size={8} />
+                {!isHeroTurn ? (
+                  <span className="text-white/60">{actor ? `${actor.name}의 턴...` : '행동 순서 대기 중...'}</span>
+                ) : pending ? (
+                  <>
+                    <span>{actor?.name} — 대상을 선택하세요</span>
+                    <button type="button" className="battle-cmd-cancel" onClick={() => setPending(null)}>
+                      취소
+                    </button>
+                  </>
+                ) : (
+                  <span>
+                    {actor?.name}의 차례 · Lv.{actor?.level} · MP {actor?.mp}/{actor?.stats.maxMp}
+                  </span>
+                )}
+              </div>
+              <div className="battle-cmd-row">
+                <CmdBtn icon={<Swords className="size-5" />} label="공격" hint="기본 공격" disabled={!canAct} onClick={() => { setMenu('root'); setPending({ kind: 'attack' }) }} />
+                <div className="battle-cmd-slot">
+                  {canAct && menu === 'skill' && (
+                    <div className="battle-fan">
+                      {availableSkills.length === 0 && <span className="battle-fan-empty">사용 가능한 스킬이 없습니다.</span>}
+                      {availableSkills.map((s, i) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          disabled={!actor || actor.mp < s.mpCost}
+                          onClick={() => {
+                            setMenu('root')
+                            if (s.targeting === 'allEnemies' || s.targeting === 'allAllies' || s.targeting === 'self') {
+                              submit({ type: 'skill', skillId: s.id, targetUid: actor!.uid })
+                            } else {
+                              setPending({ kind: 'skill', skill: s })
+                            }
+                          }}
+                          style={{ ['--gem-bg' as string]: GEM_ELEMENT_BG[s.element ?? 'none'], animationDelay: `${i * 45}ms` }}
+                          className="battle-fan-item gem-btn"
+                        >
+                          <Image src={s.icon} alt={s.name} width={26} height={26} />
+                          <span className="battle-fan-mp">{s.mpCost}</span>
+                          <span className="battle-tip">
+                            <b>{s.name}</b>
+                            <i>MP {s.mpCost}{actor && actor.mp < s.mpCost ? ' · MP 부족' : ''}</i>
+                            {s.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <CmdBtn icon={<Sparkles className="size-5" />} label="스킬" hint={`${availableSkills.length}개`} active={menu === 'skill'} disabled={!canAct} onClick={() => setMenu(menu === 'skill' ? 'root' : 'skill')} />
+                </div>
+                <div className="battle-cmd-slot">
+                  {canAct && menu === 'item' && (
+                    <div className="battle-fan">
+                      {availableItems.length === 0 && <span className="battle-fan-empty">보유한 물약/도구가 없습니다.</span>}
+                      {availableItems.map(({ slot, item }, i) => (
+                        <button
+                          key={slot.itemId}
+                          type="button"
+                          onClick={() => {
+                            setMenu('root')
+                            if (item!.useEffect?.reviveOnly) setPending({ kind: 'item', itemId: slot.itemId, needsTarget: true })
+                            else submit({ type: 'item', itemId: slot.itemId, targetUid: actor!.uid })
+                          }}
+                          style={{ ['--gem-bg' as string]: 'linear-gradient(160deg, #4a3a2a, #241a12)', animationDelay: `${i * 45}ms` }}
+                          className="battle-fan-item gem-btn"
+                        >
+                          <Image src={item!.icon} alt={item!.name} width={26} height={26} />
+                          <span className="battle-fan-mp is-qty">×{slot.qty}</span>
+                          <span className="battle-tip">
+                            <b>{item!.name}</b>
+                            <i>{slot.qty}개 보유</i>
+                            {item!.description}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <CmdBtn icon={<FlaskConical className="size-5" />} label="물약·도구" hint={`${availableItems.length}개`} active={menu === 'item'} disabled={!canAct} onClick={() => setMenu(menu === 'item' ? 'root' : 'item')} />
+                </div>
+                <CmdBtn icon={<Shield className="size-5" />} label="방어" hint="피해 감소" disabled={!canAct} onClick={() => { setMenu('root'); submit({ type: 'defend' }) }} />
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -744,22 +766,27 @@ function RageAura({ px, layer }: { px: number; layer: 'back' | 'front' }) {
   )
 }
 
-function RingBtn({
+/** 명령창의 한 칸 — 아이콘 + 이름(+ 보조 문구) */
+function CmdBtn({
   icon,
   label,
   hint,
   onClick,
+  disabled,
+  active,
 }: {
   icon?: ReactNode
   label: string
   hint?: string
   onClick: () => void
+  disabled?: boolean
+  active?: boolean
 }) {
   return (
-    <button onClick={onClick} className="battle-ring-btn gem-btn flex h-16 flex-col items-center justify-center gap-0.5 text-gold-soft">
+    <button type="button" onClick={onClick} disabled={disabled} className={`battle-cmd-btn ${active ? 'is-active' : ''}`}>
       {icon}
       <span className="font-display text-sm leading-none">{label}</span>
-      {hint && <span className="battle-ring-hint mt-0.5 text-[10px] text-white/60">{hint}</span>}
+      {hint && <span className="battle-cmd-hint">{hint}</span>}
     </button>
   )
 }

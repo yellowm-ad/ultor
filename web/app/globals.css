@@ -386,6 +386,64 @@
     0%, 100% { opacity: 0.5; transform: scale(1); }
     50% { opacity: 0.9; transform: scale(1.12); }
   }
+  /* ── 주인공 생성 창(components/game/create-screen) — 삽화 위에 뜨는 가운데 창 ── */
+  .create-dim { position: absolute; inset: 0; background: radial-gradient(120% 100% at 50% 40%, rgba(11, 9, 7, 0.45) 0%, rgba(11, 9, 7, 0.86) 100%); backdrop-filter: blur(3px); }
+  .create-window { position: relative; z-index: 2; display: flex; flex-direction: column; width: min(100%, 900px); max-height: 100%; border: 2px solid #c79a3e; border-radius: 12px; background: linear-gradient(180deg, #1c1610 0%, #130f0b 100%); box-shadow: 0 0 0 4px #14100c, 0 0 0 5px rgba(199, 154, 62, 0.45), 0 24px 60px rgba(0, 0, 0, 0.7); overflow: hidden; }
+  .create-window-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 14px 18px 12px; border-bottom: 1px solid rgba(199, 154, 62, 0.35); background: linear-gradient(180deg, rgba(199, 154, 62, 0.16), transparent); color: #e8c46a; }
+  .create-window-head h1 { font-family: var(--font-display, serif); font-size: 22px; letter-spacing: 0.2em; color: #f3e6c4; }
+  .create-window-head span { flex-basis: 100%; text-align: center; font-size: 11px; letter-spacing: 0.12em; color: #a8997a; }
+  .create-window-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 18px; min-height: 0; padding: 18px 22px; overflow-y: auto; }
+  .create-stage { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .create-stage-art { position: relative; width: 100%; height: 250px; border: 1px solid rgba(199, 154, 62, 0.3); border-radius: 10px; overflow: hidden; background: radial-gradient(90% 70% at 50% 78%, rgba(232, 196, 106, 0.22) 0%, rgba(30, 24, 16, 0.4) 55%, #0f0c09 100%); }
+  .create-gender { display: inline-flex; padding: 4px; border: 1px solid rgba(199, 154, 62, 0.5); border-radius: 999px; background: rgba(0, 0, 0, 0.4); }
+  .create-gender button { padding: 8px 26px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #a8997a; transition: background 0.12s, color 0.12s; }
+  .create-gender button.is-on { background: #e8c46a; color: #1b1510; }
+  .create-blurb { font-size: 12px; line-height: 1.65; color: #b9ab8c; }
+  .create-form { display: flex; flex-direction: column; gap: 14px; }
+  .create-field { display: flex; flex-direction: column; gap: 6px; }
+  .create-label { display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: 0.06em; color: #e8c46a; }
+  .create-note { font-size: 11px; color: #8f8268; }
+  .create-pet { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; background: rgba(255, 255, 255, 0.04); font-size: 12px; color: #d8cba8; transition: transform 0.12s, border-color 0.12s; }
+  .create-pet:hover { transform: translateY(-2px); }
+  .create-pet.is-on { border-color: #e8c46a; background: rgba(232, 196, 106, 0.18); color: #f3e6c4; box-shadow: 0 0 12px rgba(232, 196, 106, 0.25); }
+  .create-skill { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); }
+  .create-skill b { display: block; font-size: 13px; color: #f3e6c4; }
+  .create-skill span { font-size: 11px; color: #a8997a; }
+  .create-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); font-size: 11px; color: #d8cba8; }
+  .create-window-foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 22px 16px; border-top: 1px solid rgba(199, 154, 62, 0.25); }
+  @media (max-width: 700px) {
+    .create-window-body { grid-template-columns: 1fr; }
+    .create-stage-art { height: 200px; }
+  }
+  /* ── 전투 명령창(components/game/battle-screen) — 한 줄 네 칸 + 위로 펼쳐지는 아이콘 ── */
+  .battle-cmd { width: min(100%, 720px); margin: 0 auto; padding: 8px 10px 10px; background-color: #14100c !important; }
+  .battle-cmd-line { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-bottom: 6px; font-family: var(--font-display, serif); font-size: 12px; color: #f3e6c4; }
+  .battle-cmd-cancel { margin-left: auto; padding: 1px 10px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; font-size: 11px; color: #e8dcc0; }
+  .battle-cmd-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .battle-cmd-slot { position: relative; display: flex; }
+  .battle-cmd-btn { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; height: 46px; border: 2px solid #c79a3e; border-radius: 4px; background: #17120c; color: #f0c860; transition: background 0.1s, color 0.1s, transform 0.1s; }
+  .battle-cmd-btn:hover:not(:disabled), .battle-cmd-btn.is-active { background: #f0c860; color: #17120c; transform: translateY(-2px); }
+  .battle-cmd-btn:disabled { opacity: 0.4; }
+  .battle-cmd-hint { font-size: 10px; opacity: 0.7; }
+  .battle-fan { position: absolute; left: 50%; bottom: calc(100% + 40px); z-index: 5; display: flex; flex-wrap: wrap-reverse; justify-content: center; gap: 8px; width: max-content; max-width: min(88vw, 430px); transform: translateX(-50%); }
+  .battle-fan-empty { padding: 6px 12px; border-radius: 6px; background: rgba(20, 14, 8, 0.9); font-size: 12px; color: #d8cba8; }
+  .battle-fan-item { position: relative; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; animation: battle-fan-pop 0.26s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+  .battle-fan-item:hover:not(:disabled) { z-index: 2; }
+  .battle-fan-mp { position: absolute; right: -4px; bottom: -4px; min-width: 18px; padding: 0 4px; border-radius: 9px; background: #14100c; border: 1px solid rgba(255, 255, 255, 0.25); font-size: 9px; font-weight: 700; line-height: 15px; text-align: center; color: #8fc7ff; }
+  .battle-fan-mp.is-qty { color: #f0c860; }
+  .battle-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); display: none; width: 210px; padding: 8px 10px; transform: translateX(-50%); border: 1px solid #c79a3e; border-radius: 6px; background: #14100c; font-size: 11px; line-height: 1.5; text-align: left; color: #e8dcc0; pointer-events: none; white-space: normal; }
+  .battle-tip b { display: block; font-size: 13px; color: #ffe9a8; }
+  .battle-tip i { display: block; margin-bottom: 3px; font-style: normal; font-size: 10px; color: #8fc7ff; }
+  .battle-fan-item:hover .battle-tip, .battle-fan-item:focus-visible .battle-tip { display: block; }
+  @keyframes battle-fan-pop {
+    from { opacity: 0; transform: translateY(46px) scale(0.2) rotate(-40deg); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (max-height: 520px) {
+    .battle-cmd { padding: 4px 8px 6px; }
+    .battle-cmd-btn { height: 36px; }
+    .battle-cmd-hint, .battle-timeline { display: none; }
+  }
   /* ── 첫 이동 연출(components/game/passage-overlay) ── */
   .psg-root { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(8, 6, 5, 0.82); }
   .psg-frame { display: flex; flex-direction: column; gap: 10px; width: min(94vw, 760px); max-height: 96vh; padding: 16px 18px 18px; border: 1px solid rgba(217, 164, 65, 0.55); border-radius: 10px; background: #14100c; color: #e8dcc0; }

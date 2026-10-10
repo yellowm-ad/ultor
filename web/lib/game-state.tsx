@@ -17,6 +17,7 @@ import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
 import { mapLockReason, passageFlag, passageFor } from '@/lib/passages'
+import { activitySpotById, ARCADE_REWARD_GOLD } from '@/lib/activity-spots'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
@@ -105,6 +106,7 @@ export type Action =
   | { type: 'ENCOUNTER_FLEE' }
   | { type: 'USE_PORTAL'; portalId: string }
   | { type: 'PASSAGE_DONE' }
+  | { type: 'SPOT_USE'; spotId: string }
   | { type: 'PASSAGE_CANCEL' }
   | { type: 'PORTAL_CONFIRM' }
   | { type: 'PORTAL_CANCEL' }
@@ -483,13 +485,24 @@ function reducer(state: GameState, action: Action): GameState {
       return travelThroughPortal(state, action.portalId)
 
     // 첫 이동 연출(lib/passages) — 통과하면 플래그를 켜고 그 포탈로 넘어간다 / 포기하면 제자리
+    // 마을 놀이 지점(lib/activity-spots) — 낚시터는 바로 낚시, 미니게임 지점은 연습 한 판
+    case 'SPOT_USE': {
+      const spot = activitySpotById(action.spotId)
+      if (!spot || spot.mapId !== state.currentMapId || state.screen !== 'world' || state.fishing || state.passage || state.classScene) return state
+      if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > 2.4) return state
+      if (spot.kind === 'fishing') return startFishing(state, true)
+      return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
+    }
+
     case 'PASSAGE_DONE': {
       if (!state.passage) return state
       const { id, portalId } = state.passage
+      // 놀이 지점의 연습 판 — 이동 없이 용돈만
+      if (!portalId) return { ...state, passage: null, player: { ...state.player, gold: state.player.gold + ARCADE_REWARD_GOLD }, toast: `훈련 통과! ${ARCADE_REWARD_GOLD}G 를 받았다.` }
       return travelThroughPortal({ ...state, passage: null, storyFlags: { ...state.storyFlags, [passageFlag(id)]: true } }, portalId)
     }
     case 'PASSAGE_CANCEL':
-      return state.passage ? { ...state, passage: null, toast: '발길을 돌렸다.' } : state
+      return state.passage ? { ...state, passage: null, toast: state.passage.portalId ? '발길을 돌렸다.' : null } : state
 
     case 'PORTAL_CONFIRM':
       return state.pendingPortalId ? travelThroughPortal(state, state.pendingPortalId) : state

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
 import { useGuide } from '@/components/game/guide-trail'
 import { mapLockReason } from '@/lib/passages'
+import { nearestSpot } from '@/lib/activity-spots'
 import { WeatherLayer } from '@/components/game/weather-layer'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
@@ -126,6 +127,11 @@ export function WorldScreen() {
       dispatch({ type: 'USE_PORTAL', portalId: secret.id })
       return
     }
+    const spot = nearestSpot(map.id, state.position)
+    if (spot) {
+      dispatch({ type: 'SPOT_USE', spotId: spot.id })
+      return
+    }
     const node = nearestGatherNode(map, state.life, state.position)
     if (node) {
       dispatch({ type: 'GATHER', nodeKey: node.key })
@@ -194,11 +200,14 @@ export function WorldScreen() {
   const locationName = currentZone?.name ?? map.name
   const interactTarget = nearestNpc()
   const nearSecret = interactTarget ? null : nearestSecret()
-  const nearNode = interactTarget || nearSecret ? null : nearestGatherNode(map, state.life, state.position)
+  const nearSpot = interactTarget || nearSecret ? null : nearestSpot(map.id, state.position)
+  const nearNode = interactTarget || nearSecret || nearSpot ? null : nearestGatherNode(map, state.life, state.position)
   const lifePrompt = interactTarget
     ? null
     : nearSecret
       ? `${nearSecret.label} 살펴보기`
+      : nearSpot
+      ? nearSpot.prompt
       : nearNode
       ? `${GATHER_NODE_META[nearNode.kind].verb} — ${GATHER_NODE_META[nearNode.kind].name}`
       : isActivityUnlocked(state, 'fishing') && isNearWater(map, state.position)
@@ -231,7 +240,7 @@ export function WorldScreen() {
       viewportSize={viewportSize}
       moving={moving}
       running={running}
-      interactId={interactTarget?.id ?? nearNode?.key ?? null}
+      interactId={interactTarget?.id ?? nearSpot?.id ?? nearNode?.key ?? null}
       guide={guideOn ? guide : null}
     />
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}

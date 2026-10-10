@@ -51,136 +51,122 @@ export function CreateScreen() {
   const [petId, setPetId] = useState<string>(STARTER_PET_IDS[0])
   const starterSkill = skillById(STARTER_SKILLS[0])
 
+  // 화면을 꽉 채우지 않는 창 형식(2026-10-10) — 타이틀 삽화를 흐리게 깔고, 가운데 '입학 원서' 창 하나에 전부 담는다.
+  //   왼쪽 = 주인공 모습(마법진 위) + 성별, 오른쪽 = 이름 · 첫 펫 · 시작 마술 · 배울 마법, 아래 = 뒤로 / 입학하기
   return (
-    <div className="create-root screen-fade-in flex h-full w-full flex-col overflow-hidden bg-[#0b0907]">
-      <div className="relative min-h-[260px] flex-1 overflow-hidden">
-        <div className="title-bg-frame">
-          <div className="title-bg" />
-        </div>
-        <div className="title-sunrays" />
-        <div className="title-vignette" />
-
-        <h1 className="relative z-[2] pt-5 text-center font-display text-2xl text-gold-soft text-shadow-ink">주인공 생성</h1>
-
-        {/* 좌측: 주인공 소개 */}
-        <div className="absolute top-5 left-5 z-[2] hidden w-64 sm:block">
-          <div className="panel-glass p-3 text-xs leading-relaxed text-foreground/80">
-            <div className="mb-1 flex items-center gap-1.5 text-[11px] text-gold-soft">
-              <DiamondMark size={9} />
-              주인공
-            </div>
-            흑발에 금빛 눈을 가진 울토르 마법학교의 신입생. 어디서 왔는지 잘 말하지 않는 떠돌이 같은 분위기를 풍긴다.
-            정해진 속성 없이, 학교에서 배우는 마법과 장비로 자신만의 전투 방식을 만들어 간다.
-          </div>
-        </div>
-
-        {/* 우측: 시작 정보 — 첫 펫 선택 + 학습 안내 */}
-        <div className="absolute top-5 right-5 z-[2] hidden w-60 sm:block">
-          <div className="panel-glass p-3">
-            <div className="flex items-center gap-1.5 text-[11px] text-gold-soft">
-              <DiamondMark size={9} />첫 펫
-            </div>
-            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
-              {STARTER_PET_IDS.map((id) => {
-                const d = petDefById(id)!
-                return (
-                  <button
-                    key={id}
-                    onClick={() => setPetId(id)}
-                    className={`flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-[10px] ${petId === id ? 'bg-gold/25 ring-2 ring-gold' : 'bg-white/5 ring-1 ring-white/10'}`}
-                  >
-                    <Image src={d.icon} alt="" width={28} height={28} />
-                    {d.name}
-                  </button>
-                )
-              })}
-            </div>
-            <p className="mt-1 text-[10px] text-foreground/55">펫은 주인공이 전위에 설 때 함께 싸웁니다.</p>
-
-            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-gold-soft">
-              <DiamondMark size={9} />
-              시작 마술
-            </div>
-            {starterSkill && (
-              <div className="mt-1 text-xs">
-                <span className="font-semibold">{starterSkill.name}</span>
-                <span className="ml-1 text-[10px] text-foreground/55">{starterSkill.description}</span>
-              </div>
-            )}
-
-            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-gold-soft">
-              <DiamondMark size={9} />
-              학교에서 배울 마법
-            </div>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {PLAYER_ELEMENTS.map((e) => (
-                <span key={e} className="flex items-center gap-1 rounded-full bg-white/5 px-1.5 py-0.5 text-[10px]">
-                  <span style={{ color: ELEMENT_META[e].color }}>●</span>
-                  {ELEMENT_META[e].name}
-                </span>
-              ))}
-            </div>
-            <p className="mt-1 text-[10px] leading-relaxed text-foreground/55">
-              불꽃·얼음·대지는 1학년부터, 어둠·빛은 3학년부터. 고정 속성 없이 배운 마법과 장비가 전투 스타일을 만듭니다.
-            </p>
-          </div>
-        </div>
-
-        {/* 인게임 캐릭터 + 마법진 */}
-        <div className="absolute inset-x-0 bottom-4 z-[1] flex justify-center">
-          <CreateMagicCircle color={GOLD} />
-        </div>
-        <div className="absolute inset-x-0 bottom-11 z-[2] flex flex-col items-center">
-          <div className="create-hero-idle drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)]">
-            <HeroSprite sheet={playerSheet(gender)} px={152} />
-          </div>
-        </div>
+    <div className="create-root screen-fade-in relative flex h-full w-full items-center justify-center overflow-hidden bg-[#0b0907] p-4 sm:p-8">
+      <div className="title-bg-frame">
+        <div className="title-bg" />
       </div>
+      <div className="create-dim" />
 
-      {/* 하단: 이름 · 성별 · 시작 */}
-      <div className="create-select-bar relative z-[3] shrink-0 px-6 py-6 sm:px-14">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-5">
-          <div>
-            <label className="mb-2 block text-sm text-muted-foreground">이름</label>
-            <input
-              value={name}
-              maxLength={10}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="신입생의 이름"
-              className="create-name-input w-64 rounded-lg px-5 py-3.5 text-lg outline-none"
-            />
-          </div>
+      <div className="create-window">
+        <div className="create-window-head">
+          <DiamondMark size={10} />
+          <h1>입학 원서</h1>
+          <DiamondMark size={10} />
+          <span>울토르 마법학교 · 신입생 등록</span>
+        </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-muted-foreground">성별</label>
-            <div className="inline-flex rounded-full border border-gold/40 bg-black/35 p-2">
+        <div className="create-window-body">
+          {/* 왼쪽 — 주인공 */}
+          <div className="create-stage">
+            <div className="create-stage-art">
+              <div className="absolute inset-x-0 bottom-3 flex justify-center">
+                <CreateMagicCircle color={GOLD} />
+              </div>
+              <div className="absolute inset-x-0 bottom-9 flex justify-center">
+                <div className="create-hero-idle drop-shadow-[0_10px_14px_rgba(0,0,0,0.55)]">
+                  <HeroSprite sheet={playerSheet(gender)} px={152} />
+                </div>
+              </div>
+            </div>
+            <div className="create-gender">
               {(['male', 'female'] as Gender[]).map((gd) => (
-                <button
-                  key={gd}
-                  onClick={() => setGender(gd)}
-                  className={`rounded-full px-8 py-3.5 text-base font-semibold transition-all ${
-                    gender === gd ? 'bg-gold text-ink' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
+                <button key={gd} type="button" onClick={() => setGender(gd)} className={gender === gd ? 'is-on' : ''}>
                   {gd === 'male' ? '남성' : '여성'}
                 </button>
               ))}
             </div>
+            <p className="create-blurb">
+              흑발에 금빛 눈을 가진 신입생. 어디서 왔는지 잘 말하지 않는 떠돌이 같은 분위기를 풍긴다. 정해진 속성 없이, 학교에서 배우는 마법과 장비로 자신만의 전투 방식을 만들어 간다.
+            </p>
           </div>
 
-          <div className="flex gap-3">
-            <Button variant="ghost" size="lg" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
-              뒤로
-            </Button>
-            <Button
-              variant="default"
-              size="lg"
-              className="px-8 text-base"
-              onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 신입생', appearance: { gender }, starterPetId: petId })}
-            >
-              입학하기
-            </Button>
+          {/* 오른쪽 — 적어 넣는 칸 */}
+          <div className="create-form">
+            <label className="create-field">
+              <span className="create-label">
+                <DiamondMark size={8} />
+                이름
+              </span>
+              <input value={name} maxLength={10} onChange={(e) => setName(e.target.value)} placeholder="신입생의 이름" className="create-name-input w-full rounded-md px-4 py-2.5 text-base outline-none" />
+            </label>
+
+            <div className="create-field">
+              <span className="create-label">
+                <DiamondMark size={8} />첫 펫
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {STARTER_PET_IDS.map((id) => {
+                  const d = petDefById(id)!
+                  return (
+                    <button key={id} type="button" onClick={() => setPetId(id)} className={`create-pet ${petId === id ? 'is-on' : ''}`}>
+                      <Image src={d.icon} alt="" width={40} height={40} />
+                      {d.name}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="create-note">펫은 주인공이 전위에 설 때 함께 싸웁니다.</p>
+            </div>
+
+            <div className="create-field">
+              <span className="create-label">
+                <DiamondMark size={8} />
+                시작 마술
+              </span>
+              {starterSkill && (
+                <div className="create-skill">
+                  <Image src={starterSkill.icon} alt="" width={30} height={30} />
+                  <div>
+                    <b>{starterSkill.name}</b>
+                    <span>{starterSkill.description}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="create-field">
+              <span className="create-label">
+                <DiamondMark size={8} />
+                학교에서 배울 마법
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {PLAYER_ELEMENTS.map((e) => (
+                  <span key={e} className="create-chip">
+                    <span style={{ color: ELEMENT_META[e].color }}>●</span>
+                    {ELEMENT_META[e].name}
+                  </span>
+                ))}
+              </div>
+              <p className="create-note">불꽃·얼음·대지는 1학년부터, 어둠·빛은 3학년부터 배웁니다.</p>
+            </div>
           </div>
+        </div>
+
+        <div className="create-window-foot">
+          <Button variant="ghost" size="lg" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'title' })}>
+            뒤로
+          </Button>
+          <Button
+            variant="default"
+            size="lg"
+            className="px-10 text-base"
+            onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 신입생', appearance: { gender }, starterPetId: petId })}
+          >
+            입학하기
+          </Button>
         </div>
       </div>
     </div>
