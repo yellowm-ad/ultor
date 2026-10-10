@@ -158,14 +158,13 @@ const VILLAGE: DecorItem[] = [
 const AURORA: DecorItem[] = [
   ['aurora/aur_house_a', 44.2, 39.2],
   ['aurora/aur_house_b_f', 45.2, 25.8],
-  ['aurora/aur_house_c', 34.6, 28.6],
+  ['aurora/aur_house_c', 19.2, 47.4],
   ['aurora/aur_bakery', 51.2, 41.6],
   ['aurora/aur_fur_shop_f', 25.8, 39.2],
   ['aurora/aur_ice_smith', 35.4, 20],
   ['aurora/aur_teahouse_f', 43.4, 44.6],
   ['aurora/aur_sauna', 23.2, 42],
   ['aurora/aur_house_a_f', 12.8, 36.8],
-  ['aurora/aur_house_c_f', 29.2, 25.8],
   ['aurora/aur_well', 35.2, 25.8],
   ['aurora/aur_sled', 35.4, 35.8],
   ['aurora/aur_ice_sculpture', 26.4, 35.2],
@@ -207,7 +206,6 @@ const DEMON: DecorItem[] = [
   ['demon/dem_house_c', 28.6, 36],
   ['demon/dem_alchemy', 37, 35.8],
   ['demon/dem_armory_f', 34.6, 18.4],
-  ['demon/dem_butcher', 28.8, 26.6],
   ['demon/dem_tavern2_f', 19.8, 41.6],
   ['demon/dem_shrine', 34.4, 28.2],
   ['demon/dem_house_b', 14, 36.8],
@@ -293,7 +291,6 @@ const SKY: DecorItem[] = [
 /** 버려진 신전 — scripts/scatter-decor.mjs 초안(길가 빈자리)에서 손본 것 */
 const RUIN: DecorItem[] = [
   ['templeruin/rui_house_a', 49.6, 41.6],
-  ['templeruin/rui_house_b_f', 29.4, 28],
   ['templeruin/rui_house_c', 27.6, 34.8],
   ['templeruin/rui_relic_shop', 26.6, 23.2],
   ['templeruin/rui_scribe_f', 34.6, 18.4],
@@ -302,7 +299,7 @@ const RUIN: DecorItem[] = [
   ['templeruin/rui_crypt_f', 37.6, 23.2],
   ['templeruin/rui_house_a_f', 45, 39.4],
   ['templeruin/rui_house_c_f', 26.6, 38],
-  ['templeruin/rui_well', 8.4, 40.8],
+  ['templeruin/rui_well', 12, 41],
   ['templeruin/rui_broken_arch', 32, 17.4, W], // 신전으로 올라가는 길의 무너진 문
   ['templeruin/rui_broken_arch_f', 25.2, 47.6],
   ['templeruin/rui_columns', 34, 28],
