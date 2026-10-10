@@ -933,6 +933,8 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
     ...n,
     patrol: undefined,
     id: `${n.id}-tr`,
+    // 그림은 원본 것을 쓴다(없으면 `<id>-tr-walk.png` 를 찾다 404 가 난다)
+    spriteId: n.spriteId ?? n.id,
     zoneId: 'z-testroom',
     cell: { x: 3 + (i % cols) * 3, y: 3 + Math.floor(i / cols) * 3 },
   }))

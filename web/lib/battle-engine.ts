@@ -476,7 +476,9 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
   }
 
   if (action.type === 'defend') {
-    actor.effects.push({ key: nextUid('eff'), kind: 'buff', id: 'defendGuard', name: '방어', turnsLeft: 1, magnitude: 0.5 })
+    // 효과는 자기 턴이 끝날 때 1씩 준다 — 1 이면 걸자마자 사라져 방어가 아무 소용 없었다(2026-10-10). 다음 자기 턴 끝까지 유지
+    actor.effects = actor.effects.filter((e) => e.id !== 'defendGuard')
+    actor.effects.push({ key: nextUid('eff'), kind: 'buff', id: 'defendGuard', name: '방어', turnsLeft: 2, magnitude: 0.5 })
     actor.atb += ATB.DEFEND_GAIN
     log(entries, `${actor.name}이(가) 방어 태세를 취했다.`)
     return done()
