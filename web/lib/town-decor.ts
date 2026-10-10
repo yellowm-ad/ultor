@@ -98,7 +98,7 @@ const VILLAGE: DecorItem[] = [
   ['village/vil_tree_blossom', 24.0, 5.6],
   ['village/vil_tree_blossom', 29.0, 10.6],
   ['academy/wb_flowerbox', 24.6, 8.6],
-  ['academy/wb_flowerbox_f', 28.4, 5.0],
+  ['academy/wb_flowerbox_f', 23.0, 11.4],
   ['academy/wb_hedge_glass', 21.0, 8.0],
   ['academy/wb_hedge_glass', 32.2, 6.2],
   // ── 학교 북관 (x2.5–17, y2.5–13) ──
@@ -116,7 +116,6 @@ const VILLAGE: DecorItem[] = [
   ['village/vil_planter', 5.9, 20.4, W],
   ['village/vil_planter', 8.0, 20.4, W],
   ['village/vil_flowerbed', 11.0, 23.4],
-  ['academy/ac_cafe', 11.6, 20.4],
   ['academy/wb_hedge_glass', 12.4, 25.2],
   // ── 중앙 대광장 (분수 26.5, 20.5) ──
   ['village/vil_cart_flower_f', 22.4, 23.6],
@@ -135,7 +134,6 @@ const VILLAGE: DecorItem[] = [
   ['village/vil_flowerbed_f', 48.0, 24.0],
   ['village/vil_well', 44.6, 23.4],
   // ── 기숙사 마을 (y29–38) ──
-  ['village/vil_laundry', 11.6, 30.4],
   ['village/vil_well', 11.2, 36.2],
   ['village/vil_cafe_table', 13.6, 35.6],
   ['village/vil_cafe_table', 15.0, 35.2],
@@ -304,7 +302,7 @@ const RUIN: DecorItem[] = [
   ['templeruin/rui_crypt_f', 37.6, 23.2],
   ['templeruin/rui_house_a_f', 45, 39.4],
   ['templeruin/rui_house_c_f', 26.6, 38],
-  ['templeruin/rui_well', 10.8, 38.2],
+  ['templeruin/rui_well', 8.4, 40.8],
   ['templeruin/rui_broken_arch', 32, 17.4, W], // 신전으로 올라가는 길의 무너진 문
   ['templeruin/rui_broken_arch_f', 25.2, 47.6],
   ['templeruin/rui_columns', 34, 28],
@@ -358,7 +356,7 @@ const ATLANTIS: DecorItem[] = [
   ['atlantis/atx_palm', 51.2, 20.8],
   ['atlantis/atx_seaweed_tree', 29, 25.8],
   ['atlantis/atx_seaweed_tree', 37, 29.8],
-  ['atlantis/atx_net_rack', 51.2, 45.4],
+  ['atlantis/atx_net_rack', 52.4, 44.4],
   ['atlantis/atx_coral_big', 42.4, 48.8],
   ['atlantis/atx_coral_big', 24.8, 26.6],
   ['atlantis/atx_stall_shell_f', 33.8, 25.6],
@@ -386,7 +384,6 @@ const FLAT: DecorOpt = { flat: true }
 
 /** 마법학교 본관 중앙 홀 (40×36 — 분수 24,23.5 · 출입 24,35) */
 const SCHOOL_HALL: DecorItem[] = [
-  ['academy/wb_table_hydrangea', 21.0, 20.4],
   ['academy/wb_table_tulip', 27.0, 20.4],
   ['academy/wb_table_bouquet', 21.0, 26.6],
   ['academy/wb_table_tulip', 27.0, 26.6],
@@ -508,7 +505,7 @@ const RUINS3_POI: DecorItem[] = [['templeruin/rui_fallen_statue', 18.2, 14.4], [
 /** 뇌운 고원 — 천공 신전으로 이어지는 옛 열주(EP23) */
 const STORM3_POI: DecorItem[] = [['skytemple/sky_colonnade', 18.6, 14.8]]
 /** 루미나 설원 — 원정대 야영지(EP40) */
-const SNOWFIELD_POI: DecorItem[] = [['aurora/aur_firepit', 22.8, 11.2], ['aurora/aur_sled', 24.4, 11.8], ['aurora/aur_woodpile', 21.6, 12.4]]
+const SNOWFIELD_POI: DecorItem[] = [['aurora/aur_firepit', 22.8, 11.2], ['aurora/aur_sled', 24.6, 10.0], ['aurora/aur_woodpile', 21.6, 12.4]]
 /** 얼어붙은 호수 — 만년설 아래에서 드러난 석비(EP43) */
 const FROZEN_LAKE_POI: DecorItem[] = [['templeruin/rui_rune_stone', 14, 9.9], ['aurora/aur_lantern_post', 12.8, 10.6, W], ['aurora/aur_lantern_post', 15.2, 10.6, W]]
 /** 얼음 동굴 — 루스벨이 숨어 지낸 자리(EP44~45): 꺼진 모닥불과 장작 */
