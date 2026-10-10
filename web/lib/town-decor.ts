@@ -544,7 +544,11 @@ const VILLAGE_ARCHIVE: DecorItem[] = [
   ['academy/wb_candelabra', 8.6, 3.4, W],
 ]
 
+/** 암초 해안 — 아틀란티스로 건너가는 범선과 선착장(북쪽 포탈 옆) */
+const SEA3_POI: DecorItem[] = [['atlantis/atl5_boat2', 22.4, 2.4], ['atlantis/atl4_pier', 21.0, 3.6], ['atlantis/atl4_crates', 16.4, 2.6], ['atlantis/atx_signpost', 17.4, 3.8, W]]
+
 export const TOWN_DECOR: Record<string, DecorItem[]> = {
+  'sea-3': SEA3_POI,
   'village-archive': VILLAGE_ARCHIVE,
   sea: SEA_POI,
   'forest-3': FOREST3_POI,
