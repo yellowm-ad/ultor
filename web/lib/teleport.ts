@@ -24,6 +24,7 @@ export function teleportBlockReason(state: GameState, mapId: MapId): string | nu
   if (state.battle) return '전투 중에는 텔레포트할 수 없습니다.'
   if (state.storyQueue.length > 0) return '이야기가 끝난 뒤에 이동할 수 있습니다.'
   if (state.fishing) return '낚시를 마친 뒤에 이동할 수 있습니다.'
+  if (state.passage) return '지금은 이동할 수 없습니다.'
   if (!teleportTargets(state).has(mapId)) return '한 번 가 본 곳으로만 텔레포트할 수 있습니다.'
   return null
 }

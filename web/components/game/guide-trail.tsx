@@ -23,11 +23,24 @@ export function useGuide(state: GameState, map: GameMap, on: boolean) {
   )
   return useMemo(() => {
     if (!goal) return null
-    const route = guideRoute(state, goal)
+    let route = guideRoute(state, goal)
+    // 전투 목표인데 야생에 이미 와 있으면 — 가장 가까운 몬스터 쪽으로 안내한다
+    if (!route.target && goal.kind === 'battle' && map.kind === 'field' && (!goal.mapId || goal.mapId === map.id)) {
+      let best: { x: number; y: number } | null = null
+      let bd = Infinity
+      for (const fm of state.fieldMonsters) {
+        const d = Math.hypot(fm.homeCell.x - px, fm.homeCell.y - py)
+        if (d < bd) {
+          bd = d
+          best = fm.homeCell
+        }
+      }
+      if (best) route = { ...route, target: best, here: true }
+    }
     const path = route.target ? guidePath(map, { x: px, y: py }, route.target) : []
     return { goal, route, path }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goal, map, px, py])
+  }, [goal, map, px, py, state.fieldMonsters])
 }
 
 /** 네 갈래 반짝이 한 점 */

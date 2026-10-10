@@ -3,7 +3,7 @@
 // 기존 프롭을 각 마을의 빈자리에 섞어 놓는다. 마을을 만드는 코드(lib/maps.ts · town-builder 등)는 건드리지 않고
 // 여기 목록만 맵 props 뒤에 덧붙인다(lib/maps.ts 맨 끝 applyTownDecor).
 //   · 한 줄 = [그림 이름(props/ 아래 경로), x, y, 옵션?]  — 좌표는 그 맵의 셀 좌표
-//   · 관리자 오브젝트 편집으로 놓은 것과 같은 모양의 프롭이 된다(id 는 `dc-<그림>-<순번>` — 옮기기·지우기 가능)
+//   · 관리자 오브젝트 편집으로 놓은 것과 같은 모양의 프롭이 된다(id 는 `dc-<그림>-<x·10>_<y·10>` — 옮기기·지우기 가능)
 //   · 미리보기: node --experimental-transform-types --import ./scripts/_ts-loader.mjs scripts/preview-map.mjs <mapId> out.png
 // ============================================================================
 
@@ -37,14 +37,17 @@ export function decorProps(items: DecorItem[]): PropDef[] {
       continue
     }
     const base = name.split('/').pop()!
-    const n = count.get(base) ?? 0
-    count.set(base, n + 1)
+    // id 는 놓인 자리로 만든다 — 목록에서 다른 줄을 빼거나 순서를 바꿔도 남은 소품의 id 가 그대로라
+    // 관리자 오브젝트 편집으로 옮기거나 지운 기록(lib/map-overrides, id 기준)이 엉뚱한 소품에 붙지 않는다
+    const key = `${base}-${Math.round(x * 10)}_${Math.round(y * 10)}`
+    const n = count.get(key) ?? 0
+    count.set(key, n + 1)
     const solid = opt.walk === undefined ? it.w >= 40 && !opt.flat : !opt.walk
     // 바닥 다이아몬드(폭 = 그림 폭)의 중심을 발밑으로 — 건물·좌대처럼 자기 바닥이 있는 그림이 칸 가운데에 앉는다
     const baseH = Math.min(it.h, it.w / 2)
     const fp = opt.size ?? Math.max(0.5, Math.round((it.w / ISO_TILE_W) * 0.8 * 2) / 2)
     out.push({
-      id: `dc-${base}-${n}`,
+      id: `dc-${key}${n ? `-${n}` : ''}`,
       kind: solid ? 'statue' : 'bicycle',
       cell: { x, y },
       sprite: src,
