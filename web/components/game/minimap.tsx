@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
+import { guideGoal, guidePin, guideRoute, subscribeGuidePin } from '@/lib/guide'
+import { useMemo, useSyncExternalStore } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
 import { MONSTERS } from '@/lib/mock-data'
@@ -22,6 +23,13 @@ export function Minimap() {
   )
 
   const map = MAPS[state.currentMapId]
+  // 지금 따라가는 목표가 이 맵에서 가리키는 곳
+  const pin = useSyncExternalStore(subscribeGuidePin, guidePin, () => null)
+  const target = useMemo(() => {
+    const goal = guideGoal(state, pin)
+    return goal ? guideRoute(state, goal).target : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, state.weekly, state.calendar.globalWeek, state.storyFlags, state.currentMapId, state.classScene])
   const aspect = map.grid.w / map.grid.h
   let w = MAX
   let h = MAX / aspect
@@ -123,6 +131,14 @@ export function Minimap() {
               />
             )
           })}
+
+          {/* 길찾기 목표(lib/guide) — 이 맵에서 가야 할 곳에 깜빡이는 노란 마름모 */}
+          {target && (
+            <div
+              className="absolute"
+              style={{ left: fx(target.x) - 4, top: fy(target.y) - 4, width: 8, height: 8, transform: 'rotate(45deg)', background: '#ffd84a', boxShadow: '0 0 6px 2px rgba(255,216,74,0.8)', animation: 'portal-pulse 1.2s ease-in-out infinite' }}
+            />
+          )}
 
           {/* 플레이어 */}
           <div
