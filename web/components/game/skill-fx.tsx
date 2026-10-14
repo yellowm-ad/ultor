@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { BattleFx, Element } from '@/lib/types'
 import { fxTier, skillMotion, type MotionTier } from '@/lib/skill-motion'
 
@@ -27,7 +27,8 @@ const FX_COLORS: Record<FxKey, { a: string; b: string }> = {
   dark: { a: '#7b4fc4', b: '#d6b8ff' },
   light: { a: '#ffe27a', b: '#fffbe6' },
   wind: { a: '#5fd4a8', b: '#e2fff4' },
-  none: { a: '#f0e6c0', b: '#ffffff' },
+  // 무속성 = 무채색(흰·은회색) — 어느 속성 색에도 기울지 않게
+  none: { a: '#c4c9d0', b: '#ffffff' },
 }
 
 // PixelLab 도트 이펙트 스프라이트시트(9프레임) — 절차적 CSS 연출 위에 얹는 실제 픽셀아트 레이어.
@@ -42,8 +43,45 @@ const PIXEL_SLASH_SHEET = '/images/battle/vfx/slash_burst.png'
 const PIXEL_DEBUFF_SHEET = '/images/battle/vfx/debuff_burst.png'
 const PIXEL_BUFF_SHEET = '/images/battle/vfx/buff_burst.png'
 const PIXEL_FRAMES = 9
+/**
+ * 전용 도트 폭발이 없는 속성 — 비슷한 모양의 PixelLab 시트를 빌려 그 속성 색으로 물들인다(시트 평균색 실측 기준)
+ *  어둠 = 저주 안개(보라 그대로) · 빛 = 반짝임(금빛) · 바람 = 베기 궤적을 청록으로 · 무속성 = 베기 궤적(무채색 그대로)
+ */
+const PIXEL_BURST_BORROW: Partial<Record<FxKey, { sheet: string; filter?: string }>> = {
+  dark: { sheet: '/images/battle/vfx/debuff_burst.png' },
+  light: { sheet: '/images/battle/vfx/heal_burst.png', filter: 'brightness(1.12)' },
+  wind: { sheet: '/images/battle/vfx/slash_burst.png', filter: 'sepia(1) saturate(2.4) hue-rotate(112deg) brightness(1.05)' },
+  none: { sheet: '/images/battle/vfx/slash_burst.png', filter: 'grayscale(1) brightness(1.1)' },
+}
 
-function PixelBurst({ pos, sheet, size = 84, duration = 420, delay = 0 }: { pos: FxPos; sheet: string; size?: number; duration?: number; delay?: number }) {
+/**
+ * 도트 질감 텍스처 — 작은 캔버스에 칸 단위로 찍고(디더링) 화면에선 image-rendering: pixelated 로 키운다.
+ * 같은 색·모양은 한 번만 만든다. (벡터처럼 매끈한 그라데이션 대신 PixelLab 이펙트와 같은 도트 결)
+ */
+const PIX_CACHE = new Map<string, string>()
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+function pixelTex(key: string, w: number, h: number, paint: (x: number, y: number) => string | null): string {
+  const hit = PIX_CACHE.get(key)
+  if (hit) return hit
+  if (typeof document === 'undefined') return ''
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  const ctx = cv.getContext('2d')!
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const c = paint(x, y)
+      if (!c) continue
+      ctx.fillStyle = c
+      ctx.fillRect(x, y, 1, 1)
+    }
+  const url = cv.toDataURL()
+  PIX_CACHE.set(key, url)
+  return url
+}
+const dither = (x: number, y: number) => (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16
+
+function PixelBurst({ pos, sheet, size = 84, duration = 420, delay = 0, filter }: { pos: FxPos; sheet: string; size?: number; duration?: number; delay?: number; filter?: string }) {
   return (
     <div
       className="fx-pixel-burst absolute -translate-x-1/2 -translate-y-1/2"
@@ -55,6 +93,7 @@ function PixelBurst({ pos, sheet, size = 84, duration = 420, delay = 0 }: { pos:
         backgroundImage: `url(${sheet})`,
         backgroundSize: `${PIXEL_FRAMES * size}px ${size}px`,
         animationDelay: `${delay}ms`,
+        filter,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ['--fx-dur' as any]: `${duration}ms`,
         ['--fx-steps' as any]: PIXEL_FRAMES - 1,
@@ -106,7 +145,7 @@ export function SkillFxLayer({
   }, [])
   return (
     <div ref={boxRef} className="pointer-events-none absolute inset-0 z-30" aria-hidden>
-      {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} />}
+      {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} stage={boxRef} />}
     </div>
   )
 }
@@ -117,12 +156,14 @@ function FxScene({
   groundOf,
   speed,
   box,
+  stage,
 }: {
   fx: BattleFx
   posOf: (uid: string) => FxPos | undefined
   groundOf: (uid: string) => FxPos | undefined
   speed: 1 | 2
   box: FxBox
+  stage: React.RefObject<HTMLDivElement | null>
 }) {
   const m = skillMotion(fx, speed)
   const fxKey: FxKey = fx.element ?? 'none'
@@ -144,6 +185,9 @@ function FxScene({
     : undefined
   const supportCol =
     fx.archetype === 'heal' ? { a: '#8fe89a', b: '#f2fff0' } : col
+  const hits = fx.archetype === 'magicAttack' || fx.archetype === 'attack'
+  // 타격감 — 맞는 순간마다 전장이 짧게 흔들린다(첫 타·궁극기 마무리는 크게). 전장(battle-stage)의 큰 흔들림(tier3+)과 겹치지 않게 작은 것만
+  useShakes(stage, hits ? waves.map((w) => ({ at: waveAt(w), px: w === 0 ? 2 + tier : 1.5 + tier * 0.5 })) : [])
 
   return (
     <>
@@ -153,6 +197,19 @@ function FxScene({
         <div className="fx-ult-name" style={{ ...dur(m.castMs + 450), color: col.b, textShadow: `0 0 10px ${col.a}, 0 0 22px ${col.a}, 0 2px 0 #000` }}>
           {fx.skillName}
         </div>
+      )}
+
+      {/* 궁극기 — 기를 모으는 동안 화면 가장자리에서 시전자 쪽으로 몰리는 집중선 */}
+      {m.ultimate && sourcePos && (
+        <div
+          className="fx-speedlines absolute inset-0"
+          style={{
+            ...dur(m.castMs + 260),
+            backgroundImage: `url(${speedLinesTex(col.b, Math.round(sourcePos.left), Math.round(sourcePos.top))})`,
+            backgroundSize: '100% 100%',
+            imageRendering: 'pixelated',
+          }}
+        />
       )}
 
       {/* ── 시전: 기 모으기 — 발밑 마법진 + 모여드는 빛 + 커지는 구체 ── */}
@@ -236,6 +293,14 @@ function FxScene({
           {m.style === 'pillar' &&
             targetPositions.map((tp, i) => <LightPillar key={`p${i}`} pos={tp} color={col} delay={m.impactMs - 60 + i * 60} durMs={sustainMs + 300} wide={tier >= 3} />)}
 
+          {/* 타격마다 튀는 작은 파편 · 맞은 자리에 잠깐 남는 속성 빛 자국 */}
+          {targetPositions.flatMap((tp, i) =>
+            waves.map((w) => <ParticleBurst key={`hs${i}-${w}`} pos={tp} color={col} count={4 + tier * 2} radius={24 + tier * 9} delay={waveAt(w) + i * 60} />),
+          )}
+          {targets.map((t, i) => (
+            <GroundMark key={`gm${i}`} pos={t.ground} color={col} size={(46 + tier * 16) * (fx.aoe ? 0.9 : 1)} startMs={m.impactMs + i * 60} holdMs={sustainMs + 500} />
+          ))}
+
           {/* 타격 — 쏟아붓는 동안 여러 번 터진다 */}
           {targetPositions.flatMap((tp, i) =>
             waves.map((w) => <ImpactWave key={`i${i}-${w}`} pos={tp} color={col} element={fxKey} scale={scale * (w === 0 ? 1 : 0.85)} tier={tier} at={waveAt(w) + i * 60} up={m.style === 'erupt'} />),
@@ -260,7 +325,12 @@ function FxScene({
       )}
 
       {fx.archetype === 'attack' &&
-        targetPositions.map((tp, i) => <SlashImpact key={i} pos={tp} color={col} scale={scale} tier={tier} delay={m.impactMs - 120 + i * 50} />)}
+        targetPositions.map((tp, i) => (
+          <span key={i}>
+            <SlashImpact pos={tp} color={col} scale={scale} tier={tier} delay={m.impactMs - 120 + i * 50} />
+            <ParticleBurst pos={tp} color={col} count={5 + tier} radius={22 + tier * 6} delay={m.impactMs + i * 50} />
+          </span>
+        ))}
 
       {fx.archetype === 'debuff' &&
         targetPositions.flatMap((tp, i) => waves.map((w) => <DebuffCloud key={`${i}-${w}`} pos={tp} color={col} scale={scale} tier={tier} delay={waveAt(w) - 150 + i * 80} />))}
@@ -305,6 +375,79 @@ function FxScene({
         </>
       )}
     </>
+  )
+}
+
+/** 맞는 순간마다 전장을 짧게 흔든다 — Web Animations(합성 단계 transform)라 다시 그리기 없음 */
+function useShakes(stage: React.RefObject<HTMLDivElement | null>, list: { at: number; px: number }[]) {
+  const key = list.map((s) => `${s.at}:${s.px}`).join(',')
+  useEffect(() => {
+    const el = stage.current?.parentElement
+    if (!el || !list.length || typeof el.animate !== 'function') return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+    const anims = list.map(({ at, px }) =>
+      el.animate(
+        [
+          { transform: 'translate(0,0)' },
+          { transform: `translate(${px}px,${-px * 0.6}px)` },
+          { transform: `translate(${-px}px,${px * 0.5}px)` },
+          { transform: `translate(${px * 0.5}px,${px * 0.3}px)` },
+          { transform: 'translate(0,0)' },
+        ],
+        { duration: 180, delay: at, easing: 'ease-out', composite: 'add' },
+      ),
+    )
+    return () => anims.forEach((a) => a.cancel())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+}
+
+/** 집중선 텍스처 — 160×90 칸 화면에 가장자리에서 시전자 쪽으로 향하는 도트 선(가운데는 비움) */
+function speedLinesTex(color: string, cxPct: number, cyPct: number) {
+  return pixelTex(`sl:${color}:${cxPct}:${cyPct}`, 160, 90, (x, y) => {
+    const dx = x + 0.5 - (cxPct / 100) * 160
+    const dy = (y + 0.5 - (cyPct / 100) * 90) * 1.7
+    const r = Math.hypot(dx, dy)
+    if (r < 38) return null
+    const a = Math.atan2(dy, dx)
+    // 선 64가닥 — 각도 칸마다 굵기·시작 거리가 조금씩 다르다
+    const k = Math.floor(((a + Math.PI) / (Math.PI * 2)) * 64)
+    const center = ((k + 0.5) / 64) * Math.PI * 2 - Math.PI
+    const width = 0.012 + ((k * 37) % 5) * 0.004
+    const start = 44 + ((k * 53) % 7) * 6
+    if (r < start || Math.abs(a - center) > width) return null
+    return r - start < 6 && dither(x, y) > 0.5 ? null : color
+  })
+}
+
+/** 자국 텍스처 — 24×10 칸 타원을 안쪽은 밝은색, 바깥은 짙은색으로 디더링해 찍는다 */
+function groundMarkTex(color: { a: string; b: string }) {
+  return pixelTex(`gm:${color.a}:${color.b}`, 24, 10, (x, y) => {
+    const d = Math.hypot((x + 0.5 - 12) / 12, (y + 0.5 - 5) / 5)
+    if (d >= 1) return null
+    const t = dither(x, y)
+    if (d < 0.35) return t < 0.85 ? color.b : color.a
+    if (d < 0.7) return t < 1.15 - d ? color.a : null
+    return t < (1 - d) * 1.6 ? color.a : null
+  })
+}
+
+/** 맞은 자리 바닥에 잠깐 남는 속성 빛 자국(불=그을음 위 잔불, 얼음=서리, 대지=먼지 …) — 도트 */
+function GroundMark({ pos, color, size, startMs, holdMs }: { pos: FxPos; color: { a: string; b: string }; size: number; startMs: number; holdMs: number }) {
+  return (
+    <div
+      className="fx-ground-mark"
+      style={{
+        left: `${pos.left}%`,
+        top: `${pos.top}%`,
+        width: size,
+        height: size * 0.42,
+        backgroundImage: `url(${groundMarkTex(color)})`,
+        backgroundSize: '100% 100%',
+        imageRendering: 'pixelated',
+        ...dur(holdMs + 700, startMs),
+      }}
+    />
   )
 }
 
@@ -525,7 +668,11 @@ function ImpactWave({ pos, color, element, scale, tier, at, up }: { pos: FxPos; 
       />
       {tier >= 2 && <ShockwaveRing pos={pos} color={color.a} size={58 * scale} delay={at + 60} />}
       {tier >= 2 && <ParticleBurst pos={pos} color={color} count={tier >= 3 ? 8 : 5} radius={36 * scale} delay={at + 40} direction={up ? 'up' : 'radial'} />}
-      {PIXEL_BURST_SHEET[element] && <PixelBurst pos={pos} sheet={PIXEL_BURST_SHEET[element]!} size={60 * scale} delay={at} />}
+      {PIXEL_BURST_SHEET[element] ? (
+        <PixelBurst pos={pos} sheet={PIXEL_BURST_SHEET[element]!} size={60 * scale} delay={at} />
+      ) : (
+        PIXEL_BURST_BORROW[element] && <PixelBurst pos={pos} sheet={PIXEL_BURST_BORROW[element]!.sheet} size={58 * scale} delay={at} filter={PIXEL_BURST_BORROW[element]!.filter} />
+      )}
     </>
   )
 }

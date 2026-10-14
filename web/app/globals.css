@@ -1074,6 +1074,24 @@
     88% { opacity: 1; }
     100% { opacity: 0; }
   }
+  /* 맞은 자리 빛 자국(skill-fx GroundMark) — 번쩍 퍼졌다가 남은 잔광이 천천히 식는다 */
+  .fx-ground-mark {
+    position: absolute; transform: translate(-50%, -50%) scale(0.4); opacity: 0; mix-blend-mode: screen;
+    animation: fx-ground-mark var(--d) steps(10) both;
+  }
+  @keyframes fx-ground-mark {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    8% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    25% { opacity: 0.75; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.05); }
+  }
+  /* 궁극기 집중선(skill-fx) — 시전자를 향해 몰리는 만화식 선, 깜빡이며 조여든다 */
+  .fx-speedlines {
+    opacity: 0; animation: fx-speedlines var(--d) steps(8) both, fx-speedlines-flicker 0.12s steps(2) infinite;
+  }
+  @keyframes fx-speedlines { 0% { opacity: 0; } 12% { opacity: 0.6; } 85% { opacity: 0.5; } 100% { opacity: 0; } }
+  @keyframes fx-speedlines-flicker { 0% { transform: scale(1); } 100% { transform: scale(1.02); } }
+  @media (prefers-reduced-motion: reduce) { .fx-speedlines { animation: fx-speedlines var(--d) linear both; } }
   .fx-ult-name {
     position: absolute; left: 50%; top: 17%;
     white-space: nowrap;
