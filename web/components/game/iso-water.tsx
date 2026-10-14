@@ -24,6 +24,13 @@ const WALL: Record<Low, { src: string; w: number; h: number }> = {
   sea: { src: TEX + 'wall-cliff.png', w: 256, h: 40 },
   canal: { src: TEX + 'wall-canal.png', w: 256, h: 32 },
 }
+/** 용암 바다(map.water.liquid = 'lava')의 둑 — 화산 야생맵(iso-terrain)과 같은 현무암 */
+const WALL_LAVA = { src: TEX + 'wall-basalt.png', w: 256, h: 40 }
+/** 물/용암별 색 — 수심 오버레이·둑 그늘·둑 윗선·물가 거품 */
+const TINT = {
+  water: { land: 'rgba(70,200,210,0.5)', d1: 'rgba(70,200,210,0.42)', d2: 'rgba(50,170,200,0.22)', deep: (a: number) => `rgba(4,26,52,${a})`, shade: 'rgba(3,26,38,', top: 'rgba(201,232,138,0.75)', foam: (a: number) => `rgba(230,251,255,${a})`, edge: (a: number) => `rgba(233,251,255,${a})`, edge2: 'rgba(191,234,245,0.45)' },
+  lava: { land: 'rgba(255,170,60,0.45)', d1: 'rgba(255,190,80,0.4)', d2: 'rgba(255,140,40,0.2)', deep: (a: number) => `rgba(36,6,0,${Math.min(0.55, a * 1.2)})`, shade: 'rgba(40,6,2,', top: 'rgba(255,170,80,0.55)', foam: (a: number) => `rgba(255,214,96,${a})`, edge: (a: number) => `rgba(255,200,90,${a})`, edge2: 'rgba(255,150,60,0.45)' },
+}
 const HW = ISO_TILE_W / 2
 
 interface Face {
@@ -61,7 +68,7 @@ export function useWaterGrid(map: GameMap) {
       const v = k(x, y)
       return v === 'sea' || v === 'canal' ? v : null
     }
-    return { W, H, k, low, active: !!at }
+    return { W, H, k, low, active: !!at, lava: map.water?.liquid === 'lava' }
   }, [map])
 }
 
@@ -167,15 +174,16 @@ export function useWaterOverlays(map: GameMap): WaterOverlays {
       for (let x = 0; x < W; x++) {
         const lw = g.low(x, y)
         const d = dist[y * W + x]
+        const C = g.lava ? TINT.lava : TINT.water
         const fill = !lw
-          ? 'rgba(70,200,210,0.5)' // 땅 밑 — 해안 바로 앞을 밝게 물들이는 원천
+          ? C.land // 땅 밑 — 해안 바로 앞을 밝게 물들이는 원천(용암은 달아오른 빛)
           : lw === 'canal' || (d > 2 && d <= 4)
             ? null
             : d <= 1
-              ? 'rgba(70,200,210,0.42)'
+              ? C.d1
               : d <= 2
-                ? 'rgba(50,170,200,0.22)'
-                : `rgba(4,26,52,${Math.min(0.42, 0.1 + (d - 4) * 0.06)})`
+                ? C.d2
+                : C.deep(Math.min(0.42, 0.1 + (d - 4) * 0.06))
         if (!fill) continue
         dx.fillStyle = fill
         cellPath(dx, S, x, y)
@@ -261,10 +269,26 @@ export const WaterBackdrop = memo(function WaterBackdrop({
   const oy = E.y + originY - vy
   const tile = (f: string, pos = '0 0') => `url(${TEX}${f}) ${pos} / ${TW}px ${TH}px repeat`
   const big = { left: -TW, top: -TH, width: vw + TW * 2, height: vh + TH * 2 }
+  const lava = map.water?.liquid === 'lava'
   return (
-    <div className="iso-sea" style={{ position: 'absolute', left: vx, top: vy, width: vw, height: vh, overflow: 'hidden', pointerEvents: 'none', background: tile('sea.png') }}>
-      <div className="sea-glint sea-glint-a" style={{ ...big, background: tile('sea-glint.png') }} />
-      <div className="sea-glint sea-glint-b" style={{ ...big, background: tile('sea-glint2.png', '97px 41px') }} />
+    <div
+      className={`iso-sea ${lava ? 'iso-lava' : ''}`}
+      style={{ position: 'absolute', left: vx, top: vy, width: vw, height: vh, overflow: 'hidden', pointerEvents: 'none', background: lava ? '#b8300c' : tile('sea.png') }}
+    >
+      {lava ? (
+        <>
+          <div className="sea-glint lava-base" style={{ ...big, background: tile('lava.png') }} />
+          <div className="sea-glint lava-crust" style={{ ...big, background: tile('lava-crust.png', '61px 23px') }} />
+          <div className="sea-glint lava-glint" style={{ ...big, background: tile('lava-glint.png', '131px 77px') }} />
+          {/* 넓은 용암 바다는 한 겹 눌러 식은 빛으로 — 물가는 아래 수심 층(달아오른 테)이 다시 밝힌다 */}
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(28,5,0,0.42)' }} />
+        </>
+      ) : (
+        <>
+          <div className="sea-glint sea-glint-a" style={{ ...big, background: tile('sea-glint.png') }} />
+          <div className="sea-glint sea-glint-b" style={{ ...big, background: tile('sea-glint2.png', '97px 41px') }} />
+        </>
+      )}
       {ov.depth && <CanvasLayer canvas={ov.depth} left={ox} top={oy} w={E.w} h={E.h} />}
       {ov.canalMaskUrl && (
         <div
@@ -343,7 +367,8 @@ const loadImg = (src: string) =>
  */
 async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvasElement | null> {
   const E = extOf(g.W, g.H)
-  const imgs = { sea: await loadImg(WALL.sea.src), canal: await loadImg(WALL.canal.src) }
+  const imgs = { sea: await loadImg(g.lava ? WALL_LAVA.src : WALL.sea.src), canal: await loadImg(WALL.canal.src) }
+  const C = g.lava ? TINT.lava : TINT.water
   const cv = document.createElement('canvas')
   cv.width = Math.ceil(E.w)
   cv.height = Math.ceil(E.h)
@@ -371,8 +396,8 @@ async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvas
         ? [[D, D], [HW, D], [HW, D + T], [D + T, D + T]]
         : [[0, D], [HW - D, D], [HW - D - T, D + T], [0, D + T]]
     const grad = ctx.createLinearGradient(0, D, 0, D + T)
-    grad.addColorStop(0, 'rgba(3,26,38,0.5)')
-    grad.addColorStop(1, 'rgba(3,26,38,0)')
+    grad.addColorStop(0, C.shade + '0.5)')
+    grad.addColorStop(1, C.shade + '0)')
     ctx.fillStyle = grad
     poly(shade)
     ctx.fill()
@@ -386,7 +411,7 @@ async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvas
       poly(wall)
       ctx.fill()
     }
-    ctx.fillStyle = f.low === 'canal' ? 'rgba(255,243,207,0.75)' : 'rgba(201,232,138,0.75)'
+    ctx.fillStyle = f.low === 'canal' ? 'rgba(255,243,207,0.75)' : C.top
     ctx.fillRect(0, 0, HW, 1)
     if (f.arch) {
       ctx.fillStyle = 'rgba(6,34,43,0.88)'
@@ -400,10 +425,10 @@ async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvas
     }
     const fx0 = f.cut && f.plane === 'x' ? D : 0
     const fx1 = f.cut && f.plane === 'y' ? HW - D : HW
-    ctx.fillStyle = `rgba(230,251,255,${0.35 + (f.seed % 40) / 100})`
+    ctx.fillStyle = C.foam(0.35 + (f.seed % 40) / 100)
     ctx.fillRect(fx0, D - 1, fx1 - fx0, 2)
     if (!f.cut) {
-      ctx.fillStyle = 'rgba(230,251,255,0.6)'
+      ctx.fillStyle = C.foam(0.6)
       ctx.fillRect((f.seed % 20) + 3, D + 2, 4, 1)
     }
   }
@@ -422,8 +447,8 @@ async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvas
     }
     if (e.low === 'canal') line(-1, 'rgba(246,231,192,0.9)', 2)
     else {
-      line(-2, `rgba(233,251,255,${0.5 + (i % 4) * 0.1})`, 2.6)
-      line(-6, 'rgba(191,234,245,0.45)', 1.2, [5, 4])
+      line(-2, C.edge(0.5 + (i % 4) * 0.1), 2.6)
+      line(-6, C.edge2, 1.2, [5, 4])
     }
   })
   ctx.setLineDash([])

@@ -569,7 +569,11 @@ export interface GameMap {
    * 물과 땅이 맞닿는 면에 벽(수로=돌벽, 바다=바위 절벽)을 세워 수위 차이를 보여 준다. (components/game/iso-water.tsx)
    * 'bridge' = 수로 위를 지나는 다리 칸(땅 높이) — 아래 수로 벽에 아치가 뚫린다.
    */
-  water?: { at: (x: number, y: number) => 'sea' | 'canal' | 'bridge' | null }
+  water?: {
+    at: (x: number, y: number) => 'sea' | 'canal' | 'bridge' | null
+    /** 'lava' = 바다 자리를 흐르는 용암으로(마물 마을) — 둑은 현무암, 물가 거품 대신 달아오른 테 */
+    liquid?: 'lava'
+  }
   /** false = 지면 타일을 칸마다 무작위로 뒤집지 않는다(줄눈·벽돌이 이웃 칸과 이어지게) */
   tileFlip?: boolean
   /**

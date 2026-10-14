@@ -48,7 +48,7 @@ export function mapThumbUrl(map: GameMap): string | null {
       const x = (px + 0.5) / S
       const y = (py + 0.5) / S
       const wk = map.water?.at(x, y)
-      const k: TileKind = wk === 'sea' || wk === 'canal' ? 'water' : (map.terrain?.at(x, y) ?? map.tileAt?.(x, y) ?? 'grass')
+      const k: TileKind = (wk === 'sea' || wk === 'canal') && map.water?.liquid !== 'lava' ? 'water' : (map.terrain?.at(x, y) ?? map.tileAt?.(x, y) ?? 'grass')
       let [r, g, b] = col(k)
       // 길은 밝게 — 어디로 이어지는지 한눈에
       if (map.roadAt?.(x, y)) {

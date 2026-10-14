@@ -1017,6 +1017,8 @@ export const MAPS = {
     render: 'iso',
     assets: 'raster',
     tileAt: DEMON_TOWN_TILE_AT,
+    // 마을 밖 용암을 칸 타일 대신 화산 야생맵과 같은 흐르는 용암으로(현무암 둑 + 달아오른 테) — 못 지나간다(lib/collision)
+    water: { at: (x, y) => (DEMON_TOWN_TILE_AT(Math.floor(x), Math.floor(y)) === 'demon-lava' ? 'sea' : null), liquid: 'lava' },
     props: DEMON_TOWN_PROPS,
     blockers: DEMON_TOWN_BLOCKERS,
     zones: [
