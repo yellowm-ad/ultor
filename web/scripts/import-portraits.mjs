@@ -18,6 +18,8 @@ const JOBS = [
   ['전투 NPC 미르엘, 카엘 삼면도.png', ['portrait-npc-kael.png', 'portrait-prof-kael.png'], [1252, 852, 1508, 1002]],
   ['NPC 오웬, 이그니스 삼면도.png', ['portrait-npc-librarian.png'], [1222, 312, 1355, 462]],
   ['NPC 오웬, 이그니스 삼면도.png', ['portrait-prof-ignis.png'], [1222, 828, 1355, 976]],
+  ['NPC 테라, 노엘라 삼면도.png', ['portrait-prof-terra.png'], [1240, 336, 1508, 490]],
+  ['NPC 테라, 노엘라 삼면도.png', ['portrait-prof-noella.png'], [1240, 843, 1508, 1000]],
 ]
 for (const [file, outs, [x0, y0, x1, y1]] of JOBS) {
   const buf = await sharp(path.join(SRC, file))
