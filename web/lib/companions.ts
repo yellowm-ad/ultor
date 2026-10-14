@@ -15,6 +15,7 @@
 //   · invite — 한 번 이야기를 나누면 대화 끝에 "같이 다닐래?"로 바로 합류
 //   · favor  — 대화로 관계도가 오르면(주 1회 +2) 대화 중에 부탁(재료 가져다주기)을 꺼낸다 → 들어주면 합류 가능
 //   · story  — 메인 스토리가 진행되면 합류(joinFlag)
+// (2026-10-14) 학생 동료 "카엘"은 수업 조교 카엘(mock-data prof-kael)과 겹쳐 제거 — 카엘은 조교 한 명뿐
 // ⚠ story 합류 시점은 임시값(스토리 문서에 동료 합류 시점이 아직 없음).
 // ============================================================================
 
@@ -286,7 +287,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     gender: 'female',
     personality: '냉철하고 분석적인 완벽주의자. 스스로에게 유독 엄격한 잣대를 들이댄다.',
     sprite: 'npc-sella', // 2026-10-02 삼면도 기반 리메이크 도트(PixelLab 6215ba84)
-    portrait: '/images/portraits/hero-ice-female.png',
+    portrait: '/images/npc/portrait-npc-sella.png',
     joinYear: 1,
     combat: {
       statMult: { mdef: 1.15, spd: 1.1, maxHp: 0.92 },
@@ -363,35 +364,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     lines: { recruit: '후배들끼리만 보내긴 불안하잖니. 다치면 바로 말해.', idle: '약초는 뿌리째 뽑으면 안 돼, 알지?' },
     homeRoom: 'class-light',
   },
-  {
-    id: 'comp-kael',
-    join: { kind: 'story' },
-    name: '카엘',
-    title: '빙결 수업 조교 · 전술형',
-    role: 'story',
-    gender: 'male',
-    personality: '감정을 잘 드러내지 않는 차분한 성격이지만, 뒤에서 동료를 세심하게 챙기는 편이다.',
-    sprite: 'npc-kael', // 2026-10-02 삼면도 기반 PixelLab 도트
-    portrait: '/images/npc/portrait-npc-kael.png',
-    joinYear: 2,
-    joinFlag: 'beat:EP_54_END', // 임시 — EP16 '기록이 다르게 쓰여 있다' 결말 뒤(예전 COMP_KAEL_JOIN 은 켜는 곳이 없었다)
-    combat: {
-      statMult: { matk: 1.15, spd: 1.05 },
-      defaultPosition: 'support',
-      skills: [
-        { skillId: 'ice-basic-1', level: 1 },
-        { skillId: 'dark-curse', level: 1 },
-        { skillId: 'dark-veil', level: 14 },
-        { skillId: 'ice-adv-2', level: 22 },
-        { skillId: 'dark-execute', level: 30 },
-        { skillId: 'dark-miasma', level: 42 },
-        { skillId: 'ice-high-1', level: 54 },
-        { skillId: 'dark-sentence', level: 72 },
-      ],
-    },
-    lines: { recruit: '교수님 지시다. 이번 조사는 내가 동행한다.', idle: '보고서는 오늘 안에 내.' },
-    homeRoom: 'lab-ice',
-  },
+
   {
     id: 'comp-mirel',
     join: { kind: 'story' },

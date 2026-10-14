@@ -657,6 +657,8 @@ export type NpcRole =
 export interface NpcDef {
   id: string
   name: string
+  /** 대화창 초상화 id(public/images/npc/portrait-<id>.png) — 생략하면 spriteId → id 순. 다른 NPC 의 도트 시트를 빌려도 초상화는 자기 것을 쓸 때 */
+  portraitId?: string
   role: NpcRole
   /** role:'craftStation' 일 때 이 제작대가 여는 스테이션(생략 시 마도구 작업대) */
   station?: CraftStationKind

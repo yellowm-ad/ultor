@@ -841,7 +841,7 @@ const NPCS_BASE: NpcDef[] = [
   // 미르엘 교수 — 2026-10-02 삼면도 기반 PixelLab 도트(학장실 배회). 걷기 시트 npc-mirel-walk.png
   { id: 'npc-mirel', name: '미르엘 교수', role: 'professor', roam: 2.2, icon: '/images/npc/npc-mirel.png', zoneId: 'z-headmaster-office', cell: { x: 7.5, y: 9.4 }, greeting: ['어서 오너라. 학장실까지 찾아오다니, 무슨 일이지?', '배운 것을 무엇을 위해 쓸지는… 언젠가 스스로 정해야 한다.'] },
   // ── 교수진(통합 PRD §15) — 전용 에셋 전까지 기존 NPC 도트(spriteId) 재사용, 각자 연구실에서 배회 ──
-  { id: 'prof-ignis', name: '이그니스 교수', role: 'professor', roam: 1.6, spriteId: 'npc-priest', icon: '/images/npc/npc-priest.png', zoneId: 'z-lab-fire', cell: { x: 9.5, y: 8.4 }, greeting: ['불은 망설이는 자를 먼저 태운다네.', '화염 수업에서 박자를 놓치지 말게.'] },
+  { id: 'prof-ignis', name: '이그니스 교수', role: 'professor', roam: 1.6, spriteId: 'npc-priest', portraitId: 'prof-ignis', icon: '/images/npc/npc-priest.png', zoneId: 'z-lab-fire', cell: { x: 9.5, y: 8.4 }, greeting: ['불은 망설이는 자를 먼저 태운다네.', '화염 수업에서 박자를 놓치지 말게.'] },
   { id: 'prof-kael', name: '카엘 조교', role: 'professor', roam: 1.6, spriteId: 'npc-kael', icon: '/images/npc/npc-kael.png', zoneId: 'z-lab-ice', cell: { x: 9.5, y: 8.4 }, greeting: ['…무슨 일이지. 보고서라면 책상 위에.', '빙결은 정확함이 전부다.'] },
   { id: 'prof-terra', name: '테라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-elder', icon: '/images/npc/npc-elder.png', zoneId: 'z-lab-earth', cell: { x: 9.5, y: 8.4 }, greeting: ['어서 오렴. 화분에 물 좀 같이 줄래?', '땅은 서두르지 않는단다.'] },
   { id: 'prof-noella', name: '노엘라 교수', role: 'professor', roam: 1.6, spriteId: 'npc-abandoned-scholar', icon: '/images/npc/npc-abandoned-scholar.png', zoneId: 'z-lab-dark', cell: { x: 9.5, y: 8.4 }, greeting: ['어둠을 무서워하는 건 당연해. 모르니까.', '3학년이 되면 내 수업에서 보자.'] },

@@ -109,7 +109,7 @@ export function DialogueScreen() {
       role={speakerMate ? speakerMate.title : ROLE_LABEL[speaker.role]}
       portrait={
         <span className="block h-full w-full" style={speaker.hue ? { filter: `hue-rotate(${speaker.hue}deg)` } : undefined}>
-          <Portrait id={speaker.spriteId ?? speaker.id} className="h-full w-full" />
+          <Portrait id={speaker.portraitId ?? speaker.spriteId ?? speaker.id} className="h-full w-full" />
         </span>
       }
       text={lines[lineIdx] ?? ''}
