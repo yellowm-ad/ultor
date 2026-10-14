@@ -15,7 +15,7 @@ import { courseName, coursesForWeek, DEPARTMENT_LABEL, GRADUATION_CREDITS, grade
 import { skillById } from '@/lib/mock-data'
 import { ACTIVITY_META, activityUnlockLabel, activityUnlockWeek, isActivityUnlocked, type ActivityId } from '@/lib/life'
 import { ITEMS, itemById, MONSTERS, NPCS } from '@/lib/mock-data'
-import { SCHOOL_NPCS } from '@/lib/companions'
+import { favorState, SCHOOL_NPCS } from '@/lib/companions'
 import { regionById } from '@/lib/regions'
 import { LORE, LORE_CATEGORY_LABEL, loreUnlocked, loreView, type LoreCategory } from '@/lib/lore'
 import { CheckCircle2, Circle, Lock, Star } from 'lucide-react'
@@ -616,6 +616,22 @@ function RelationTab() {
   return (
     <div className="space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
       {known.length === 0 && <div className="gw-box p-4 text-center text-xs opacity-70">아직 친해진 사람이 없습니다. NPC와 대화하면 관계도가 오릅니다(주 1회).</div>}
+      {/* 진행 중인 부탁 — 들어주면 함께 다닐 수 있게 된다 */}
+      {SCHOOL_NPCS.filter((c) => favorState(state, c) === 'asked' && !state.companions.recruited[c.id]).map((c) => {
+        const rule = c.join?.kind === 'favor' ? c.join : null
+        if (!rule) return null
+        const have = state.inventory.filter((s) => s.itemId === rule.itemId).reduce((a, s) => a + s.qty, 0)
+        return (
+          <div key={`fv-${c.id}`} className="gw-box flex items-center gap-2 p-2 text-xs">
+            <span className="rounded bg-[#8a6a2c] px-1.5 py-px text-[10px] text-[#fff8e6]">부탁</span>
+            <b>{c.name}</b>
+            <span className="opacity-80">
+              {itemById(rule.itemId)?.name ?? rule.itemId} {have}/{rule.qty}
+            </span>
+            <span className="ml-auto text-[10px] opacity-60">{have >= rule.qty ? '가져다주러 가자' : '모으는 중'}</span>
+          </div>
+        )
+      })}
       {known
         .sort((a, b) => (state.relationships[b.id]?.affinity ?? 0) - (state.relationships[a.id]?.affinity ?? 0))
         .map((p) => {

@@ -65,6 +65,8 @@ import {
   healCompanions,
   newGameProgress,
   recruitCompanion,
+  acceptFavor,
+  completeFavor,
   refreshSkills,
   removeGuest,
   resolveFishing,
@@ -154,6 +156,9 @@ export type Action =
   | { type: 'START_FISHING' }
   | { type: 'FISHING_RESULT'; success: boolean }
   | { type: 'RECRUIT_COMPANION'; companionId: string }
+  /** 동료의 부탁 — 받기 / 들어주기(lib/companions favor 합류) */
+  | { type: 'FAVOR_ACCEPT'; companionId: string }
+  | { type: 'FAVOR_COMPLETE'; companionId: string }
   | { type: 'TOGGLE_PARTY_MEMBER'; companionId: string }
   | { type: 'SWAP_PARTY_MEMBER'; slot: number; companionId: string }
   | { type: 'SET_POSITION'; memberId: string; position: Position }
@@ -317,6 +322,12 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'RECRUIT_COMPANION':
       return recruitCompanion(state, action.companionId)
+
+    case 'FAVOR_ACCEPT':
+      return acceptFavor(state, action.companionId)
+
+    case 'FAVOR_COMPLETE':
+      return completeFavor(state, action.companionId)
 
     case 'TOGGLE_PARTY_MEMBER':
       return togglePartyMember(state, action.companionId)

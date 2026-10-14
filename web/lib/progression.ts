@@ -31,6 +31,8 @@ import {
   COMPANION_SLOTS,
   createCompanionProgress,
   createGuestMember,
+  favorFlag,
+  favorState,
   guestNpcById,
   guestStats,
   isCompanionAway,
@@ -572,8 +574,31 @@ export function recruitCompanion(state: GameState, id: string): GameState {
   if (!check.ok) return { ...state, toast: check.reason ?? '아직 합류할 수 없습니다.' }
   const recruited = { ...state.companions.recruited, [id]: createCompanionProgress(def, state.player.level) }
   const party = state.companions.party.length < COMPANION_SLOTS ? [...state.companions.party, id] : state.companions.party
-  const next = normalizeFormation({ ...state, companions: { recruited, party } })
-  return { ...next, toast: `${def.name}이(가) 파티에 합류했다!` }
+  const next = normalizeFormation({ ...state, companions: { ...state.companions, recruited, party } })
+  return { ...next, toast: `${def.name} — “${def.lines.recruit}” 파티에 합류했다!` }
+}
+
+/** 부탁 받기 — 대화 중 동료가 꺼낸 부탁(재료 가져다주기)을 수락 */
+export function acceptFavor(state: GameState, id: string): GameState {
+  const def = schoolNpcById(id)
+  if (!def || def.join?.kind !== 'favor' || favorState(state, def) !== 'ready') return state
+  const item = itemById(def.join.itemId)
+  return {
+    ...state,
+    storyFlags: { ...state.storyFlags, [favorFlag(id)]: 1 },
+    toast: `${def.name}의 부탁 — ${item?.name ?? def.join.itemId} ${def.join.qty}개를 가져다주기`,
+  }
+}
+
+/** 부탁 들어주기 — 재료를 건네면 관계도가 크게 오르고 합류할 수 있게 된다 */
+export function completeFavor(state: GameState, id: string): GameState {
+  const def = schoolNpcById(id)
+  if (!def || def.join?.kind !== 'favor' || favorState(state, def) !== 'asked') return state
+  const { itemId, qty, thanks } = def.join
+  const have = state.inventory.filter((s) => s.itemId === itemId).reduce((a, s) => a + s.qty, 0)
+  if (have < qty) return { ...state, toast: `${itemById(itemId)?.name ?? itemId}이(가) 모자라다 (${have}/${qty})` }
+  const next = addAffinity({ ...state, inventory: removeFromInventory(state.inventory, itemId, qty), storyFlags: { ...state.storyFlags, [favorFlag(id)]: 2 } }, id, 10)
+  return { ...next, toast: `${def.name} — “${thanks}”` }
 }
 
 /** 파티 편성 — 파티에 없으면 넣고(빈 자리가 있을 때), 있으면 뺀다(동료 0명 = 솔로도 허용) */
@@ -668,19 +693,18 @@ export function normalizeFormation(state: GameState): GameState {
 }
 
 /**
- * 파티 보장 — 합류 가능한 1학년 동기를 자동 합류(합류 순간에만 파티에 넣는다).
+ * 파티 보장 — 합류한 동료·임시 동행만 정리한다.
+ * (2026-10-14) 처음부터 합류하는 동료는 없다 — 직접 찾아가 말을 걸어 모은다(lib/companions JoinRule).
  * 플레이어가 동료를 빼서 솔로/소수로 다니는 선택은 그대로 존중한다(빈 자리를 다시 채우지 않음).
  */
 export function ensureParty(state: GameState): GameState {
   let next = state
+  // 학교에 서 있지 않은 이야기형 동료(미르엘 교수 — 대원정 게스트)는 조건이 켜지면 바로 합류한다(찾아가 말을 걸 수 없으므로)
   for (const def of COMBAT_NPCS) {
-    if (!def.starter || next.companions.recruited[def.id]) continue
-    if (!canRecruit(next, def).ok) continue
+    if (def.join?.kind !== 'story' || def.homeRoom || next.companions.recruited[def.id] || next.storyFlags.DEBUG_UNLOCK_ALL) continue
+    if (!def.joinFlag || !canRecruit(next, def).ok) continue
     const party = next.companions.party.length < COMPANION_SLOTS ? [...next.companions.party, def.id] : next.companions.party
-    next = {
-      ...next,
-      companions: { ...next.companions, party, recruited: { ...next.companions.recruited, [def.id]: createCompanionProgress(def, next.player.level) } },
-    }
+    next = { ...next, companions: { ...next.companions, party, recruited: { ...next.companions.recruited, [def.id]: createCompanionProgress(def, next.player.level) } } }
   }
   const guests = (next.companions.guests ?? []).filter((g) => !!guestNpcById(g.id)).slice(0, MAX_GUESTS)
   // 4대4 — 동료 + 임시 NPC ≤ 3

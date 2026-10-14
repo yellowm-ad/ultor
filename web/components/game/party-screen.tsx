@@ -254,7 +254,7 @@ export function PartyScreen() {
                   {def.combat && <span className="text-[10px] font-normal opacity-70">기본 {POSITION_META[def.combat.defaultPosition].label}</span>}
                 </div>
                 <div className="truncate text-[10px] opacity-70">{def.title}</div>
-                <div className="truncate text-[10px] italic opacity-70">“{prog ? def.lines.idle : def.lines.recruit}”</div>
+                {prog && <div className="truncate text-[10px] italic opacity-70">“{def.lines.idle}”</div>}
                 {prog && (
                   <div className="text-[10px] opacity-70">
                     Lv.{prog.level} · EXP {prog.exp}/{expRequiredForLevel(prog.level)} · 관계도 {aff}
@@ -262,9 +262,8 @@ export function PartyScreen() {
                 )}
               </div>
               {!prog ? (
-                <button type="button" className="gw-btn is-gold is-sm" disabled={!check.ok} onClick={() => dispatch({ type: 'RECRUIT_COMPANION', companionId: def.id })} title={check.reason}>
-                  {check.ok ? '합류' : check.reason}
-                </button>
+                // 합류는 직접 찾아가 대화로 — 여기서는 지금 할 수 있는 일만 알려 준다
+                <span className="max-w-[9.5rem] text-right text-[10px] leading-tight text-[#8a6a2c]">{check.ok ? '찾아가 말을 걸면 함께할 수 있다' : check.reason}</span>
               ) : inParty ? (
                 <span className="text-[11px] font-bold text-[#8a6a2c]">출전 중</span>
               ) : swapSlot != null ? (

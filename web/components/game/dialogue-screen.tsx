@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
-import { npcById } from '@/lib/mock-data'
+import { npcById, itemById } from '@/lib/mock-data'
 import { npcWeeklyLine } from '@/lib/npc-weekly-lines'
 import { Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
 import { coursesForWeek, nextCourseSkill } from '@/lib/academics'
 import { skillById } from '@/lib/mock-data'
-import { canRecruit, schoolNpcById } from '@/lib/companions'
+import { canRecruit, favorState, schoolNpcById } from '@/lib/companions'
 import { banterAdvance, banterScene, duoOf } from '@/lib/npc-banter'
 import { rosterDuoTogether } from '@/lib/school-roster'
 
@@ -46,7 +46,14 @@ export function DialogueScreen() {
 
   // 짝이 있는 NPC(lib/npc-banter) — 둘이 붙어 서 있으면 평소 인사 대신 둘의 장면. 학교 동료 짝은 이번 주에 같이 서 있을 때만
   const duo = duoOf(npc.id)
-  const banter = duo && (npc.role !== 'companion' || rosterDuoTogether(state, npc.id)) ? banterScene(duo, state.storyFlags) : null
+  // 부탁을 꺼낼 차례이거나 부탁 중이면 둘의 장면보다 개인 대화가 먼저
+  const favorPending = (() => {
+    const m = npc.role === 'companion' ? schoolNpcById(npc.id) : undefined
+    if (!m || state.companions.recruited[m.id]) return false
+    const st = favorState(state, m)
+    return st === 'ready' || st === 'asked'
+  })()
+  const banter = duo && !favorPending && (npc.role !== 'companion' || rosterDuoTogether(state, npc.id)) ? banterScene(duo, state.storyFlags) : null
 
   const close = () => {
     // 장면을 마지막 줄까지 봤으면 다음엔 다음 장면
@@ -63,6 +70,10 @@ export function DialogueScreen() {
   // 학교 동료 — 아직 합류하지 않았고 조건이 되면 대화 끝에 '파티에 합류' 권유
   const mate = npc.role === 'companion' ? schoolNpcById(npc.id) : undefined
   const canJoin = !!mate && !state.companions.recruited[mate.id] && canRecruit(state, mate).ok
+  // 부탁(친해진 뒤 꺼내는 돌발 부탁) — 합류 전에만
+  const favor = mate && !state.companions.recruited[mate.id] && mate.join?.kind === 'favor' ? { rule: mate.join, st: favorState(state, mate) } : null
+  const favorHave = favor ? state.inventory.filter((s) => s.itemId === favor.rule.itemId).reduce((a, s) => a + s.qty, 0) : 0
+  const favorItem = favor ? itemById(favor.rule.itemId)?.name ?? favor.rule.itemId : ''
   // 교수: 이번 학기 수업과 다음에 배울 마법 안내(전직 담당관 폐지 — 마법은 수업으로 배운다)
   const courseNotes = isProfessor
     ? coursesForWeek(state.calendar.globalWeek).flatMap((c) => {
@@ -72,14 +83,22 @@ export function DialogueScreen() {
     : []
   // 이번 주 대사(주간 풀)를 첫 줄로, 이어서 기본 인사
   const weekly = npcWeeklyLine(npc.id, state)
-  const lines = banter ? banter.map((l) => l.text) : weekly ? [weekly, ...npc.greeting] : npc.greeting
+  const baseLines = banter ? banter.map((l) => l.text) : weekly ? [weekly, ...npc.greeting] : npc.greeting
+  // 친해지면 대화 끝에 부탁을 꺼낸다 / 부탁 중이면 떠올리게 한다
+  const lines =
+    favor?.st === 'ready' && !banter
+      ? [...baseLines, favor.rule.ask]
+      : favor?.st === 'asked' && !banter
+        ? [...baseLines, favorHave >= favor.rule.qty ? `(${favorItem}을(를) 가져온 걸 알아챈 것 같다)` : `부탁한 ${favorItem}, 잊지 않았지? (${favorHave}/${favor.rule.qty})`]
+        : baseLines
   // 지금 줄을 말하는 사람(둘의 장면에서는 줄마다 바뀐다)
   const speaker = (banter && npcById(banter[Math.min(rawLineIdx, banter.length - 1)].who)) || npc
   const speakerMate = speaker.role === 'companion' ? schoolNpcById(speaker.id) : undefined
   const lineIdx = Math.min(rawLineIdx, Math.max(0, lines.length - 1))
   const lastLine = lineIdx >= lines.length - 1
 
-  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin
+  const favorAct = !!favor && !banter && (favor.st === 'ready' || (favor.st === 'asked' && favorHave >= favor.rule.qty))
+  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin || favorAct
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -121,6 +140,23 @@ export function DialogueScreen() {
                 제작하기
               </button>
             )}
+            {favorAct && favor?.st === 'ready' && (
+              <button
+                type="button"
+                className="dlg-btn"
+                onClick={() => {
+                  dispatch({ type: 'FAVOR_ACCEPT', companionId: mate!.id })
+                  close()
+                }}
+              >
+                알겠어, 구해 올게
+              </button>
+            )}
+            {favorAct && favor?.st === 'asked' && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'FAVOR_COMPLETE', companionId: mate!.id })}>
+                부탁한 {favorItem} 건네기 ({favorHave}/{favor.rule.qty})
+              </button>
+            )}
             {canJoin && (
               <button
                 type="button"
@@ -130,7 +166,7 @@ export function DialogueScreen() {
                   close()
                 }}
               >
-                파티에 합류시키기
+                같이 다닐래?
               </button>
             )}
             {isElder && (

@@ -11,8 +11,11 @@
 //   · 펫은 주인공만 데리고 다닌다(동료 고유 펫 없음).
 //   · 진형 6칸 중 파티가 쓰고 남는 2칸은 임시 합류 NPC(GUEST_NPCS — 호위 대상·임시 동행) 자리.
 //
-// ⚠ 스토리 라인 미확정 — 합류 조건(joinYear/joinFlag)은 임시값.
-//   1학년 동기 셋(리안·셀라·도란)은 입학과 동시에 파티에 들어와 4인 편성을 채운다.
+// 합류 방식(2026-10-14 개편 — 처음엔 혼자, 직접 찾아가 말을 걸어 동료를 모은다). 화면에 등급은 드러내지 않는다.
+//   · invite — 한 번 이야기를 나누면 대화 끝에 "같이 다닐래?"로 바로 합류
+//   · favor  — 대화로 관계도가 오르면(주 1회 +2) 대화 중에 부탁(재료 가져다주기)을 꺼낸다 → 들어주면 합류 가능
+//   · story  — 메인 스토리가 진행되면 합류(joinFlag)
+// ⚠ story 합류 시점은 임시값(스토리 문서에 동료 합류 시점이 아직 없음).
 // ============================================================================
 
 import type { Combatant, CompanionProgress, GameState, Gender, GuestMember, MapId, Position, SpriteSheet, Stats } from '@/lib/types'
@@ -34,6 +37,20 @@ export interface NpcCombatProfile {
   joinLevel?: number
 }
 
+export type JoinRule =
+  | { kind: 'invite' }
+  | {
+      kind: 'favor'
+      /** 이 관계도가 되면 부탁을 꺼낸다 */
+      affinity: number
+      itemId: string
+      qty: number
+      /** 부탁하는 말 · 받았을 때 말 */
+      ask: string
+      thanks: string
+    }
+  | { kind: 'story' }
+
 export interface SchoolNpc {
   id: string
   name: string
@@ -48,8 +65,8 @@ export interface SchoolNpc {
   /** 합류 가능 조건 */
   joinYear: number
   joinFlag?: string
-  /** true = 입학과 동시에 파티 합류(1학년 동기) */
-  starter?: boolean
+  /** 합류 방식 — 생략하면 invite */
+  join?: JoinRule
   /** 전투 프로필 — 없으면 파티에 들어올 수 없다 */
   combat?: NpcCombatProfile
   /** 파티 화면 대사(합류 전/후) — 스토리 작업 시 교체 */
@@ -65,6 +82,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   //    외형은 원래 주인공 4등신 시트(hero-*)를 그대로 쓴다. 합류 조건은 임시(1학년부터 파티 화면에서 합류).
   {
     id: 'comp-kyle',
+    join: { kind: 'invite' },
     name: '카일',
     title: '화염 동료 · 돌격 딜러',
     role: 'student',
@@ -92,6 +110,8 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-rusbel',
+    join: { kind: 'story' },
+    joinFlag: 'beat:EP_12_END', // 임시 — EP04 결말 뒤
     name: '루스벨',
     title: '화염 동료 · 광역 마법',
     role: 'student',
@@ -120,6 +140,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-jade',
+    join: { kind: 'favor', affinity: 4, itemId: 'crystal-mana', qty: 1, ask: '계산을 끝내려면 마력 결정이 하나 필요해. 구해 오면… 네 효율도 인정해 주지.', thanks: '정확히 하나. 좋아, 너와 같이 가는 편이 효율적이라는 결론이야.' },
     name: '제이드',
     title: '빙결 동료 · 제어형',
     role: 'student',
@@ -146,6 +167,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-lucia',
+    join: { kind: 'favor', affinity: 4, itemId: 'flower-dew', qty: 3, ask: '차에 넣을 이슬꽃이 떨어졌어. 3송이만 부탁해도 될까? 대신 맛있게 끓여 줄게.', thanks: '향이 좋다… 고마워. 다치면 바로 말해 줘, 이제 내가 뒤를 받칠게.' },
     name: '루시아',
     title: '빙결 동료 · 후방 지원',
     role: 'student',
@@ -172,6 +194,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-chris',
+    join: { kind: 'invite' },
     name: '크리스',
     title: '대지 동료 · 방어형',
     role: 'student',
@@ -198,6 +221,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-jane',
+    join: { kind: 'invite' },
     name: '제인',
     title: '대지 동료 · 버퍼',
     role: 'student',
@@ -226,6 +250,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   //    전원 삼면도 기반 전용 PixelLab 도트(npc-*) — 2026-10-02
   {
     id: 'comp-rian',
+    join: { kind: 'favor', affinity: 4, itemId: 'hunt-meat', qty: 3, ask: '저기… 부탁 하나만 해도 돼? 다음 실습 전에 고기 꼬치 연습을 하고 싶은데, 짐승 고기 3개만 구해다 줄래?', thanks: '진짜 구해 왔어?! 고마워! 이번엔 내가 앞장설게. 같이 다니자!' },
     name: '리안',
     title: '1학년 동기 · 돌격형',
     role: 'student',
@@ -234,7 +259,6 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     sprite: 'npc-rian', // 2026-10-02 삼면도 기반 PixelLab 도트
     portrait: '/images/npc/portrait-npc-rian.png',
     joinYear: 1,
-    starter: true,
     combat: {
       statMult: { atk: 1.15, matk: 1.1, def: 0.9 },
       defaultPosition: 'front',
@@ -255,6 +279,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-sella',
+    join: { kind: 'favor', affinity: 4, itemId: 'herb-moonleaf', qty: 3, ask: '…달잎풀이 모자라. 3장이면 돼. 숲 그늘에 핀다던데, 혹시 지나가면.', thanks: '…고마워. 빚은 갚을게. 다음 원정엔 내가 적 발을 묶어 둘게.' },
     name: '셀라',
     title: '1학년 동기 · 제어형',
     role: 'student',
@@ -263,7 +288,6 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     sprite: 'npc-sella', // 2026-10-02 삼면도 기반 리메이크 도트(PixelLab 6215ba84)
     portrait: '/images/portraits/hero-ice-female.png',
     joinYear: 1,
-    starter: true,
     combat: {
       statMult: { mdef: 1.15, spd: 1.1, maxHp: 0.92 },
       defaultPosition: 'support',
@@ -284,6 +308,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-doran',
+    join: { kind: 'favor', affinity: 4, itemId: 'ore-iron', qty: 2, ask: '방패 손잡이가 헐거워졌어. 철광석 2개만 있으면 고칠 수 있는데… 구해 줄 수 있어?', thanks: '이거면 충분해! 이제 방패는 걱정 마. 뒤는 내가 맡을게.' },
     name: '도란',
     title: '1학년 동기 · 방어형',
     role: 'student',
@@ -292,7 +317,6 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     sprite: 'npc-doran', // 2026-10-02 삼면도 기반 PixelLab 도트
     portrait: '/images/npc/portrait-npc-doran.png',
     joinYear: 1,
-    starter: true,
     combat: {
       statMult: { maxHp: 1.2, def: 1.2, spd: 0.9 },
       defaultPosition: 'rear',
@@ -313,6 +337,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-yuna',
+    join: { kind: 'favor', affinity: 4, itemId: 'herb-mint', qty: 5, ask: '후배야, 숲박하 5개만 모아 줄래? 약을 만들어 둬야 원정 때 안심이 되거든.', thanks: '잘 모아 왔네. 뿌리째 안 뽑았지? 좋아, 다음 원정엔 나도 같이 갈게.' },
     name: '유나',
     title: '2학년 선배 · 회복형',
     role: 'student',
@@ -340,6 +365,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-kael',
+    join: { kind: 'story' },
     name: '카엘',
     title: '빙결 수업 조교 · 전술형',
     role: 'story',
@@ -348,7 +374,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     sprite: 'npc-kael', // 2026-10-02 삼면도 기반 PixelLab 도트
     portrait: '/images/npc/portrait-npc-kael.png',
     joinYear: 2,
-    joinFlag: 'COMP_KAEL_JOIN', // 스토리 이벤트로 열 예정
+    joinFlag: 'beat:EP_54_END', // 임시 — EP16 '기록이 다르게 쓰여 있다' 결말 뒤(예전 COMP_KAEL_JOIN 은 켜는 곳이 없었다)
     combat: {
       statMult: { matk: 1.15, spd: 1.05 },
       defaultPosition: 'support',
@@ -368,6 +394,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-mirel',
+    join: { kind: 'story' },
     name: '미르엘 교수',
     title: '화염 교수 · 일류의 마도사(게스트)',
     role: 'professor',
@@ -395,6 +422,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   // ── 패러디 동료 2인(2026-10-08 삼면도 「패러디 캐릭터 밀포이, 해리포탈 삼면도.png」 → PixelLab 도트) ──
   {
     id: 'comp-milfoy',
+    join: { kind: 'invite' },
     name: '밀포이',
     title: '뱀 문장 기숙사 · 저주형',
     role: 'student',
@@ -422,6 +450,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
   },
   {
     id: 'comp-harry',
+    join: { kind: 'invite' },
     name: '해리포탈',
     title: '번개 흉터의 학생 · 만능형',
     role: 'student',
@@ -467,13 +496,36 @@ export function isCompanionAway(state: Pick<GameState, 'storyFlags'>, def: Schoo
   return flagOn(state, def.away.from) && !(def.away.until && flagOn(state, def.away.until))
 }
 
-export function canRecruit(state: Pick<GameState, 'calendar' | 'storyFlags' | 'settings'>, def: SchoolNpc): { ok: boolean; reason?: string } {
+/** 부탁(favor) 진행 — locked: 아직 덜 친함 · ready: 부탁을 꺼낼 때 · asked: 부탁 받는 중 · done: 들어줌 */
+export type FavorState = 'locked' | 'ready' | 'asked' | 'done'
+export const favorFlag = (id: string) => `favor:${id}`
+export function favorState(state: Pick<GameState, 'storyFlags' | 'relationships'>, def: SchoolNpc): FavorState | null {
+  if (def.join?.kind !== 'favor') return null
+  const f = state.storyFlags[favorFlag(def.id)]
+  if (f === 2) return 'done'
+  if (f === 1) return 'asked'
+  return (state.relationships[def.id]?.affinity ?? 0) >= def.join.affinity ? 'ready' : 'locked'
+}
+
+export function canRecruit(state: Pick<GameState, 'calendar' | 'storyFlags' | 'settings' | 'relationships'>, def: SchoolNpc): { ok: boolean; reason?: string } {
   if (!def.combat) return { ok: false, reason: '전투에 참가하지 않는 NPC' }
   if (isCompanionAway(state, def)) return { ok: false, reason: '지금은 행방을 알 수 없다' }
   if (state.storyFlags.DEBUG_UNLOCK_ALL) return { ok: true }
   const year = calendarInfo(state.calendar.globalWeek).year
-  if (year < def.joinYear) return { ok: false, reason: `${def.joinYear}학년부터 합류 가능` }
-  if (def.joinFlag && !flagOn(state, def.joinFlag)) return { ok: false, reason: '스토리 진행 후 합류' }
+  if (year < def.joinYear) return { ok: false, reason: `${def.joinYear}학년이 되면 만날 수 있을 것 같다` }
+  const rule = def.join ?? { kind: 'invite' }
+  if (rule.kind === 'story' || def.joinFlag) {
+    if (def.joinFlag && !flagOn(state, def.joinFlag)) return { ok: false, reason: '이야기가 더 진행되면 함께할 수 있을 것 같다' }
+    if (rule.kind === 'story') return { ok: true }
+  }
+  if (rule.kind === 'favor') {
+    const f = favorState(state, def)
+    if (f === 'done') return { ok: true }
+    if (f === 'asked') return { ok: false, reason: '부탁을 들어주면 함께할 수 있을 것 같다' }
+    return { ok: false, reason: '자주 이야기를 나누며 친해져 보자' }
+  }
+  // invite — 한 번이라도 직접 이야기를 나눠야 한다
+  if (!state.relationships[def.id]) return { ok: false, reason: '직접 찾아가 말을 걸어 보자' }
   return { ok: true }
 }
 
