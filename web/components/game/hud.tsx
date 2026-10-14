@@ -136,7 +136,7 @@ function WeekTracker({ weekly, calendar, mealBuff, dispatch }: Pick<HudProps, 'w
         <span className="hud-clean-text truncate text-[10px] text-white/80">
           ★ {mainT.title}{' '}
           {main.status === 'claimed' ? '✔' : main.status === 'complete' ? '(보상 대기)' : `${mainP}/${mainTotal}`}
-          <span className="ml-1 text-white/50">· 선택 {optionalDone}/{requiredOptional}</span>
+          <span className="ml-1 text-white/50">· 보조 {optionalDone}/{requiredOptional}</span>
         </span>
       )}
       {(ready || canEnd) && (

@@ -7,7 +7,7 @@ import { useGame } from '@/lib/game-state'
 import { Bar, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Slot, Sparkle } from '@/components/game/game-window'
 import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { academicTitle, arcForWeek } from '@/lib/story'
-import { acceptedSideCount, isRestWeek, questTemplateById, REQUIRED_OPTIONAL, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
+import { isRestWeek, questTemplateById, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
 import { classForWeek, classMetaFor, MASTERY_LABEL, masteryLevel, MINIGAME_META, professorById, type MasteryField } from '@/lib/curriculum'
 import { MAPS } from '@/lib/maps'
 import type { QuestInstance, QuestReward } from '@/lib/types'
@@ -122,7 +122,6 @@ type Filter = 'all' | 'active' | 'offered' | 'done'
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: '전체' },
   { id: 'active', label: '진행 중' },
-  { id: 'offered', label: '수락 가능' },
   { id: 'done', label: '완료' },
 ]
 const KIND_BADGE: Record<Kind, string> = { class: 'badge-class', main: 'badge-main', side: 'badge-side' }
@@ -167,7 +166,6 @@ function WeekTab() {
   const wc = classForWeek(state.calendar.globalWeek)
   const meta = wc ? classMetaFor(wc.courseId) : null
   const prof = meta ? professorById(meta.professorId) : null
-  const accepted = acceptedSideCount(state.weekly)
   const lastClass = (state.academics.classLog ?? []).filter((c) => c.week === state.calendar.globalWeek).slice(-1)[0]
 
   const entries: Entry[] = []
@@ -246,7 +244,7 @@ function WeekTab() {
         </div>
         <div className="gw-foot">
           <span>
-            {`수업 ${classRequired ? (classDone ? '✔' : '✘') : '—'}`}{episodeWeek ? ' · 메인 스토리' : ''} · 외부활동 {optionalDone}/{requiredOptional} (수락 {accepted}/{REQUIRED_OPTIONAL})
+            {`수업 ${classRequired ? (classDone ? '✔' : '✘') : '—'}`}{episodeWeek ? ' · 메인 스토리' : ''} · 보조 미션 {optionalDone}/{requiredOptional} (달성하면 바로 보상)
             {entries.some((e) => e.kind === 'main') && ` · 스토리 ${mainDone ? '✔' : '✘'}`}
             {isRestWeek(state.calendar.globalWeek) && ' · 쉬어가는 주'}
             
@@ -260,7 +258,7 @@ function WeekTab() {
       {/* 상세 */}
       <aside className="gw-panel is-flex is-pad">
         {sel ? (
-          <QuestDetail e={sel} mult={mult} canAccept={accepted < REQUIRED_OPTIONAL} />
+          <QuestDetail e={sel} mult={mult} />
         ) : (
           <div className="gw-empty">
             <Sparkle />
@@ -272,7 +270,7 @@ function WeekTab() {
   )
 }
 
-function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept: boolean }) {
+function QuestDetail({ e, mult }: { e: Entry; mult: number }) {
   const { state, dispatch } = useGame()
   const t = e.q ? questTemplateById(e.q.templateId) : undefined
   const wc = classForWeek(state.calendar.globalWeek)
@@ -348,12 +346,7 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
             교실로 길 안내
           </button>
         )}
-        {e.q && e.status === 'offered' && (
-          <button type="button" className="gw-btn is-gold is-lg flex-1" disabled={!canAccept} onClick={() => dispatch({ type: 'ACCEPT_QUEST', instanceId: e.q!.instanceId })}>
-            {canAccept ? '수락하기' : `이미 ${REQUIRED_OPTIONAL}개 수락함`}
-          </button>
-        )}
-        {e.q && e.status === 'complete' && (
+        {e.q && e.status === 'complete' && e.kind === 'main' && (
           <button type="button" className="gw-btn is-gold is-lg flex-1" onClick={() => dispatch({ type: 'CLAIM_QUEST', instanceId: e.q!.instanceId })}>
             보상 받기
           </button>
@@ -368,11 +361,6 @@ function QuestDetail({ e, mult, canAccept }: { e: Entry; mult: number; canAccept
             }}
           >
             길 안내
-          </button>
-        )}
-        {e.q && e.status === 'active' && e.kind !== 'main' && (
-          <button type="button" className="gw-btn is-quiet flex-1" onClick={() => dispatch({ type: 'DROP_QUEST', instanceId: e.q!.instanceId })}>
-            포기하기
           </button>
         )}
         {e.status === 'claimed' && (

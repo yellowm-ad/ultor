@@ -265,8 +265,8 @@ export function isRestWeek(globalWeek: number): boolean {
   return !info.isVacation && info.week === 5
 }
 
-/** 주간 외부활동 후보 수 */
-export const SIDE_CANDIDATES = 5
+/** 주간 보조 미션 수 — 고르지 않고 랜덤으로 이만큼 바로 주어진다(2026-10-14) */
+export const SIDE_CANDIDATES = 2
 
 /** 최근 3주에 같은 카테고리가 몇 번 나왔는가(§29 중복 방지) */
 function recentCategoryCount(state: GenState, cat: QuestCategory): number {
@@ -278,7 +278,7 @@ function recentCategoryCount(state: GenState, cat: QuestCategory): number {
   return n
 }
 
-/** 이번 주 목록 생성 — 같은 입력이면 항상 같은 결과. 외부활동은 'offered'(후보)로 만들고 플레이어가 2개를 수락한다 */
+/** 이번 주 목록 생성 — 같은 입력이면 항상 같은 결과. 보조 미션은 랜덤 2개를 바로 'active'(진행 중)로 준다 */
 export function generateWeeklyQuests(state: GenState): WeeklyState {
   const gw = state.calendar.globalWeek
   const info = calendarInfo(gw)
@@ -299,11 +299,11 @@ export function generateWeeklyQuests(state: GenState): WeeklyState {
   }
 
   // 외부활동 후보 — 전투·생활·자유를 고르게(방학은 하나 더)
-  const slots: QuestSlot[] = info.isVacation
-    ? ['COMBAT', 'LIFE', 'FREE', 'COMBAT', 'LIFE', 'FREE']
-    : isRestWeek(gw)
-      ? ['LIFE', 'FREE', 'LIFE', 'FREE', 'LIFE']
-      : ['COMBAT', 'LIFE', 'FREE', 'LIFE', 'COMBAT']
+  // 보조 미션 2개 — 종류가 겹치지 않게 두 갈래를 뽑는다(방학은 전투 비중↑, 쉬어가는 주는 생활·자유)
+  const kinds: QuestSlot[] = info.isVacation ? ['COMBAT', 'COMBAT', 'LIFE', 'FREE'] : isRestWeek(gw) ? ['LIFE', 'FREE'] : ['COMBAT', 'LIFE', 'FREE']
+  const first = kinds[Math.floor(rand() * kinds.length)]
+  const rest = kinds.filter((k) => k !== first)
+  const slots: QuestSlot[] = [first, rest[Math.floor(rand() * rest.length)] ?? first].slice(0, SIDE_CANDIDATES)
   const sideOk = (t: QuestTemplate) => t.category !== 'MAIN' && t.category !== 'CLASS' && !used.has(t.id) && eligible(t, state, reached)
   for (const slot of slots) {
     const pool = QUEST_TEMPLATES.filter((t) => CATEGORY_SLOT[t.category] === slot && sideOk(t))
@@ -316,12 +316,24 @@ export function generateWeeklyQuests(state: GenState): WeeklyState {
     }
     if (!chosen) continue
     used.add(chosen.id)
-    quests.push({ ...instanceOf(chosen, slot, gw), status: 'offered' })
+    quests.push({ ...instanceOf(chosen, slot, gw), status: 'active' })
   }
 
   const lastSeen = { ...state.weekly.lastSeen }
   for (const q of quests) lastSeen[q.templateId] = gw
-  return { week: gw, quests, lastSeen, format: 2, classDone: false }
+  return { week: gw, quests, lastSeen, format: 3, classDone: false }
+}
+
+/**
+ * 예전 형식(후보 5개 중 2개 고르기, format 2)의 이번 주 목록을 새 형식으로 — 진행 상황은 그대로 두고,
+ * 고른 것이 2개보다 적으면 후보에서 채우고 남은 후보는 버린다
+ */
+export function migrateWeekly(weekly: WeeklyState): WeeklyState {
+  if (weekly.format !== 2) return weekly
+  const keep = weekly.quests.filter((q) => q.slot === 'MAIN' || q.status !== 'offered')
+  const need = Math.max(0, SIDE_CANDIDATES - keep.filter((q) => q.slot !== 'MAIN').length)
+  const fill = weekly.quests.filter((q) => q.slot !== 'MAIN' && q.status === 'offered').slice(0, need).map((q) => ({ ...q, status: 'active' as const }))
+  return { ...weekly, quests: [...keep, ...fill], format: 3 }
 }
 
 /** 이번 주 수락한(진행/완료/수령) 외부활동 수 */

@@ -6,7 +6,7 @@
 import type { BattleState, GameState, MapId, Position, Stats } from '@/lib/types'
 import { calendarInfo, calendarLabel, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { beatById, beatsFor, STORY_CYCLE, type StoryTrigger } from '@/lib/story'
-import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
+import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests, migrateWeekly, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
 import { addCourseScore, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
 import { classForWeek, classGrade, classMetaFor, examGames, GRADE_REWARD, MASTERY_LABEL, masteryLevel, professorById, type MiniGameType } from '@/lib/curriculum'
 import { mulberry32 } from '@/lib/rng'
@@ -97,7 +97,20 @@ export function withQuestEvents(state: GameState, events: QuestEvent[], toast?: 
   if (events.length === 0) return toast !== undefined ? { ...state, toast } : state
   const { weekly, completed } = applyQuestEvents(state.weekly, events)
   const doneMsg = completed.length ? `미션 달성: ${completed.join(', ')}` : null
-  return { ...state, weekly, toast: joinToast(toast ?? null, doneMsg) ?? state.toast }
+  const next = { ...state, weekly, toast: joinToast(toast ?? null, doneMsg) ?? state.toast }
+  return completed.length ? autoClaimSide(next) : next
+}
+
+/** 보조 미션은 조건을 채우는 순간 보상을 받고 끝난다(누를 필요 없음). 메인 미션은 스토리 장면과 이어져 있어 직접 받는다 */
+export function autoClaimSide(state: GameState): GameState {
+  let next = state
+  const toasts: string[] = []
+  for (const q of state.weekly.quests) {
+    if (q.slot === 'MAIN' || q.status !== 'complete') continue
+    next = claimQuest(next, q.instanceId)
+    if (next.toast) toasts.push(next.toast)
+  }
+  return toasts.length ? { ...next, toast: joinToast(state.toast, toasts.join(' · ')) } : next
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,7 +119,9 @@ export function withQuestEvents(state: GameState, events: QuestEvent[], toast?: 
 /** 현재 globalWeek 의 주간 퀘스트가 없으면 생성하고 WEEK_START 비트를 큐잉 */
 export function ensureWeek(state: GameState): GameState {
   const gw = state.calendar.globalWeek
-  if (state.weekly.week === gw && state.weekly.format === 2) return state
+  // 예전 형식(후보 중 고르기)의 이번 주 — 진행은 살리고 새 형식으로, 이미 달성한 보조 미션은 바로 보상
+  if (state.weekly.week === gw && state.weekly.format === 2) return autoClaimSide({ ...state, weekly: migrateWeekly(state.weekly) })
+  if (state.weekly.week === gw && state.weekly.format === 3) return state
   const weekly = generateWeeklyQuests(state)
   return queueBeats({ ...state, weekly }, (t) => t.type === 'WEEK_START' && t.week === gw)
 }
