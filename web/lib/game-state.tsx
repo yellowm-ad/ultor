@@ -22,7 +22,7 @@ import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
-import { generateFieldMonsters, wanderState } from '@/lib/field'
+import { defeatKey, generateFieldMonsters, pruneDefeats, wanderState } from '@/lib/field'
 import { monsterView } from '@/lib/monster-charge'
 import { getEffectiveStats } from '@/lib/derived'
 import { canTrain, clampAffection, createPet, petDefById, petStatsForLevel, PET_DEFS } from '@/lib/pets'
@@ -209,7 +209,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'START_GAME': {
       const player = createPlayer(action.name, action.appearance)
       const pet = createStarterPet(action.starterPetId)
-      const fieldMonsters = generateFieldMonsters(MAPS.village, state.settings.testMode)
+      const fieldMonsters = generateFieldMonsters(MAPS.village, state.settings.testMode, state.monsterDefeats)
       // 새 게임 — 1학년 1학기 1주차부터(주간 퀘스트 생성 + 입학 스토리 비트 큐잉)
       return newGameProgress({
         ...state,
@@ -246,7 +246,7 @@ function reducer(state: GameState, action: Action): GameState {
       return ensureWeek({
         ...loaded,
         currentMapId: map.id,
-        fieldMonsters: generateFieldMonsters(map, loaded.settings.testMode),
+        fieldMonsters: generateFieldMonsters(map, loaded.settings.testMode, loaded.monsterDefeats),
         screen: 'world',
         previousScreen: 'world',
         toast: '이어서 시작합니다.',
@@ -778,7 +778,7 @@ function reducer(state: GameState, action: Action): GameState {
         currentZoneId: 'z-testroom',
         position: { ...map.spawn },
         facing: 'down',
-        fieldMonsters: generateFieldMonsters(map, state.settings.testMode),
+        fieldMonsters: generateFieldMonsters(map, state.settings.testMode, state.monsterDefeats),
         pendingEncounterUid: null,
         pendingPortalId: null,
         gateOpen: false,
@@ -850,15 +850,18 @@ function reducer(state: GameState, action: Action): GameState {
       }
     }
 
-    case 'ADMIN_RESPAWN_MONSTERS':
-      return { ...state, fieldMonsters: generateFieldMonsters(MAPS[state.currentMapId], state.settings.testMode) }
+    case 'ADMIN_RESPAWN_MONSTERS': {
+      // 관리자 — 이 맵에서 잡은 기록을 지우고 전부 다시 배치
+      const monsterDefeats = Object.fromEntries(Object.entries(state.monsterDefeats ?? {}).filter(([k]) => !k.startsWith(state.currentMapId + ':')))
+      return { ...state, monsterDefeats, fieldMonsters: generateFieldMonsters(MAPS[state.currentMapId], state.settings.testMode, monsterDefeats) }
+    }
 
     case 'TOGGLE_TEST_MODE': {
       const testMode = !state.settings.testMode
       return {
         ...state,
         settings: { ...state.settings, testMode },
-        fieldMonsters: generateFieldMonsters(MAPS[state.currentMapId], testMode),
+        fieldMonsters: generateFieldMonsters(MAPS[state.currentMapId], testMode, state.monsterDefeats),
       }
     }
 
@@ -911,6 +914,12 @@ function reducer(state: GameState, action: Action): GameState {
         const fieldMonsters = state.battle.fieldMonsterUid
           ? updateFieldMonstersAfterVictory(state.fieldMonsters, state.battle.fieldMonsterUid)
           : state.fieldMonsters
+        // 잡은 개체는 30분 동안 이 맵에 다시 나타나지 않는다(테스트 허수아비는 제외 — updateFieldMonstersAfterVictory 가 남겨 둔다)
+        const beaten = state.battle.fieldMonsterUid
+        const monsterDefeats =
+          beaten && fieldMonsters.length < state.fieldMonsters.length
+            ? { ...pruneDefeats(state.monsterDefeats), [defeatKey(state.currentMapId, beaten)]: Date.now() }
+            : state.monsterDefeats
 
         // 펫은 실제로 싸웠을 때(주인공 전위)만 HP 반영·호감도 상승
         const pet = petC
@@ -940,6 +949,7 @@ function reducer(state: GameState, action: Action): GameState {
             ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
             inventory,
             fieldMonsters,
+            monsterDefeats,
             battle: null,
             screen: 'world',
             toast: newLevel > prevLevel ? `레벨 업! Lv.${newLevel}` : null,
@@ -991,7 +1001,7 @@ function teleportTo(state: GameState, mapId: MapId): GameState {
       position: { ...pos },
       facing: 'down',
       currentZoneId: zoneAt(dest, pos.x, pos.y)?.id ?? '',
-      fieldMonsters: generateFieldMonsters(dest, state.settings.testMode),
+      fieldMonsters: generateFieldMonsters(dest, state.settings.testMode, state.monsterDefeats),
       pendingEncounterUid: null,
       pendingPortalId: null,
       gateOpen: false,
@@ -1011,7 +1021,7 @@ function walkToFloor(state: GameState, portal: Portal, pos: { x: number; y: numb
       position: { ...pos },
       facing,
       currentZoneId: zoneAt(destMap, pos.x, pos.y)?.id ?? '',
-      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode),
+      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode, state.monsterDefeats),
       pendingEncounterUid: null,
       pendingPortalId: null,
       gateOpen: false,
@@ -1041,7 +1051,7 @@ function travelThroughPortal(state: GameState, portalId: string): GameState {
       position: { ...pos },
       facing: 'down',
       currentZoneId: zoneAt(destMap, pos.x, pos.y)?.id ?? '',
-      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode),
+      fieldMonsters: generateFieldMonsters(destMap, state.settings.testMode, state.monsterDefeats),
       pendingEncounterUid: null,
       pendingPortalId: null,
       gateOpen: false,

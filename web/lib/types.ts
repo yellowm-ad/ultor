@@ -805,6 +805,8 @@ export interface GameState {
   visitedMaps?: MapId[]
   inventory: InventorySlot[]
   fieldMonsters: FieldMonster[] // 현재 맵의 몬스터만 보유
+  /** 잡은 필드 몬스터 — '맵id:uid' → 잡은 시각(Date.now). MONSTER_RESPAWN_MS 동안 그 맵에 다시 나타나지 않는다(lib/field) */
+  monsterDefeats?: Record<string, number>
   pendingEncounterUid: string | null // 접촉 시 전투 여부를 묻는 대상
   pendingPortalId: string | null // 접촉 시 이동 여부를 묻는 포탈
   /** 진행 중인 첫 이동 연출(lib/passages) — 통과하면 이 포탈로 넘어간다. 저장하지 않는다 */
