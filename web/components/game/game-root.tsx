@@ -4,6 +4,7 @@ import { initMapOverrides } from '@/lib/map-overrides'
 import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
+import { BgmPlayer } from '@/components/game/bgm-player'
 import type { ScreenId } from '@/lib/types'
 import { TitleScreen } from '@/components/game/title-screen'
 import { CreateScreen } from '@/components/game/create-screen'
@@ -134,6 +135,7 @@ export function GameRoot() {
   }, [])
   return (
     <GameProvider>
+      <BgmPlayer />
       <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
         <GameShell />
       </div>

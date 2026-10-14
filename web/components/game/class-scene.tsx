@@ -13,16 +13,12 @@ import { useGame } from '@/lib/game-state'
 import { calendarLabel } from '@/lib/calendar'
 import { classMetaFor, MINIGAME_META, professorById, type MiniGameType } from '@/lib/curriculum'
 import { MiniGame } from '@/components/game/class-minigames'
+import { playBgmJingle } from '@/lib/bgm'
 
 const LECTURE_MS = 5000
 const ALERT_MS = 1400
 const TRANSITION_MS = 1600
-const END_HOLD_MS = 4000 // 수업 종료 BGM 자리(BGM 은 아직 없음 — playClassEndJingle 훅)
-
-/** 수업 종료 BGM 훅 — 사운드 시스템이 생기면 여기서 재생 */
-function playClassEndJingle() {
-  /* BGM 미적용 */
-}
+const END_HOLD_MS = 4000 // 수업 종료 곡 자리 — 관리자 「브금 관리」의 '수업 종료' 칸
 
 export function ClassSceneOverlay() {
   const { state, dispatch } = useGame()
@@ -52,7 +48,7 @@ export function ClassSceneOverlay() {
       later(1500, () => setStage('play'))
     } else if (sc.phase === 'result') {
       setStage('stamp')
-      playClassEndJingle()
+      playBgmJingle('class-end', (state.settings.bgmVolume ?? 60) / 100)
       later(END_HOLD_MS, () => setStage('panel'))
     }
     return clearTimers

@@ -4,6 +4,7 @@ import { initMapOverrides } from '@/lib/map-overrides'
 import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect, useState } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
+import { BgmPlayer } from '@/components/game/bgm-player'
 import { WorldScreen } from '@/components/game/world-screen'
 import { BattleScreen } from '@/components/game/battle-screen'
 import { Hud } from '@/components/game/hud'
@@ -135,6 +136,7 @@ export function AdminRoot() {
   return (
     <AdminGate>
       <GameProvider>
+        <BgmPlayer />
         <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
           <AdminShell />
         </div>

@@ -13,6 +13,7 @@ import { calendarLabel, TOTAL_WEEKS } from '@/lib/calendar'
 import { STORY_BEATS, ENDING_EMBLEM_FLAGS, storyLineRoute } from '@/lib/story'
 import { ALL_CUTSCENES as CUTSCENES } from '@/lib/cutscenes'
 import { CutsceneManager } from '@/components/game/cutscene-manager'
+import { BgmManager } from '@/components/game/bgm-manager'
 import { DialogueEditor } from '@/components/game/dialogue-editor'
 import { MAPS } from '@/lib/maps'
 import { PROP_CATALOG } from '@/lib/prop-catalog'
@@ -61,6 +62,7 @@ export function AdminPanel() {
   const [goldInput, setGoldInput] = useState(String(state.player.gold))
   const [weekInput, setWeekInput] = useState(String(state.calendar.globalWeek))
   const [cutManager, setCutManager] = useState(false)
+  const [bgmManager, setBgmManager] = useState(false)
   const [dlgEditor, setDlgEditor] = useState(false)
   const [catGroup, setCatGroup] = useState(CATALOG_GROUPS[0] ?? '')
   const [catQuery, setCatQuery] = useState('')
@@ -345,6 +347,9 @@ export function AdminPanel() {
             <Button size="sm" className="w-full" onClick={() => setCutManager(true)}>
               컷신 이미지 관리 ({CUTSCENES.length}칸)
             </Button>
+            <Button size="sm" className="w-full" onClick={() => setBgmManager(true)}>
+              브금 관리 (마을·전투맵·전투·스토리)
+            </Button>
             <div>
               <div className="mb-1 text-white/60">엔딩 루트 (지금: {storyLineRoute(state)})</div>
               <div className="flex gap-1">
@@ -443,6 +448,7 @@ export function AdminPanel() {
         )}
       </div>
       {cutManager && <CutsceneManager onClose={() => setCutManager(false)} />}
+      {bgmManager && <BgmManager onClose={() => setBgmManager(false)} />}
       {dlgEditor && (
         <DialogueEditor
           onClose={() => setDlgEditor(false)}
