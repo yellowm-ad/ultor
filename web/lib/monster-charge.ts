@@ -92,6 +92,12 @@ export function resetCharges() {
   cooldown.clear()
 }
 
+/** 전투로 넘어갈 때 — 달려오던 몬스터를 모두 멈추고 한동안 쉬게 한다(전투에서 도망쳐 돌아오자마자 다시 부딪히지 않게) */
+export function calmCharges(now: number, monsters: FieldMonster[], restMs = 6000) {
+  charges.clear()
+  for (const m of monsters) cooldown.set(m.uid, Math.max(cooldown.get(m.uid) ?? 0, now + restMs))
+}
+
 /**
  * 이동 루프에서 매 프레임 — 돌진을 시작·진행시키고, 플레이어에게 닿은 몬스터 uid 를 돌려준다.
  * active = 지금 돌아다닐 수 있는 상태(대화·컷신·창이 열려 있지 않음)

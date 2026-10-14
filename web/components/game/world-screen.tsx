@@ -7,7 +7,7 @@ import { MONSTERS, NPCS, npcById } from '@/lib/mock-data'
 import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { FURNITURE_CATALOG } from '@/lib/housing'
 import { npcWanderPosition } from '@/lib/field'
-import { tickCharges } from '@/lib/monster-charge'
+import { calmCharges, tickCharges } from '@/lib/monster-charge'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
@@ -52,6 +52,11 @@ export function WorldScreen() {
   // 이동 루프(아래 rAF)는 화면이 바뀔 때만 다시 만들어지므로, 돌진 판정에 쓸 최신 상태는 ref 로 본다
   const live = useRef(state)
   live.current = state
+  // 전투 전환이 시작되면(부딪힘·돌진 모두) 돌진을 멈춘다
+  useEffect(() => {
+    if (state.pendingEncounterUid) calmCharges(performance.now(), state.fieldMonsters)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.pendingEncounterUid])
 
   useEffect(() => {
     const el = viewportRef.current
