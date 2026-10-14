@@ -33,26 +33,21 @@ const FX_COLORS: Record<FxKey, { a: string; b: string }> = {
 
 // PixelLab 도트 이펙트 스프라이트시트(9프레임) — 절차적 CSS 연출 위에 얹는 실제 픽셀아트 레이어.
 // animate_image 로 생성(불/얼음/대지 임팩트 + 회복 반짝임), 가로 9프레임 시트로 합성됨.
+// 어둠·빛·바람·무속성은 같은 규격·화풍으로 직접 찍은 시트(scripts/gen-vfx-sheets.mjs)
 const PIXEL_BURST_SHEET: Partial<Record<FxKey, string>> = {
   fire: '/images/battle/vfx/fire_burst.png',
   ice: '/images/battle/vfx/ice_burst.png',
   earth: '/images/battle/vfx/earth_burst.png',
+  dark: '/images/battle/vfx/dark_burst.png',
+  light: '/images/battle/vfx/light_burst.png',
+  wind: '/images/battle/vfx/wind_burst.png',
+  none: '/images/battle/vfx/neutral_burst.png',
 }
 const PIXEL_HEAL_SHEET = '/images/battle/vfx/heal_burst.png'
 const PIXEL_SLASH_SHEET = '/images/battle/vfx/slash_burst.png'
 const PIXEL_DEBUFF_SHEET = '/images/battle/vfx/debuff_burst.png'
 const PIXEL_BUFF_SHEET = '/images/battle/vfx/buff_burst.png'
 const PIXEL_FRAMES = 9
-/**
- * 전용 도트 폭발이 없는 속성 — 비슷한 모양의 PixelLab 시트를 빌려 그 속성 색으로 물들인다(시트 평균색 실측 기준)
- *  어둠 = 저주 안개(보라 그대로) · 빛 = 반짝임(금빛) · 바람 = 베기 궤적을 청록으로 · 무속성 = 베기 궤적(무채색 그대로)
- */
-const PIXEL_BURST_BORROW: Partial<Record<FxKey, { sheet: string; filter?: string }>> = {
-  dark: { sheet: '/images/battle/vfx/debuff_burst.png' },
-  light: { sheet: '/images/battle/vfx/heal_burst.png', filter: 'brightness(1.12)' },
-  wind: { sheet: '/images/battle/vfx/slash_burst.png', filter: 'sepia(1) saturate(2.4) hue-rotate(112deg) brightness(1.05)' },
-  none: { sheet: '/images/battle/vfx/slash_burst.png', filter: 'grayscale(1) brightness(1.1)' },
-}
 
 /**
  * 도트 질감 텍스처 — 작은 캔버스에 칸 단위로 찍고(디더링) 화면에선 image-rendering: pixelated 로 키운다.
@@ -668,11 +663,7 @@ function ImpactWave({ pos, color, element, scale, tier, at, up }: { pos: FxPos; 
       />
       {tier >= 2 && <ShockwaveRing pos={pos} color={color.a} size={58 * scale} delay={at + 60} />}
       {tier >= 2 && <ParticleBurst pos={pos} color={color} count={tier >= 3 ? 8 : 5} radius={36 * scale} delay={at + 40} direction={up ? 'up' : 'radial'} />}
-      {PIXEL_BURST_SHEET[element] ? (
-        <PixelBurst pos={pos} sheet={PIXEL_BURST_SHEET[element]!} size={60 * scale} delay={at} />
-      ) : (
-        PIXEL_BURST_BORROW[element] && <PixelBurst pos={pos} sheet={PIXEL_BURST_BORROW[element]!.sheet} size={58 * scale} delay={at} filter={PIXEL_BURST_BORROW[element]!.filter} />
-      )}
+      {PIXEL_BURST_SHEET[element] && <PixelBurst pos={pos} sheet={PIXEL_BURST_SHEET[element]!} size={60 * scale} delay={at} />}
     </>
   )
 }
