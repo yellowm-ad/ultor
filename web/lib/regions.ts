@@ -62,7 +62,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['ruins', 'ruins-2', 'ruins-3', 'graveyard', 'catacomb', 'temple-ruin', 'ruin-sanctum'],
     recommendedLevel: 10,
     contentProfile: { gather: 2, hunt: 4, fish: 1, craft: 4, alchemy: 3, explore: 5, story: 5 },
-    description: "CH4 무대. 언데드가 기억하는 인마대전, 버려진 신전의 '노' 봉인 — 폭주한 루스벨.",
+    description: "CH4 무대. 언데드가 기억하는 인마대전, 버려진 신전의 '로(怒)' 봉인 — 폭주한 루스벨.",
   },
   {
     id: 'SNOWFIELD',
@@ -78,7 +78,7 @@ export const REGIONS: RegionDef[] = [
     maps: ['volcano', 'volcano-2', 'volcano-3', 'mine', 'lava-cave', 'demon-village', 'demon-temple'],
     recommendedLevel: 20,
     contentProfile: { gather: 5, hunt: 5, fish: 1, craft: 5, alchemy: 5, explore: 3, story: 4 },
-    description: "CH6 무대. 인간 사회에서 밀려난 마물들의 땅. 모르스가 '애'의 인격으로 살아가는 곳.",
+    description: "CH6 무대. 인간 사회에서 밀려난 마물들의 땅. 모르스가 '애(哀)'의 인격으로 살아가는 곳.",
   },
   {
     id: 'MORS',

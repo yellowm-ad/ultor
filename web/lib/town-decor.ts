@@ -499,7 +499,7 @@ const PRACTICE_LAB: DecorItem[] = [
 
 /** 아틀란티스 대성당 지하 벽화실 (16×14 — 북벽 앞에 네 장의 석판, 가운데 러너) */
 const ATLANTIS_CRYPT: DecorItem[] = [
-  // 네 장의 벽화 석판(희·노·애·락) — 북벽을 따라
+  // 네 장의 벽화 석판(희(喜)·로(怒)·애(哀)·락(樂)) — 북벽을 따라
   ['templeruin/rui_rune_stone', 3.6, 2.0],
   ['templeruin/rui_rune_stone', 6.4, 1.8],
   ['templeruin/rui_rune_stone', 9.6, 1.8],

@@ -17,14 +17,16 @@ import { ACTIVITY_META, activityUnlockLabel, activityUnlockWeek, isActivityUnloc
 import { ITEMS, itemById, MONSTERS, NPCS } from '@/lib/mock-data'
 import { SCHOOL_NPCS } from '@/lib/companions'
 import { regionById } from '@/lib/regions'
+import { LORE, LORE_CATEGORY_LABEL, loreUnlocked, loreView, type LoreCategory } from '@/lib/lore'
 import { CheckCircle2, Circle, Lock, Star } from 'lucide-react'
 
-type Tab = 'week' | 'academic' | 'life' | 'codex' | 'relation'
+type Tab = 'week' | 'academic' | 'life' | 'codex' | 'lore' | 'relation'
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'week', label: '이번 주 퀘스트', icon: 'nav-quest' },
   { id: 'academic', label: '학사', icon: 'nav-academic' },
   { id: 'life', label: '생활 해금', icon: 'nav-life' },
   { id: 'codex', label: '도감', icon: 'nav-codex' },
+  { id: 'lore', label: '세계관', icon: 'nav-codex' },
   { id: 'relation', label: '관계', icon: 'nav-relation' },
 ]
 
@@ -74,6 +76,7 @@ export function JournalScreen() {
               {tab === 'academic' && <AcademicTab />}
               {tab === 'life' && <LifeTab />}
               {tab === 'codex' && <CodexTab />}
+              {tab === 'lore' && <LoreTab />}
               {tab === 'relation' && <RelationTab />}
             </div>
           </section>
@@ -539,6 +542,66 @@ function CodexTab() {
         monsters.length,
         monsters.map((m) => <Cell key={m.id} icon={m.icon} name={m.name} count={state.collections.monsters[m.id] ?? 0} />),
       )}
+    </div>
+  )
+}
+
+/** 세계관 — lib/lore. 아직 모르는 항목은 ??? 로, 진실이 밝혀진 항목은 「고쳐 쓰인 기록」으로 바뀐다 */
+function LoreTab() {
+  const { state } = useGame()
+  const cats = Object.keys(LORE_CATEGORY_LABEL) as LoreCategory[]
+  const [cat, setCat] = useState<LoreCategory>('world')
+  const [openId, setOpenId] = useState<string | null>(null)
+  const list = LORE.filter((e) => e.category === cat)
+  const known = (id: string) => loreUnlocked(LORE.find((e) => e.id === id)!, state)
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="flex flex-wrap gap-1">
+        {cats.map((c) => {
+          const all = LORE.filter((e) => e.category === c)
+          const got = all.filter((e) => loreUnlocked(e, state)).length
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => (setCat(c), setOpenId(null))}
+              className={`rounded-full border px-2 py-0.5 text-[11px] ${cat === c ? 'border-[#8a6a2c] bg-[#8a6a2c] text-[#fff8e6]' : 'border-[#c8b48a] bg-[#efe6d3] text-[#4d4856]'}`}
+            >
+              {LORE_CATEGORY_LABEL[c]} <span className="opacity-70">{got}/{all.length}</span>
+            </button>
+          )
+        })}
+      </div>
+      <div className="space-y-1.5">
+        {list.map((e) => {
+          if (!known(e.id))
+            return (
+              <div key={e.id} className="gw-box flex items-center gap-2 p-2 text-xs opacity-50">
+                <Lock className="h-3.5 w-3.5" /> ??? <span className="text-[10px]">— 이야기가 진행되거나 그곳에 가 보면 알 수 있다</span>
+              </div>
+            )
+          const v = loreView(e, state)
+          const open = openId === e.id
+          return (
+            <button key={e.id} type="button" onClick={() => setOpenId(open ? null : e.id)} className="gw-box block w-full p-2 text-left text-xs">
+              <div className="flex items-baseline gap-2">
+                <b className="text-[13px] text-[#5a3f12]">{v.title}</b>
+                {v.revised && <span className="rounded bg-[#7a2a2a] px-1.5 py-px text-[9px] text-[#fff1e0]">고쳐 쓰인 기록</span>}
+                <span className="ml-auto text-[10px] opacity-50">{open ? '접기' : '펼치기'}</span>
+              </div>
+              <div className="mt-0.5 text-[11px] opacity-75">{e.summary}</div>
+              {open && (
+                <div className="mt-1.5 space-y-1 border-t border-[#c8b48a] pt-1.5 text-[12px] leading-relaxed">
+                  {v.body.map((t, i) => (
+                    <p key={i}>{t}</p>
+                  ))}
+                  {e.tags?.length ? <div className="pt-0.5 text-[10px] text-[#8a6a2c]">{e.tags.map((t) => `#${t}`).join(' ')}</div> : null}
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

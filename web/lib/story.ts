@@ -31,10 +31,10 @@ const CHAPTERS: ChapterDef[] = [
   ['CH1', 1, '에르디아 숲', 3, 24, 'ERDIA', '숲의 이상 → 가시어미 변이체 → 고목의 문장. 봉인의 흔적이 처음 미스터리로 떠오른다.'],
   ['CH2', 2, '에르디아 해안 · 아틀란티스', 25, 48, 'COAST', "폐등대와 해저 유적 → 해파리 여왕 → 암초왕. '모르스'라는 이름이 '마왕'으로 기록된 채 처음 등장."],
   ['CH3', 3, '스톰헤이븐 · 천공 신전', 49, 96, 'STORMHAVEN', "고쳐 쓰인 기록, 성녀와의 만남, 천공 신전과 대성당의 '네 개로 나뉜 왕의 마음'."],
-  ['CH4', 4, '버려진 폐허 · 버려진 신전', 97, 132, 'RUINS', "역사 개변 의혹, 미르엘의 개입. '노'의 봉인이 풀려 루스벨이 폭주하고 달아난다."],
+  ['CH4', 4, '버려진 폐허 · 버려진 신전', 97, 132, 'RUINS', "역사 개변 의혹, 미르엘의 개입. '로(怒)'의 봉인이 풀려 루스벨이 폭주하고 달아난다."],
   ['CH5', 5, '설원 · 오로라 마을', 133, 156, 'SNOWFIELD', '루스벨의 화염으로 녹는 설원, 읽을 수 없는 석비, 루스벨 추적 — 엔딩 루트의 첫 분기.'],
   ['CH6', 6, '화산지대 · 마물 마을', 157, 168, 'VOLCANO', '모르스가 사는 화산지대. 루스벨을 찾았느냐에 따라 토벌(A) 또는 대화(B/C).'],
-  ['CH7', 7, '최종장', 169, 180, 'ACADEMY', "마을 상징, 학교 지하의 '희', 미르엘의 정체, 왕 앞의 증언 — A/B/C 엔딩과 졸업식."],
+  ['CH7', 7, '최종장', 169, 180, 'ACADEMY', "마을 상징, 학교 지하의 '희(喜)', 미르엘의 정체, 왕 앞의 증언 — A/B/C 엔딩과 졸업식."],
   ['EPILOGUE', 8, '졸업 · 후일담', 181, 192, 'ACADEMY', '본편 이후 졸업식 · 후일담 · 자유 생활.'],
 ]
 export const STORY_ARCS: StoryArc[] = CHAPTERS.map(([id, chapter, name, startWeek, endWeek, mainRegion, description]) => ({ id, chapter, name, startWeek, endWeek, mainRegion, description }))
@@ -67,7 +67,7 @@ export const FLAGS = {
   MORS_MEMORY_ACQUIRED: 'MORS_MEMORY_ACQUIRED',
   MORS_TRUTH_CONFIRMED: 'MORS_TRUTH_CONFIRMED',
   MIREL_TRUE_IDENTITY_FOUND: 'MIREL_TRUE_IDENTITY_FOUND',
-  // 희·노·애·락 — 모르스의 네 감정
+  // 희(喜)·로(怒)·애(哀)·락(樂) — 모르스의 네 감정
   JOY_FRAGMENT_FOUND: 'JOY_FRAGMENT_FOUND',
   RAGE_FRAGMENT_RETURNED: 'RAGE_FRAGMENT_RETURNED',
   SORROW_FRAGMENT_CONFIRMED: 'SORROW_FRAGMENT_CONFIRMED',

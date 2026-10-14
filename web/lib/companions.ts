@@ -96,7 +96,7 @@ export const SCHOOL_NPCS: SchoolNpc[] = [
     title: '화염 동료 · 광역 마법',
     role: 'student',
     gender: 'female',
-    // v3.0: 루스벨 = 폐허된 신전 편 최종보스('노'의 숙주). 3학년 2학기 폭주(RUSPELL_ENRAGED) 후 도주 → 설원에서 찾으면(RUSPELL_FOUND) 복귀
+    // v3.0: 루스벨 = 폐허된 신전 편 최종보스('로(怒)'의 숙주). 3학년 2학기 폭주(RUSPELL_ENRAGED) 후 도주 → 설원에서 찾으면(RUSPELL_FOUND) 복귀
     personality: '자신감 넘치고 화끈한 성격. 지는 걸 무엇보다 싫어한다.',
     sprite: 'hero-fire-female',
     portrait: '/images/portraits/hero-fire-female.png',

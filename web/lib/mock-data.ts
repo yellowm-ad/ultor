@@ -770,7 +770,7 @@ const MONSTERS_LEGACY: MonsterDef[] = [
     rank: 'fieldBoss',
     dropTable: [{ itemId: 'mat-giant-core', chance: 1 }, { itemId: 'mat-statue-fragment', chance: 0.8 }],
   },
-  // 폐허된 신전 편 최종보스 — '노'를 주입당해 폭주한 루스벨(v3.0 EP37). 동료 루스벨의 4등신 시트 그대로 + 보랏빛 불꽃 오라.
+  // 폐허된 신전 편 최종보스 — '로(怒)'를 주입당해 폭주한 루스벨(v3.0 EP37). 동료 루스벨의 4등신 시트 그대로 + 보랏빛 불꽃 오라.
   // 스토리 장면(EP37_RAGE)에서만 전투가 열린다 — 쓰러뜨려도 죽지 않고 도주(EP37_FLED).
   {
     id: 'mon-ruspell-rage',
