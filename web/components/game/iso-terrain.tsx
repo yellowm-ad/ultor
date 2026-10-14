@@ -162,8 +162,8 @@ const SLICE_MS = 24
  * 미리 그리기(이웃 맵)는 프레임 사이 남는 시간에만 일한다 — 걷느라 프레임이 빠듯하면 거의 쉬고, 서 있을 땐 남는 시간을 다 써서 빨리 끝낸다.
  * (전에는 5ms 일하고 40ms 쉬는 고정 박자라, 한가할 때도 이웃 맵 하나에 십몇 초가 걸렸다)
  */
-const BG_SLICE_MAX = 8
-const BG_SLICE_MIN = 2
+const BG_SLICE_MAX = 4
+const BG_SLICE_MIN = 1
 const PRELOAD_MAX = 4
 type Idle = { timeRemaining: () => number }
 const ric: ((cb: (d: Idle) => void, o?: { timeout: number }) => number) | undefined = typeof window !== 'undefined' ? (window as unknown as { requestIdleCallback?: (cb: (d: Idle) => void, o?: { timeout: number }) => number }).requestIdleCallback?.bind(window) : undefined
