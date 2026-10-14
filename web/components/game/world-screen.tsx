@@ -7,6 +7,7 @@ import { MONSTERS, NPCS, npcById } from '@/lib/mock-data'
 import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { FURNITURE_CATALOG } from '@/lib/housing'
 import { npcWanderPosition } from '@/lib/field'
+import { tickCharges } from '@/lib/monster-charge'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
@@ -21,6 +22,25 @@ const MOVE_SPEED = 4.3 // 초당 이동 셀 수
 /** Shift 달리기 — 이동속도 2배 */
 const RUN_MULT = 2
 
+/** 전투 진입 전환(약 0.8초) — 화면이 번쩍이며 흔들리고, 빛줄기가 스치며 가운데로 어둠이 닫힌다 */
+const ENCOUNTER_MS = 820
+function EncounterTransition({ name, onDone }: { name: string; onDone: () => void }) {
+  const done = useRef(onDone)
+  done.current = onDone
+  useEffect(() => {
+    const id = setTimeout(() => done.current(), ENCOUNTER_MS)
+    return () => clearTimeout(id)
+  }, [])
+  return (
+    <div className="enc-trans pointer-events-auto absolute inset-0 z-40 overflow-hidden" aria-live="assertive">
+      <div className="enc-flash" />
+      <div className="enc-streaks" />
+      <div className="enc-iris" />
+      <div className="enc-name font-display">{name}</div>
+    </div>
+  )
+}
+
 export function WorldScreen() {
   const { state, dispatch } = useGame()
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -29,6 +49,9 @@ export function WorldScreen() {
   const [running, setRunning] = useState(false)
   const pressedKeys = useRef<Set<string>>(new Set())
   const lastTime = useRef<number | null>(null)
+  // 이동 루프(아래 rAF)는 화면이 바뀔 때만 다시 만들어지므로, 돌진 판정에 쓸 최신 상태는 ref 로 본다
+  const live = useRef(state)
+  live.current = state
 
   useEffect(() => {
     const el = viewportRef.current
@@ -81,6 +104,14 @@ export function WorldScreen() {
       if (lastTime.current == null) lastTime.current = t
       const dt = Math.min(0.06, (t - lastTime.current) / 1000)
       lastTime.current = t
+
+      // 몬스터 돌진(lib/monster-charge) — 닿으면 바로 전투 전환
+      {
+        const s = live.current
+        const free = !s.pendingEncounterUid && !s.pendingPortalId && !s.gateOpen && !s.fishing && !s.passage && !s.classScene && s.storyQueue.length === 0
+        const hit = tickCharges(dt, t, MAPS[s.currentMapId], s.fieldMonsters, s.position, free)
+        if (hit) dispatch({ type: 'ENCOUNTER', uid: hit })
+      }
 
       const keys = pressedKeys.current
       let dx = 0
@@ -424,25 +455,8 @@ export function WorldScreen() {
         </div>
       )}
 
-      {/* 몬스터 접촉 — 전투 여부 확인 */}
-      {state.pendingEncounterUid && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="panel-gilded flex flex-col items-center gap-3 px-6 py-5 text-center">
-            <div className="font-display text-sm text-gold-soft text-shadow-ink">
-              {encounterName ?? '몬스터'}와(과) 마주쳤다!
-            </div>
-            <div className="text-xs text-muted-foreground">전투를 시작할까?</div>
-            <div className="flex gap-2">
-              <Button variant="default" onClick={() => dispatch({ type: 'ENCOUNTER_FIGHT' })}>
-                전투하기
-              </Button>
-              <Button variant="outline" onClick={() => dispatch({ type: 'ENCOUNTER_FLEE' })}>
-                피하기
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 몬스터 접촉 — 묻지 않고 화면 전환 연출 뒤 바로 전투 */}
+      {state.pendingEncounterUid && <EncounterTransition key={state.pendingEncounterUid} name={encounterName ?? '몬스터'} onDone={() => dispatch({ type: 'ENCOUNTER_FIGHT' })} />}
 
       {/* 생활 상호작용 안내 — 채집 지점/물가 근처에서만. 터치 기기는 눌러서 실행 */}
       {lifePrompt && state.screen === 'world' && !state.fishing && (

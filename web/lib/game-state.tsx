@@ -23,6 +23,7 @@ import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, mo
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
 import { generateFieldMonsters, wanderState } from '@/lib/field'
+import { monsterView } from '@/lib/monster-charge'
 import { getEffectiveStats } from '@/lib/derived'
 import { canTrain, clampAffection, createPet, petDefById, petStatsForLevel, PET_DEFS } from '@/lib/pets'
 import {
@@ -103,6 +104,8 @@ export type Action =
   | { type: 'SET_ACTIVE_PET'; defId: string }
   | { type: 'START_BATTLE'; fieldMonsterUid: string }
   | { type: 'ENCOUNTER_FIGHT' }
+  /** 돌진한 몬스터가 플레이어에게 닿음(lib/monster-charge) — 접촉과 같이 바로 전투 전환 */
+  | { type: 'ENCOUNTER'; uid: string }
   | { type: 'ENCOUNTER_FLEE' }
   | { type: 'USE_PORTAL'; portalId: string }
   | { type: 'PASSAGE_DONE'; fish?: number }
@@ -423,14 +426,14 @@ function reducer(state: GameState, action: Action): GameState {
         const radius = rank === 'fieldBoss' || rank === 'storyBoss' ? CONTACT_RADIUS * 1.84 : rank === 'miniBoss' ? CONTACT_RADIUS * 1.35 : CONTACT_RADIUS
         // 화면에 보이는 위치(배회 중 위치)로 판정 — 예전엔 집 좌표로 재서 보이는 몬스터에 닿아도 전투가 안 걸렸다
         if (Math.hypot(fm.homeCell.x - nx, fm.homeCell.y - ny) > 4) continue
-        const at = wanderState(fm, performance.now(), map.blockers, { x: nx, y: ny }).pos
+        const at = monsterView(fm, performance.now(), map, { x: nx, y: ny }).pos
         const d = Math.hypot(at.x - nx, at.y - ny)
         if (d < radius) {
           touched = fm.uid
           break
         }
       }
-      // 접촉 시 전투를 바로 시작하지 않고 '전투/피하기'를 먼저 묻는다. 이동은 정지.
+      // 접촉 — 묻지 않고 바로 전투로(world-screen 이 화면 전환 연출을 보여 준 뒤 ENCOUNTER_FIGHT). 이동은 정지.
       if (touched) return { ...state, facing, pendingEncounterUid: touched }
 
       // 포탈 타일 접촉 — 이동 여부 확인 (군 통문 gate 는 클릭 전용이라 제외)
@@ -451,6 +454,16 @@ function reducer(state: GameState, action: Action): GameState {
         facing,
         currentZoneId: zone?.id ?? state.currentZoneId,
       }
+    }
+
+    case 'ENCOUNTER': {
+      if (
+        state.classScene || state.screen !== 'world' || state.battle || state.pendingEncounterUid || state.pendingPortalId ||
+        state.gateOpen || state.fishing || state.passage || state.storyQueue.length > 0 ||
+        !state.fieldMonsters.some((f) => f.uid === action.uid)
+      )
+        return state
+      return { ...state, pendingEncounterUid: action.uid }
     }
 
     case 'ENCOUNTER_FIGHT': {

@@ -6,7 +6,8 @@ import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { NPCS, MONSTERS } from '@/lib/mock-data'
-import { wanderState, npcWanderState } from '@/lib/field'
+import { npcWanderState } from '@/lib/field'
+import { monsterView } from '@/lib/monster-charge'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation } from '@/lib/iso'
 import { IsoStructNode } from '@/components/game/iso-structures'
 import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/iso-water'
@@ -321,7 +322,7 @@ export function IsoWorld({
   const monsterEntities = visibleMonsters.flatMap((fm) => {
     const def = MONSTERS.find((m) => m.id === fm.monsterId)
     if (!def) return []
-    const { pos, facing: dir, moving } = wanderState(fm, wanderT, map.blockers, state.position)
+    const { pos, facing: dir, moving, alert, charging } = monsterView(fm, wanderT, map, state.position)
     const s = isoToScreen(pos.x, pos.y)
     const scale = fieldRankScale(def.rank)
     const size = MD * scale
@@ -333,7 +334,7 @@ export function IsoWorld({
         sortY: pos.x + pos.y,
         node: (
           // 위치는 0.1초마다 갱신 — CSS 전환으로 그 사이를 이어 미끄러지듯 걷게(끊김 방지)
-          <g key={fm.uid} style={{ transform: `translate(${s.sx}px,${s.sy}px)`, transition: 'transform 0.1s linear' }}>
+          <g key={fm.uid} style={{ transform: `translate(${s.sx}px,${s.sy}px)`, transition: `transform ${charging ? 0.05 : 0.1}s linear` }}>
             <ellipse cx={0} cy={2} rx={shadowRx} ry={shadowRy} fill="rgba(0,0,0,0.34)" />
             <foreignObject x={-size / 2} y={-size + 8} width={size} height={size} style={{ overflow: 'visible' }}>
               <CreatureSprite spriteId={def.id} fallbackSrc={def.icon} dir={dir} walking={moving} px={size} />
@@ -351,6 +352,16 @@ export function IsoWorld({
                 {def.isTestMonster ? 'TEST' : def.name}
               </text>
             </g>
+            {/* 돌진 직전 — 머리 위 「!」 (lib/monster-charge) */}
+            {alert && (
+              <g transform={`translate(0,${labelY - 22})`} style={{ pointerEvents: 'none' }}>
+                <g className="charge-alert">
+                  <path d="M-11,-14 h22 a4,4 0 0 1 4,4 v14 a4,4 0 0 1 -4,4 h-7 l-4,6 l-4,-6 h-7 a4,4 0 0 1 -4,-4 v-14 a4,4 0 0 1 4,-4 z" fill="#fff4d6" stroke="#5a1a0a" strokeWidth={2} />
+                  <rect x={-2.5} y={-10} width={5} height={10} fill="#d4301a" />
+                  <rect x={-2.5} y={2} width={5} height={4} fill="#d4301a" />
+                </g>
+              </g>
+            )}
           </g>
         ),
       },

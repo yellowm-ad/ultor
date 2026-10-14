@@ -95,7 +95,7 @@ export function generateFieldMonsters(map: GameMap, testMode: boolean): FieldMon
   return result
 }
 
-type Blocker = { x0: number; y0: number; x1: number; y1: number }
+export type Blocker = { x0: number; y0: number; x1: number; y1: number }
 
 /**
  * 배회 위치가 구조물(blocker) 안으로 파고들면 집(home) 위치로 되돌린다 —
