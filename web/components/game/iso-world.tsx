@@ -1,6 +1,6 @@
 'use client'
 
-import { GuideArrow, GuideTrail, type useGuide } from '@/components/game/guide-trail'
+import { GuideArrow, GuideSparks, GuideTrail, type useGuide } from '@/components/game/guide-trail'
 import { Fragment, useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
@@ -633,6 +633,10 @@ export function IsoWorld({
       {waterViewRect && map.water && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
       {/* 칸 타일 지면 — 수면 층 위, 오브젝트 SVG 아래 */}
       {groundArt && <TerrainCanvas canvas={groundArt} w={worldW} h={worldH} />}
+      {/* 길안내 반짝이 점 — 지면 위, 오브젝트 svg 아래(캔버스 한 장) */}
+      {guide && !inClass && (
+        <GuideSparks guide={guide} stairs={map.stairs} ox={-bounds.minSx} oy={padTop} res={SCALE * (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)} />
+      )}
       <svg
         width={worldW}
         height={worldH}
