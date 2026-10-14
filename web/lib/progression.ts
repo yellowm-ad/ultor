@@ -33,6 +33,8 @@ import {
   createGuestMember,
   favorFlag,
   favorState,
+  legacyFlag,
+  COMPANIONS_V2,
   guestNpcById,
   guestStats,
   isCompanionAway,
@@ -472,6 +474,7 @@ export function talkTo(state: GameState, npcId: string): GameState {
   const gw = state.calendar.globalWeek
   const cur = state.relationships[npcId] ?? { affinity: 0, lastTalkWeek: 0 }
   let next = state
+  if (next.storyFlags[legacyFlag(npcId)] === 1) next = { ...next, storyFlags: { ...next.storyFlags, [legacyFlag(npcId)]: 2 } }
   if (cur.lastTalkWeek !== gw) {
     next = {
       ...next,
@@ -714,6 +717,15 @@ export function normalizeFormation(state: GameState): GameState {
  */
 export function ensureParty(state: GameState): GameState {
   let next = state
+  // 합류 개편 전 저장 — 이미 합류해 있던 동료는 내보내고, 한 번 말을 걸면 다시 함께할 수 있게 표시(관리자 전원 합류 상태는 그대로)
+  if (!next.storyFlags[COMPANIONS_V2]) {
+    const flags: Record<string, boolean | number> = { ...next.storyFlags, [COMPANIONS_V2]: true }
+    const ids = next.storyFlags.DEBUG_UNLOCK_ALL ? [] : Object.keys(next.companions.recruited)
+    for (const id of ids) flags[legacyFlag(id)] = 1
+    const recruited = ids.length ? {} : next.companions.recruited
+    const party = ids.length ? [] : next.companions.party
+    next = { ...next, storyFlags: flags, companions: { ...next.companions, recruited, party } }
+  }
   // 학교에 서 있지 않은 이야기형 동료(미르엘 교수 — 대원정 게스트)는 조건이 켜지면 바로 합류한다(찾아가 말을 걸 수 없으므로)
   for (const def of COMBAT_NPCS) {
     if (def.join?.kind !== 'story' || def.homeRoom || next.companions.recruited[def.id] || next.storyFlags.DEBUG_UNLOCK_ALL) continue

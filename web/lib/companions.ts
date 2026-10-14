@@ -507,10 +507,20 @@ export function favorState(state: Pick<GameState, 'storyFlags' | 'relationships'
   return (state.relationships[def.id]?.affinity ?? 0) >= def.join.affinity ? 'ready' : 'locked'
 }
 
+/**
+ * 예전 저장에서 이미 합류해 있던 동료(합류 개편 전) — 파티에서 내보내고 'legacy:<id>' = 1 로 표시해 둔다.
+ * 한 번 말을 걸면(2) 원래 합류 방식과 관계없이 다시 함께할 수 있다.
+ */
+export const legacyFlag = (id: string) => `legacy:${id}`
+export const COMPANIONS_V2 = 'COMPANIONS_V2'
+
 export function canRecruit(state: Pick<GameState, 'calendar' | 'storyFlags' | 'settings' | 'relationships'>, def: SchoolNpc): { ok: boolean; reason?: string } {
   if (!def.combat) return { ok: false, reason: '전투에 참가하지 않는 NPC' }
   if (isCompanionAway(state, def)) return { ok: false, reason: '지금은 행방을 알 수 없다' }
   if (state.storyFlags.DEBUG_UNLOCK_ALL) return { ok: true }
+  const legacy = state.storyFlags[legacyFlag(def.id)]
+  if (legacy === 2) return { ok: true }
+  if (legacy === 1) return { ok: false, reason: '오랜만이다 — 찾아가 말을 걸어 보자' }
   const year = calendarInfo(state.calendar.globalWeek).year
   if (year < def.joinYear) return { ok: false, reason: `${def.joinYear}학년이 되면 만날 수 있을 것 같다` }
   const rule = def.join ?? { kind: 'invite' }

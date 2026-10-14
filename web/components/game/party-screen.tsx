@@ -255,6 +255,7 @@ export function PartyScreen() {
                 </div>
                 <div className="truncate text-[10px] opacity-70">{def.title}</div>
                 {prog && <div className="truncate text-[10px] italic opacity-70">“{def.lines.idle}”</div>}
+                {!prog && !check.ok && <div className="truncate text-[10px] text-[#8a6a2c]">{check.reason}</div>}
                 {prog && (
                   <div className="text-[10px] opacity-70">
                     Lv.{prog.level} · EXP {prog.exp}/{expRequiredForLevel(prog.level)} · 관계도 {aff}
@@ -262,8 +263,12 @@ export function PartyScreen() {
                 )}
               </div>
               {!prog ? (
-                // 합류는 직접 찾아가 대화로 — 여기서는 지금 할 수 있는 일만 알려 준다
-                <span className="max-w-[9.5rem] text-right text-[10px] leading-tight text-[#8a6a2c]">{check.ok ? '찾아가 말을 걸면 함께할 수 있다' : check.reason}</span>
+                // 말을 걸었거나 조건을 채워 함께할 수 있게 된 동료만 여기서 바로 합류 — 아직이면 할 일을 알려 준다
+                check.ok ? (
+                  <button type="button" className="gw-btn is-gold is-sm" onClick={() => dispatch({ type: 'RECRUIT_COMPANION', companionId: def.id })}>
+                    합류
+                  </button>
+                ) : null
               ) : inParty ? (
                 <span className="text-[11px] font-bold text-[#8a6a2c]">출전 중</span>
               ) : swapSlot != null ? (
