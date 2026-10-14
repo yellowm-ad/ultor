@@ -587,7 +587,7 @@ export function IsoWorld({
   })
 
   // 개발 모드 전용: window.__isoScale 로 카메라 배율을 바꿔 전체 구도를 확인(크롬 자동화 스크린샷용)
-  const devScale = process.env.NODE_ENV !== 'production' && typeof window !== 'undefined' ? (window as unknown as { __isoScale?: number }).__isoScale : undefined
+  const devScale = (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEV_HOOKS === '1') && typeof window !== 'undefined' ? (window as unknown as { __isoScale?: number }).__isoScale : undefined
   const SCALE = devScale ?? BASE_SCALE
   // 수업 중엔 카메라를 플레이어와 교수 사이(조금 위)로 — 강의 말풍선·느낌표가 레터박스에 가리지 않게
   const inClass = !!state.classScene && state.classScene.room === map.id

@@ -1487,10 +1487,10 @@
     pointer-events: auto;
     image-rendering: pixelated;
     background-repeat: no-repeat;
-    /* 한 번만 재생 → 마지막 프레임에서 정지(누르면 key 가 바뀌어 다시 재생) */
+    /* 두 번 재생 → 마지막 프레임에서 정지(누르면 key 가 바뀌어 다시 재생) */
     /* 동작이 끝난 뒤에는 그 자세로 숨쉬기(idle-breathe) */
     transform-origin: 50% 96%;
-    animation: story-anim-play 0.8s steps(7) 1 forwards, idle-breathe 3s ease-in-out 0.8s infinite;
+    animation: story-anim-play 0.8s steps(7) 2 forwards, idle-breathe 3s ease-in-out 1.6s infinite;
   }
   @keyframes story-anim-play {
     from { background-position: 0 0; }

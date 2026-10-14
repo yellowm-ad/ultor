@@ -158,11 +158,21 @@ const yieldNow = () =>
     c.port2.postMessage(0)
   })
 const SLICE_MS = 24
-/** 미리 그리기(이웃 맵)는 5ms 일하고 40ms 쉰다 — 걷는 동안 프레임을 잡아먹지 않게 */
-const BG_SLICE_MS = 5
-const BG_REST_MS = 40
+/**
+ * 미리 그리기(이웃 맵)는 프레임 사이 남는 시간에만 일한다 — 걷느라 프레임이 빠듯하면 거의 쉬고, 서 있을 땐 남는 시간을 다 써서 빨리 끝낸다.
+ * (전에는 5ms 일하고 40ms 쉬는 고정 박자라, 한가할 때도 이웃 맵 하나에 십몇 초가 걸렸다)
+ */
+const BG_SLICE_MAX = 8
+const BG_SLICE_MIN = 2
 const PRELOAD_MAX = 4
-const restNow = () => new Promise<void>((r) => setTimeout(r, BG_REST_MS))
+type Idle = { timeRemaining: () => number }
+const ric: ((cb: (d: Idle) => void, o?: { timeout: number }) => number) | undefined = typeof window !== 'undefined' ? (window as unknown as { requestIdleCallback?: (cb: (d: Idle) => void, o?: { timeout: number }) => number }).requestIdleCallback?.bind(window) : undefined
+/** 다음 한가한 틈까지 쉬고, 그 틈에 쓸 수 있는 시간(ms)을 돌려준다 */
+const restNow = () =>
+  new Promise<number>((r) => {
+    if (ric) ric((d) => r(Math.max(BG_SLICE_MIN, Math.min(BG_SLICE_MAX, d.timeRemaining() - 1))), { timeout: 250 })
+    else setTimeout(() => r(BG_SLICE_MIN + 2), 40)
+  })
 
 /** 지면 캔버스를 월드 층(HTML)에 붙인다 — 수면 층 위, 오브젝트 SVG 아래 */
 export function TerrainCanvas({ canvas, w, h }: { canvas: HTMLCanvasElement; w: number; h: number }) {
@@ -187,10 +197,12 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
   const FOG = T.fog ?? FOG0
   const texFile = (k: TileKind) => T.tex?.[k] ?? TEX_FILE[k] ?? 'grass'
   let last = performance.now()
+  let bgBudget = BG_SLICE_MIN
   const breathe = async () => {
     const bg = URGENT !== key
-    if (performance.now() - last > (bg ? BG_SLICE_MS : SLICE_MS)) {
-      await (bg ? restNow() : yieldNow())
+    if (performance.now() - last > (bg ? bgBudget : SLICE_MS)) {
+      if (bg) bgBudget = await restNow()
+      else await yieldNow()
       last = performance.now()
     }
   }
@@ -203,8 +215,8 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
   const GW = W * SS
   const GH = H * SS
   const grid = new Uint8Array(GW * GH)
-  for (let gy = 0; gy < GH; gy++) {
-    if ((gy & 1) === 0) await breathe()
+  // 줄 단위 작업은 await 없는 보통 함수로 둔다 — 비동기 함수 안의 뜨거운 반복문은 엔진이 제대로 최적화하지 못한다
+  const sampleRow = (gy: number) => {
     for (let gx = 0; gx < GW; gx++) {
       const k = T.at((gx + 0.5) / SS, (gy + 0.5) / SS)
       let i = k === LIQ ? WATER : kindIdx.get(k)
@@ -215,6 +227,10 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
       }
       grid[gy * GW + gx] = i
     }
+  }
+  for (let gy = 0; gy < GH; gy++) {
+    if ((gy & 1) === 0) await breathe()
+    sampleRow(gy)
   }
 
   // ② 칸별 물 표현 + 물가에서 떨어진 거리(수심 빛)
@@ -308,8 +324,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
   const JIT = new Float32Array(16).map((_, j) => (BAYER[j] - 0.5) * 0.09)
   const Wm = W - 1e-3
   const Hm = H - 1e-3
-  for (let py = 0; py < PH; py++) {
-    if ((py & 3) === 0) await breathe()
+  const classifyRow = (py: number) => {
     const sy = R.y + py + 0.5
     // 셀 좌표는 x 로 1px 갈 때 cx += 1/64, cy -= 1/64 — 곱셈 없이 더해 간다
     let cx0 = (R.x + 0.5) / 64 + sy / 32
@@ -341,6 +356,10 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
       }
     }
   }
+  for (let py = 0; py < PH; py++) {
+    if ((py & 3) === 0) await breathe()
+    classifyRow(py)
+  }
 
   // ④ 소품 발밑 그림자(점묘)
   const shade = new Float32Array(N)
@@ -367,12 +386,12 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
 
   // ⑤ 바닷가 — 젖은 모래 띠(땅 쪽)·얕은 물 띠(물 쪽)용 픽셀 거리(체비쇼프, 2패스). 바다·얕은 바닥 물이 있을 때만
   const beachy = (j: number) => K[j] === WATER && (P[j] === 3 || P[j] === 4)
-  const nearSea = liquid === 'water' && anyBeach(P) ? chebyshev(PW, PH, beachy, 10) : null
+  const nearSea = liquid === 'water' && anyBeach(P) ? await chebyshev(PW, PH, beachy, 10, breathe) : null
   // 물가 띠(얕은 물·서리 테) — 바다·얕은 바닥 물, 얼음 호수
-  const nearLand = nearSea || (liquid === 'ice' && anyWater) ? chebyshev(PW, PH, (j) => K[j] !== WATER, 12) : null
+  const nearLand = nearSea || (liquid === 'ice' && anyWater) ? await chebyshev(PW, PH, (j) => K[j] !== WATER, 12, breathe) : null
   // 용암 열기 — 용암에서 가까운 땅이 붉게 달아오른다
   const HOT = 14
-  const nearHot = liquid === 'lava' && anyWater ? chebyshev(PW, PH, (j) => K[j] === WATER, HOT) : null
+  const nearHot = liquid === 'lava' && anyWater ? await chebyshev(PW, PH, (j) => K[j] === WATER, HOT, breathe) : null
 
   // ⑥ 합성
   const cv = document.createElement('canvas')
@@ -386,8 +405,7 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
   const DEPTH_BY_CODE = CODE_POOL.map((p) => POOL_DEPTH[p])
   const isWater = (j: number) => j < 0 || j >= N || K[j] === WATER
   const wetAt = liquid !== 'water' ? () => false : (j: number) => j >= 0 && j < N && K[j] === WATER && (P[j] === 1 || P[j] === 4)
-  for (let py = 0; py < PH; py++) {
-    if ((py & 3) === 0) await breathe()
+  const composeRow = (py: number) => {
     const sy = Math.floor(R.y + py)
     const ty = ((sy % 128) + 128) % 128
     for (let px = 0; px < PW; px++) {
@@ -556,7 +574,16 @@ async function paintTerrain(map: GameMap, R: TerrainRect, key: string): Promise<
       out[o + 3] = a
     }
   }
-  ctx.putImageData(img, 0, 0)
+  for (let py = 0; py < PH; py++) {
+    if ((py & 3) === 0) await breathe()
+    composeRow(py)
+  }
+  // 캔버스에 올리는 것도 띠로 나눠서 — 수백만 픽셀을 한 번에 올리면 그 프레임이 통째로 멈춘다
+  const BAND = 96
+  for (let y = 0; y < PH; y += BAND) {
+    await breathe()
+    ctx.putImageData(img, 0, 0, 0, y, PW, Math.min(BAND, PH - y))
+  }
   return { canvas: cv, surface: !anyWater ? null : liquid === 'water' ? (anySea ? 'sea' : 'canal') : liquid }
 }
 
@@ -565,11 +592,15 @@ const anyBeach = (P: Uint8Array) => {
   return false
 }
 
-/** 픽셀 거리장(체비쇼프, 앞뒤 2패스) — src(j) 가 참인 픽셀까지의 거리, cap 초과는 cap+1 */
-function chebyshev(PW: number, PH: number, src: (j: number) => boolean, cap: number) {
+/** 픽셀 거리장(체비쇼프, 앞뒤 2패스) — src(j) 가 참인 픽셀까지의 거리, cap 초과는 cap+1. 줄 묶음마다 breathe 로 양보한다 */
+async function chebyshev(PW: number, PH: number, src: (j: number) => boolean, cap: number, breathe: () => Promise<void>) {
   const d = new Uint8Array(PW * PH).fill(cap + 1)
-  for (let i = 0; i < d.length; i++) if (src(i)) d[i] = 0
-  for (let y = 0; y < PH; y++)
+  for (let y = 0; y < PH; y++) {
+    if ((y & 15) === 0) await breathe()
+    for (let i = y * PW, e = i + PW; i < e; i++) if (src(i)) d[i] = 0
+  }
+  for (let y = 0; y < PH; y++) {
+    if ((y & 15) === 0) await breathe()
     for (let x = 0; x < PW; x++) {
       const i = y * PW + x
       let v = d[i]
@@ -582,7 +613,9 @@ function chebyshev(PW: number, PH: number, src: (j: number) => boolean, cap: num
       }
       d[i] = v
     }
-  for (let y = PH - 1; y >= 0; y--)
+  }
+  for (let y = PH - 1; y >= 0; y--) {
+    if ((y & 15) === 0) await breathe()
     for (let x = PW - 1; x >= 0; x--) {
       const i = y * PW + x
       let v = d[i]
@@ -595,6 +628,7 @@ function chebyshev(PW: number, PH: number, src: (j: number) => boolean, cap: num
       }
       d[i] = v
     }
+  }
   return d
 }
 

@@ -8,7 +8,7 @@
 //    (SVG 요소 수천 개 + 깜빡이는 거품 애니메이션이 렉의 주원인이었음)
 //  · 수로 벽 = 사암 벽돌(PixelLab), 해안 벽 = 잔디 끝 바위 절벽(PixelLab). 다리 칸 아래 수로 벽은 아치.
 // 텍스처: public/images/map/water/* (scripts/gen-water-tex.mjs · PixelLab 벽 줄무늬)
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { ISO_TILE_W, isoToScreen } from '@/lib/iso'
 import type { GameMap } from '@/lib/types'
 
@@ -95,30 +95,44 @@ function bfs(W: number, H: number, from: (x: number, y: number) => boolean, thro
 
 export interface WaterOverlays {
   /** 수심(얕은 물 밝게·먼 바다 짙게) */
-  depthUrl: string | null
+  depth: HTMLCanvasElement | null
   /** 수로가 바다로 열리는 곳에 바다 빛 번짐 */
-  blendUrl: string | null
-  /** 수로 모양 마스크(흰 = 수로) */
+  blend: HTMLCanvasElement | null
+  /** 수로 모양 마스크(흰 = 수로) — CSS mask 라 주소가 필요하다 */
   canalMaskUrl: string | null
   /** 벽·그늘·거품·연석을 미리 그린 한 장 */
-  wallsUrl: string | null
+  walls: HTMLCanvasElement | null
+}
+const NO_OVERLAYS: WaterOverlays = { depth: null, blend: null, canalMaskUrl: null, walls: null }
+
+/** 미리 그린 캔버스를 그대로 붙인다 — PNG 로 굽고 다시 푸는 수백 ms 를 없앤다(iso-terrain 의 TerrainCanvas 와 같은 방식) */
+function CanvasLayer({ canvas, left, top, w, h, pixelated }: { canvas: HTMLCanvasElement; left: number; top: number; w: number; h: number; pixelated?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    canvas.style.cssText = `position:absolute;left:0;top:0;width:${w}px;height:${h}px${pixelated ? ';image-rendering:pixelated' : ''}`
+    el.replaceChildren(canvas)
+    return () => {
+      if (canvas.parentNode === el) el.removeChild(canvas)
+    }
+  }, [canvas, w, h, pixelated])
+  return <div ref={ref} style={{ position: 'absolute', left, top, width: w, height: h, pointerEvents: 'none' }} />
 }
 
-/** 오버레이·마스크를 브라우저에서 한 번만 캔버스로 그려 dataURL 로 */
+/** 오버레이·마스크를 브라우저에서 한 번만 캔버스로 그려 둔다 */
 export function useWaterOverlays(map: GameMap): WaterOverlays {
   const g = useWaterGrid(map)
   const { W, H } = g
-  const [out, setOut] = useState<WaterOverlays>({ depthUrl: null, blendUrl: null, canalMaskUrl: null, wallsUrl: null })
+  const [out, setOut] = useState<WaterOverlays>(NO_OVERLAYS)
   useEffect(() => {
     if (!g.active) {
-      setOut({ depthUrl: null, blendUrl: null, canalMaskUrl: null, wallsUrl: null })
+      setOut(NO_OVERLAYS)
       return
     }
     let alive = true
-    let wallsObj: string | null = null
-    drawWalls(g).then((u) => {
-      wallsObj = u
-      if (alive) setOut((o) => ({ ...o, wallsUrl: u }))
+    drawWalls(g).then((cv) => {
+      if (alive) setOut((o) => ({ ...o, walls: cv }))
     })
     const E = extOf(W, H)
     const mk = (S: number) => {
@@ -141,7 +155,7 @@ export function useWaterOverlays(map: GameMap): WaterOverlays {
       const c = o.getContext('2d')!
       c.filter = `blur(${px}px)`
       c.drawImage(src, 0, 0)
-      return o.toDataURL()
+      return o
     }
 
     // ① 수심 — 1/4 해상도 + 흐림
@@ -200,10 +214,9 @@ export function useWaterOverlays(map: GameMap): WaterOverlays {
           }
       canalMaskUrl = mc.toDataURL()
     }
-    setOut((o) => ({ ...o, depthUrl: blurred(dc, 5), blendUrl: anyCanal ? blurred(bc, 4) : null, canalMaskUrl }))
+    setOut((o) => ({ ...o, depth: blurred(dc, 5), blend: anyCanal ? blurred(bc, 4) : null, canalMaskUrl }))
     return () => {
       alive = false
-      if (wallsObj) URL.revokeObjectURL(wallsObj)
     }
   }, [g, W, H])
   return out
@@ -252,8 +265,7 @@ export const WaterBackdrop = memo(function WaterBackdrop({
     <div className="iso-sea" style={{ position: 'absolute', left: vx, top: vy, width: vw, height: vh, overflow: 'hidden', pointerEvents: 'none', background: tile('sea.png') }}>
       <div className="sea-glint sea-glint-a" style={{ ...big, background: tile('sea-glint.png') }} />
       <div className="sea-glint sea-glint-b" style={{ ...big, background: tile('sea-glint2.png', '97px 41px') }} />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {ov.depthUrl && <img src={ov.depthUrl} alt="" style={{ position: 'absolute', left: ox, top: oy, width: E.w, height: E.h, maxWidth: 'none' }} />}
+      {ov.depth && <CanvasLayer canvas={ov.depth} left={ox} top={oy} w={E.w} h={E.h} />}
       {ov.canalMaskUrl && (
         <div
           style={{
@@ -273,12 +285,10 @@ export const WaterBackdrop = memo(function WaterBackdrop({
         >
           <div className="sea-glint canal-glint-a" style={{ ...big, background: tile('canal-glint.png') }} />
           <div className="sea-glint sea-glint-b" style={{ ...big, background: tile('canal-glint2.png', '61px 23px') }} />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {ov.blendUrl && <img src={ov.blendUrl} alt="" style={{ position: 'absolute', left: ox, top: oy, width: E.w, height: E.h, maxWidth: 'none' }} />}
+          {ov.blend && <CanvasLayer canvas={ov.blend} left={ox} top={oy} w={E.w} h={E.h} />}
         </div>
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {ov.wallsUrl && <img src={ov.wallsUrl} alt="" style={{ position: 'absolute', left: ox, top: oy, width: E.w, height: E.h, maxWidth: 'none', imageRendering: 'pixelated' }} />}
+      {ov.walls && <CanvasLayer canvas={ov.walls} left={ox} top={oy} w={E.w} h={E.h} pixelated />}
     </div>
   )
 })
@@ -331,7 +341,7 @@ const loadImg = (src: string) =>
  * 벽(수위 차이)·그늘·거품·연석을 캔버스 한 장에 미리 그려 둔다 → 이미지 1장.
  * (SVG 요소 수천 개로 두면 화면을 다시 그릴 때마다 비싸서 렉의 원인이 됐다)
  */
-async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<string | null> {
+async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<HTMLCanvasElement | null> {
   const E = extOf(g.W, g.H)
   const imgs = { sea: await loadImg(WALL.sea.src), canal: await loadImg(WALL.canal.src) }
   const cv = document.createElement('canvas')
@@ -417,5 +427,5 @@ async function drawWalls(g: ReturnType<typeof useWaterGrid>): Promise<string | n
     }
   })
   ctx.setLineDash([])
-  return await new Promise<string | null>((res) => cv.toBlob((b) => res(b ? URL.createObjectURL(b) : null), 'image/png'))
+  return cv
 }

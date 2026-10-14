@@ -29,6 +29,35 @@ export function creatureSheetSrc(spriteId: string, basePath = '/images/creatures
   return `${basePath}/${spriteId}.png`
 }
 
+// 시트 존재 여부는 한 번만 확인해 기억한다 — 같은 시트를 쓰는 스프라이트가 나타날 때마다
+// 폴백 아이콘이 잠깐 비쳤다 바뀌는 깜빡임과 반복 요청을 없앤다.
+const sheetState = new Map<string, boolean>()
+const sheetWaiters = new Map<string, Set<(ok: boolean) => void>>()
+// 아직 도트 시트가 없는 개체 — 확인 요청(404)을 보내지 않고 바로 아이콘으로 그린다
+const NO_SHEET = new Set(['/images/creatures/mon-mors.png', '/images/creatures/mon-training-dummy.png'])
+
+function probeSheet(src: string, cb: (ok: boolean) => void) {
+  const known = sheetState.get(src)
+  if (known !== undefined) return cb(known), () => {}
+  if (NO_SHEET.has(src)) return sheetState.set(src, false), cb(false), () => {}
+  let waiters = sheetWaiters.get(src)
+  if (!waiters) {
+    waiters = new Set()
+    sheetWaiters.set(src, waiters)
+    const img = new Image()
+    const done = (ok: boolean) => {
+      sheetState.set(src, ok)
+      sheetWaiters.get(src)?.forEach((w) => w(ok))
+      sheetWaiters.delete(src)
+    }
+    img.onload = () => done(img.naturalWidth > 0)
+    img.onerror = () => done(false)
+    img.src = src
+  }
+  waiters.add(cb)
+  return () => void sheetWaiters.get(src)?.delete(cb)
+}
+
 /** Combatant.refId → 스프라이트 id */
 export function spriteIdFromRefId(refId: string) {
   return refId.startsWith('pet-') ? refId.slice(4) : refId
@@ -60,21 +89,15 @@ export function CreatureSprite({
   basePath?: string
   label?: string
 }) {
-  const [sheetOk, setSheetOk] = useState(false)
+  const src = creatureSheetSrc(spriteId, basePath)
+  const [okFor, setOkFor] = useState<string | null>(() => (sheetState.get(src) ? src : null))
+  const sheetOk = okFor === src || sheetState.get(src) === true
   const [frame, setFrame] = useState(0)
   const raf = useRef<number>(0)
 
   useEffect(() => {
-    setSheetOk(false)
-    const img = new Image()
-    img.onload = () => setSheetOk(img.naturalWidth > 0)
-    img.onerror = () => setSheetOk(false)
-    img.src = creatureSheetSrc(spriteId, basePath)
-    return () => {
-      img.onload = null
-      img.onerror = null
-    }
-  }, [spriteId, basePath])
+    return probeSheet(src, (ok) => setOkFor(ok ? src : null))
+  }, [src])
 
   useEffect(() => {
     if (!walking) {
@@ -104,7 +127,7 @@ export function CreatureSprite({
           height: px,
           marginBottom: groundPad ? -Math.round(px * groundPad) : undefined,
           transform: flipX ? 'scaleX(-1)' : undefined,
-          backgroundImage: `url(${creatureSheetSrc(spriteId, basePath)})`,
+          backgroundImage: `url(${src})`,
           backgroundSize: `${px * SHEET_COLS}px ${px * SHEET_ROWS}px`,
           backgroundPosition: `-${col * px}px -${row * px}px`,
           imageRendering: 'pixelated',
