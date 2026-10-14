@@ -2,7 +2,7 @@
 
 // 퀘스트 길찾기 안내선(lib/guide) — 플레이어 발밑에서 목표(또는 목표로 이어지는 포탈)까지 바닥에 노란 반짝이가 흐른다.
 // IsoWorld 의 svg 안(지면 위 · 오브젝트 아래)에 그린다.
-import { useMemo, useSyncExternalStore } from 'react'
+import { memo, useMemo, useSyncExternalStore } from 'react'
 import type { GameMap, GameState } from '@/lib/types'
 import { isoToScreen, stairElevation, type IsoStair } from '@/lib/iso'
 import { guideGoal, guidePath, guidePin, guideRoute, subscribeGuidePin } from '@/lib/guide'
@@ -54,7 +54,8 @@ function Spark({ s }: { s: number }) {
   )
 }
 
-export function GuideTrail({ guide, stairs }: { guide: NonNullable<ReturnType<typeof useGuide>>; stairs?: IsoStair[] }) {
+// 경로는 반 칸 움직일 때만 바뀐다(useGuide 가 같은 객체를 돌려준다) — 그 사이 프레임은 다시 그리지 않는다
+export const GuideTrail = memo(function GuideTrail({ guide, stairs }: { guide: NonNullable<ReturnType<typeof useGuide>>; stairs?: IsoStair[] }) {
   // 계단·테라스 위에서는 그 높이만큼 띄운다
   const at = (x: number, y: number) => {
     const s = isoToScreen(x, y)
@@ -101,7 +102,7 @@ export function GuideTrail({ guide, stairs }: { guide: NonNullable<ReturnType<ty
       )}
     </g>
   )
-}
+})
 
 /** 목표 머리 위에 뜨는 노란 화살표(통통 튄다) — 말 걸 NPC · 타야 할 포탈 */
 export function GuideArrow({ lift }: { lift: number }) {

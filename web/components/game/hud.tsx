@@ -1,6 +1,8 @@
 'use client'
 
 import Image from 'next/image'
+import { memo } from 'react'
+import type { GameState } from '@/lib/types'
 import { useGame } from '@/lib/game-state'
 import { POSITION_META } from '@/lib/constants'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
@@ -11,12 +13,37 @@ import { calendarShortLabel } from '@/lib/calendar'
 import { questTemplateById, REQUIRED_OPTIONAL, weekCompletion } from '@/lib/quests'
 import { itemById } from '@/lib/mock-data'
 
+// 걷는 동안 게임 상태는 매 프레임 바뀌지만(위치) HUD 에 보이는 값은 그대로다 — 보이는 값만 넘겨 memo 로 다시 그리기를 건너뛴다
 export function Hud() {
   const { state, dispatch } = useGame()
-  const { player, pet } = state
+  return (
+    <HudView
+      player={state.player}
+      pet={state.pet}
+      heroPos={state.formation.positions.hero ?? 'front'}
+      testMode={!!state.settings.testMode}
+      weekly={state.weekly}
+      calendar={state.calendar}
+      mealBuff={state.mealBuff}
+      dispatch={dispatch}
+    />
+  )
+}
+
+type HudProps = {
+  player: GameState['player']
+  pet: GameState['pet']
+  heroPos: NonNullable<GameState['formation']['positions']['hero']>
+  testMode: boolean
+  weekly: GameState['weekly']
+  calendar: GameState['calendar']
+  mealBuff: GameState['mealBuff']
+  dispatch: ReturnType<typeof useGame>['dispatch']
+}
+
+const HudView = memo(function HudView({ player, pet, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
   const petDef = petDefById(pet.defId)!
   const petMaxHp = petStatsForLevel(petDef, pet.level).maxHp
-  const heroPos = state.formation.positions.hero ?? 'front'
 
   return (
     <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
@@ -51,7 +78,7 @@ export function Hud() {
         </div>
 
         {/* 학사 달력 + 이번 주 필수 미션 + 식사 버프 */}
-        <WeekTracker />
+        <WeekTracker weekly={weekly} calendar={calendar} mealBuff={mealBuff} dispatch={dispatch} />
 
         {/* 펫 미니 상태 */}
         <div className="title-enter-2 hidden items-center gap-2 pl-1 sm:flex">
@@ -77,7 +104,7 @@ export function Hud() {
           <MenuIcon src="/images/icons/hud/party.png" label="파티" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'party' })} />
           <MenuIcon src="/images/icons/hud/settings.png" label="설정" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })} />
         </div>
-        {state.settings.testMode && (
+        {testMode && (
           <div className="hud-clean-text flex items-center gap-1 text-[10px] text-gold-soft">
             <Sparkles className="size-3" /> 테스트 모드 ON
           </div>
@@ -85,10 +112,10 @@ export function Hud() {
       </div>
     </div>
   )
-}
+})
 
-function WeekTracker() {
-  const { state, dispatch } = useGame()
+function WeekTracker({ weekly, calendar, mealBuff, dispatch }: Pick<HudProps, 'weekly' | 'calendar' | 'mealBuff' | 'dispatch'>) {
+  const state = { weekly, calendar, mealBuff }
   const main = state.weekly.quests.find((q) => q.slot === 'MAIN')
   const mainT = main ? questTemplateById(main.templateId) : undefined
   const { canEnd, optionalDone, requiredOptional } = weekCompletion(state.weekly)
