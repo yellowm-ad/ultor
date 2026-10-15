@@ -842,6 +842,11 @@ export function checkBattleEnd(battle: BattleState): BattleState {
   if (enemiesAlive && playersAlive) return battle
 
   const entries = [...battle.log]
+  // 천공 콜로세움 — 보상·후송 없이 승패만(점수는 서버가)
+  if (battle.pvp) {
+    log(entries, !enemiesAlive ? `${battle.pvp.opponentName}의 팀을 꺾었다! 콜로세움이 환호한다.` : `${battle.pvp.opponentName}의 팀에게 졌다... 다음엔 반드시.`, 'system')
+    return { ...battle, isOver: true, victory: !enemiesAlive, log: entries }
+  }
   if (!enemiesAlive) {
     const heroLevel = battle.combatants.find((c) => c.uid === 'hero')?.level ?? 1
     let expTotal = 0

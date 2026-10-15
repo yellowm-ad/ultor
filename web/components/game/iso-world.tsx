@@ -23,6 +23,8 @@ import { professorSpot, useClassActorEntities } from '@/components/game/class-ac
 import { HeroSprite } from '@/components/game/pixel-hero'
 import { rosterDuoTogether, rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { schoolNpcById } from '@/lib/companions'
+import { ARENA_MAP_ID, newArenaIdentity } from '@/lib/arena'
+import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
 import { addProp, moveProp, useMapOverridesVersion } from '@/lib/map-overrides'
 import { setMapEditor, useMapEditor } from '@/lib/map-editor'
 
@@ -307,6 +309,45 @@ export function IsoWorld({
       },
     ]
   })
+
+  // 천공 콜로세움 — 지금 광장에 있는 다른 플레이어(lib/arena-client 신호). 휴게 광장·진입로 자리에 서서 서성인다. 누르면 그 사람에게 도전
+  const arenaLobby = useArenaLobby()
+  const rivalEntities =
+    map.id !== ARENA_MAP_ID
+      ? []
+      : rivalGhosts(arenaLobby.players, state.arena?.pid).map(({ player: p, npc: ghost }) => {
+            const { pos, facing: walkDir, moving } = npcWanderState(ghost, wanderT, map.blockers)
+            const s = isoToScreen(pos.x, pos.y)
+            const hot = interactId === ghost.id
+            const label = `${p.name} · ${p.rating}`
+            return {
+              sortY: pos.x + pos.y + 0.2,
+              node: (
+                <g
+                  key={ghost.id}
+                  transform={`translate(${s.sx},${s.sy})`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setArenaFocus(p)
+                    dispatch({ type: 'OPEN_ARENA', identity: state.arena ?? newArenaIdentity() })
+                  }}
+                >
+                  <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
+                  <foreignObject x={-RD / 2} y={-RD + 12} width={RD} height={RD} style={{ overflow: 'visible' }}>
+                    <div style={{ width: RD, height: RD, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                      <HeroSprite sheet={`protag-${p.gender}`} dir={walkDir} walking={moving} px={RD} />
+                    </div>
+                  </foreignObject>
+                  <g transform="translate(0,-60)">
+                    <rect x={-label.length * 5 - 5} y={-9} width={label.length * 10 + 10} height={14} rx={3} fill={hot ? '#e0b050' : 'rgba(58,44,12,0.82)'} stroke="#e0b050" strokeWidth={1} />
+                    <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={hot ? '#000' : '#f6e2a8'}>
+                      {label}
+                    </text>
+                  </g>
+                </g>
+              ),
+            }
+          })
 
   // 필드 몬스터 — 홈 셀 반경 6.5셀 안만 렌더(연산 절약), wanderT 마다 배회 위치 재계산
   const visibleMonsters = useMemo(
@@ -618,7 +659,7 @@ export function IsoWorld({
     [staticEntities, viewCx, viewCy, viewHw, viewHh, editor.on],
   )
 
-  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
+  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
   // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
   const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
   // 플레이어 앞뒤를 한 목록으로 — 따로 두면 플레이어가 소품을 지나칠 때마다 그 소품이 통째로 새로 만들어진다

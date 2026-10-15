@@ -44,6 +44,7 @@ function strip(state: GameState): Partial<GameState> {
     fieldMonsters: _fm,
     classScene: _cs,
     passage: _pg,
+    arenaResult: _ar,
     ...rest
   } = state
   // 수업 도중 저장되면 교실이 아니라 수업 들어가기 전 자리로(수업은 다시 듣게 된다)

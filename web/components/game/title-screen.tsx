@@ -28,7 +28,9 @@ export function TitleScreen() {
   const [leaving, setLeaving] = useState(false)
   // 세이브는 브라우저(localStorage)에만 있으므로 마운트 후에 확인(SSR 불일치 방지)
   const [anySave, setAnySave] = useState(false)
-  const [picking, setPicking] = useState(false)
+  // 'load' = 이어하기, 'multi' = 멀티플레이(고른 기록의 캐릭터로 천공 콜로세움)
+  const [picking, setPicking] = useState<false | 'load' | 'multi'>(false)
+  const [note, setNote] = useState<string | null>(null)
   useEffect(() => setAnySave(hasSave()), [])
 
   const handleStart = () => {
@@ -43,7 +45,20 @@ export function TitleScreen() {
     if (leaving || !file) return
     setActiveSlot(slot)
     setLeaving(true)
-    window.setTimeout(() => dispatch({ type: 'LOAD_GAME', saved: file.state }), LEAVE_MS)
+    const multi = picking === 'multi'
+    window.setTimeout(() => {
+      dispatch({ type: 'LOAD_GAME', saved: file.state })
+      if (multi) dispatch({ type: 'ENTER_ARENA_MAP' })
+    }, LEAVE_MS)
+  }
+
+  const handleMulti = () => {
+    if (leaving) return
+    if (!anySave) {
+      setNote('멀티플레이는 내가 키운 캐릭터로 겨룹니다 — 먼저 GAME START 로 캐릭터를 만들어 주세요.')
+      return
+    }
+    setPicking('multi')
   }
 
   return (
@@ -91,7 +106,7 @@ export function TitleScreen() {
           // CONTINUE → 세이브 슬롯 4칸 중 선택
           <div className="save-window screen-fade-in">
             <div className="save-window-head">학생 기록부</div>
-            <div className="save-window-sub">불러올 기록을 선택하세요</div>
+            <div className="save-window-sub">{picking === 'multi' ? '천공 콜로세움에 데려갈 캐릭터의 기록을 선택하세요' : '불러올 기록을 선택하세요'}</div>
             <SaveSlotList mode="load" onPick={handleLoad} rich />
             <button type="button" onClick={() => setPicking(false)} className="title-start-text mt-1 text-sm">
               BACK
@@ -100,7 +115,7 @@ export function TitleScreen() {
         ) : (
           <>
             {anySave && (
-              <button type="button" onClick={() => setPicking(true)} className="title-start-text title-enter-4">
+              <button type="button" onClick={() => setPicking('load')} className="title-start-text title-enter-4">
                 <span className="title-start-dash" aria-hidden="true">—</span>
                 CONTINUE
                 <span className="title-start-dash" aria-hidden="true">—</span>
@@ -111,6 +126,12 @@ export function TitleScreen() {
               {anySave ? 'NEW GAME' : 'GAME START'}
               <span className="title-start-dash" aria-hidden="true">—</span>
             </button>
+            <button type="button" onClick={handleMulti} className="title-start-text title-enter-4">
+              <span className="title-start-dash" aria-hidden="true">—</span>
+              MULTIPLAYER
+              <span className="title-start-dash" aria-hidden="true">—</span>
+            </button>
+            {note && <p className="max-w-xs text-[12px] text-[#e8dcc0]/80">{note}</p>}
           </>
         )}
       </div>

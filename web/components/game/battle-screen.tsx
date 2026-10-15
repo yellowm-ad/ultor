@@ -89,6 +89,12 @@ function playerFormation(players: Combatant[]): Record<string, FxPos> {
   return out
 }
 
+/** 다른 플레이어 팀 — playerFormation 을 좌우로 뒤집는다(펫은 몬스터로 싸우지만 자리는 펫 칸) */
+function rivalFormation(enemies: Combatant[]): Record<string, FxPos> {
+  const asPlayers = enemies.map((c) => (c.kind === 'monster' ? { ...c, kind: 'pet' as const } : c))
+  return Object.fromEntries(Object.entries(playerFormation(asPlayers)).map(([uid, p]) => [uid, { left: 100 - p.left, top: p.top }]))
+}
+
 /** 발밑 좌표(%) — CombatantSprite 렌더용. 5명 이상이면 후열 뒤로 조금씩 밀어 넣는다. */
 function combatantPos(side: 'player' | 'enemy', index: number): FxPos {
   const slots = FORMATION[side]
@@ -273,6 +279,8 @@ export function BattleScreen() {
 
   const posMap: Record<string, FxPos> = {}
   enemies.forEach((c, i) => { posMap[c.uid] = combatantPos('enemy', i) })
+  // 천공 콜로세움 — 상대 팀은 아군 진형을 거울처럼(전위·보조·후위 줄, 펫은 주인공 앞)
+  if (battle.pvp) Object.assign(posMap, rivalFormation(enemies))
   Object.assign(posMap, playerFormation(players))
   const fxPosOf = (uid: string) => {
     const p = posMap[uid]
@@ -719,7 +727,8 @@ function CombatantSprite({
         : null
   const isHero = !!heroLook
   // 사람 보스(히어로 시트를 쓰는 적)는 아군보다 크게 — 위압감
-  const spritePx = isHero ? (c.kind === 'hero' ? 150 : side === 'enemy' ? 250 : 138) : c.kind === 'pet' ? 84 : enemyMonsterPx(side, c.refId)
+  // 콜로세움 상대(rival)는 보스가 아니라 같은 학생 — 아군과 같은 크기
+  const spritePx = isHero ? (c.kind === 'hero' ? 150 : side === 'enemy' && !c.rival ? 250 : 138) : c.kind === 'pet' || (c.rival && c.kind === 'monster') ? 84 : enemyMonsterPx(c.rival ? 'player' : side, c.refId)
   const rage = c.aura === 'rage-violet' && c.alive
   // 히어로 시트 프레임 아래쪽 투명 여백(≈14%)만큼 끌어내려 발이 실제 좌표에 닿게 (크리처는 CreatureSprite groundPad)
   const footPad = isHero ? Math.round(spritePx * 0.14) : 0
@@ -911,7 +920,9 @@ function BattleResult() {
   return (
     <div className="flex flex-col items-center justify-center gap-1.5 py-1">
       <span className={`font-display text-sm ${battle.victory ? 'text-gold-soft' : 'text-red-300'}`}>
-        {battle.victory
+        {battle.pvp
+          ? `${battle.victory ? '승리!' : '패배...'} ${battle.pvp.opponentName}의 팀 — ${battle.pvp.practice ? '연습 대전(점수 변동 없음)' : '계속하면 점수가 기록됩니다'}`
+          : battle.victory
           ? (battle.rewardExpShare ?? 0) < (battle.rewardExp ?? 0)
             ? `승리! EXP +${battle.rewardExpShare}/인 (총 ${battle.rewardExp}) · Gold +${battle.rewardGold}`
             : `승리! EXP +${battle.rewardExp} (단독) · Gold +${battle.rewardGold}`

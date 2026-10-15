@@ -51,7 +51,7 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'STORMHAVEN',
     name: '스톰헤이븐 · 천공 신전',
-    maps: ['stormhaven', 'stormhaven-2', 'stormhaven-3', 'cloud-rift', 'thunder-spire', 'sky-temple', 'sky-sanctum'],
+    maps: ['stormhaven', 'stormhaven-2', 'stormhaven-3', 'cloud-rift', 'thunder-spire', 'sky-temple', 'sky-sanctum', 'sky-colosseum'],
     recommendedLevel: 7,
     contentProfile: { gather: 2, hunt: 3, fish: 1, craft: 4, alchemy: 2, explore: 5, story: 5 },
     description: "CH3 무대. 폭풍 위 하늘 도시와 천공 신전, 성녀와 '네 개로 나뉜 왕의 마음'의 기록.",

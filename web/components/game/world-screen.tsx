@@ -15,6 +15,8 @@ import { useGuide } from '@/components/game/guide-trail'
 import { mapLockReason } from '@/lib/passages'
 import { nearestSpot } from '@/lib/activity-spots'
 import { WeatherLayer } from '@/components/game/weather-layer'
+import { ARENA_MAP_ID, newArenaIdentity } from '@/lib/arena'
+import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
 // 전 맵이 아이소 도트 엔진(iso-world.tsx)으로 렌더된다 — 옛 CSS 그라디언트/일러스트 렌더 경로는 제거됨(2026-09-28)
@@ -142,6 +144,7 @@ export function WorldScreen() {
   }, [state.screen])
 
   const map = MAPS[state.currentMapId]
+  const arenaLobby = useArenaLobby()
   /** 맵 톤(자연 지면 맵) — 1 초과 밝은 지역, 1 미만 어두운 지역. 그 밖의 맵은 1 */
   const tone = map.terrain?.tone ?? map.ambientTone ?? 1
   const mapNpcs = useMemo(
@@ -156,6 +159,12 @@ export function WorldScreen() {
     const near = nearestNpc()
     if (near) {
       dispatch({ type: 'OPEN_NPC', npcId: near.id })
+      return
+    }
+    const rival = nearestRival()
+    if (rival) {
+      setArenaFocus(rival.player)
+      dispatch({ type: 'OPEN_ARENA', identity: state.arena ?? newArenaIdentity() })
       return
     }
     const secret = nearestSecret()
@@ -207,6 +216,22 @@ export function WorldScreen() {
     return best
   }
 
+  /** 천공 콜로세움 광장의 다른 플레이어 — 가까이 가서 E 로 도전 */
+  function nearestRival() {
+    if (map.id !== ARENA_MAP_ID) return null
+    let best: ReturnType<typeof rivalGhosts>[number] | null = null
+    let bestDist = 1.2
+    for (const r of rivalGhosts(arenaLobby.players, state.arena?.pid)) {
+      const pos = npcWanderPosition(r.npc, performance.now(), map.blockers)
+      const d = Math.hypot(pos.x - state.position.x, pos.y - state.position.y)
+      if (d < bestDist) {
+        bestDist = d
+        best = r
+      }
+    }
+    return best
+  }
+
   // 퀘스트 길찾기 — 켜고 끄기는 브라우저에 기억
   const [guideOn, setGuideOn] = useState(true)
   useEffect(() => {
@@ -242,6 +267,7 @@ export function WorldScreen() {
   const currentZone = zoneAt(map, state.position.x, state.position.y)
   const locationName = currentZone?.name ?? map.name
   const interactTarget = nearestNpc()
+  const nearRival = interactTarget ? null : nearestRival()
   const nearSecret = interactTarget ? null : nearestSecret()
   const nearSpot = interactTarget || nearSecret ? null : nearestSpot(map.id, state.position)
   const nearNode = interactTarget || nearSecret || nearSpot ? null : nearestGatherNode(map, state.life, state.position)
@@ -283,7 +309,7 @@ export function WorldScreen() {
       viewportSize={viewportSize}
       moving={moving}
       running={running}
-      interactId={interactTarget?.id ?? nearSpot?.id ?? nearNode?.key ?? null}
+      interactId={interactTarget?.id ?? nearRival?.npc.id ?? nearSpot?.id ?? nearNode?.key ?? null}
       guide={guideOn ? guide : null}
     />
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}
@@ -344,6 +370,14 @@ export function WorldScreen() {
         <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2">
           <div className="panel-gilded flex items-center gap-2 px-3 py-1.5 text-xs text-gold-soft">
             <MessageCircle className="size-3.5" /> {interactTarget.name}와(과) 대화 <span className="touch-hide">(E)</span>
+          </div>
+        </div>
+      )}
+
+      {nearRival && !state.pendingPortalId && (
+        <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2">
+          <div className="panel-gilded flex items-center gap-2 px-3 py-1.5 text-xs text-gold-soft">
+            <MessageCircle className="size-3.5" /> {nearRival.player.name}(점수 {nearRival.player.rating})에게 도전 <span className="touch-hide">(E)</span>
           </div>
         </div>
       )}

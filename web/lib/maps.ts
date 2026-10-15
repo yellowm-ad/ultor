@@ -29,6 +29,7 @@ import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
 import { landmarkInterior, cryptRoom, CRYPT_W, CRYPT_H, CRYPT_SPAWN, CRYPT_EXIT, CRYPT_PAD_TOP, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
+import { ARENA_CENTER, COL_ENTRANCE, COL_H, COL_W, COLOSSEUM_BLOCKERS, COLOSSEUM_PROPS, COLOSSEUM_STRUCTURES, colosseumTileAt } from '@/lib/colosseum-map'
 
 type Blocker = { x0: number; y0: number; x1: number; y1: number }
 
@@ -960,6 +961,31 @@ export const MAPS = {
     portals: [
       { id: 'sky-temple-exit', cell: { x: SKY_CX, y: SKY_ENTRANCE_CY + 0.5 }, to: townReturn('sky-temple').to, toSpawn: townReturn('sky-temple').spawn, label: '스톰헤이븐으로', kind: 'exit' },
       { id: 'sky-sanctum-enter', cell: { x: 32, y: 10 }, to: 'sky-sanctum', label: '천공 대신전 내부', kind: 'portal' },
+      // 신전 앞마당 동쪽 구석 — 사제들만 아는 계단(천공 콜로세움은 비밀리에 열린다)
+      { id: 'sky-colosseum-enter', cell: { x: 38.8, y: 10.4 }, to: 'sky-colosseum', toSpawn: { x: COL_ENTRANCE.x, y: COL_ENTRANCE.y - 1.6 }, label: '비밀 계단 — 천공 콜로세움', kind: 'portal' },
+    ],
+  },
+
+  // ── 천공 콜로세움(멀티플레이 광장) — lib/colosseum-map.ts · 대전·랭킹은 lib/arena ──
+  'sky-colosseum': {
+    id: 'sky-colosseum',
+    name: '천공 콜로세움',
+    kind: 'town',
+    grid: { w: COL_W, h: COL_H },
+    bg: 'sky',
+    render: 'iso',
+    assets: 'raster',
+    tileAt: colosseumTileAt,
+    props: COLOSSEUM_PROPS,
+    structures: COLOSSEUM_STRUCTURES,
+    blockers: COLOSSEUM_BLOCKERS,
+    floorInlay: [{ cx: ARENA_CENTER.x, cy: ARENA_CENTER.y + 1, r: 4.2, gold: '#e9c35a', blue: '#7fb2ee' }],
+    zones: [
+      z('z-sky-colosseum', 'temple', '천공 콜로세움', 0, 0, COL_W, COL_H, '#e9d9a0', '천공 신전 사제들이 비밀리에 여는 투기장. 각지의 마법사들이 팀을 겨루고 이름을 새긴다.'),
+    ],
+    spawn: { x: COL_ENTRANCE.x, y: COL_ENTRANCE.y - 1.6 },
+    portals: [
+      { id: 'sky-colosseum-exit', cell: { x: COL_ENTRANCE.x, y: COL_ENTRANCE.y + 0.6 }, to: 'sky-temple', toSpawn: { x: 38.8, y: 11.6 }, label: '천공 신전으로', kind: 'exit' },
     ],
   },
 

@@ -352,6 +352,8 @@ export interface Combatant {
   appearance?: { kind: 'hero'; sheet: SpriteSheet } | { kind: 'npc'; npcId: string }
   /** 전투 화면 연출 — 'rage-violet' = 보랏빛 불꽃·오라·흔들림(폭주 보스) */
   aura?: 'rage-violet'
+  /** 천공 콜로세움 — 다른 플레이어 팀의 전투원(보스 크기가 아닌 보통 크기로, 진형도 아군과 마주 보게) */
+  rival?: boolean
   alive: boolean
 }
 
@@ -490,6 +492,7 @@ export type MapId =
   | 'volcano-3'
   | 'lava-cave'
   | 'sky-temple'
+  | 'sky-colosseum'
   | 'ruins'
   | 'graveyard'
   | 'temple-ruin'
@@ -763,6 +766,8 @@ export interface BattleState {
   huntDrops?: string[]
   /** 스토리 장면이 연 전투 — 지거나 도망치면 그 장면을 다시 볼 수 있게 되돌린다 */
   storyBeatId?: string
+  /** 천공 콜로세움 대전(lib/arena) — 보상·기절 대신 점수, 끝나면 그 자리로 */
+  pvp?: import('./arena-core').ArenaMatch
 }
 
 export type ScreenId =
@@ -779,6 +784,7 @@ export type ScreenId =
   | 'dialogue'
   | 'craft'
   | 'worldmap'
+  | 'arena' // 천공 콜로세움 — 팀 등록·대전·랭킹·광장(lib/arena)
   | 'journal' // 학사 수첩 — 주간 미션·학사·도감·관계
 
 export interface GameSettings {
@@ -845,6 +851,10 @@ export interface GameState {
   fishing: FishingSession | null
   /** 진행 중인 수업 장면(저장 안 함) */
   classScene?: ClassSceneState | null
+  /** 천공 콜로세움 신분(이 저장 기록의 캐릭터 = 랭킹 한 줄) — 처음 팀을 올릴 때 만든다 */
+  arena?: import('./arena-core').ArenaIdentity
+  /** 방금 끝난 콜로세움 대전 — 콜로세움 창이 서버에 결과를 보고하고 지운다(저장 안 함) */
+  arenaResult?: { match: import('./arena-core').ArenaMatch; won: boolean } | null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

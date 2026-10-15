@@ -23,6 +23,8 @@ import { CraftScreen } from '@/components/game/craft-screen'
 import { WorldMapScreen } from '@/components/game/world-map-screen'
 import { Toast } from '@/components/game/toast'
 import { JournalScreen } from '@/components/game/journal-screen'
+import { ArenaScreen } from '@/components/game/arena-screen'
+import { ArenaPresence } from '@/components/game/arena-presence'
 import { ClassSceneOverlay } from '@/components/game/class-scene'
 import { StoryOverlay } from '@/components/game/story-overlay'
 import { FishingOverlay } from '@/components/game/fishing-overlay'
@@ -46,6 +48,7 @@ const CLOSABLE_WITH_ESC = new Set<ScreenId>([
   'craft',
   'worldmap',
   'dialogue',
+  'arena',
 ])
 
 function GameShell() {
@@ -103,6 +106,7 @@ function GameShell() {
       <Hud />
       <Minimap />
       <Toast />
+      <ArenaPresence mapId={state.currentMapId} identity={state.arena} />
       {/* 대화·가방은 내부 로컬 state(대사 인덱스·탭 선택 등)가 열고 닫는 사이 유지돼야 해서 상시 마운트.
           나머지는 로컬 state가 없어 필요할 때만 마운트해도 동작이 완전히 동일 — 이동 중 매 프레임
           쓸데없이 리렌더되는 걸 막는다(useGame() 컨텍스트를 구독하면 화면이 'world'로 안 열려 있어도
@@ -118,6 +122,7 @@ function GameShell() {
       {state.screen === 'settings' && <SettingsScreen />}
       {state.screen === 'worldmap' && <WorldMapScreen />}
       {state.screen === 'journal' && <JournalScreen />}
+      {state.screen === 'arena' && <ArenaScreen />}
       </ScreenGuard>
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}

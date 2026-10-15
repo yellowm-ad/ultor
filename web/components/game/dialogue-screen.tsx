@@ -11,6 +11,7 @@ import { skillById } from '@/lib/mock-data'
 import { canRecruit, favorState, schoolNpcById } from '@/lib/companions'
 import { banterAdvance, banterScene, duoOf } from '@/lib/npc-banter'
 import { rosterDuoTogether } from '@/lib/school-roster'
+import { newArenaIdentity } from '@/lib/arena'
 
 const ROLE_LABEL: Record<string, string> = {
   professor: '교수',
@@ -67,6 +68,7 @@ export function DialogueScreen() {
   const isProfessor = npc.role === 'professor'
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'
+  const isArena = npc.role === 'arenaMaster'
   // 학교 동료 — 아직 합류하지 않았고 조건이 되면 대화 끝에 '파티에 합류' 권유
   const mate = npc.role === 'companion' ? schoolNpcById(npc.id) : undefined
   const canJoin = !!mate && !state.companions.recruited[mate.id] && canRecruit(state, mate).ok
@@ -98,7 +100,7 @@ export function DialogueScreen() {
   const lastLine = lineIdx >= lines.length - 1
 
   const favorAct = !!favor && !banter && (favor.st === 'ready' || (favor.st === 'asked' && favorHave >= favor.rule.qty))
-  const hasActions = isShopkeeper || isTamer || isCraftStation || isElder || isProfessor || canJoin || favorAct
+  const hasActions = isShopkeeper || isTamer || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -139,6 +141,11 @@ export function DialogueScreen() {
             {isCraftStation && (
               <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: npc.id })}>
                 제작하기
+              </button>
+            )}
+            {isArena && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_ARENA', identity: state.arena ?? newArenaIdentity() })}>
+                콜로세움 접수
               </button>
             )}
             {favorAct && favor?.st === 'ready' && (

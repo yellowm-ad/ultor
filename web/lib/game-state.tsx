@@ -13,6 +13,7 @@ import type {
 } from '@/lib/types'
 import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { MAPS, zoneAt } from '@/lib/maps'
+import { ARENA_MAP_ID, initArenaBattle, type ArenaIdentity, type ArenaMatch, type ArenaTeam } from '@/lib/arena'
 import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
@@ -105,6 +106,12 @@ export type Action =
   | { type: 'TOGGLE_EQUIP_SKILL'; skillId: string }
   | { type: 'SET_ACTIVE_PET'; defId: string }
   | { type: 'START_BATTLE'; fieldMonsterUid: string }
+  /** 천공 콜로세움 창 — 신분이 없으면 이때 넘겨준 것으로(무작위 값은 리듀서 밖에서 만든다) */
+  | { type: 'OPEN_ARENA'; identity: ArenaIdentity }
+  | { type: 'ARENA_FIGHT'; opponent: ArenaTeam; match: ArenaMatch }
+  | { type: 'ARENA_RESULT_CLEAR' }
+  /** 타이틀 「멀티플레이」 — 불러온 기록의 캐릭터를 천공 콜로세움 입구로 */
+  | { type: 'ENTER_ARENA_MAP' }
   | { type: 'ENCOUNTER_FIGHT' }
   /** 돌진한 몬스터가 플레이어에게 닿음(lib/monster-charge) — 접촉과 같이 바로 전투 전환 */
   | { type: 'ENCOUNTER'; uid: string }
@@ -888,11 +895,43 @@ function reducer(state: GameState, action: Action): GameState {
     case 'START_BATTLE':
       return startBattleFromField(state, action.fieldMonsterUid)
 
+    case 'OPEN_ARENA':
+      return { ...state, arena: state.arena ?? action.identity, activeNpcId: 'npc-arena', previousScreen: state.screen, screen: 'arena' }
+
+    case 'ARENA_FIGHT':
+      return { ...state, previousScreen: 'arena', screen: 'battle', battle: initArenaBattle(state, action.opponent, action.match), arenaResult: null }
+
+    case 'ARENA_RESULT_CLEAR':
+      return { ...state, arenaResult: null }
+
+    case 'ENTER_ARENA_MAP': {
+      const dest = MAPS[ARENA_MAP_ID]
+      const pos = dest.spawn
+      return visitMap(
+        {
+          ...state,
+          screen: 'world',
+          currentMapId: dest.id,
+          position: { ...pos },
+          facing: 'up',
+          currentZoneId: zoneAt(dest, pos.x, pos.y)?.id ?? '',
+          fieldMonsters: [],
+          pendingEncounterUid: null,
+          pendingPortalId: null,
+          gateOpen: false,
+          toast: '천공 콜로세움 — 제단 앞 투기장장 그로먼에게 말을 걸어 보세요.',
+        },
+        dest.id,
+      )
+    }
+
     case 'BATTLE_ACTOR_ACTION': {
       if (!state.battle) return state
       const { battle: resolved, itemConsumed, fled } = resolveAction(state.battle, action.actorUid, action.action)
       let inventory = state.inventory
       if (itemConsumed) inventory = removeFromInventory(inventory, itemConsumed, 1)
+      // 콜로세움에서 도망 = 기권패
+      if (fled && state.battle.pvp) return endArenaBattle({ ...state, inventory }, false)
       if (fled) return reopenStoryBattle(afterBattleFled(leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.'), resolved), resolved)
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
@@ -914,6 +953,7 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'BATTLE_END_CONTINUE': {
       if (!state.battle) return state
+      if (state.battle.pvp) return endArenaBattle(state, state.battle.victory)
       const heroC = state.battle.combatants.find((c) => c.uid === 'hero')
       const petC = state.battle.combatants.find((c) => c.uid === 'pet')
 
@@ -1091,6 +1131,13 @@ function leaveBattle(
     screen: 'world',
     toast,
   }
+}
+
+/** 콜로세움 대전 끝 — HP·동료·펫은 대전 전 그대로(콜로세움이 치료), 콜로세움 창으로 돌아가 결과를 보고한다 */
+function endArenaBattle(state: GameState, won: boolean): GameState {
+  const match = state.battle?.pvp
+  if (!match) return state
+  return { ...state, battle: null, activeNpcId: 'npc-arena', screen: 'arena', arenaResult: { match, won } }
 }
 
 function startBattleFromField(state: GameState, fieldMonsterUid: string): GameState {
