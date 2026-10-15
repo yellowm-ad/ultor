@@ -35,6 +35,11 @@ const JOBS = [
   // 엘다·헬가 칸은 세로로 길어 가슴께(칸 위 ~70%)까지만
   ['NPC 엘다, 헬가 초상화.png', ['portrait-npc-archivist.png'], [63, 78, 743, 680]],
   ['NPC 엘다, 헬가 초상화.png', ['portrait-npc-elder.png'], [795, 78, 1472, 680]],
+  ['NPC 반, 셀린, 토비, 리코, 로한 초상화.png', ['portrait-npc-weapon.png'], [24, 21, 498, 498]],
+  ['NPC 반, 셀린, 토비, 리코, 로한 초상화.png', ['portrait-npc-potion.png'], [532, 21, 1006, 498]],
+  ['NPC 반, 셀린, 토비, 리코, 로한 초상화.png', ['portrait-npc-tool.png'], [1040, 21, 1514, 498]],
+  ['NPC 반, 셀린, 토비, 리코, 로한 초상화.png', ['portrait-npc-tamer.png'], [275, 523, 750, 1000]],
+  ['NPC 반, 셀린, 토비, 리코, 로한 초상화.png', ['portrait-npc-guard.png'], [787, 523, 1261, 1000]],
 ]
 for (const [file, outs, [x0, y0, x1, y1]] of JOBS) {
   const buf = await sharp(path.join(SRC, file))
