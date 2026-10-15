@@ -1,5 +1,5 @@
 // 삼면도의 '대화창 초상화' 칸을 잘라 대화창 초상화로 넣는다(2026-10-14)
-//   원본: 게임 개발 파일/전투 NPC … 삼면도.png · NPC 오웬, 이그니스 삼면도.png (1536×1024)
+//   원본: 게임 개발 파일/전투 NPC … 삼면도.png · NPC … 삼면도.png · NPC … 초상화.png (1536×1024)
 //   출력: public/images/npc/portrait-<id>.png — 가로 512px(대화창 2배 해상도까지 선명하게), 칸 테두리 선은 안쪽으로 잘라 뺀다
 // 실행: node scripts/import-portraits.mjs
 import sharp from 'sharp'
@@ -23,6 +23,12 @@ const JOBS = [
   ['NPC 루멘, 에드릭 삼면도.png', ['portrait-prof-lumen.png'], [1240, 327, 1508, 490]],
   // 에드릭 = 학사 담당 교수(npc-job-trainer)
   ['NPC 루멘, 에드릭 삼면도.png', ['portrait-npc-job-trainer.png'], [1240, 829, 1508, 1000]],
+  // 초상화 전용 시트(2026-10-15) — 칸 전체가 흉상
+  ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-workbench.png'], [82, 17, 491, 489]],
+  ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-alchemy-pot.png'], [547, 17, 987, 489]],
+  ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-kitchen.png'], [1045, 17, 1455, 489]],
+  ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-priest.png'], [311, 526, 734, 999]],
+  ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-farmer.png'], [800, 526, 1224, 999]],
 ]
 for (const [file, outs, [x0, y0, x1, y1]] of JOBS) {
   const buf = await sharp(path.join(SRC, file))
