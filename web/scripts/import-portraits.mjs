@@ -29,6 +29,9 @@ const JOBS = [
   ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-kitchen.png'], [1045, 17, 1455, 489]],
   ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-priest.png'], [311, 526, 734, 999]],
   ['NPC 핀, 이졸데, 마르코, 세드릭, 하름 초상화.png', ['portrait-npc-farmer.png'], [800, 526, 1224, 999]],
+  ['NPC 로잔, 폴고 초상화.png', ['portrait-npc-duo-florist.png'], [48, 63, 486, 621]],
+  // 폴코(시트 이름 폴고) — 칸 오른쪽 아래 반짝이 표식은 빼고
+  ['NPC 로잔, 폴고 초상화.png', ['portrait-npc-duo-baker.png'], [538, 63, 976, 575]],
 ]
 for (const [file, outs, [x0, y0, x1, y1]] of JOBS) {
   const buf = await sharp(path.join(SRC, file))

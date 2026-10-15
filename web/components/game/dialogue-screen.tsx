@@ -107,8 +107,9 @@ export function DialogueScreen() {
     <DialogueBox
       speaker={speaker.name}
       role={speakerMate ? speakerMate.title : ROLE_LABEL[speaker.role]}
+      // 색조(hue)는 빌린 도트를 다른 사람처럼 보이게 하는 것 — 자기 초상화(portraitId)가 있으면 물들이지 않는다
       portrait={
-        <span className="block h-full w-full" style={speaker.hue ? { filter: `hue-rotate(${speaker.hue}deg)` } : undefined}>
+        <span className="block h-full w-full" style={speaker.hue && !speaker.portraitId ? { filter: `hue-rotate(${speaker.hue}deg)` } : undefined}>
           <Portrait id={speaker.portraitId ?? speaker.spriteId ?? speaker.id} className="h-full w-full" />
         </span>
       }
