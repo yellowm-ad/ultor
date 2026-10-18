@@ -265,13 +265,16 @@ function QuizGame({ seed, year, field, onDone }: MiniGameProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 type Judge = 'PERFECT' | 'GREAT' | 'GOOD' | 'MISS'
 const JUDGE_POINT: Record<Judge, number> = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }
-const LANE_H = 360
-const JUDGE_Y = 300
+const LANE_H_MAX = 360
+/** 레인 높이 — 폰 가로처럼 세로가 낮은 화면에선 줄인다(판정선이 화면 밖으로 잘렸다, 2026-10-18). 판정선은 바닥에서 60px 위 */
+const laneHeight = () => (typeof window === 'undefined' ? LANE_H_MAX : Math.max(200, Math.min(LANE_H_MAX, window.innerHeight - 150)))
 const FALL_MS = 1400
 
 function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   const chart = useMemo(() => buildRhythmChart(style, year, mulberry32(seed ^ 0x7e11), round), [seed, year, style, round])
   const meta = RHYTHM_STYLE_META[style]
+  const [LANE_H] = useState(laneHeight)
+  const JUDGE_Y = LANE_H - 60
   const [started, setStarted] = useState(false)
   const [now, setNow] = useState(0)
   const startRef = useRef(0)

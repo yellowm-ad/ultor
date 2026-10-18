@@ -105,7 +105,7 @@ const HudView = memo(function HudView({ player, pet, heroPos, testMode, weekly, 
           <MenuIcon src="/images/icons/hud/settings.png" label="설정" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })} />
         </div>
         {testMode && (
-          <div className="hud-clean-text flex items-center gap-1 text-[10px] text-gold-soft">
+          <div className="hud-testmode hud-clean-text flex items-center gap-1 text-[10px] text-gold-soft">
             <Sparkles className="size-3" /> 테스트 모드 ON
           </div>
         )}

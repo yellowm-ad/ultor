@@ -441,6 +441,23 @@
     .create-window-body { grid-template-columns: 1fr; }
     .create-stage-art { height: 200px; }
   }
+  /* 폰 가로(2026-10-18) — 한 줄로 쌓이면 첫 화면에 그림만 보이고 이름·펫 칸이 스크롤 밑으로 숨었다. 가로 두 칸 + 낮게 */
+  @media (orientation: landscape) and (max-height: 560px) {
+    .create-root { padding: 6px !important; }
+    .create-window-head { padding: 6px 12px 5px; gap: 4px; }
+    .create-window-head h1 { font-size: 16px; }
+    .create-window-head span { display: none; }
+    .create-window-body { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr) !important; gap: 10px; padding: 8px 12px; }
+    .create-stage { gap: 6px; }
+    .create-stage-art { height: 150px !important; }
+    .create-stage-art .create-hero-idle { scale: 0.8; transform-origin: 50% 100%; }
+    .create-blurb { display: none; }
+    .create-gender button { padding: 5px 18px; font-size: 13px; }
+    .create-form { gap: 8px; }
+    .create-name-input { padding-top: 6px !important; padding-bottom: 6px !important; }
+    .create-pet { padding: 4px 2px; }
+    .create-window-foot { padding: 6px 12px 8px; }
+  }
   /* ── 전투 명령창(components/game/battle-screen) — 한 줄 네 칸 + 위로 펼쳐지는 아이콘 ── */
   /* 2026-10-18 전투 명령창 정리 — 장식 프레임 이미지(흰 가장자리가 비쳐 보였다) 대신 따뜻한 검정 상자 + 금색 단선.
      버튼은 테두리 없이 글자만, 고른 칸 앞에 ◆ (언더테일식 선택 표시) */
@@ -1919,7 +1936,8 @@
 
 /* ───────── 모바일·태블릿(가로 기준) 대응 ─────────
    데스크톱 레이아웃은 건드리지 않고, 아래 두 조건에서만 덮어쓴다.
-   · (pointer: coarse)           — 터치 기기: 가상 방향키 노출, 키보드 힌트 숨김
+   · html.touch-ui               — 터치 기기(app/layout 의 첫 스크립트가 pointer:coarse 또는 ?touch=1 이면 붙임):
+                                   가상 방향키 노출, 키보드 힌트 숨김. PC 에서 ?touch=1 로 폰 화면을 그대로 재현해 점검할 수 있다
    · (max-height: 560px) 가로     — 폰 가로처럼 세로가 낮은 화면: HUD/미니맵/전투 UI 압축 */
 html,
 body {
@@ -1933,22 +1951,29 @@ body {
 .touch-only {
   display: none !important;
 }
-@media (pointer: coarse) {
-  .touch-only {
-    display: grid !important;
-  }
-  .touch-hide {
-    display: none !important;
-  }
-  /* 방향키가 좌하단을 쓰므로 위치 안내는 하단 중앙으로 */
-  .world-location-label {
-    left: 50% !important;
-    transform: translateX(-50%);
-  }
+/* 세로 화면 차단막(components/game/rotate-gate) — 휴대폰은 가로로만 */
+.rotate-gate { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; background: radial-gradient(90% 70% at 50% 40%, #241f17 0%, #0b0907 100%); color: #f3e6c4; text-align: center; }
+.rotate-gate-phone { position: relative; width: 54px; height: 90px; border: 4px solid #c79a3e; border-radius: 10px; animation: rotate-gate 2.4s ease-in-out infinite; }
+.rotate-gate-phone span { position: absolute; left: 50%; bottom: 6px; width: 12px; height: 4px; margin-left: -6px; border-radius: 2px; background: #c79a3e; }
+@keyframes rotate-gate { 0%, 25% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+.rotate-gate-title { margin-top: 18px; font-family: var(--font-display, serif); font-size: 20px; letter-spacing: 0.06em; }
+.rotate-gate-sub { font-size: 13px; color: rgba(243, 230, 196, 0.7); }
+.rotate-gate-btn { margin-top: 8px; padding: 10px 22px; border: 2px solid #f0d999; border-radius: 8px; background: linear-gradient(180deg, #f6dc8e, #c99a3a); color: #2a1d10; font-weight: 700; box-shadow: 0 3px 0 #6e4c14; }
+
+html.touch-ui .touch-only {
+  display: grid !important;
+}
+html.touch-ui .touch-hide {
+  display: none !important;
+}
+/* 방향키가 좌하단을 쓰므로 위치 안내는 하단 중앙으로 */
+html.touch-ui .world-location-label {
+  left: 50% !important;
+  transform: translateX(-50%);
 }
 /* 좁은 터치 화면 — 하단 중앙 위치 안내가 오른쪽 아래 탐사 마법 줄과 겹친다. 위치는 미니맵 제목에도 나오므로 숨긴다(2026-10-18) */
-@media (pointer: coarse) and (max-width: 760px) {
-  .world-location-label { display: none !important; }
+@media (max-width: 760px) {
+  html.touch-ui .world-location-label { display: none !important; }
 }
 
 /* 가상 방향키 — 누른 채 손가락이 미끄러져도 스크롤/확대/길게누르기 메뉴가 끼어들지 않게 */
@@ -1996,8 +2021,8 @@ body {
   /* 미니맵 축소 — 크기 계산은 그대로 두고 우상단 기준으로만 줄인다.
      등장 애니메이션이 transform을 쓰므로 개별 속성 scale로 겹치지 않게 한다. */
   .minimap-safe {
-    top: 4.75rem !important;
-    scale: 0.68;
+    top: 5.4rem !important;
+    scale: 0.62;
     transform-origin: top right;
   }
   .dpad button {
@@ -2042,6 +2067,17 @@ body {
   .battle-log {
     max-height: 2.25rem !important;
   }
+}
+
+/* 폰 가로 — 탐사 마법 줄은 아이콘만(이름은 길게 눌러 툴팁), 테스트 모드 표시는 메뉴 글자와 겹쳐 숨김 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .field-spell-bar { gap: 3px; padding: 4px; }
+  .field-spell-title { display: none; }
+  .field-spell { width: 40px; padding: 3px 1px 2px; }
+  .field-spell-name { display: none; }
+  .field-spell-icon { font-size: 15px; line-height: 18px; }
+  .field-spell-sub { font-size: 8.5px; }
+  .hud-testmode { display: none !important; }
 }
 
 /* ════════════════════════════════════════════════════════════════════════════

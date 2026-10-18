@@ -3,6 +3,7 @@
 // 환경설정 — 공용 GameWindow. 왼쪽 항목(사운드·게임·저장·백업) · 오른쪽 내용.
 
 import { useState } from 'react'
+import { enterLandscapeFullscreen } from '@/components/game/rotate-gate'
 import { useGame } from '@/lib/game-state'
 import { deleteSave, exportSave, getActiveSlot, parseSaveFile, setActiveSlot, writeSave } from '@/lib/save'
 import { SaveSlotList } from '@/components/game/save-slots'
@@ -69,6 +70,15 @@ export function SettingsScreen() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="set-row">
+                <div>
+                  <div className="t">전체 화면</div>
+                  <div className="d">주소창 없이 화면 전체로 플레이합니다. 휴대폰에서는 가로로 고정됩니다(지원하는 브라우저).</div>
+                </div>
+                <button type="button" className="gw-btn is-sm is-quiet" onClick={() => (document.fullscreenElement ? document.exitFullscreen?.() : enterLandscapeFullscreen())}>
+                  켜기 / 끄기
+                </button>
               </div>
               <div className="set-row">
                 <div>

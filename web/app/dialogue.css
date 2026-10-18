@@ -310,3 +310,14 @@
 @media (prefers-reduced-motion: reduce) {
   .dlg-root, .dlg-wrap, .dlg-next-icon { animation: none; }
 }
+
+/* 폰 가로(세로가 낮은 화면, 2026-10-18) — 대화창이 화면 절반을 차지하던 것을 낮게.
+   초상 액자·본문 여백·최소 높이를 줄이고, 본문은 두 줄 기준 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .dlg-root { --dlg-pw: 104px; --dlg-ph: 128px; --dlg-cut: 16px; }
+  .dlg-panel { min-height: 0 !important; padding: 16px 24px 10px 24px !important; }
+  .dlg-wrap.has-portrait .dlg-panel { padding-left: calc(var(--dlg-pw) * 0.38 + 18px) !important; }
+  .dlg-text { min-height: 2.6em; font-size: 14px; line-height: 1.5; }
+  .dlg-actions { margin-top: 4px; }
+  .dlg-watermark { display: none; }
+}

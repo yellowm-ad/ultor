@@ -3,6 +3,7 @@
 import { initMapOverrides } from '@/lib/map-overrides'
 import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect } from 'react'
+import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
 import type { ScreenId } from '@/lib/types'
@@ -149,6 +150,7 @@ export function GameRoot() {
       <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
         <GameShell />
       </div>
+      <RotateGate />
     </GameProvider>
   )
 }

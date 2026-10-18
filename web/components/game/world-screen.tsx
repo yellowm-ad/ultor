@@ -440,7 +440,7 @@ export function WorldScreen() {
       )}
 
       {/* 탐사 마법(순간이동·끌어오기·질주·등불·투명화) — 숫자 키 1~5 */}
-      {!state.classScene && (
+      {!state.classScene && state.storyQueue.length === 0 && state.screen === 'world' && (
         <FieldSpellBar state={state} raised={state.currentMapId === 'personal-space'} onCast={(spell) => dispatch({ type: 'CAST_FIELD_SPELL', spell })} />
       )}
 
@@ -572,6 +572,8 @@ export function WorldScreen() {
       )}
 
       {/* 터치 기기용 D-Pad — 폰·태블릿(가로) 모두 노출, 키보드+마우스 환경에선 숨김 */}
+      {/* 이야기 장면·대화 중엔 숨긴다 — 폰에서 대화창 뒤로 비치고 잘못 눌렸다 */}
+      {state.storyQueue.length === 0 && state.screen === 'world' && !state.classScene && (
       <div className="dpad touch-only absolute z-20 grid-cols-3 grid-rows-3 gap-1" onContextMenu={(e) => e.preventDefault()}>
         <div />
         <DpadBtn icon={<ArrowUp className="size-4" />} onDown={() => dpadPress(0, -1)} onUp={() => dpadRelease(0, -1)} />
@@ -588,6 +590,7 @@ export function WorldScreen() {
         <DpadBtn icon={<ArrowDown className="size-4" />} onDown={() => dpadPress(0, 1)} onUp={() => dpadRelease(0, 1)} />
         <div />
       </div>
+      )}
     </div>
   )
 }
