@@ -221,7 +221,20 @@ function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number
   return false
 }
 
+/** 전투가 끝난 직후(이기든 도망치든) 몬스터에 닿아도 다시 싸움이 붙지 않는 시간 — 억울한 연속 조우 방지(2026-10-18) */
+export const CONTACT_SAFE_MS = 3000
+export const isContactSafe = (s: Pick<GameState, 'contactSafeUntil'>, now = Date.now()) => (s.contactSafeUntil ?? 0) > now
+
 function reducer(state: GameState, action: Action): GameState {
+  const next = reducerCore(state, action)
+  // 전투 → 필드로 돌아오는 모든 길(승리·도망·패배·스토리 전투)과 「슬쩍 피해 지나갔다」에서 잠깐 접촉 무시
+  if ((state.battle && !next.battle) || (state.pendingEncounterUid && !next.pendingEncounterUid && !next.battle)) {
+    return { ...next, contactSafeUntil: Date.now() + CONTACT_SAFE_MS }
+  }
+  return next
+}
+
+function reducerCore(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'START_GAME': {
       const player = createPlayer(action.name, action.appearance)
@@ -457,14 +470,15 @@ function reducer(state: GameState, action: Action): GameState {
         }
       }
       // 투명한 동안은 닿아도 그냥 지나간다
-      if (touched && isInvisible(state)) touched = null
+      if (touched && (isInvisible(state) || isContactSafe(state))) touched = null
       // 접촉 — 묻지 않고 바로 전투로(world-screen 이 화면 전환 연출을 보여 준 뒤 ENCOUNTER_FIGHT). 이동은 정지.
       if (touched) return { ...state, facing, pendingEncounterUid: touched }
 
       // 바닥 이동 마법진 — 밟아 들어서는 순간 확인 없이 바로 이동(2026-10-18). 군 통문(gate)은 행선지 고르는 창을 연다.
       // 이미 마법진 위에 서 있던 걸음(잠긴 곳이라 못 넘어간 뒤 등)은 다시 걸지 않는다 — 밖으로 나갔다 들어와야 한다.
       for (const p of map.portals) {
-        if (p.secret) continue
+        // 숨은 통로·문은 밟아도 안 열린다 — 가까이에서 E(world-screen tryInteract)
+        if (p.secret || p.door) continue
         if (p.walkArea) {
           const a = p.walkArea
           if (nx >= a.x0 && nx <= a.x1 && ny >= a.y0 && ny <= a.y1) return walkToFloor(state, p, { x: nx, y: ny }, facing)
@@ -488,7 +502,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'ENCOUNTER': {
       if (
         state.classScene || state.screen !== 'world' || state.battle || state.pendingEncounterUid || state.pendingPortalId ||
-        state.gateOpen || state.fishing || state.passage || state.storyQueue.length > 0 || isInvisible(state) ||
+        state.gateOpen || state.fishing || state.passage || state.storyQueue.length > 0 || isInvisible(state) || isContactSafe(state) ||
         !state.fieldMonsters.some((f) => f.uid === action.uid)
       )
         return state

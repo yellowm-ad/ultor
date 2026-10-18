@@ -1359,6 +1359,18 @@ export const MAPS = {
   },
 } as Record<MapId, GameMap>
 
+// 문 vs 마법진(2026-10-18) — 실내(건물 안)가 한쪽에라도 끼는 출입구는 문: 문 앞에서 E 로 들어간다(문이 있는데 마법진을 타는 건 어색하다).
+// 야외↔야외(야생 맵끼리, 마을 ↔ 야생)만 바닥 마법진으로 밟아서 이동. 층 계단(walkArea)·숨은 통로(secret)·군 통문(gate)은 그대로.
+const OUTDOOR_TOWNS = new Set<MapId>(['village', 'atlantis', 'sky-temple', 'temple-ruin', 'aurora-village', 'demon-village', 'sky-colosseum'])
+export const isOutdoorMap = (m: GameMap) => m.kind === 'field' || OUTDOOR_TOWNS.has(m.id)
+for (const m of Object.values(MAPS)) {
+  for (const p of m.portals) {
+    const dest = (MAPS as Record<string, GameMap>)[p.to]
+    if (p.walkArea || p.secret || p.kind === 'gate' || !dest) continue
+    if (!isOutdoorMap(m) || !isOutdoorMap(dest)) p.door = true
+  }
+}
+
 // 마을 꾸미기 소품(lib/town-decor.ts) — 각 마을 props 뒤에 덧붙이고, 길막 소품은 충돌도 함께 더한다
 for (const [id, items] of Object.entries(TOWN_DECOR)) {
   const m = (MAPS as Record<string, GameMap>)[id]

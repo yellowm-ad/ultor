@@ -431,27 +431,27 @@ export function BattleScreen() {
         <div className="absolute left-1/2 top-2 flex -translate-x-1/2 items-center gap-2">
           <button
             onClick={() => dispatch({ type: 'BATTLE_SET_AUTO', auto: !auto })}
-            className={`rounded-full border px-3 py-1 text-xs font-display ${auto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-white/30 bg-black/40 text-white/80'}`}
+            className={`rounded-full border px-3 py-1 text-xs font-display ${auto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-[#c79a3e]/55 bg-[#14100c]/85 text-[#f3e6c4]'}`}
           >
             자동 {auto ? 'ON' : 'OFF'}
           </button>
           <button
             onClick={() => dispatch({ type: 'UPDATE_SETTINGS', settings: { companionAuto: !companionAuto } })}
             title="동료 턴을 직접 조작할지, AI 에게 맡길지"
-            className={`rounded-full border px-3 py-1 text-xs font-display ${companionAuto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-white/30 bg-black/40 text-white/80'}`}
+            className={`rounded-full border px-3 py-1 text-xs font-display ${companionAuto ? 'border-gold bg-gold/25 text-gold-soft' : 'border-[#c79a3e]/55 bg-[#14100c]/85 text-[#f3e6c4]'}`}
           >
             동료 {companionAuto ? '자동' : '수동'}
           </button>
           <button
             onClick={() => dispatch({ type: 'UPDATE_SETTINGS', settings: { battleAnimSpeed: speed === 2 ? 1 : 2 } })}
-            className={`rounded-full border px-3 py-1 text-xs font-display ${speed === 2 ? 'border-gold bg-gold/25 text-gold-soft' : 'border-white/30 bg-black/40 text-white/80'}`}
+            className={`rounded-full border px-3 py-1 text-xs font-display ${speed === 2 ? 'border-gold bg-gold/25 text-gold-soft' : 'border-[#c79a3e]/55 bg-[#14100c]/85 text-[#f3e6c4]'}`}
           >
             x{speed}
           </button>
           <button
             onClick={() => actor && isHeroTurn && submit({ type: 'flee' })}
             disabled={!isHeroTurn}
-            className="rounded-full border border-white/30 bg-black/40 px-3 py-1 text-xs font-display text-white/80 disabled:opacity-40"
+            className="rounded-full border border-[#c79a3e]/55 bg-[#14100c]/85 px-3 py-1 text-xs font-display text-[#f3e6c4] disabled:opacity-40"
           >
             도망
           </button>

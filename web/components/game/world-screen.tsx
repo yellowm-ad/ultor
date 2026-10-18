@@ -25,6 +25,10 @@ import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
 
 // 전 맵이 아이소 도트 엔진(iso-world.tsx)으로 렌더된다 — 옛 CSS 그라디언트/일러스트 렌더 경로는 제거됨(2026-09-28)
+/** 문 앞에서 E 가 닿는 거리(셀) */
+const DOOR_REACH = 1.6
+/** 문 안내 — 들어가는 문은 「○○ 들어가기」, 나가는 문(exit)은 그 이름 그대로(「밖으로」 등) */
+export const doorPrompt = (p: { kind: string; label: string }) => (p.kind === 'exit' ? `${p.label} — 나가기` : `${p.label} 들어가기`)
 const MOVE_SPEED = 4.3 // 초당 이동 셀 수
 /** Shift 달리기 — 이동속도 2배 */
 const RUN_MULT = 2
@@ -124,7 +128,7 @@ export function WorldScreen() {
       {
         const s = live.current
         // 투명한 동안은 몬스터가 알아채지 못한다(돌진 멈춤)
-        const free = !s.pendingEncounterUid && !s.pendingPortalId && !s.gateOpen && !s.fishing && !s.passage && !s.classScene && s.storyQueue.length === 0 && !isInvisible(s)
+        const free = !s.pendingEncounterUid && !s.pendingPortalId && !s.gateOpen && !s.fishing && !s.passage && !s.classScene && s.storyQueue.length === 0 && !isInvisible(s) && (s.contactSafeUntil ?? 0) <= Date.now()
         const hit = tickCharges(dt, t, MAPS[s.currentMapId], s.fieldMonsters, s.position, free)
         if (hit) dispatch({ type: 'ENCOUNTER', uid: hit })
       }
@@ -195,6 +199,11 @@ export function WorldScreen() {
       dispatch({ type: 'USE_PORTAL', portalId: secret.id })
       return
     }
+    const door = nearestDoor()
+    if (door) {
+      dispatch({ type: 'USE_PORTAL', portalId: door.id })
+      return
+    }
     const hc = nearestCache()
     if (hc) {
       dispatch({ type: 'OPEN_CACHE', key: hc.key })
@@ -214,6 +223,21 @@ export function WorldScreen() {
   }
 
   /** 숨겨진 통로 — 가까이(1.3셀)에서만 E 로 열린다 */
+  /** 문 앞(실내 출입구, lib/maps door) — 가장 가까운 것 */
+  function nearestDoor() {
+    let best: (typeof map.portals)[number] | null = null
+    let bd = DOOR_REACH
+    for (const p of map.portals) {
+      if (!p.door) continue
+      const d = Math.hypot(p.cell.x - state.position.x, p.cell.y - state.position.y)
+      if (d < bd) {
+        bd = d
+        best = p
+      }
+    }
+    return best
+  }
+
   function nearestSecret() {
     return map.portals.find((p) => p.secret && Math.hypot(p.cell.x - state.position.x, p.cell.y - state.position.y) < 1.3) ?? null
   }
@@ -297,12 +321,15 @@ export function WorldScreen() {
   const interactTarget = nearestNpc()
   const nearRival = interactTarget ? null : nearestRival()
   const nearSecret = interactTarget ? null : nearestSecret()
-  const nearSpot = interactTarget || nearSecret ? null : nearestSpot(map.id, state.position)
-  const nearNode = interactTarget || nearSecret || nearSpot ? null : nearestGatherNode(map, state.life, state.position)
+  const nearDoor = interactTarget || nearSecret ? null : nearestDoor()
+  const nearSpot = interactTarget || nearSecret || nearDoor ? null : nearestSpot(map.id, state.position)
+  const nearNode = interactTarget || nearSecret || nearDoor || nearSpot ? null : nearestGatherNode(map, state.life, state.position)
   const lifePrompt = interactTarget
     ? null
     : nearSecret
       ? `${nearSecret.label} 살펴보기`
+      : nearDoor
+      ? doorPrompt(nearDoor)
       : nearSpot
       ? nearSpot.prompt
       : nearNode
@@ -586,15 +613,19 @@ function DpadBtn({ icon, onDown, onUp }: { icon: ReactNode; onDown: () => void; 
 function TeleportFlash({ mapId }: { mapId: MapId }) {
   const prev = useRef(mapId)
   const [n, setN] = useState(0)
+  const [door, setDoor] = useState(false)
   useEffect(() => {
     const from = prev.current
     prev.current = mapId
     if (from === mapId) return
-    const walked = MAPS[from]?.portals.some((p) => p.walkArea && p.to === mapId)
-    if (!walked) setN((v) => v + 1)
+    const ps = MAPS[from]?.portals.filter((p) => p.to === mapId) ?? []
+    if (ps.some((p) => p.walkArea)) return
+    // 문으로 드나들면 짧게 어두워졌다 밝아지는 장면 전환, 마법진·순간이동이면 푸른 안개
+    setDoor(ps.length > 0 && ps.every((p) => p.door))
+    setN((v) => v + 1)
   }, [mapId])
   if (!n) return null
-  return <div key={n} className="teleport-flash pointer-events-none absolute inset-0 z-10" />
+  return <div key={n} className={`${door ? 'door-fade' : 'teleport-flash'} pointer-events-none absolute inset-0 z-10`} />
 }
 
 /**

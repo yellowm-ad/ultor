@@ -22,7 +22,7 @@ import { EP_SCRIPT_GEN } from '@/lib/story-script-gen'
  * [SCENE·CUTSCENE·INTERLUDE] 꼬리표는 떼고, '장소'는 대화창 제목 칩(place)으로, 지문만 본문으로.
  */
 const N = (text: string): StoryLine => {
-  const m = /^\[(?:SCENE|CUTSCENE|INTERLUDE)[^\]]*\]\s*(.*)$/.exec(text)
+  const m = /^\[[^\]]{1,40}\]\s*(.*)$/.exec(text)
   if (!m) return { speaker: '', text }
   const rest = m[1]
   const dash = rest.indexOf(' — ')
@@ -68,7 +68,7 @@ export const EP_SCRIPT: Record<number, { brief: StoryLine[]; outro: StoryLine[];
   ...EP_SCRIPT_GEN,
   // EP37 은 장면 비트(EP37_RAGE 신전 진입 → 보스전, EP37_FLED 처치 후)가 대본 본문을 재생한다 — 주 시작·미션 보상엔 짧은 안내만
   37: {
-    brief: [N('[EP37] 봉인이 깨진 버려진 신전. 입구에 남아 있던 루스벨이 걱정된다 — 신전 내부로 향하자.')],
+    brief: [N('봉인이 깨진 버려진 신전. 입구에 남아 있던 루스벨이 걱정된다. 신전 안으로 들어가자.')],
     outro: [N('루스벨은 북쪽으로 사라졌다. 신전 바닥에는 불탄 발자국만 남았다.')],
   },
   // ═════════ EP01 · 처음 맞는 학교생활 (1학년 1학기 3주차) ═════════
@@ -160,7 +160,7 @@ export const EP_SCRIPT: Record<number, { brief: StoryLine[]; outro: StoryLine[];
       DORAN('그럼 약초가 사라진 것도 우연이 아니네.'),
       cut(null, N('잠시 뒤, 미르엘이 나타난다.')),
       MIREL('무슨 일이지?'),
-      act('rian-pickup', N('가시를 보여 준다. 미르엘의 표정은 변하지 않는다.')),
+      act('rian-pickup', N('리안이 가시를 내민다. 미르엘이 받아 들고 빛에 비춰 본다.')),
       MIREL('가시어미 계열의 잔재로 보이는구나.'),
       CELINE('가시어미가 학교 근처까지 왔다는 뜻인가요?'),
       MIREL('가능성은 낮다.'),
@@ -218,7 +218,7 @@ export const EP_SCRIPT: Record<number, { brief: StoryLine[]; outro: StoryLine[];
       N('그녀가 감자를 받아 든다. 발밑 바위의 균열들이 일제히, 은은하게 금빛으로 빛난다. 멀리 남쪽, 에르디아 숲 깊은 곳에서 또 하나의 뿌리가 기지개를 켜듯 땅을 뚫고 솟는다.'),
       BIG_AIDE('폐하, 감자 식습니다.'),
       SHADOW('그래, 그래.'),
-      cut(null, N('화면 암전. [1학년 여름방학 시작]')),
+      cut(null, N('그렇게, 1학년의 여름방학이 시작된다.')),
     ],
   },
 }
@@ -252,7 +252,7 @@ export const SCRIPT_BEATS: StoryBeat[] = [
       act('mirel-speech', MIREL('사람을 이해하는 법, 힘을 사용하는 법, 그리고 자신이 가진 힘에 책임지는 법을 배우는 곳입니다.')),
       cut('ep00-a3', N('리안이 하품을 참다가 실패한다. 셀라는 벌써 연설을 받아 적고 있다. 도란은 연설보다 비상구 위치를 먼저 확인한다. 맨 앞줄의 붉은 머리 여학생이 리안의 하품을 보고 코웃음 친다.')),
       cut('ep00-a2', MIREL('그리고 언젠가는… 여러분 스스로가 어떤 마법사가 되고 싶은지 선택하게 될 겁니다.')),
-      cut('ep00-a4', N('잠깐, 미소. 따뜻하고, 흠잡을 데 없는 미소.')),
+      cut('ep00-a4', N('미르엘이 신입생들을 한 줄씩 둘러보며 웃는다. 맨 앞줄의 누군가가 저도 모르게 따라 웃는다.')),
       MIREL('졸업은 그 선택의 끝이 아니라, 시작에 가깝습니다.'),
       cut(null, N('[SCENE 00-02] 삼원 기초 수업 — 입학식이 끝나고 신입생 강의실.')),
       MIREL('울토르의 모든 학생은 세 가지 기초 원소에서 시작한단다.'),
@@ -317,10 +317,10 @@ export const SCRIPT_BEATS: StoryBeat[] = [
     title: 'EP00 — 금지구역',
     trigger: { type: 'WEEK_END', week: W(1, 'semester1', 1) },
     lines: [
-      cut('ep00-b1', N('[CUTSCENE 00-B] 밤. 학생들이 모두 돌아간 뒤, 카메라가 본관 지하로 천천히 내려간다. 돌계단 아래에 오래된 철문. 문 중앙의 문양이 아주 미세하게 — 숨을 쉬듯 — 밝아졌다 어두워진다.')),
+      cut('ep00-b1', N('[CUTSCENE 00-B] 밤. 학생들이 모두 돌아간 본관 — 지하로 이어지는 돌계단 끝에 오래된 철문이 있다. 문 중앙의 문양이 아주 미세하게 — 숨을 쉬듯 — 밝아졌다 어두워진다.')),
       N('아무도 없다. 발소리도, 목소리도 없다. 문양만이 혼자 숨을 쉰다.'),
-      cut('ep00-b2', N('문양이 꺼진다. 검은 화면. ……꺼진 줄 알았던 문양 끝이, 한 번 더 깜빡인다. 북쪽을 향해.')),
-      cut(null, N('[입학 완료] — 1학년 1학기가 시작된다.')),
+      cut('ep00-b2', N('문양이 꺼진다. 어둠. ……꺼진 줄 알았던 문양 끝이, 한 번 더 깜빡인다. 북쪽을 향해.')),
+      cut(null, N('그렇게, 1학년 1학기가 시작된다.')),
     ],
   },
 

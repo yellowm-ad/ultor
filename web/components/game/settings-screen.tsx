@@ -72,6 +72,15 @@ export function SettingsScreen() {
               </div>
               <div className="set-row">
                 <div>
+                  <div className="t">번쩍임 끄기</div>
+                  <div className="d">순간이동·번개·몬스터 조우·궁극기에서 화면 전체가 밝아지는 연출을 끕니다(광과민성 보호).</div>
+                </div>
+                <button type="button" className={`gw-btn is-sm ${state.settings.noFlash ? 'is-gold' : 'is-quiet'}`} onClick={() => set({ noFlash: !state.settings.noFlash })}>
+                  {state.settings.noFlash ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="set-row">
+                <div>
                   <div className="t">테스트 모드</div>
                   <div className="d">필드에 훈련용 허수아비를 배치합니다. 10마리 처치 시 정확히 1레벨이 오릅니다.</div>
                 </div>

@@ -549,6 +549,11 @@ export interface Portal {
   secret?: boolean
   /** 반짝임을 바닥에서 띄울 높이(px) — 벽면에 걸리게 */
   sparkleLift?: number
+  /**
+   * 문(2026-10-18) — 실내로 드나드는 출입구. 마법진 없이 문 앞에서 E(또는 이름표 누르기)로 들어간다.
+   * lib/maps 가 맵 종류로 자동으로 채운다(실내 맵이 한쪽에라도 끼면 문, 야외↔야외는 마법진).
+   */
+  door?: boolean
 }
 
 export interface GameMap {
@@ -797,6 +802,8 @@ export interface GameSettings {
   battleAnimSpeed: 1 | 2
   /** true = 동료는 AI 자동 행동, false(기본) = 동료 턴에도 직접 조작 */
   companionAuto?: boolean
+  /** 광과민성 보호 — 화면 전체가 번쩍이는 연출(순간이동·번개·조우·궁극기)을 끈다 */
+  noFlash?: boolean
 }
 
 /** 플레이어가 바라보는 '화면 기준' 8방향(쿼터뷰라 셀 축 이동은 화면에서 대각으로 보인다) */
@@ -824,6 +831,8 @@ export interface GameState {
   invisibleUntil?: number
   /** 탐사 마법 질주 · 등불이 끝나는 시각(lib/field-spells) */
   hasteUntil?: number
+  /** 전투 직후 접촉 무시가 끝나는 시각(lib/game-state CONTACT_SAFE_MS) */
+  contactSafeUntil?: number
   lightUntil?: number
   /** 끌어오기 연출(채집물 자리에서 플레이어 쪽으로 빛이 날아온다) — 시전 시각과 자리 */
   pullFx?: { at: number; cells: { x: number; y: number }[] }

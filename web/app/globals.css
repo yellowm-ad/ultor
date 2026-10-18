@@ -442,13 +442,17 @@
     .create-stage-art { height: 200px; }
   }
   /* ── 전투 명령창(components/game/battle-screen) — 한 줄 네 칸 + 위로 펼쳐지는 아이콘 ── */
-  .battle-cmd { width: min(100%, 720px); margin: 0 auto; padding: 8px 10px 10px; background-color: #14100c !important; }
+  /* 2026-10-18 전투 명령창 정리 — 장식 프레임 이미지(흰 가장자리가 비쳐 보였다) 대신 따뜻한 검정 상자 + 금색 단선.
+     버튼은 테두리 없이 글자만, 고른 칸 앞에 ◆ (언더테일식 선택 표시) */
+  .battle-cmd { width: min(100%, 720px); margin: 0 auto; padding: 10px 14px 12px; background: linear-gradient(180deg, #1d1812 0%, #110d09 100%) !important; border: 2px solid #b8862e !important; border-image: none !important; border-radius: 6px; box-shadow: inset 0 0 0 1px #3a2c18, 0 8px 22px rgba(0, 0, 0, 0.55); }
+  .battle-cmd::before, .battle-cmd::after { display: none !important; }
   .battle-cmd-line { display: flex; align-items: center; gap: 6px; min-height: 22px; margin-bottom: 6px; font-family: var(--font-display, serif); font-size: 12px; color: #f3e6c4; }
   .battle-cmd-cancel { margin-left: auto; padding: 1px 10px; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; font-size: 11px; color: #e8dcc0; }
   .battle-cmd-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .battle-cmd-slot { position: relative; display: flex; }
-  .battle-cmd-btn { display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; height: 46px; border: 2px solid #c79a3e; border-radius: 4px; background: #17120c; color: #f0c860; transition: background 0.1s, color 0.1s, transform 0.1s; }
-  .battle-cmd-btn:hover:not(:disabled), .battle-cmd-btn.is-active { background: #f0c860; color: #17120c; transform: translateY(-2px); }
+  .battle-cmd-btn { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; gap: 8px; height: 46px; border: 1px solid rgba(199, 154, 62, 0.28); border-radius: 4px; background: rgba(255, 230, 170, 0.03); color: #e9c56a; transition: background 0.1s, color 0.1s, border-color 0.1s; }
+  .battle-cmd-btn:hover:not(:disabled), .battle-cmd-btn.is-active { background: rgba(240, 200, 96, 0.12); border-color: #e0b050; color: #ffe39a; }
+  .battle-cmd-btn:hover:not(:disabled)::before, .battle-cmd-btn.is-active::before { content: '◆'; position: absolute; left: 10px; font-size: 10px; color: #ffd76a; }
   .battle-cmd-btn:disabled { opacity: 0.4; }
   .battle-cmd-hint { font-size: 10px; opacity: 0.7; }
   .battle-fan { position: absolute; left: 50%; bottom: calc(100% + 40px); z-index: 5; display: flex; flex-wrap: wrap-reverse; justify-content: center; gap: 8px; width: max-content; max-width: min(88vw, 430px); transform: translateX(-50%); }
@@ -633,6 +637,9 @@
   @media (max-width: 640px) { .field-spell { width: 44px; } .field-spell-name { font-size: 9.5px; } .field-spell-title { display: none; } }
   /* 투명화 — 몸이 반쯤 비치고 은은하게 일렁인다 */
   .hero-invisible { opacity: 0.38; animation: hero-shimmer 1.6s ease-in-out infinite; }
+  /* 전투 직후 3초 — 접촉 무시 중임을 은은하게(밝기 변화 작게, 초당 1.4번) */
+  .hero-safe { animation: hero-safe 0.7s ease-in-out 5; }
+  @keyframes hero-safe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
   @keyframes hero-shimmer { 0%, 100% { opacity: 0.32; } 50% { opacity: 0.5; } }
   .pull-mote { animation: pull-mote 0.7s cubic-bezier(0.5, 0, 0.9, 0.6) forwards; }
   @keyframes pull-mote { 0% { transform: translate(0, 0) scale(1.2); opacity: 1; } 85% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; } }
@@ -640,10 +647,15 @@
   @keyframes pull-ring { 0% { opacity: 1; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.4); } }
   .cache-rune { animation: cache-rune 2.2s ease-in-out infinite; }
   @keyframes cache-rune { 0%, 100% { transform: translateY(0); opacity: 0.6; } 50% { transform: translateY(-6px); opacity: 1; } }
-  .teleport-flash { background: radial-gradient(60% 55% at 50% 50%, rgba(200, 238, 255, 0.85) 0%, rgba(80, 170, 255, 0.45) 45%, rgba(10, 20, 40, 0.6) 100%); animation: teleport-flash 0.55s ease-out forwards; }
-  @keyframes teleport-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
-  @keyframes mc-breathe { 0%, 100% { opacity: 0.22; } 50% { opacity: 0.6; } }
-  @keyframes mc-ring { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+  /* 2026-10-18 광과민성 — 흰 섬광 대신 옅은 푸른 안개가 부드럽게 걷힌다(최대 밝기 변화 작게, 한 번만) */
+  /* 설정 「번쩍임 끄기」 — 화면 전체가 밝아지는 연출을 모두 끈다(game-root 가 .no-flash 를 붙임) */
+  .no-flash .teleport-flash, .no-flash .wx-flash, .no-flash .enc-flash, .no-flash .fx-screen-flash, .no-flash .fx-screen-flash-strong { display: none !important; }
+  .door-fade { background: #0b0907; animation: door-fade 0.42s ease-out forwards; }
+  @keyframes door-fade { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+  .teleport-flash { background: radial-gradient(70% 60% at 50% 50%, rgba(140, 200, 240, 0.32) 0%, rgba(60, 120, 190, 0.22) 50%, rgba(10, 20, 40, 0.35) 100%); animation: teleport-flash 0.8s ease-out forwards; }
+  @keyframes teleport-flash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+  @keyframes mc-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.45; } }
+  @keyframes mc-ring { 0%, 100% { opacity: 0.7; } 50% { opacity: 0.9; } }
   @keyframes mc-mote {
     0% { opacity: 0; transform: translateY(0); }
     15% { opacity: 1; }
@@ -1018,7 +1030,7 @@
   }
   @keyframes fx-screen-flash {
     0% { opacity: 0; }
-    25% { opacity: 1; }
+    25% { opacity: 0.35; }
     100% { opacity: 0; }
   }
 
@@ -1086,7 +1098,7 @@
   }
   @keyframes fx-screen-flash-strong {
     0% { opacity: 0; }
-    30% { opacity: 1; }
+    30% { opacity: 0.45; }
     100% { opacity: 0; }
   }
 
@@ -1273,14 +1285,14 @@
   .battle-hit-right { animation: battle-hit-right 0.42s ease-out; }
   .battle-hit-left { animation: battle-hit-left 0.42s ease-out; }
   @keyframes battle-hit-right {
-    0% { transform: translateX(0); filter: brightness(3) saturate(0.2); }
-    25% { transform: translateX(9px); filter: brightness(2); }
+    0% { transform: translateX(0); filter: brightness(1.7) saturate(0.6); }
+    25% { transform: translateX(9px); filter: brightness(1.4); }
     55% { transform: translateX(-4px); filter: brightness(1.2); }
     100% { transform: translateX(0); filter: none; }
   }
   @keyframes battle-hit-left {
-    0% { transform: translateX(0); filter: brightness(3) saturate(0.2); }
-    25% { transform: translateX(-9px); filter: brightness(2); }
+    0% { transform: translateX(0); filter: brightness(1.7) saturate(0.6); }
+    25% { transform: translateX(-9px); filter: brightness(1.4); }
     55% { transform: translateX(4px); filter: brightness(1.2); }
     100% { transform: translateX(0); filter: none; }
   }

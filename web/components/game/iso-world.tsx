@@ -431,6 +431,12 @@ export function IsoWorld({
       }
       const s0 = isoToScreen(p.cell.x, p.cell.y)
       const s = { sx: s0.sx, sy: s0.sy - stairElevation(map.stairs, p.cell.x, p.cell.y).z }
+      // 문(실내 출입구) — 마법진 없이. 나가는 쪽은 바닥에 은은한 문턱 빛, 이름표만 작게(가까이 가면 「E」 안내)
+      if (p.door) {
+        if (p.kind === 'exit') floor.push(<DoorThreshold key={p.id} sx={s.sx} sy={s.sy} />)
+        top.push(<DoorTag key={p.id} sx={s.sx} sy={s.sy} label={p.kind === 'exit' ? p.label : p.label} exit={p.kind === 'exit'} />)
+        continue
+      }
       const isGate = p.kind === 'gate'
       const label = isGate ? p.label : p.label + (p.requiredLevel ? ` Lv.${p.requiredLevel}+` : '')
       const w = isGate ? 136 : 100
@@ -472,7 +478,7 @@ export function IsoWorld({
   const heroFlip = moving && (facing === 'left' || facing === 'down-left' || facing === 'up-left')
   const HD = 88
   const playerNode = (
-    <g key="__player" transform={`translate(${ps.sx},${ps.sy})`} className={isInvisible(state) && !state.classScene ? 'hero-invisible' : undefined}>
+    <g key="__player" transform={`translate(${ps.sx},${ps.sy})`} className={state.classScene ? undefined : isInvisible(state) ? 'hero-invisible' : (state.contactSafeUntil ?? 0) > Date.now() ? 'hero-safe' : undefined}>
       <ellipse cx={0} cy={2} rx={17} ry={5.5} fill="rgba(0,0,0,0.34)" />
       <g transform={heroFlip ? 'scale(-1,1)' : undefined}>
         <svg
@@ -772,6 +778,27 @@ export function IsoWorld({
         )}
       </svg>
     </div>
+  )
+}
+
+/** 실내 출구 바닥 — 문턱에 깔린 따뜻한 빛과 바깥쪽 화살표(번쩍임 없음) */
+function DoorThreshold({ sx, sy }: { sx: number; sy: number }) {
+  return (
+    <g transform={`translate(${sx},${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={0} rx={30} ry={13} fill="#ffd98a" opacity={0.16} />
+      <ellipse cx={0} cy={0} rx={18} ry={8} fill="#ffe7b0" opacity={0.18} />
+      <polygon points="-6,-2 6,-2 0,6" fill="#f3d58f" opacity={0.75} />
+    </g>
+  )
+}
+/** 문 이름표 — 작고 차분하게(가까이 가면 화면 아래 「E」 안내가 대신 뜬다) */
+function DoorTag({ sx, sy, label, exit }: { sx: number; sy: number; label: string; exit: boolean }) {
+  const lw = label.length * 8 + 14
+  return (
+    <g transform={`translate(${sx},${sy - (exit ? 26 : 34)})`} style={{ pointerEvents: 'none' }} opacity={0.82}>
+      <rect x={-lw / 2} y={-9} width={lw} height={15} rx={3} fill="rgba(20,16,11,0.78)" stroke="rgba(224,176,80,0.55)" strokeWidth={1} />
+      <text x={0} y={2.5} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#f3e6c4">{label}</text>
+    </g>
   )
 }
 

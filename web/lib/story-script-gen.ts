@@ -7,13 +7,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP05 · 깊은 숲으로 ═════════
   5: {
     brief: [
-      {"speaker":"","text":"[방학 첫날] 에르디아 숲 입구. 학교 조사단 캠프가 세워진다. 매미 소리가 시끄럽다.","cut":null},
+      {"speaker":"","text":"에르디아 숲 입구. 학교 조사단 캠프가 세워진다. 매미 소리가 시끄럽다.","place":"방학 첫날","cut":null},
       {"speaker":"","text":"학생들이 짐을 내리고 텐트를 친다. 리안의 텐트만 세 번째로 무너진다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"방학인데 과제하러 산속까지 온 거 실화냐?"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"네가 '학교 밖에서 배우는 게 더 재밌다'고 했잖아."},
       {"speaker":"리안","portraitId":"comp-rian","text":"그건 풍경 좋은 데서 책 읽는다는 뜻이었지. 텐트랑 싸운다는 뜻이 아니라."},
       {"speaker":"도란","portraitId":"comp-doran","text":"말뚝을 반대로 박았어."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……말뚝에도 앞뒤가 있어?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"말뚝에도 앞뒤가 있다고?!"},
       {"speaker":"도란","portraitId":"comp-doran","text":"있어."},
       {"speaker":"","text":"오웬이 조사 수첩을 펼친다. 방학인데도 셔츠 단추를 끝까지 잠갔다.","anim":"owen-think"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"이번 조사의 공식 목적은 세 가지입니다. 변이 몬스터의 흔적 확인, 고대 식생 기록 비교, 그리고 지난 학기 발견한 문양의 출처 조사."},
@@ -21,12 +21,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"미르엘 교수님은 방학 중 교내 결계 정기 점검을 맡고 계십니다. 대신 이걸 주셨습니다."},
       {"speaker":"","text":"오웬이 작은 통신 수정구를 꺼낸다. 수정구 안에 쪽지 하나가 돌돌 말려 있다."},
       {"speaker":"","text":"「무리하지 말 것. 밥은 꼭 챙겨 먹을 것. 리안, 텐트 말뚝은 뾰족한 쪽이 아래란다.」"},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……교수님이 어떻게 아셔?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"잠깐, 교수님이 그걸 어떻게 아셔?!"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"작년 조사단도 똑같았나 보지."},
       {"speaker":"","text":"짧은 웃음. 그 웃음 위로, 숲 안쪽에서 낮은 울음소리가 들린다. 웃음이 멎는다."},
     ],
     outro: [
-      {"speaker":"","text":"[이상한 숲] 셀린이 무릎을 꿇고 잎의 방향을 살핀다.","cut":null},
+      {"speaker":"","text":"셀린이 무릎을 꿇고 잎의 방향을 살핀다.","place":"이상한 숲","cut":null},
       {"speaker":"셀린","portraitId":"npc-potion","text":"전부 북쪽을 향해 누워 있어. 지난번 현장수업 때랑 같아."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"바람은 남서풍이야. 바람 때문이 아니야."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"그리고… 이 잎, 한여름인데 새순처럼 연해. 숲 전체가 봄을 한 번 더 맞은 것 같아."},
@@ -38,26 +38,25 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"이거… 지난 학기에 본 거잖아."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"온도도 같아. 그때 교수님이 회수하신 거랑 같은 종류야.","anim":"sella-think"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"이번엔 우리가 정식 조사단입니다. 표본으로 보관하고, 학교에 같이 보고하죠."},
-      {"speaker":"","text":"야영지의 불이 꺼진 뒤, 카메라가 숲 위로 떠오른다.","cut":"ep05-a"},
+      {"speaker":"","text":"야영지의 불이 꺼진다. 모두 잠든 숲은, 생각보다 조용하지 않다.","cut":"ep05-a"},
       {"speaker":"","text":"뿌리 사이로 금빛 섞인 검은빛이 하나씩 점멸한다. 반딧불이처럼, 그러나 반딧불이보다 느리게."},
       {"speaker":"","text":"빛은 고목숲 가장 깊은 곳으로 흘러간다."},
       {"speaker":"","text":"나무 아래, 지난 학기 뿌리에서 본 것과 같은 원형 문양이 이끼에 반쯤 덮여 있다."},
       {"speaker":"","text":"숲은 잠들지 않았다. 마치 누군가의 꿈을 대신 꾸고 있는 것처럼."},
       {"speaker":"","text":"텐트 하나에서 리안의 잠꼬대가 들린다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……말뚝… 뾰족한 쪽이……"},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP06 · 가시어미 변이체 ═════════
   6: {
     brief: [
-      {"speaker":"","text":"[변색된 숲] 숲 한 구역의 나무껍질이 검붉게 물들어 있다. 꽃이 계절을 무시하고 한꺼번에 피어 있다.","cut":null},
+      {"speaker":"","text":"숲 한 구역의 나무껍질이 검붉게 물들어 있다. 꽃이 계절을 무시하고 한꺼번에 피어 있다.","place":"변색된 숲","cut":null},
       {"speaker":"셀린","portraitId":"npc-potion","text":"이건 병도 아니고 벌레 피해도 아니야."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"마력이 식물 조직 안에 과하게 농축됐어. 넘치도록 부어 놓은 것처럼."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"그렇다면 원인이 따로 있다는 뜻이군요. 숲 스스로 이만큼의 마력을 만들 수는 없으니까요."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……새소리가 없어."},
       {"speaker":"","text":"땅이 흔들린다."},
-      {"speaker":"","text":"[보스 등장] 거대한 가시어미 변이체가 나무 뒤에서 모습을 드러낸다.","cut":null},
+      {"speaker":"","text":"거대한 가시어미 변이체가 나무 뒤에서 모습을 드러낸다.","place":"보스 등장","cut":null},
       {"speaker":"","text":"원래 가시어미는 사람 키만 한 덤불형 몬스터다. 눈앞의 것은 집 한 채만 하다."},
       {"speaker":"","text":"몸 곳곳에서 검은 가시가 쉬지 않고 자라나고, 자라자마자 부러지고, 또 자란다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"저게… 가시어미?","anim":"rian-surprise"},
@@ -66,9 +65,9 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"도란","portraitId":"comp-doran","text":"진형 잡아!"},
     ],
     outro: [
-      {"speaker":"","text":"[변이핵] 변이체가 쓰러진다. 검은 가시들이 땅속으로 파고들며 사라진다.","cut":null},
+      {"speaker":"","text":"변이체가 쓰러진다. 검은 가시들이 땅속으로 파고들며 사라진다.","place":"변이핵","cut":null},
       {"speaker":"","text":"남은 몸은 시들지 않고, 그 자리에서 작은 꽃밭이 된다."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……쓰러뜨렸는데 왜 꽃이 피어?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"쓰러뜨렸는데 꽃이 왜 펴?!"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"이건 죽어서 흩어지는 마력이 아니야."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"어딘가로… 흘러가고 있는 것처럼 보이는군요. 땅 밑으로."},
       {"speaker":"","text":"셀린이 꽃밭 한가운데서 주먹만 한 변이핵을 꺼내 봉인 주머니에 넣는다."},
@@ -88,7 +87,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP07 · 고목의 문장 ═════════
   7: {
     brief: [
-      {"speaker":"","text":"[고목 아래 균열] 변이체의 흔적이 흘러간 방향을 따라가면, 숲에서 가장 오래된 나무 아래 지하 통로가 나타난다.","cut":null},
+      {"speaker":"","text":"변이체의 흔적이 흘러간 방향을 따라가면, 숲에서 가장 오래된 나무 아래 지하 통로가 나타난다.","place":"고목 아래 균열","cut":null},
       {"speaker":"","text":"통로 벽을 따라 뿌리가 혈관처럼 뻗어 있고, 뿌리마다 희미한 금빛이 맥박친다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"이건 자연적으로 생긴 게 아니야. 벽이 너무 반듯해."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"벽면의 문양을 보십시오. 모두 같은 구조입니다. 바깥에서 안쪽으로 감기는 원."},
@@ -96,7 +95,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"그럼 우리가 지금 못 나오게 한 곳으로 들어가고 있는 거야?"},
       {"speaker":"도란","portraitId":"comp-doran","text":"응."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……'응'이 이렇게 무서운 말이었나."},
-      {"speaker":"","text":"[고대목 골렘] 통로 끝, 둥근 방. 벽 한가운데의 거대한 나무 형상이 눈을 뜬다.","cut":null},
+      {"speaker":"","text":"통로 끝, 둥근 방. 벽 한가운데의 거대한 나무 형상이 눈을 뜬다.","place":"고대목 골렘","cut":null},
       {"speaker":"","text":"이끼가 비처럼 떨어진다. 골렘이 몸을 일으키자 방 전체가 삐걱인다."},
       {"speaker":"고대목 골렘","text":"돌…려…보내라……"},
       {"speaker":"리안","portraitId":"comp-rian","text":"방금 말했지? 나무가 말했지?"},
@@ -107,7 +106,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"우리가 '지켜야 할 쪽'에 서 있으니까겠죠!"},
     ],
     outro: [
-      {"speaker":"","text":"[마지막 문장] 골렘이 무너진다. 무릎을 꿇은 채, 마지막 힘으로 돌판 하나를 내민다.","cut":null},
+      {"speaker":"","text":"골렘이 무너진다. 무릎을 꿇은 채, 마지막 힘으로 돌판 하나를 내민다.","place":"마지막 문장","cut":null},
       {"speaker":"","text":"돌판에는 네 개의 원과, 그 원들을 가로지르는 닫힌 문이 새겨져 있다."},
       {"speaker":"주인공","player":true,"text":"네 개의 원… 뭘 뜻하는 거지?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"아직은 알 수 없습니다. 다만 네 개 중 하나만 테두리가 금으로 덧칠되어 있군요."},
@@ -133,16 +132,15 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"뿔의 그림자","text":"이기면 저렇게 좋아하니까."},
       {"speaker":"","text":"온천 바닥의 바위틈이 은은한 금빛으로 물든다."},
       {"speaker":"","text":"같은 순간 — 아주 먼 남쪽, 무너진 골렘의 방에서 꺼졌던 금빛 맥박이 다시 한 번, 약하게 뛴다."},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP08 · 숲을 떠나 바다로 ═════════
   8: {
     brief: [
-      {"speaker":"","text":"[개강] 강의실. 방학 동안 햇볕에 그을린 학생들. 루스벨만 유독 피부가 멀쩡하다.","cut":null},
+      {"speaker":"","text":"강의실. 방학 동안 햇볕에 그을린 학생들. 루스벨만 유독 피부가 멀쩡하다.","place":"개강","cut":null},
       {"speaker":"리안","portraitId":"comp-rian","text":"너 방학 때 뭐 했어? 하나도 안 탔네."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"화염 특강. 불 옆에 있으면 오히려 안 타."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……그게 말이 돼?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"그게 말이 돼?!"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"나한텐 돼."},
       {"speaker":"","text":"미르엘이 들어온다. 교탁에 조사단 보고서 다발을 내려놓는다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"방학 동안 수고했다. 조사단 보고서는 전부 읽었단다. 특히 '발견자 리안'이라고 쓴 부분이 아주 크더구나."},
@@ -156,7 +154,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"이건 네가 계속 가지고 있으렴. 발견한 사람이 끝까지 보는 게 맞지."},
     ],
     outro: [
-      {"speaker":"","text":"[해안 현장실습] 셀린이 다음 현장실습을 소개한다. 칠판에 물고기 그림이 그려져 있다. 생각보다 못 그렸다.","cut":null},
+      {"speaker":"","text":"셀린이 다음 현장실습을 소개한다. 칠판에 물고기 그림이 그려져 있다. 생각보다 못 그렸다.","place":"해안 현장실습","cut":null},
       {"speaker":"셀린","portraitId":"npc-potion","text":"이번 현장수업은 에르디아 해안이야. 해양 생태 조사랑 낚시 실습."},
       {"speaker":"리안","portraitId":"comp-rian","text":"바다!"},
       {"speaker":"셀린","portraitId":"npc-potion","text":"칠판 그림은 고등어야."},
@@ -181,18 +179,18 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP09 · 바다는 기다리는 사람에게 ═════════
   9: {
     brief: [
-      {"speaker":"","text":"[어민의 부탁] 작은 선착장. 늙은 어부 토마가 텅 빈 그물을 손질하고 있다.","cut":null},
+      {"speaker":"","text":"작은 선착장. 늙은 어부 토마가 텅 빈 그물을 손질하고 있다.","place":"어민의 부탁","cut":null},
       {"speaker":"토마","text":"요즘 물고기가 깊은 곳으로만 가. 사십 년 바다에 나갔는데 이런 해는 처음이야."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"수온 변화인가요?"},
       {"speaker":"토마","text":"그랬으면 좋겠는데… 밤마다 바다 밑에서 빛이 올라와. 고기들이 그 빛 쪽으로 몰려가."},
       {"speaker":"리안","portraitId":"comp-rian","text":"그런 얘기 들으면 더 가 보고 싶은데.","anim":"rian-laugh"},
       {"speaker":"도란","portraitId":"comp-doran","text":"그래서 네가 위험한 거야."},
       {"speaker":"토마","text":"자네 같은 젊은이를 바다가 제일 좋아하지. 데려가고 싶어서."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……농담이시죠?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"노, 농담이시죠?"},
       {"speaker":"토마","text":"반은."},
     ],
     outro: [
-      {"speaker":"","text":"[폐등대] 해질 무렵, 바위곶 끝의 폐등대. 녹슨 계단이 바람에 울린다.","cut":null},
+      {"speaker":"","text":"해질 무렵, 바위곶 끝의 폐등대. 녹슨 계단이 바람에 울린다.","place":"폐등대","cut":null},
       {"speaker":"","text":"꼭대기 등실 바닥에 원형 문양이 새겨져 있다. 소금기에 반쯤 지워졌다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"여기… 숲에서 본 거랑 비슷해."},
       {"speaker":"","text":"오웬이 문양을 종이에 베낀다. 손이 빠르고 정확하다.","anim":"owen-think"},
@@ -207,26 +205,25 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"토마","text":"저건… 다시 시작됐군. 내 할아버지 때 이후 처음이야."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"숲이 이상해진 것도 이번 봄부터. 바다도 이번 해부터.","anim":"sella-think"},
       {"speaker":"도란","portraitId":"comp-doran","text":"같이 시작됐다는 거네."},
-      {"speaker":"","text":"카메라가 물속으로 내려간다. 빛을 따라 아래로, 더 아래로."},
+      {"speaker":"","text":"빛은 물속으로 이어진다. 아래로, 더 아래로."},
       {"speaker":"","text":"해저 깊은 곳에 거대한 돌문이 짧게 보인다. 문 표면의 원형 홈 하나가 빛에 맞춰 떨리고 있다."},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP10 · 중간고사, 그리고 해저 유적 ═════════
   10: {
     brief: [
-      {"speaker":"","text":"[중간고사] 오웬이 감독관으로 들어와 시험지를 나눠 준다. 교실에 종이 넘기는 소리만 가득하다.","cut":null},
+      {"speaker":"","text":"오웬이 감독관으로 들어와 시험지를 나눠 준다. 교실에 종이 넘기는 소리만 가득하다.","place":"중간고사","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"이번 시험은 단순 암기만으로 풀 수 없습니다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"그 말은 어렵다는 뜻이네요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"정확합니다. 첫 문제부터 맞히셨군요."},
       {"speaker":"","text":"실패해도 스토리는 진행되며 보정 과제가 열린다."},
       {"speaker":"","text":"시험 후 복도. 결과 게시판 앞."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"화염 실기 1등. 또."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……난 역사에서 1등 했거든."},
+      {"speaker":"리안","portraitId":"comp-rian","text":"난 역사에서 1등 했거든!"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"네가? 역사를?","anim":"ruspell-surprise"},
       {"speaker":"리안","portraitId":"comp-rian","text":"찍었는데 다 맞았어."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그건 1등이 아니라 사고야."},
-      {"speaker":"","text":"[얕은 해저 조사] 해안 실습. 수중 호흡 물약을 마시고 얕은 바다로 들어간다.","cut":null},
+      {"speaker":"","text":"해안 실습. 수중 호흡 물약을 마시고 얕은 바다로 들어간다.","place":"얕은 해저 조사","cut":null},
       {"speaker":"","text":"물속은 조용하다. 햇빛이 물결 무늬로 모래 위에 흔들린다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"잠깐. 저 돌은 자연석이 아니야."},
       {"speaker":"","text":"주인공이 조사하면, 모래 밑에서 반듯한 석재와 계단 일부가 드러난다."},
@@ -235,7 +232,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"셀린","portraitId":"npc-potion","text":"처음부터 바다 밑은 아니었을 거야. 땅이었던 곳이 가라앉은 거지."},
     ],
     outro: [
-      {"speaker":"","text":"[오웬의 판독] 선착장으로 돌아와 젖은 탁본을 말린다. 오웬이 기호 하나하나를 손가락으로 짚어 간다.","cut":null},
+      {"speaker":"","text":"선착장으로 돌아와 젖은 탁본을 말린다. 오웬이 기호 하나하나를 손가락으로 짚어 간다.","place":"오웬의 판독","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"울토르에서 쓰는 문자보다 오래됐습니다. 지금 왕국 문자의 조상보다도 오래됐을 겁니다."},
       {"speaker":"주인공","player":true,"text":"읽을 수 있어요?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"지금은 아닙니다.","anim":"owen-think"},
@@ -251,7 +248,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP11 · 파도 아래 잠든 것 ═════════
   11: {
     brief: [
-      {"speaker":"","text":"[학기말] 방파제 위. 학기말 시험이 끝나고, 일행이 다리를 바다 쪽으로 늘어뜨리고 앉아 있다.","cut":null},
+      {"speaker":"","text":"방파제 위. 학기말 시험이 끝나고, 일행이 다리를 바다 쪽으로 늘어뜨리고 앉아 있다.","place":"학기말","cut":null},
       {"speaker":"리안","portraitId":"comp-rian","text":"한 학기 진짜 길었다. 그래도 많이 배웠네."},
       {"speaker":"주인공","player":true,"text":"근데 유적 문제는 아직 아무것도 모르겠어요."},
       {"speaker":"도란","portraitId":"comp-doran","text":"숲도 모르고, 바다도 모르고."},
@@ -260,7 +257,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"리안이 한 모금 마시고 얼굴을 구긴다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……바다 맛이에요."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"바다 들어가는데 바다 맛이면 딱 좋지."},
-      {"speaker":"","text":"[해안 수호수] 해저 계단 아래, 유적 입구. 산호로 뒤덮인 거대한 거북 형상의 수호수가 입구를 막고 있다.","cut":null},
+      {"speaker":"","text":"해저 계단 아래, 유적 입구. 산호로 뒤덮인 거대한 거북 형상의 수호수가 입구를 막고 있다.","place":"해안 수호수","cut":null},
       {"speaker":"","text":"수호수는 일행을 보자 공격하지 않고, 천천히 몸을 돌려 입구를 더 단단히 가린다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"이건 우리 못 들어가게 막는 거지?"},
       {"speaker":"도란","portraitId":"comp-doran","text":"아마 지키는 거겠지. 숲의 골렘처럼."},
@@ -268,7 +265,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"……요즘 우리가 싸우는 애들 다 일하는 중이네."},
     ],
     outro: [
-      {"speaker":"","text":"[첫 파편] 수호수가 천천히 물러나 유적 깊은 어둠 속으로 사라진다.","cut":null},
+      {"speaker":"","text":"수호수가 천천히 물러나 유적 깊은 어둠 속으로 사라진다.","place":"첫 파편","cut":null},
       {"speaker":"","text":"자리에 남은 것은 손바닥만 한 인장 파편 하나. 표면에 원의 일부가 새겨져 있다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"숲에서 본 것과 같은 계열이야. 온도도 같아. 따뜻해."},
       {"speaker":"도란","portraitId":"comp-doran","text":"그럼 서로 다른 곳에서 같은 일이 생기고 있다는 거네."},
@@ -283,19 +280,18 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP12 · 겨울 바다의 불빛 ═════════
   12: {
     brief: [
-      {"speaker":"","text":"[아틀란티스 도착] 물 위에 걸쳐 지어진 하얀 도시. 수로마다 작은 배가 오가고, 다리 위에서 상인들이 생선을 외친다.","cut":null},
+      {"speaker":"","text":"물 위에 걸쳐 지어진 하얀 도시. 수로마다 작은 배가 오가고, 다리 위에서 상인들이 생선을 외친다.","place":"아틀란티스 도착","cut":null},
       {"speaker":"리안","portraitId":"comp-rian","text":"와… 진짜 도시가 물 위에 떠 있네.","anim":"rian-surprise"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"떠 있는 건 아니고, 수로와 건축이 함께 설계된 도시입니다. 지반 아래로 기둥이 삼천 개쯤 박혀 있죠."},
       {"speaker":"리안","portraitId":"comp-rian","text":"사서님은 감동을 숫자로 하세요?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"숫자를 알면 감동이 두 배가 됩니다. 삼천 개입니다, 리안 학생. 삼천 개."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……두 배 됐어.","anim":"doran-think"},
-      {"speaker":"","text":"[방학 생활] 낚시, 해양 채집, 상인 심부름, 주민 도움 퀘스트.","cut":null},
-      {"speaker":"","text":"선술집 주인이 일행에게 생선 수프를 공짜로 내준다. 지난 학기 해안 마을에서 토마를 도운 소문이 여기까지 퍼졌다."},
+      {"speaker":"","text":"선술집 주인이 일행에게 생선 수프를 공짜로 내준다. 지난 학기 해안 마을에서 토마를 도운 소문이 여기까지 퍼졌다.","place":"방학 생활","cut":null},
       {"speaker":"도란","portraitId":"comp-doran","text":"이번 방학은 좀 여유롭네."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그렇게 말하면 꼭 일이 생겨."},
       {"speaker":"리안","portraitId":"comp-rian","text":"넌 맨날 그 말 하더라."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그리고 맨날 맞지."},
-      {"speaker":"","text":"[밤의 불빛] 밤. 선착장. 밤바다에서 거대한 푸른빛이 솟는다. 지난번 해안에서 본 것보다 훨씬 크다.","cut":null},
+      {"speaker":"","text":"밤. 선착장. 밤바다에서 거대한 푸른빛이 솟는다. 지난번 해안에서 본 것보다 훨씬 크다.","place":"밤의 불빛","cut":null},
       {"speaker":"","text":"도시 사람들이 일제히 등불을 끄고 고개를 돌린다."},
       {"speaker":"주민","text":"저 빛은 보지 않는 게 좋아."},
       {"speaker":"주인공","player":true,"text":"왜요?"},
@@ -304,7 +300,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"주민","text":"그래. 그러니까 깨우지 말라고."},
     ],
     outro: [
-      {"speaker":"","text":"카메라가 수면 아래로 내려간다. 거대한 광원이 해저 깊은 곳에서 맥박친다.","cut":"ep12-a"},
+      {"speaker":"","text":"수면 아래, 해저 깊은 곳에서 거대한 빛이 맥박친다.","cut":"ep12-a"},
       {"speaker":"","text":"그 아래, 반쯤 모래에 잠긴 돌문. 문의 네 홈 중 하나가 광원과 같은 박자로 깜빡인다."},
       {"speaker":"","text":"용암이 흐르는 마을 외곽의 작은 밭. 화산재 흙에 무언가가 줄지어 심겨 있다.","cut":"ep12-b"},
       {"speaker":"","text":"거대한 뿔의 그림자가 쪼그려 앉아 새싹 하나를 들여다본다. 뒤에서 덩치 큰 수하가 물뿌리개를 들고 있다."},
@@ -316,20 +312,19 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"덩치 큰 수하가 물뿌리개를 떨어뜨린다."},
       {"speaker":"덩치 큰 수하","text":"폐하. 방금……"},
       {"speaker":"뿔의 그림자","text":"……그러게. 방금."},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP13 · 해파리 여왕 ═════════
   13: {
     brief: [
-      {"speaker":"","text":"[심해 진입] 빛이 닿지 않는 깊이. 일행의 수정구 불빛만이 주변을 비춘다.","cut":null},
+      {"speaker":"","text":"빛이 닿지 않는 깊이. 일행의 수정구 불빛만이 주변을 비춘다.","place":"심해 진입","cut":null},
       {"speaker":"","text":"가끔 거대한 무언가가 불빛 바깥을 스쳐 지나간다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"돌아갈 길은 반드시 표시해 두십시오. 반드시."},
       {"speaker":"리안","portraitId":"comp-rian","text":"사서님 무서우세요?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"저는 지금 매우 침착합니다. 단지 이 깊이에서 길을 잃으면 도서관 반납 기한을 영영 못 지킬 뿐입니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……무서우신 거네."},
       {"speaker":"리안","portraitId":"comp-rian","text":"이번엔 진짜 아래로 간다."},
-      {"speaker":"","text":"[해파리 여왕] 거대한 반투명 해파리가 어둠 속에서 피어오른다. 몸 안에서 수천 개의 작은 빛이 별처럼 흐른다.","cut":null},
+      {"speaker":"","text":"거대한 반투명 해파리가 어둠 속에서 피어오른다. 몸 안에서 수천 개의 작은 빛이 별처럼 흐른다.","place":"해파리 여왕","cut":null},
       {"speaker":"","text":"주변의 작은 해파리들이 여왕을 향해 빛을 흘려보낸다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……예쁘다.","anim":"doran-think"},
       {"speaker":"리안","portraitId":"comp-rian","text":"지금 그 말 할 때야?!"},
@@ -337,7 +332,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"여왕의 촉수가 휘둘러질 때마다 빛의 궤적이 하나의 문양을 그려 간다. 해저 돌문의 원형 홈과 같은 모양이다."},
     ],
     outro: [
-      {"speaker":"","text":"[전투 후] 여왕이 빛을 잃고 천천히 가라앉는다. 작은 해파리들이 흩어진다.","cut":null},
+      {"speaker":"","text":"여왕이 빛을 잃고 천천히 가라앉는다. 작은 해파리들이 흩어진다.","place":"전투 후","cut":null},
       {"speaker":"","text":"여왕이 그리던 문양이 미완성인 채로 물속에 남아 서서히 흐려진다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"이건 생태 이상이 아닙니다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"여왕은 문을 '열려고' 한 게 아닙니다. 문이 먼저 흔들렸고, 여왕은 그걸 다시 잠그려고 진을 그리고 있었던 겁니다."},
@@ -350,7 +345,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP14 · 암초왕의 기억 ═════════
   14: {
     brief: [
-      {"speaker":"","text":"[암초왕의 영역] 심해 유적의 중심. 산호와 바위가 엉겨 붙은 왕좌 위에 거대한 암초의 거인이 앉아 있다.","cut":null},
+      {"speaker":"","text":"심해 유적의 중심. 산호와 바위가 엉겨 붙은 왕좌 위에 거대한 암초의 거인이 앉아 있다.","place":"암초왕의 영역","cut":null},
       {"speaker":"","text":"거인은 일어나지 않는다. 다만 눈을 뜬다."},
       {"speaker":"암초왕","text":"인간은 또 문을 찾아왔군."},
       {"speaker":"리안","portraitId":"comp-rian","text":"또 말한다!","anim":"rian-surprise"},
@@ -360,11 +355,11 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"암초왕","text":"그 이름을 부르지 마라. 이번에는 내가 지킨다."},
     ],
     outro: [
-      {"speaker":"","text":"[보스전] 암초왕이 일어선다. 그러나 공격은 대부분 일행을 문에서 '떼어 놓는' 동작이다.","cut":null},
+      {"speaker":"","text":"암초왕이 일어선다. 그러나 공격은 대부분 일행을 문에서 '떼어 놓는' 동작이다.","place":"보스전","cut":null},
       {"speaker":"","text":"HP가 줄어들수록 암초왕은 공격하기보다 등 뒤의 문을 몸으로 가린다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……이 사람, 우리 죽이려는 게 아니야."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"알고 있습니다. 알고 있어서 더 괴롭군요."},
-      {"speaker":"","text":"[기억의 파편] 암초왕이 무너지며 몸에서 빛의 파편이 흩어진다. 파편 하나가 주인공에게 닿는 순간, 시야가 바뀐다.","cut":null},
+      {"speaker":"","text":"암초왕이 무너지며 몸에서 빛의 파편이 흩어진다. 파편 하나가 주인공에게 닿는 순간, 시야가 바뀐다.","place":"기억의 파편","cut":null},
       {"speaker":"","text":"— 오래전의 바닷가 도시. 지금의 아틀란티스와 닮았지만 훨씬 오래된."},
       {"speaker":"","text":"인간과, 뿔이 달린 이들과, 비늘이 있는 이들이 같은 시장에서 생선을 고른다."},
       {"speaker":"","text":"높은 계단 위에서 왕관을 쓴 누군가가 그 시장을 내려다본다. 얼굴은 빛에 가려 보이지 않는다."},
@@ -374,7 +369,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"시야가 돌아온다. 주인공의 손이 떨리고 있다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"야, 괜찮아? 너 지금 울어."},
       {"speaker":"주인공","player":true,"text":"……어. 왜 그러지."},
-      {"speaker":"","text":"[이름] 문 옆 벽면. 고대문자 위로, 날카로운 정으로 덧새긴 다른 글자들이 겹쳐 있다.","cut":null},
+      {"speaker":"","text":"문 옆 벽면. 고대문자 위로, 날카로운 정으로 덧새긴 다른 글자들이 겹쳐 있다.","place":"이름","cut":null},
       {"speaker":"","text":"오웬이 손전등을 비추다가 멈춘다. 덧새긴 쪽은 — 읽을 수 있다. 오래된 왕국 공용문자다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"마왕… 모… 르… 스."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"'재앙의 왕 모르스, 이곳에 봉하다.'"},
@@ -400,7 +395,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP15 · 돌아온 학생, 남겨진 질문 ═════════
   15: {
     brief: [
-      {"speaker":"","text":"[개강] 본관 계단. 유나가 2학년 배지를 단 후배들을 맞는다.","cut":null},
+      {"speaker":"","text":"본관 계단. 유나가 2학년 배지를 단 후배들을 맞는다.","place":"개강","cut":null},
       {"speaker":"유나","portraitId":"comp-yuna","text":"2학년부터는 수업이 좀 더 전문적으로 변할 거야.","anim":"yuna-think"},
       {"speaker":"리안","portraitId":"comp-rian","text":"1학년도 충분히 힘들었는데요."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"그래서 2학년이지. 힘든 걸 버틴 사람한테 더 힘든 걸 주는 게 학교거든."},
@@ -410,7 +405,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"셀라","portraitId":"comp-sella","text":"1학년 때도 맞았지."},
     ],
     outro: [
-      {"speaker":"","text":"[모르스의 이름] 역사 수업. 미르엘의 강의. 오웬이 해안에서 베껴 온 기록을 들고 청강하러 들어와 있다.","cut":null},
+      {"speaker":"","text":"역사 수업. 미르엘의 강의. 오웬이 해안에서 베껴 온 기록을 들고 청강하러 들어와 있다.","place":"모르스의 이름","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"인마대전. 오백 년 전, 마왕 모르스가 인간 왕국을 침공하며 시작된 전쟁이지."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"교수님. 해안 심해 유적에서 그 이름을 직접 확인했습니다. 다만 그 이름은 원래 문장 위에 덧새겨져 있었습니다."},
       {"speaker":"","text":"교실이 조용해진다."},
@@ -437,7 +432,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP16 · 기록이 다르게 쓰여 있다 ═════════
   16: {
     brief: [
-      {"speaker":"","text":"[문헌 대조] 도서관 열람실. 오웬이 두 판본을 책상에 나란히 펼친다. 셀라가 숙제를 핑계로 와 있다.","cut":null},
+      {"speaker":"","text":"도서관 열람실. 오웬이 두 판본을 책상에 나란히 펼친다. 셀라가 숙제를 핑계로 와 있다.","place":"문헌 대조","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"같은 사건인데 날짜가 세 군데서 다릅니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"필사 오류?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"한 번이면 그렇겠죠."},
@@ -446,7 +441,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"그렇게 말하기엔 아직 증거가 부족합니다. 하지만 그렇게 생각하지 않기엔 우연이 너무 많군요."},
     ],
     outro: [
-      {"speaker":"","text":"[카엘의 지도] 빙결 실습실. 조교 카엘이 학생들의 보고서를 쌓아 두고 낡은 지도 한 장을 꺼낸다.","cut":null},
+      {"speaker":"","text":"빙결 실습실. 조교 카엘이 학생들의 보고서를 쌓아 두고 낡은 지도 한 장을 꺼낸다.","place":"카엘의 지도","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"이거. 스톰헤이븐 쪽 지도."},
       {"speaker":"주인공","player":true,"text":"교과서에 없는 길이 있네요?"},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"있어. 내 고향이 거기 아래 마을이야. 어릴 때 할머니가 '하늘로 가는 옛길'이라고 불렀지."},
@@ -454,7 +449,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"그래서 확인하려는 거다. …보고서는 다들 냈지?"},
       {"speaker":"주인공","player":true,"text":"……내일까지는요."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"오늘까지야."},
-      {"speaker":"","text":"[미르엘과의 대화] 복도. 미르엘이 주인공과 셀라를 불러 세운다. 손에 두 사람의 숙제가 들려 있다.","cut":null},
+      {"speaker":"","text":"복도. 미르엘이 주인공과 셀라를 불러 세운다. 손에 두 사람의 숙제가 들려 있다.","place":"미르엘과의 대화","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"숙제 잘 봤다. 셀라, 날짜 대조표는 교수들보다 낫더구나."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……감사합니다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"다만, 카엘 조교가 스톰헤이븐 옛길 이야기를 했다지?"},
@@ -472,7 +467,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP17 · 하늘에서 내려온 초대 ═════════
   17: {
     brief: [
-      {"speaker":"","text":"[기말시험] 종합 실기: 영창 암기 → 리듬 타이밍 → 원소 실전.","cut":null},
+      {"speaker":"","text":"기말시험 날. 영창 암기로 시작해 리듬 실기, 원소 실전까지 — 해가 질 때까지 끝나지 않는다.","place":"기말시험","cut":null},
       {"speaker":"","text":"시험 직전, 대기실. 리안이 손바닥에 영창을 적다가 도란에게 들킨다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"그거 땀 나면 번져."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……'불꽃이여, 나의 ㅁ…ㄴ…'"},
@@ -480,17 +475,17 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"리안은 다음에 손 씻는 법부터 배우면 되겠구나."},
     ],
     outro: [
-      {"speaker":"","text":"[초대장] 시험이 끝난 뒤. 카엘이 은빛 봉랍으로 봉인된 편지를 들고 온다.","cut":null},
+      {"speaker":"","text":"시험이 끝난 뒤. 카엘이 은빛 봉랍으로 봉인된 편지를 들고 온다.","place":"초대장","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"스톰헤이븐 연구진이 정식으로 초청했어. 천공 신전 자료 열람 허가."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"천공 신전 기록 보관소군요. 이건 왕국 학자들도 평생 한 번 들어가기 힘든 곳입니다.","anim":"owen-surprise"},
       {"speaker":"리안","portraitId":"comp-rian","text":"그런 데를 우리가 어떻게?"},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"교장 선생님이 추천서를 써 주셨다. 직접."},
       {"speaker":"","text":"일행이 서로를 본다. 지난번 \"도와줄 수 있으니\"라던 말이 떠오른다."},
-      {"speaker":"","text":"[승인] 교장실. 미르엘이 원정 계획서에 서명한다. 망설임이 없다.","cut":null},
+      {"speaker":"","text":"교장실. 미르엘이 원정 계획서에 서명한다. 망설임이 없다.","place":"승인","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"좋아. 다녀오렴."},
       {"speaker":"주인공","player":true,"text":"교수님도 같이 가세요?"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"나는 학교를 지켜야지. 교장이 방학마다 자리를 비우면 학교가 무너진단다. …농담이 아니라, 진짜로 결계가 무너져."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……진짜요?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"지, 진짜요?"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"반쯤은.","anim":"mirel-laugh"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"대신 결과는 꼭 내게 보고하렴. 너희가 찾은 걸 제일 먼저 듣고 싶구나."},
       {"speaker":"","text":"다정하고, 기대에 찬 목소리다."},
@@ -504,7 +499,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP18 · 방학은 조금 천천히 ═════════
   18: {
     brief: [
-      {"speaker":"","text":"[동아리] 학교 게시판. 여름 동아리 모집 공고가 빽빽하다.","cut":null},
+      {"speaker":"","text":"학교 게시판. 여름 동아리 모집 공고가 빽빽하다.","place":"동아리","cut":null},
       {"speaker":"유나","portraitId":"comp-yuna","text":"이번 여름은 네가 하고 싶은 걸 해 봐."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"2학년부터는 다들 진로가 조금씩 보이기 시작하거든. 그 전에 좋아하는 걸 하나쯤 찾아 둬."},
       {"speaker":"리안","portraitId":"comp-rian","text":"'용암 요리 동아리'? 이거다."},
@@ -513,14 +508,14 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"유나","portraitId":"comp-yuna","text":"……부장이 졸업을 안 했거든."},
     ],
     outro: [
-      {"speaker":"","text":"[개인공간] 주인공의 기숙사 방을 꾸민다. 동료들이 각자 가구를 들고 들이닥친다.","cut":null},
+      {"speaker":"","text":"주인공의 기숙사 방을 꾸민다. 동료들이 각자 가구를 들고 들이닥친다.","place":"개인공간","cut":null},
       {"speaker":"리안","portraitId":"comp-rian","text":"이거 놓자. 멋있잖아."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"공간 낭비야. 그리고 그거 눈이 따라와."},
       {"speaker":"도란","portraitId":"comp-doran","text":"그래도 이건 하나쯤 있으면 좋겠는데."},
       {"speaker":"리안","portraitId":"comp-rian","text":"왜 도란 거만 바로 통과야?"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"눈이 안 따라오니까."},
       {"speaker":"","text":"생활 콘텐츠 비중을 높인다(하우징·요리·낚시·제작)."},
-      {"speaker":"","text":"[여름 산책] 해 질 녘 호숫가. 유나와 주인공 둘이 걷는다.","cut":null},
+      {"speaker":"","text":"해 질 녘 호숫가. 유나와 주인공 둘이 걷는다.","place":"여름 산책","cut":null},
       {"speaker":"유나","portraitId":"comp-yuna","text":"모험할 때는 다음 목적지만 보게 되잖아."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"가끔은 지금 옆에 있는 사람도 봐. 졸업하고 나면, 이 길을 같이 걷던 애들이 제일 보고 싶어지더라."},
       {"speaker":"주인공","player":true,"text":"선배도 졸업 안 했잖아요."},
@@ -538,19 +533,19 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP19 · 마법 동아리 합동 실습 ═════════
   19: {
     brief: [
-      {"speaker":"","text":"[합동 실습] 훈련장. 카엘이 학생들을 둘씩 짝짓는다. 리안과 루스벨이 같은 조가 된다.","cut":null},
+      {"speaker":"","text":"훈련장. 카엘이 학생들을 둘씩 짝짓는다. 리안과 루스벨이 같은 조가 된다.","place":"합동 실습","cut":null},
       {"speaker":"리안 · 루스벨","text":"조교님, 바꿔 주세요."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"안 돼. 오늘은 속성의 세기가 아니라, 서로의 타이밍을 본다."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"제일 안 맞는 둘이 맞추면, 나머지는 쉽다."},
     ],
     outro: [
-      {"speaker":"","text":"[빛과 어둠의 개념] 실습 자료 마지막 장에 교육과정 밖의 도식이 끼어 있다. 다섯 개의 원 — 화염·빙결·대지, 그리고 빛과 어둠.","cut":null},
+      {"speaker":"","text":"실습 자료 마지막 장에 교육과정 밖의 도식이 끼어 있다. 다섯 개의 원 — 화염·빙결·대지, 그리고 빛과 어둠.","place":"빛과 어둠의 개념","cut":null},
       {"speaker":"셀라","portraitId":"comp-sella","text":"이건 빛과 어둠 계열이네. 우리 과정엔 없는 거잖아요."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"3학년 심화 과정 자료가 섞여 들어갔네. 연구 단계다."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"나 이거 조금 배웠어. 빛은 치유랑 보호, 그리고… 감춰진 걸 드러내는 쪽."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"감춰진 걸 드러낸다…… 지워진 글자 같은 것도요?"},
       {"speaker":"유나","portraitId":"comp-yuna","text":"글쎄? 그건 성녀님 정도는 돼야 할걸."},
-      {"speaker":"","text":"[학생 토론] 실습 후, 그늘에 앉은 일행.","cut":null},
+      {"speaker":"","text":"실습 후, 그늘에 앉은 일행.","place":"학생 토론","cut":null},
       {"speaker":"도란","portraitId":"comp-doran","text":"모든 상황에 강한 속성은 없는 것 같아."},
       {"speaker":"리안","portraitId":"comp-rian","text":"그러니까 결국 자기 장점을 잘 쓰는 게 중요하다는 거지."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"……아까 네 번째. 네 타이밍 나쁘지 않았어."},
@@ -565,14 +560,14 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP20 · 여름밤의 성녀 ═════════
   20: {
     brief: [
-      {"speaker":"","text":"[방문 소문] 축제 준비로 분주한 중앙광장. 유나가 숨을 헐떡이며 달려온다.","cut":null},
+      {"speaker":"","text":"축제 준비로 분주한 중앙광장. 유나가 숨을 헐떡이며 달려온다.","place":"방문 소문","cut":null},
       {"speaker":"유나","portraitId":"comp-yuna","text":"이번 축제에 성녀님이 직접 오신대!"},
       {"speaker":"리안","portraitId":"comp-rian","text":"성녀님이면… 빛 마법 제일 잘하는 사람?"},
       {"speaker":"유나","portraitId":"comp-yuna","text":"제일 잘하는 사람이 아니라, 빛 마법이 '그분 거'인 사람."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……그럼 우리 축제 불꽃 좀 꺼야 하나. 비교되잖아."},
     ],
     outro: [
-      {"speaker":"","text":"[첫 대면] 축제 저녁. 하얀 옷의 여인이 호위 없이 노점 사이를 걷는다. 아이들이 그 뒤를 졸졸 따른다.","cut":null},
+      {"speaker":"","text":"축제 저녁. 하얀 옷의 여인이 호위 없이 노점 사이를 걷는다. 아이들이 그 뒤를 졸졸 따른다.","place":"첫 대면","cut":null},
       {"speaker":"","text":"학생들이 긴장해서 줄을 서자, 성녀 리아나가 먼저 웃는다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"그렇게 굳지 않으셔도 됩니다. 저도 오늘은 축제 손님이에요."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"……그런데 저 꼬치구이는 어디서 파나요? 아까부터 냄새가 너무 좋아서요."},
@@ -584,7 +579,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"바닷속에서 오래된 문을 보았다고요? 문 위에 다른 글자가 덧새겨져 있었고요?"},
       {"speaker":"주인공","player":true,"text":"네. 오웬 사서님이 '누가 나중에 덧쓴 것'이라고 했어요."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"……성역에도 그런 기록이 있어요. 위에 쓴 글자와 아래 글자가 다른 기록들."},
-      {"speaker":"","text":"[성녀와 미르엘] 본관 테라스. 성녀와 미르엘이 축제를 내려다보며 차를 마신다. 학생들이 멀찍이서 지켜본다.","cut":null},
+      {"speaker":"","text":"본관 테라스. 성녀와 미르엘이 축제를 내려다보며 차를 마신다. 학생들이 멀찍이서 지켜본다.","place":"성녀와 미르엘","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"학교 기록과 성역 기록 사이에 차이가 꽤 있는 듯합니다, 교장 선생님."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"오래된 기록은 원래 서로 맞지 않는 법이지요. 그래서 더 흥미롭고요."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"우리 학생들이 그걸 찾아냈다니 저도 자랑스럽습니다. 성녀님께서 한번 가르쳐 주시겠어요? 기록을 '읽는' 법을."},
@@ -601,19 +596,19 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP21 · 성녀와 첫 대화 ═════════
   21: {
     brief: [
-      {"speaker":"","text":"[빛의 수업] 특별 강의실. 미르엘이 성녀를 소개하고 뒷자리에 앉는다.","cut":null},
+      {"speaker":"","text":"특별 강의실. 미르엘이 성녀를 소개하고 뒷자리에 앉는다.","place":"빛의 수업","cut":null},
       {"speaker":"","text":"성녀가 리안의 손등에 난 실습 화상을 빛으로 감싼다. 화상이 천천히 사라진다.","anim":"saint-heal"},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"빛은 공격만을 위한 것이 아닙니다. 치유하고, 보호하고, 감춰진 것을 드러냅니다."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……화상 자국 없어졌어. 대박. 한 번 더 데어 와도 돼요?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"화상 자국 없어졌어! 대박. 한 번 더 데어 와도 돼요?"},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"안 됩니다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"안 된다."},
     ],
     outro: [
-      {"speaker":"","text":"[기록 읽기] 성녀가 오웬이 가져온 오래된 문서에 빛을 비춘다. 긁어 지운 자리에서 희미한 글자가 잠깐 떠올랐다 사라진다.","anim":"saint-think","cut":null},
+      {"speaker":"","text":"성녀가 오웬이 가져온 오래된 문서에 빛을 비춘다. 긁어 지운 자리에서 희미한 글자가 잠깐 떠올랐다 사라진다.","anim":"saint-think","place":"기록 읽기","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"기록에서는 쓰여 있지 않은 부분도 중요합니다. 지운 자국도 하나의 글이에요. '무엇을 지웠는가'가 남으니까요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……지운 자국도 글이다. 이걸 이십 년 전에 알았으면.","anim":"owen-think"},
       {"speaker":"유나","portraitId":"comp-yuna","text":"사서님, 그 말 오늘 세 번째예요."},
-      {"speaker":"","text":"[봉인 질문] 수업이 끝나고, 성녀가 주인공을 따로 부른다.","cut":null},
+      {"speaker":"","text":"수업이 끝나고, 성녀가 주인공을 따로 부른다.","place":"봉인 질문","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"해안에서 본 문은 무엇을 잠그고 있었나요?"},
       {"speaker":"주인공","player":true,"text":"아직 모르겠어요."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"그렇다면 확인하면 됩니다."},
@@ -626,7 +621,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP22 · 중간고사: 빛과 기록 ═════════
   22: {
     brief: [
-      {"speaker":"","text":"[시험] 역사·윤리·빛 실기.","cut":null},
+      {"speaker":"","text":"시험 기간. 역사와 윤리 필기가 끝나면, 오후엔 빛 실기가 기다린다.","place":"시험","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"역사를 평가할 때 한쪽 기록만 믿어도 좋겠습니까?"},
       {"speaker":"","text":"답은 '아니다'."},
       {"speaker":"리안","portraitId":"comp-rian","text":"첫 문제 '아니다'잖아. 오웬 사서님이 낸 거면 무조건 '아니다'야."},
@@ -634,7 +629,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"……첫 문제."},
     ],
     outro: [
-      {"speaker":"","text":"[윤리 토론] 토론 수업. 성녀가 질문을 던진다.","cut":null},
+      {"speaker":"","text":"토론 수업. 성녀가 질문을 던진다.","place":"윤리 토론","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"적이라는 이유만으로, 그 적에게 하는 모든 행동이 정당해질까요?"},
       {"speaker":"리안","portraitId":"comp-rian","text":"그럼 적이 잘못해도 그냥 봐주자는 건가요?"},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"아닙니다. 잘못은 판단하되, 존재 전체를 잘못으로 묶지는 말자는 겁니다."},
@@ -642,8 +637,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"교실이 조용해진다. 리안이 루스벨을 돌아본다. 루스벨은 창밖을 보고 있다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"그래서 이 수업이 있는 거예요."},
       {"speaker":"","text":"루스벨의 마족 혈통에 대한 첫 암시. 아무도 더 묻지 않는다."},
-      {"speaker":"","text":"[미르엘의 마무리]"},
-      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"좋은 질문들이었다.","cut":null},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"좋은 질문들이었다.","place":"미르엘의 마무리","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"다만 너무 오래된 전쟁을 지금의 감정으로만 판단해서도 안 되겠지. 그때 사람들도 그때의 두려움 속에서 선택했을 테니."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"판단은 늦게, 확인은 빨리. 오늘 토론의 결론은 그거면 충분하구나."},
       {"speaker":"","text":"공정하고 균형 잡힌 마무리. 학생들은 고개를 끄덕인다."},
@@ -655,7 +649,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP23 · 천공 신전의 문 ═════════
   23: {
     brief: [
-      {"speaker":"","text":"[스톰헤이븐 도착] 구름 위로 이어진 돌다리. 바람이 옷자락을 끌어당긴다. 도란이 난간을 두 손으로 붙잡고 있다.","cut":null},
+      {"speaker":"","text":"구름 위로 이어진 돌다리. 바람이 옷자락을 끌어당긴다. 도란이 난간을 두 손으로 붙잡고 있다.","place":"스톰헤이븐 도착","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"여긴 바다와 달라. 발밑부터 조심해."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……대지 마법사가 땅이 없는 데 오면 어떻게 되는지 알아?"},
       {"speaker":"리안","portraitId":"comp-rian","text":"어떻게 되는데?"},
@@ -663,7 +657,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"구름이 걷히며 하늘 도시와 천공 신전이 모습을 드러낸다. 일행이 동시에 숨을 멈춘다."},
     ],
     outro: [
-      {"speaker":"","text":"[천공 신전의 손님 (게임 CH3_KING_ENCOUNTER)] 신전 앞뜰. 은빛 갑주의 근위병들이 길을 막는다.","cut":null},
+      {"speaker":"","text":"신전 앞뜰. 은빛 갑주의 근위병들이 길을 막는다.","place":"천공 신전의 손님","cut":null},
       {"speaker":"왕실 근위병","portraitId":"npc-royal-guard","text":"멈춰라. 지금은 폐하께서 기도를 올리시는 중이다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……폐하? 설마 국왕이요?"},
       {"speaker":"국왕 레오니스","portraitId":"npc-king","text":"괜찮다. 학생들이로구나. 울토르의 교복이군."},
@@ -673,12 +667,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"국왕은 짧게 웃고, 근위병들과 함께 신전 안으로 걸어 들어간다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"…방금 그거, 국왕이 할 말 맞아?"},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"들은 거 보고서에 쓰지 마. 진짜로."},
-      {"speaker":"","text":"[벽화] 신전 깊은 곳. 천장까지 닿는 벽화 중앙에 왕관을 쓴 인물이 있다.","cut":null},
+      {"speaker":"","text":"신전 깊은 곳. 천장까지 닿는 벽화 중앙에 왕관을 쓴 인물이 있다.","place":"벽화","cut":null},
       {"speaker":"","text":"왕의 가슴에서 네 개의 상징이 갈라져 나온다. 모두 얼굴 부분만 바람에 깎여 있다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"한 왕의 마음을… 네 갈래로 그렸군요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"공식 역사에는 이런 그림이 없습니다. 이 정도 규모의 벽화가 기록에 한 줄도 없다는 건—"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"누가 일부러 안 적었다는 거죠."},
-      {"speaker":"","text":"[폭풍 경보] 일행의 통신 수정구가 울린다. 미르엘이다. 배경에 바람 소리가 섞여 있다.","cut":null},
+      {"speaker":"","text":"일행의 통신 수정구가 울린다. 미르엘이다. 배경에 바람 소리가 섞여 있다.","place":"폭풍 경보","cut":null},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"스톰헤이븐 관측소에서 폭풍 경보가 왔다. 오늘 조사는 안전 범위까지만 하고 숙소로 돌아가렴."},
       {"speaker":"주인공","player":true,"text":"교수님, 지금 벽화를 찾았어요. 왕의 마음이 넷으로 갈라진 그림이요. 이 신전을 아세요?"},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"문헌으로만. ……너희가 나보다 먼저 직접 봤구나."},
@@ -690,17 +684,17 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP24 · 하늘을 올려다보는 이유 ═════════
   24: {
     brief: [
-      {"speaker":"","text":"[기말시험] 고대문양 기억 → 빛 마법 → 전투 응용.","cut":null},
+      {"speaker":"","text":"기말시험. 고대문양을 외워 그리고, 빛을 다루고, 마지막엔 실전이다.","place":"기말시험","cut":null},
     ],
     outro: [
-      {"speaker":"","text":"[다음 조사] 도서관. 성녀가 천공 신전 벽화의 탁본과 아틀란티스 대성당의 옛 목록을 나란히 놓는다.","cut":null},
+      {"speaker":"","text":"도서관. 성녀가 천공 신전 벽화의 탁본과 아틀란티스 대성당의 옛 목록을 나란히 놓는다.","place":"다음 조사","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"천공 신전의 기록이 아틀란티스 대성당 지하에도 남아 있을 수 있습니다. 같은 시대, 같은 장인들의 양식이에요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"겨울방학에 확인해 보겠습니다."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"아틀란티스 겨울 엄청 춥대. 바닷바람이 뼈로 들어온대."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"설원보단 낫다."},
       {"speaker":"유나","portraitId":"comp-yuna","text":"조교님은 설원 가 보셨어요?"},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"아니. 그냥 설원보단 나을 것 같아서."},
-      {"speaker":"","text":"[미르엘의 당부] 교장실. 미르엘이 원정 허가서에 서명한다.","cut":null},
+      {"speaker":"","text":"교장실. 미르엘이 원정 허가서에 서명한다.","place":"미르엘의 당부","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"보고서는 꼭 제출하렴. 이번에도 제일 먼저 읽고 싶구나."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그리고 필요 이상으로 오래 머물지는 말고. 겨울 바다는 여름 바다랑 다른 얼굴이란다."},
       {"speaker":"주인공","player":true,"text":"교수님은 아틀란티스 겨울 바다 보신 적 있어요?"},
@@ -715,13 +709,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"아이들이 웃으며 흩어진다. 그녀가 혼자 남아 자기 가슴께에 손을 얹는다."},
       {"speaker":"","text":"손바닥 아래에서, 아주 작은 금빛이 반딧불처럼 한 번 깜빡인다."},
       {"speaker":"뿔의 그림자","text":"……너였구나. 아직 거기 있었구나."},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP25 · 대성당으로 가는 겨울길 ═════════
   25: {
     brief: [
-      {"speaker":"","text":"[성당 입구] 눈이 내리는 아틀란티스. 수로 위에 얇은 얼음이 떠다닌다. 하얀 대성당의 종탑 끝에 눈이 쌓여 있다.","cut":null},
+      {"speaker":"","text":"눈이 내리는 아틀란티스. 수로 위에 얇은 얼음이 떠다닌다. 하얀 대성당의 종탑 끝에 눈이 쌓여 있다.","place":"성당 입구","cut":null},
       {"speaker":"","text":"성녀가 성당 계단에서 일행을 맞는다. 코끝이 빨갛다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"이번에는 연구자라는 마음보다, 누군가를 만나러 왔다고 생각해 주세요."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"누구를요?"},
@@ -731,13 +724,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"브라더 모렌","text":"겨울엔 바다도 사람도 웅크리지요. 들어오세요. 수프가 식기 전에."},
     ],
     outro: [
-      {"speaker":"","text":"[생활 봉사] 성당과 주민들의 겨울 지원. 장작 나르기, 무료 급식, 아이들 돌보기.","cut":null},
+      {"speaker":"","text":"성당의 겨울 일손을 돕는다. 장작을 나르고, 급식을 퍼 주고, 아이들 썰매를 끌어 준다.","place":"생활 봉사","cut":null},
       {"speaker":"","text":"유나가 아이들에게 빛 마법으로 작은 별을 만들어 보여 준다. 오웬은 장작을 나르다가 세 번 쉰다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"사서는… 책보다 무거운 걸 들지 않는 직업입니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"사서님, 그거 장작 두 개예요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"젖은 장작입니다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"역사를 찾는 일도 결국 사람을 위한 일이어야 합니다. 오늘 하루는 그걸로 충분해요.","anim":"saint-laugh"},
-      {"speaker":"","text":"[왕의 부조] 밤. 브라더 모렌이 촛불을 들고 일행을 지하 예배실로 안내한다.","cut":null},
+      {"speaker":"","text":"밤. 브라더 모렌이 촛불을 들고 일행을 지하 예배실로 안내한다.","place":"왕의 부조","cut":null},
       {"speaker":"","text":"\"오래돼서 아무도 안 내려오는 방\"이라고 했다. 벽 한 면을 차지한 부조가 촛불에 드러난다."},
       {"speaker":"","text":"왕관을 쓴 인물. 교과서 속 마왕의 뿔과 같은 뿔. 그러나 표정은 온화하고, 두 팔은 무언가를 감싸 안고 있다."},
       {"speaker":"","text":"그 품에 안긴 것은 인간 아이와 마족 아이다."},
@@ -751,7 +744,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP26 · 네 개로 나뉜 마음 ═════════
   26: {
     brief: [
-      {"speaker":"","text":"[지하 벽화] 부조 뒤편의 숨겨진 통로. 더 깊은 방의 벽 전체가 하나의 벽화다.","cut":null},
+      {"speaker":"","text":"부조 뒤편의 숨겨진 통로. 더 깊은 방의 벽 전체가 하나의 벽화다.","place":"지하 벽화","cut":null},
       {"speaker":"","text":"왕의 몸에서 네 가지 색의 빛이 갈라져 나간다. 각 빛 안에는 서로 다른 표정이 그려져 있다."},
       {"speaker":"","text":"웃는 얼굴. 이를 악문 얼굴. 우는 얼굴. 그리고 — 장난스럽게 혀를 내민 얼굴."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"감정… 네 개의 감정이 따로 그려져 있어요."},
@@ -760,14 +753,14 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"하지만 이름은 전부 잘려 있습니다. 네 개 모두, 정으로 쪼아 냈어요."},
     ],
     outro: [
-      {"speaker":"","text":"[오웬의 가설] 방 한가운데 앉아, 오웬이 노트를 펼친다. 촛불이 흔들린다.","cut":null},
+      {"speaker":"","text":"방 한가운데 앉아, 오웬이 노트를 펼친다. 촛불이 흔들린다.","place":"오웬의 가설","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"단순한 상징이 아니라, 인격의 일부일 가능성이 있습니다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"기쁨, 분노, 슬픔, 즐거움. 옛말로 희(喜)·로(怒)·애(哀)·락(樂)."},
       {"speaker":"주인공","player":true,"text":"왕의 마음이 여러 조각으로 나뉜다는 건가요?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"가설일 뿐입니다. 하지만 '봉인'과 함께 생각하면… 하나를 넷으로 나눠 따로 가두는 편이, 통째로 가두는 것보다 훨씬 쉽습니다."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"사람을 넷으로 나눈다니. 그건 봉인이 아니라… 해부예요.","anim":"saint-think"},
       {"speaker":"","text":"정적. 셀라가 노트를 꼭 쥔다."},
-      {"speaker":"","text":"[학교의 흔적] 벽화 뒤 석판 아래쪽. 촛농을 걷어 내자 작은 문장이 드러난다. 펜과 열쇠가 교차한 문양.","cut":null},
+      {"speaker":"","text":"벽화 뒤 석판 아래쪽. 촛농을 걷어 내자 작은 문장이 드러난다. 펜과 열쇠가 교차한 문양.","place":"학교의 흔적","cut":null},
       {"speaker":"","text":"일행이 모두 아는 문장이다. 울토르 도서관 정문 위에 새겨진 것과 같다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"이거… 울토르 문장이잖아요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"정확히는 '울토르 기록관'의 옛 문장입니다. 지금은 쓰지 않아요. 기록관 제도는 이백 년 전에 폐지됐으니까요."},
@@ -781,20 +774,20 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP27 · 읽지 못한 문장 ═════════
   27: {
     brief: [
-      {"speaker":"","text":"[해독 실패] 성녀가 벽화 아래 고대 문장에 오래도록 빛을 비춘다. 이마에 땀이 맺힌다.","anim":"saint-think","cut":null},
+      {"speaker":"","text":"성녀가 벽화 아래 고대 문장에 오래도록 빛을 비춘다. 이마에 땀이 맺힌다.","anim":"saint-think","place":"해독 실패","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"일부만 드러나고 있어요. 글자의 모양은 보이는데… 뜻이 보이지 않아요."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"우리 문자 체계보다 훨씬 오래됐습니다. 해저 문, 천공 신전, 그리고 이 벽화. 전부 같은 문자예요. 그리고 전부 읽을 수 없습니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그 시대 문자를 아는 사람이 이 세상에 한 명도 없는 거예요?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"적어도 살아 있는 사람 중에는."},
     ],
     outro: [
-      {"speaker":"","text":"[중단 지시] 통신 수정구가 울린다. 미르엘이다.","cut":null},
+      {"speaker":"","text":"통신 수정구가 울린다. 미르엘이다.","place":"중단 지시","cut":null},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"아틀란티스 해안에 폭풍 해일 경보가 내려졌다. 겨울 원정은 여기까지 하자꾸나."},
       {"speaker":"주인공","player":true,"text":"하지만 아직 읽지 못한 부분이—"},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"알고 있다. 아쉬운 거, 나도 안다.","anim":"mirel-sad"},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"하지만 해일은 기록을 기다려 주지 않고, 나는 학생을 잃을 생각이 없단다. 탁본은 전부 가져오렴. 학교에서 같이 보자."},
       {"speaker":"","text":"통신이 끊긴다."},
-      {"speaker":"","text":"[결심] 돌아가는 배. 갑판 위에 눈이 쌓인다.","cut":null},
+      {"speaker":"","text":"돌아가는 배. 갑판 위에 눈이 쌓인다.","place":"결심","cut":null},
       {"speaker":"셀라","portraitId":"comp-sella","text":"다음에는 우리가 직접 확인해요. 유물이 있는 곳으로."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"그렇게 합시다. 기록이 허락하는 만큼이 아니라, 유물이 보여 주는 만큼."},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"그때는 저도 함께하겠습니다. 이건 이제 성역의 일이기도 하니까요."},
@@ -810,7 +803,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP28 · 천공 아래서 찾은 길 ═════════
   28: {
     brief: [
-      {"speaker":"","text":"[고급 탐사 수업] 3학년 첫 수업. 카엘이 정식 조교 겸 강사로 교단에 선다.","cut":null},
+      {"speaker":"","text":"3학년 첫 수업. 카엘이 정식 조교 겸 강사로 교단에 선다.","place":"고급 탐사 수업","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"3학년부터는 찾는 능력보다 확인하는 능력이 중요하다."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"찾는 건 운이고, 확인하는 건 실력이야."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"둘 다 하면요?"},
@@ -818,13 +811,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"실제 지도와 유물 데이터를 마법 투영판 위에 겹쳐 본다."},
     ],
     outro: [
-      {"speaker":"","text":"[폐허의 좌표] 천공 신전 벽화의 별자리 배치를 지도에 겹치자, 한 점이 빛난다.","cut":null},
+      {"speaker":"","text":"천공 신전 벽화의 별자리 배치를 지도에 겹치자, 한 점이 빛난다.","place":"폐허의 좌표","cut":null},
       {"speaker":"","text":"왕국 남서쪽, '버려진 폐허'라 불리는 곳의 입구와 정확히 일치한다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"하늘 위의 문양이 여기에도 있습니다. 숲, 바다, 하늘… 그리고 땅 아래."},
       {"speaker":"리안","portraitId":"comp-rian","text":"폐허면… 언데드 나오는 데잖아요."},
       {"speaker":"도란","portraitId":"comp-doran","text":"응."},
       {"speaker":"리안","portraitId":"comp-rian","text":"또 '응'이야."},
-      {"speaker":"","text":"[미르엘의 승인] 교장실. 미르엘이 투영된 좌표를 오래 들여다본다.","cut":null},
+      {"speaker":"","text":"교장실. 미르엘이 투영된 좌표를 오래 들여다본다.","place":"미르엘의 승인","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"버려진 폐허라. 위험한 곳이다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"……그래도 너희가 여기까지 왔으니, 이번엔 현장을 직접 확인하도록 하자. 정식 실습으로 등록해 주마. 그래야 사고가 나도 학교가 책임질 수 있으니까."},
       {"speaker":"리안","portraitId":"comp-rian","text":"사고 나는 거 전제예요?"},
@@ -836,21 +829,21 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP29 · 중간고사: 고대마법과 역사의 빈칸 ═════════
   29: {
     brief: [
-      {"speaker":"","text":"[종합 시험] 고대문양 배열, 영창 암기, 역사 문제, 실전 과제.","cut":null},
+      {"speaker":"","text":"3학년 종합 시험. 문양, 영창, 역사, 실전 — 4년 중 가장 긴 하루라는 소문이 사실이었다.","place":"종합 시험","cut":null},
       {"speaker":"","text":"마지막 문제. 출제자: 미르엘."},
       {"speaker":"","text":"서로 충돌하는 기록이 있다면, 무엇을 우선해야 하는가? 이유와 함께 서술하시오."},
       {"speaker":"","text":"시험장에 펜 소리가 멈춘다. 학생들이 오래 생각한다."},
       {"speaker":"","text":"주인공 옆자리, 리안이 답안지에 무언가를 열심히 쓰다가 지우고, 또 쓴다."},
     ],
     outro: [
-      {"speaker":"","text":"[오웬의 질문] 시험이 끝난 뒤, 도서관 계단.","cut":null},
+      {"speaker":"","text":"시험이 끝난 뒤, 도서관 계단.","place":"오웬의 질문","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"교과서와 유물이 다르면, 무엇을 믿겠습니까?"},
       {"speaker":"주인공","player":true,"text":"둘 다 확인해야죠. 누가, 언제, 왜 썼는지."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"좋은 답입니다. 미르엘 교수님 수업을 제대로 들으셨군요.","anim":"owen-surprise"},
       {"speaker":"리안","portraitId":"comp-rian","text":"저도 비슷하게 썼어요. '둘 다 믿되, 반만 믿는다.'","anim":"rian-laugh"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……그건 철학이야, 답이야?"},
       {"speaker":"리안","portraitId":"comp-rian","text":"부분 점수."},
-      {"speaker":"","text":"[현장실습 명분] 카엘이 폐허 조사를 정식 실습 과제로 게시판에 붙인다. 「3학년 현장실습: 버려진 폐허 기록 대조 — 지원자 모집」","cut":null},
+      {"speaker":"","text":"카엘이 폐허 조사를 정식 실습 과제로 게시판에 붙인다. 「3학년 현장실습: 버려진 폐허 기록 대조 — 지원자 모집」","place":"현장실습 명분","cut":null},
       {"speaker":"","text":"일행의 이름이 첫 줄부터 차례로 적힌다."},
       {"speaker":"","text":"채점실. 미르엘이 마지막 문제의 답안지들을 넘긴다. 리안의 답안에서 손이 멈춘다.","cut":"ep29-a"},
       {"speaker":"","text":"「둘 다 믿되, 반만 믿는다. 왜냐하면 둘 다 사람이 썼으니까.」"},
@@ -862,7 +855,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP30 · 버려진 폐허의 기록자 ═════════
   30: {
     brief: [
-      {"speaker":"","text":"[묘지의 기록] 안개 낀 폐허. 무너진 아치 아래로 이름이 닳아 없어진 묘비들이 줄지어 있다.","cut":null},
+      {"speaker":"","text":"안개 낀 폐허. 무너진 아치 아래로 이름이 닳아 없어진 묘비들이 줄지어 있다.","place":"묘지의 기록","cut":null},
       {"speaker":"","text":"한 묘비 앞에서 잉크병을 든 반투명한 노인이 떠오른다. 언데드 기록자다. 깃펜을 쥔 손가락이 뼈만 남았다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……저건 말 안 하는 쪽이었으면 좋겠다."},
       {"speaker":"언데드 기록자","text":"살아 있는 자는… 자기 이야기를 남긴다."},
@@ -870,7 +863,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"도란","portraitId":"comp-doran","text":"요즘 다 말해."},
     ],
     outro: [
-      {"speaker":"","text":"[기록의 시험] 기록자가 세 권의 장부를 허공에 펼친다. 같은 날의 같은 사건이 서로 다르게 적혀 있다.","cut":null},
+      {"speaker":"","text":"기록자가 세 권의 장부를 허공에 펼친다. 같은 날의 같은 사건이 서로 다르게 적혀 있다.","place":"기록의 시험","cut":null},
       {"speaker":"언데드 기록자","text":"셋 중 둘은 고친 것이다. 고친 자국을 찾아라. 찾으면 문을 열어 주마."},
       {"speaker":"","text":"세 개의 기록 중 서로 모순되는 부분을 찾는 퀴즈."},
       {"speaker":"","text":"성공 시 기록자가 깃펜으로 허공에 선을 긋고, 무너진 아치 뒤의 문이 열린다."},
@@ -878,7 +871,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"언데드 기록자","text":"……사서인가. 반납 기한은 지키나?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"목숨처럼."},
       {"speaker":"언데드 기록자","text":"좋다."},
-      {"speaker":"","text":"[승자의 기록] 열린 문 너머, 무너진 서고. 반쯤 탄 책들이 바닥에 쌓여 있다.","cut":null},
+      {"speaker":"","text":"열린 문 너머, 무너진 서고. 반쯤 탄 책들이 바닥에 쌓여 있다.","place":"승자의 기록","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"당신은 무엇을 남기려 했습니까?"},
       {"speaker":"언데드 기록자","text":"있었던 일."},
       {"speaker":"언데드 기록자","text":"승자는 자신이 옳았다고 적는다. 그건 죄가 아니다. 다들 그렇게 한다."},
@@ -894,16 +887,16 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP31 · 신전으로 이어지는 균열 ═════════
   31: {
     brief: [
-      {"speaker":"","text":"[기말 실습] 고대문양, 봉인 안전해제, 전투 실습. 카엘의 봉인 해제 실습에서 리안이 자물쇠 대신 책상을 녹인다.","cut":null},
+      {"speaker":"","text":"기말 실습. 카엘의 봉인 해제 시험에서 리안이 자물쇠 대신 책상을 녹인다.","place":"기말 실습","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"……봉인 해제라고 했지, 봉인 소각이라고 안 했다."},
     ],
     outro: [
-      {"speaker":"","text":"[신전 아래의 원형 방] 기록자의 장부에 그려진 지도를 따라, 무너진 신전 바닥 아래 숨겨진 원형 방에 도착한다.","cut":null},
+      {"speaker":"","text":"기록자의 장부에 그려진 지도를 따라, 무너진 신전 바닥 아래 숨겨진 원형 방에 도착한다.","place":"신전 아래의 원형 방","cut":null},
       {"speaker":"","text":"방 중앙에 네 개의 받침대. 공기가 무겁고, 이상하게 따뜻하다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"중앙에 뭔가가 있었던 흔적이 있어. 사람이 앉아 있던 것 같은 자국.","anim":"sella-think"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"정확히는… 사람의 일부였을지도 모릅니다. 대성당 벽화의 '넷으로 나뉜 마음'처럼."},
       {"speaker":"리안","portraitId":"comp-rian","text":"그런 말 이런 데서 하지 마세요. 소름 돋잖아요."},
-      {"speaker":"","text":"[미르엘의 도착] 계단 위에서 다급한 발소리. 미르엘이 망토 자락을 걷어 쥐고 내려온다. 숨이 차 있다.","cut":null},
+      {"speaker":"","text":"계단 위에서 다급한 발소리. 미르엘이 망토 자락을 걷어 쥐고 내려온다. 숨이 차 있다.","place":"미르엘의 도착","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"카엘 조교 보고를 받았다. 폐허 지하에 학생들끼리 내려갔다고."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"……모두 무사하구나. 다행이다."},
       {"speaker":"주인공","player":true,"text":"교수님, 이 신전을 아세요?"},
@@ -919,7 +912,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP32 · 방학 원정, 마지막 평온 ═════════
   32: {
     brief: [
-      {"speaker":"","text":"[캠프 준비] 출발 전 학교 정문. 반과 셀린이 보급품을 나눠 준다.","cut":null},
+      {"speaker":"","text":"출발 전 학교 정문. 반과 셀린이 보급품을 나눠 준다.","place":"캠프 준비","cut":null},
       {"speaker":"반","portraitId":"npc-weapon","text":"부서지면 돌아와서 말해."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"아프면 참지 말고. 참는 건 용기가 아니라 미련이야."},
       {"speaker":"리안","portraitId":"comp-rian","text":"두 분 다 엄마 같아요.","anim":"rian-laugh"},
@@ -932,10 +925,10 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"조교님까지?!"},
     ],
     outro: [
-      {"speaker":"","text":"[식사와 제작] 폐허 외곽의 야영지. 요리/장비 제작으로 모험 전 마지막 정비.","cut":null},
+      {"speaker":"","text":"폐허 외곽의 야영지. 냄비가 끓고, 반이 장비 끈을 하나씩 다시 조인다.","place":"식사와 제작","cut":null},
       {"speaker":"","text":"루스벨이 손바닥 불꽃으로 고기를 굽는다. 리안이 질세라 옆에서 같이 굽는다. 고기가 두 배로 빨리 탄다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……화염 두 명은 요리에 해로워."},
-      {"speaker":"","text":"[졸업 후 이야기] 모닥불. 별이 쏟아진다.","cut":null},
+      {"speaker":"","text":"모닥불. 별이 쏟아진다.","place":"졸업 후 이야기","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"졸업하면 어디로 갈지 생각해 본 적 있어?"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"기록 쪽이요. 오웬 사서님 밑에서 일하고 싶어요. ……지워진 걸 다시 쓰는 일."},
       {"speaker":"도란","portraitId":"comp-doran","text":"고향 돌아가서 산사태 막는 일. 우리 동네 매년 무너져."},
@@ -946,7 +939,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"……그래서 불꽃이 그렇게 센 거였어? 반칙이네."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"응. 반칙이야. 억울하면 너도 할머니 바꿔.","anim":"ruspell-laugh"},
       {"speaker":"","text":"웃음이 번진다. 루스벨이 처음으로 편하게 웃는다."},
-      {"speaker":"","text":"모닥불 주위의 평범한 밤. 카메라가 천천히 멀어져 어둠 속 신전 입구를 비춘다.","cut":"ep32-a"},
+      {"speaker":"","text":"모닥불 주위의 평범한 밤. 그 불빛이 닿지 않는 어둠 속에서, 신전 입구가 입을 벌리고 있다.","cut":"ep32-a"},
       {"speaker":"","text":"돌 틈에서 아주 작은 균열이 생긴다. 균열 사이로 붉은빛이 한 번, 맥박친다."},
       {"speaker":"","text":"모닥불 앞, 잠든 루스벨이 이마를 찡그린다. 꿈속에서 누군가에게 대답하듯 입술이 움직인다."},
     ],
@@ -954,21 +947,21 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP33 · 죽은 자가 기억하는 전쟁 ═════════
   33: {
     brief: [
-      {"speaker":"","text":"[전쟁의 환영] 폐허 심층부. 발을 들이는 순간 주변 풍경이 바뀐다. 오백 년 전의 전장.","cut":null},
+      {"speaker":"","text":"폐허 심층부. 발을 들이는 순간 주변 풍경이 바뀐다. 오백 년 전의 전장.","place":"전쟁의 환영","cut":null},
       {"speaker":"","text":"인간 병사도, 마족 병사도 똑같이 떨고 있다. 누가 먼저 활을 쏘았는지 아무도 모른다. 둘 다 상대가 먼저 쐈다고 소리친다."},
       {"speaker":"도란","portraitId":"comp-doran","text":"……다들 무서워하고 있어. 양쪽 다."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"여기 너무 더워. 다들 안 더워?","anim":"ruspell-heat"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……환영 속이라 오히려 추운데."},
     ],
     outro: [
-      {"speaker":"","text":"[언데드 마법사] 전장 한가운데, 부서진 지팡이를 짚은 언데드 마법사가 서 있다.","cut":null},
+      {"speaker":"","text":"전장 한가운데, 부서진 지팡이를 짚은 언데드 마법사가 서 있다.","place":"언데드 마법사","cut":null},
       {"speaker":"언데드 마법사","text":"너희는 승자의 이야기를 배웠군."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"당신은 어느 편이었습니까?"},
       {"speaker":"언데드 마법사","text":"기억하는 편."},
       {"speaker":"언데드 마법사","text":"그 전쟁에서 인간 쪽이었고, 마족 쪽에 친구가 있었다. 둘 다 그날 죽었지. 그래서 둘 다 기억한다."},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……그럼 누가 먼저 공격했는데요?"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"그럼 누가 먼저 공격했는데요?"},
       {"speaker":"언데드 마법사","text":"누가 먼저 공격하게 '만들었는지'를 물어야지."},
-      {"speaker":"","text":"[두 개의 기록] 언데드 마법사가 두 권의 기록을 펼친다. 하나는 왕국 공식 기록. 하나는 이름 없는 병사의 일기.","cut":null},
+      {"speaker":"","text":"언데드 마법사가 두 권의 기록을 펼친다. 하나는 왕국 공식 기록. 하나는 이름 없는 병사의 일기.","place":"두 개의 기록","cut":null},
       {"speaker":"","text":"'누가 먼저 공격했는가'를 정반대로 서술한다."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"둘 중 하나는 거짓말이군."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"혹은 둘 다 일부만 진실일 수도 있습니다. 하지만—"},
@@ -985,7 +978,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP34 · 문을 열지 말 것 ═════════
   34: {
     brief: [
-      {"speaker":"","text":"[신전문] 버려진 신전 정문. 거대한 석문 위에 세 가지 문자로 같은 경고가 새겨져 있다. 고대문자, 옛 공용문자, 그리고 현대 문자.","cut":null},
+      {"speaker":"","text":"버려진 신전 정문. 거대한 석문 위에 세 가지 문자로 같은 경고가 새겨져 있다. 고대문자, 옛 공용문자, 그리고 현대 문자.","place":"신전문","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"문을 열지 말 것."},
       {"speaker":"리안","portraitId":"comp-rian","text":"이렇게 써 놓으면 더 열고 싶잖아."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그래서 세 번이나 써 놓은 거야. 너 같은 사람 때문에."},
@@ -994,7 +987,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"……나만 그래?"},
     ],
     outro: [
-      {"speaker":"","text":"[미르엘의 허가] 야영지. 미르엘이 직접 봉인학 장비를 들고 합류한다. 카엘이 보낸 보고서를 손에 들고 있다.","cut":null},
+      {"speaker":"","text":"야영지. 미르엘이 직접 봉인학 장비를 들고 합류한다. 카엘이 보낸 보고서를 손에 들고 있다.","place":"미르엘의 허가","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"들어가도 된다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"왜 갑자기 허가하시는 거죠? 지난번엔 건드리면 안 된다고 하셨잖아요."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"지난번엔 봉인학 전문가가 없었지. 이번엔 내가 있다."},
@@ -1016,7 +1009,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP35 · 신전 아래의 봉인 ═════════
   35: {
     brief: [
-      {"speaker":"","text":"[신전 내부] 열린 석문 안. 붉은 이끼가 벽을 덮고 있다. 걸을수록 공기가 뜨거워진다.","cut":null},
+      {"speaker":"","text":"열린 석문 안. 붉은 이끼가 벽을 덮고 있다. 걸을수록 공기가 뜨거워진다.","place":"신전 내부","cut":null},
       {"speaker":"","text":"미르엘이 맨 앞에서 등불 대신 손바닥 위에 차가운 빛구슬을 띄우고 걷는다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"벽에 손대지 말고, 내 빛 밖으로 나가지 마라. 여기서부터는 봉인 결계 안이다."},
       {"speaker":"리안","portraitId":"comp-rian","text":"교수님 말이 짧아졌어."},
@@ -1025,7 +1018,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안 · 셀라","text":"……죄송합니다."},
     ],
     outro: [
-      {"speaker":"","text":"[로(怒)의 봉인] 신전 최심부. 원형 방 한가운데, 붉은 사슬 수십 가닥이 허공의 한 점을 감싸고 있다.","cut":null},
+      {"speaker":"","text":"신전 최심부. 원형 방 한가운데, 붉은 사슬 수십 가닥이 허공의 한 점을 감싸고 있다.","place":"로의 봉인","cut":null},
       {"speaker":"","text":"그 점 안에서 무언가가 움직인다. 형체는 없다. 다만 이를 악문 얼굴의 윤곽이, 불꽃처럼 일렁였다 사라졌다 한다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"대성당 벽화의… 이를 악문 얼굴.","anim":"owen-surprise"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"'로(怒)'. 분노."},
@@ -1036,7 +1029,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"……또 왔느냐. 또 빼앗으러."},
       {"speaker":"도란","portraitId":"comp-doran","text":"빼앗으러 온 거 아니에요."},
       {"speaker":"도란","portraitId":"comp-doran","text":"거짓말. 너희는 언제나 그렇게 말했다."},
-      {"speaker":"","text":"[루스벨의 흔적] 열풍이 잦아든다. 그런데 루스벨이 보이지 않는다.","cut":null},
+      {"speaker":"","text":"열풍이 잦아든다. 그런데 루스벨이 보이지 않는다.","place":"루스벨의 흔적","cut":null},
       {"speaker":"리안","portraitId":"comp-rian","text":"루스벨? 루스벨!"},
       {"speaker":"","text":"방 구석. 루스벨이 봉인 사슬 바로 앞에 서 있다. 언제 그쪽으로 걸어갔는지 아무도 보지 못했다."},
       {"speaker":"","text":"그녀의 손이 사슬 하나를 향해 뻗어 있다. 사슬에 닿기 직전."},
@@ -1060,7 +1053,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP36 · 흔들리는 봉인 ═════════
   36: {
     brief: [
-      {"speaker":"","text":"[털어놓다] 학교. 교장실. 일행이 그동안 모은 자료를 책상 위에 전부 펼친다.","cut":null},
+      {"speaker":"","text":"학교. 교장실. 일행이 그동안 모은 자료를 책상 위에 전부 펼친다.","place":"털어놓다","cut":null},
       {"speaker":"","text":"해저의 덧새긴 이름, 왕립 기록원의 교정 도장, 대성당 벽화, 울토르 기록관 문장, 언데드 기록자의 장부, 폭우 속의 전투."},
       {"speaker":"주인공","player":true,"text":"교수님. 저희는… 인마대전 기록이 누군가에 의해 고쳐졌다고 생각해요."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"한두 군데가 아니에요. 전부 모르스에게 불리한 쪽으로 고쳐졌어요."},
@@ -1075,13 +1068,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"일행이 서로를 본다. 처음으로 어른이 자기들 편에 섰다는 안도감."},
     ],
     outro: [
-      {"speaker":"","text":"[봉인 안정화] 버려진 신전 최심부. 미르엘이 봉인 사슬 주위에 새 마법진을 그린다. 카엘이 측정 장비를 붙들고 있다.","cut":null},
+      {"speaker":"","text":"버려진 신전 최심부. 미르엘이 봉인 사슬 주위에 새 마법진을 그린다. 카엘이 측정 장비를 붙들고 있다.","place":"봉인 안정화","cut":null},
       {"speaker":"","text":"루스벨은 약속대로 입구 밖에서 대기한다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"카엘, 내가 신호하면 측정을 멈춰라. 셀라, 빙결로 열을 낮춰 다오. 도란은 바닥을 고정하고."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"리안과 주인공은 바깥 결계를 지켜라. 무슨 일이 있어도 안으로 들어오지 마."},
       {"speaker":"리안","portraitId":"comp-rian","text":"왜 저는 맨날 바깥이에요?"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"너는 뜨거운 걸 보면 만지니까."},
-      {"speaker":"","text":"[붕괴] 마법진이 빛나기 시작한다. 남은 세 가닥의 사슬이 팽팽하게 당겨진다.","cut":null},
+      {"speaker":"","text":"마법진이 빛나기 시작한다. 남은 세 가닥의 사슬이 팽팽하게 당겨진다.","place":"붕괴","cut":null},
       {"speaker":"","text":"— 그리고 한 가닥이 끊어진다."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"수치가 역류합니다! 안에서 밀고 있어요!","anim":"kael-surprise"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"버텨라!"},
@@ -1102,7 +1095,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP37 · 폭주하는 루스벨 ═════════
   37: {
     brief: [
-      {"speaker":"","text":"[입구 (게임 EP37_RAGE)] 버려진 신전 입구. 깨진 봉인진 위로 붉은 기운이 소용돌이친다.","cut":null},
+      {"speaker":"","text":"버려진 신전 입구. 깨진 봉인진 위로 붉은 기운이 소용돌이친다.","place":"입구","cut":null},
       {"speaker":"","text":"루스벨이 그 한가운데 서 있다. 등을 보인 채."},
       {"speaker":"리안","portraitId":"comp-rian","text":"루스벨! 괜찮아?"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"…다들 왜 그렇게 봐? 나 괜찮아. 조금 덥기만 해.","anim":"ruspell-laugh"},
@@ -1120,7 +1113,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"— 마왕 루스벨이 앞을 가로막는다."},
     ],
     outro: [
-      {"speaker":"","text":"[무너진 루스벨] 루스벨이 무릎을 꿇는다. 하지만 쓰러지지는 않는다. 보랏빛 불꽃이 깜빡인다.","anim":"ruspell-rage","cut":null},
+      {"speaker":"","text":"루스벨이 무릎을 꿇는다. 하지만 쓰러지지는 않는다. 보랏빛 불꽃이 깜빡인다.","anim":"ruspell-rage","place":"무너진 루스벨","cut":null},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"…아니야. 이건 내가 아니야. 이건…"},
       {"speaker":"리안","portraitId":"comp-rian","text":"알아. 아니까 이리 와. 같이 돌아가자."},
       {"speaker":"","text":"루스벨이 리안의 손을 본다. 아주 잠깐, 손을 뻗는다."},
@@ -1138,18 +1131,18 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP38 · 노는 죽지 않았다 ═════════
   38: {
     brief: [
-      {"speaker":"","text":"[빈 봉인실] 다시 찾은 신전 최심부. 사슬 자리는 검게 그을렸다. 바닥에 끊어진 사슬 조각이 흩어져 있다.","cut":null},
+      {"speaker":"","text":"다시 찾은 신전 최심부. 사슬 자리는 검게 그을렸다. 바닥에 끊어진 사슬 조각이 흩어져 있다.","place":"빈 봉인실","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"끊어진 단면을 보십시오. 안쪽에서 바깥으로 터졌습니다. 안에서 밀어낸 겁니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그럼… 로(怒)가 스스로 나온 거네요. 교수님이 막으시던 순간에."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"기록상으로도 역류다. ……다만 역류 직전에 한 번, 바깥쪽 수치가 튀었는데. 장비 오류겠지. 그 열기면."},
     ],
     outro: [
-      {"speaker":"","text":"[벽 뒤의 문자] 봉인이 사라진 자리 뒤편 벽이 무너져, 새로운 벽면이 드러나 있다. 고대문자가 빼곡하다.","cut":null},
+      {"speaker":"","text":"봉인이 사라진 자리 뒤편 벽이 무너져, 새로운 벽면이 드러나 있다. 고대문자가 빼곡하다.","place":"벽 뒤의 문자","cut":null},
       {"speaker":"","text":"그리고 문자 사이에 그림 — 네 개의 원 중 붉은 원 하나가, 사람 모양의 그릇에 담기는 그림."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"인격 조각은… 그릇이 필요하다는 뜻으로 보입니다. 담길 몸이."},
       {"speaker":"리안","portraitId":"comp-rian","text":"루스벨이 그릇이라고요? 루스벨은 그릇이 아니라 사람이에요.","anim":"rian-angry"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"알고 있습니다, 리안 학생. 그래서 꺼내야 합니다. 그릇이 아니라 사람으로 돌려놓으려면.","anim":"owen-think"},
-      {"speaker":"","text":"[붕대] 학교 의무실. 미르엘이 두 손에 붕대를 감고 앉아 있다. 셀린이 약을 갈아 준다.","cut":null},
+      {"speaker":"","text":"학교 의무실. 미르엘이 두 손에 붕대를 감고 앉아 있다. 셀린이 약을 갈아 준다.","place":"붕대","cut":null},
       {"speaker":"주인공","player":true,"text":"교수님, 손은……"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"펜은 못 잡아도 도장은 찍을 수 있다. 교장 업무에는 지장 없지.","anim":"mirel-hurt"},
       {"speaker":"셀린","portraitId":"npc-potion","text":"지장 있어요. 이번 주 내내 아무것도 잡지 마세요."},
@@ -1164,7 +1157,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP39 · 기록을 바꾼 사람 ═════════
   39: {
     brief: [
-      {"speaker":"","text":"[공식 발표] 기말 대신 소집된 전교 집회. 중앙광장. 입학식 때와 같은 단상.","cut":null},
+      {"speaker":"","text":"기말 대신 소집된 전교 집회. 중앙광장. 입학식 때와 같은 단상.","place":"공식 발표","cut":null},
       {"speaker":"","text":"그러나 단상 위에 선 것은 미르엘이 아니라, 왕실 문장의 망토를 두른 이사회 대리인이다. 미르엘은 붕대 감은 손으로 그 옆에 서 있다."},
       {"speaker":"이사회 대리인","text":"울토르 이사회 및 왕립 기록원의 공식 발표를 전한다."},
       {"speaker":"이사회 대리인","text":"지난 3년간 에르디아 숲과 해안 일대에서 일어난 이상현상, 그리고 금번 버려진 신전 사건의 원인은 —"},
@@ -1176,14 +1169,14 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"이사회 대리인","text":"이에 울토르는 왕국과 함께 '마왕 토벌 준비'를 공식적으로 시작한다. 이상."},
     ],
     outro: [
-      {"speaker":"","text":"[고개 숙인 교장] 집회가 끝난 뒤. 텅 빈 광장. 미르엘이 일행 앞에 선다. 오래 말이 없다.","cut":null},
+      {"speaker":"","text":"집회가 끝난 뒤. 텅 빈 광장. 미르엘이 일행 앞에 선다. 오래 말이 없다.","place":"고개 숙인 교장","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"……미안하다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"교수님이 막으실 수는 없었어요?"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"이사회는 원인이 필요했다. 학부모들은 설명을 원했고, 왕실은 적이 필요했지. 나는 반대했다. ……표결에서 졌다.","anim":"mirel-hurt"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"발표는 내 뜻이 아니었다. 하지만 내 이름이 걸린 학교에서 나간 말이다. 그러니 미안하다."},
       {"speaker":"","text":"그녀는 고개를 깊이 숙인다. 교장이 학생에게."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……왕립 기록원. 또 그 이름이군요."},
-      {"speaker":"","text":"[바뀐 숙제] 도서관. 일행이 탁본 벽 앞에 모인다. 오웬이 탁본들 위에 새 종이 한 장을 붙인다.","cut":null},
+      {"speaker":"","text":"도서관. 일행이 탁본 벽 앞에 모인다. 오웬이 탁본들 위에 새 종이 한 장을 붙인다.","place":"바뀐 숙제","cut":null},
       {"speaker":"","text":"「왕립 기록원 — 교정필」. 삼백 년 전의 도장과, 오늘 발표문에 찍힌 도장. 같은 모양이다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"삼백 년 전에도, 오늘도. 같은 곳이 원인을 정하고, 같은 곳이 기록을 고칩니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그리고 오늘 그 기록에… 루스벨 이름이 들어갔어요."},
@@ -1199,7 +1192,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP40 · 뜨거워진 겨울 ═════════
   40: {
     brief: [
-      {"speaker":"","text":"[피난민] 겨울방학 첫 주. 울토르 정문에 썰매 행렬이 도착한다. 털옷 차림의 사람들이 지친 얼굴로 내린다.","cut":null},
+      {"speaker":"","text":"겨울방학 첫 주. 울토르 정문에 썰매 행렬이 도착한다. 털옷 차림의 사람들이 지친 얼굴로 내린다.","place":"피난민","cut":null},
       {"speaker":"","text":"맨 앞의 사내가 활을 등에 멘 채 교문을 두드린다. 설원 수렵가 룬이다."},
       {"speaker":"서리사냥꾼 룬","portraitId":"npc-aurora-hunter","text":"오로라 마을에서 왔소. 학교에 불 마법 잘 아는 사람이 있다고 들었소."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"우선 들어오세요. 아이들부터."},
@@ -1208,7 +1201,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"발자국이 향하던 방향이다. 아무도 그 말을 입 밖에 내지 않는다."},
     ],
     outro: [
-      {"speaker":"","text":"[설원 초입] 다음 날. 오웬과 셀린이 일행과 함께 룬를 따라 설원 경계까지 시찰을 나간다.","cut":null},
+      {"speaker":"","text":"다음 날. 오웬과 셀린이 일행과 함께 룬를 따라 설원 경계까지 시찰을 나간다.","place":"설원 초입","cut":null},
       {"speaker":"","text":"눈밭 사이로 물줄기가 흐른다. 얼음 아래 갇혀 있던 풀이 한겨울에 초록색으로 드러나 있다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"겨울인데 녹고 있습니다. 기온은 영하인데… 땅이 따뜻해요."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"열이 자연적인 수준이 아니야. 이 애들 털갈이가 엉망이 됐어. 겨울털이 빠지고 있어."},
@@ -1216,7 +1209,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"셀라","portraitId":"comp-sella","text":"……귀엽다는 말 할 때 아니야."},
       {"speaker":"도란","portraitId":"comp-doran","text":"안 했어."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"얼굴로 했어."},
-      {"speaker":"","text":"[화염 흔적] 룬가 얼음 절벽 앞에서 멈춘다. 절벽 표면이 칼로 그은 듯 매끈하게 녹았다가 다시 얼어 있다. 녹은 자리는 보랏빛으로 그을려 있다.","cut":null},
+      {"speaker":"","text":"룬가 얼음 절벽 앞에서 멈춘다. 절벽 표면이 칼로 그은 듯 매끈하게 녹았다가 다시 얼어 있다. 녹은 자리는 보랏빛으로 그을려 있다.","place":"화염 흔적","cut":null},
       {"speaker":"서리사냥꾼 룬","portraitId":"npc-aurora-hunter","text":"불꽃이 지나갔소. 짐승 불이 아니오. 사람 불이오."},
       {"speaker":"","text":"셀라가 그을린 자국에 손을 대고, 눈을 감는다.","anim":"sella-touch"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……루스벨 마력이야. 신전에서 느낀 거랑 같아.","anim":"sella-think"},
@@ -1230,7 +1223,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP41 · 다음은 설원이다 ═════════
   41: {
     brief: [
-      {"speaker":"","text":"[장비 준비] 반의 공방. 방한 장비가 산처럼 쌓여 있다.","cut":null},
+      {"speaker":"","text":"반의 공방. 방한 장비가 산처럼 쌓여 있다.","place":"장비 준비","cut":null},
       {"speaker":"반","portraitId":"npc-weapon","text":"방한 장비 챙겨."},
       {"speaker":"반","portraitId":"npc-weapon","text":"그리고 네가 찾으려는 그 불꽃 흔적, 평범하지 않다. 룬가 가져온 얼음 조각, 내 화로보다 뜨거웠어."},
       {"speaker":"리안","portraitId":"comp-rian","text":"반 선생님 화로보다요?"},
@@ -1241,13 +1234,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"일행","text":"돌아와서 말할게요."},
     ],
     outro: [
-      {"speaker":"","text":"[미르엘의 당부] 교장실. 미르엘의 손에는 아직 얇은 붕대가 감겨 있다.","cut":null},
+      {"speaker":"","text":"교장실. 미르엘의 손에는 아직 얇은 붕대가 감겨 있다.","place":"미르엘의 당부","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"루스벨을 발견하면, 싸우기 전에 위치부터 확보하렴. 그리고 가능하면 말을 걸어 봐."},
       {"speaker":"주인공","player":true,"text":"교수님은 루스벨이 아직 살아 있다고 확신하세요?"},
       {"speaker":"","text":"미르엘이 잠시 멈춘다. 창밖 설원 쪽 하늘을 본다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"살아 있기를 바라니까 준비하는 거란다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"로(怒)를 꺼낼 방법은 아직 찾는 중이다. 그 아이를 데려오면, 그때까지 내가 반드시 찾아 두마."},
-      {"speaker":"","text":"[오웬의 별도 목표] 도서관. 오웬이 설원 석비의 첫 스케치를 탁본 벽 한가운데 붙인다.","cut":null},
+      {"speaker":"","text":"도서관. 오웬이 설원 석비의 첫 스케치를 탁본 벽 한가운데 붙인다.","place":"오웬의 별도 목표","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"우리는 석비도 조사해야 합니다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"루스벨 학생이 설원으로 간 시기와 석비가 드러난 시기가 같습니다. 그녀의 열기가 석비를 꺼낸 셈이에요. 우연 같지 않습니다."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"루스벨을 찾고, 석비를 읽고."},
@@ -1272,25 +1265,24 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"뿔의 그림자","text":"오백 년 전에도 이렇게 시작됐지. 이름 하나를 정하고, 그 이름에 모든 걸 얹고."},
       {"speaker":"","text":"그녀의 가슴께에서 푸른빛이 한 번 깊게 빛난다. 눈물처럼."},
       {"speaker":"","text":"……그 아이는, 지금 얼마나 무서울까."},
-      {"speaker":"","text":"화면 암전."},
     ],
   },
   // ═════════ EP42 · 여름이어야 할 눈 ═════════
   42: {
     brief: [
-      {"speaker":"","text":"[오로라 마을] 설원 깊은 곳의 마을. 지붕마다 고드름 대신 물이 뚝뚝 떨어진다. 얼음 집들이 반쯤 녹아 기울었다.","cut":null},
+      {"speaker":"","text":"설원 깊은 곳의 마을. 지붕마다 고드름 대신 물이 뚝뚝 떨어진다. 얼음 집들이 반쯤 녹아 기울었다.","place":"오로라 마을","cut":null},
       {"speaker":"","text":"하늘에는 오로라가 떠 있다. 그 아래가 진창이다."},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"울토르 학생들이라고? 그 불꽃 쓰는 애도 울토르 학생이었다던데."},
       {"speaker":"리안","portraitId":"comp-rian","text":"……네. 제 친구예요.","anim":"rian-surprise"},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"친구라. 우리 마을을 이렇게 만든 애가."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"원인을 찾기 전에, 피해부터 줄이죠. 말보다 손이 먼저입니다."},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"……삽은 저기 있소."},
-      {"speaker":"","text":"[분수대] 마을 중앙. 얼음으로 깎은 분수대가 녹아 물이 넘친다. 분수대 기단에 이름들이 새겨진 돌판이 있다.","cut":null},
+      {"speaker":"","text":"마을 중앙. 얼음으로 깎은 분수대가 녹아 물이 넘친다. 분수대 기단에 이름들이 새겨진 돌판이 있다.","place":"분수대","cut":null},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"이 분수는 마을을 도운 사람의 이름을 새기는 곳이오. 백 년 동안 외지인 이름은 셋뿐이오."},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"당신들이 어떤 사람인지… 우리도 지켜보겠소."},
     ],
     outro: [
-      {"speaker":"","text":"[첫 평판] 첫 수리와 채집 요청을 마친 저녁. 마을 공동 화로 앞.","cut":null},
+      {"speaker":"","text":"첫 수리와 채집 요청을 마친 저녁. 마을 공동 화로 앞.","place":"첫 평판","cut":null},
       {"speaker":"","text":"보르가 말없이 수프를 떠서 리안에게 건넨다."},
       {"speaker":"설인족장 보르","portraitId":"npc-aurora-chief","text":"외지인인데도 끝까지 하는군."},
       {"speaker":"리안","portraitId":"comp-rian","text":"제 친구가 망가뜨린 거니까요. 친구가 돌아오면 같이 사과하러 올 거예요."},
@@ -1303,25 +1295,25 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP43 · 만년설 아래의 석비 ═════════
   43: {
     brief: [
-      {"speaker":"","text":"[석비 조사] 녹은 만년설 아래 완전히 드러난 석비. 3층 건물만 하다. 얼음 결정이 표면에서 반짝인다.","cut":null},
+      {"speaker":"","text":"녹은 만년설 아래 완전히 드러난 석비. 3층 건물만 하다. 얼음 결정이 표면에서 반짝인다.","place":"석비 조사","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……지금까지 본 것과 차원이 다릅니다. 이건 '조각'이 아니라 '원본'이에요."},
       {"speaker":"셀린","portraitId":"npc-potion","text":"얼음이 오랫동안 보존해 준 거네. 다른 곳은 다 깎이고 덧쓰였는데, 여긴 아무도 손을 못 댔어."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"덧새긴 글자가 하나도 없어요. 처음으로, 고친 흔적이 없는 기록이에요."},
     ],
     outro: [
-      {"speaker":"","text":"[유실문자] 오웬이 문자를 손가락으로 따라가 보지만, 읽지 못한다. 손가락이 문장 중간에서 멈춘다.","cut":null},
+      {"speaker":"","text":"오웬이 문자를 손가락으로 따라가 보지만, 읽지 못한다. 손가락이 문장 중간에서 멈춘다.","place":"유실문자","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"현재 문자 체계 이전의 것입니다. 해저 문, 천공 신전, 대성당과 같은 문자예요."},
       {"speaker":"주인공","player":true,"text":"성녀님께 보여 드리면?"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"빛으로 지운 흔적은 드러낼 수 있어도, 처음부터 모르는 말을 읽게 해 주지는 못합니다."},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"고친 흔적이 없는 원본을 드디어 찾았는데… 읽을 수가 없군요."},
       {"speaker":"서리사냥꾼 룬","portraitId":"npc-aurora-hunter","text":"우리 할머니는 이걸 '왕의 편지'라고 불렀소. 누구한테 보낸 건지는 몰랐지만."},
-      {"speaker":"","text":"[교수도 모른다] 통신 수정구. 미르엘의 목소리.","cut":null},
+      {"speaker":"","text":"통신 수정구. 미르엘의 목소리.","place":"교수도 모른다","cut":null},
       {"speaker":"주인공","player":true,"text":"석비를 찾았습니다. 고친 흔적이 없는 원본이에요."},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"……대단하구나. 탁본을 보내 줄 수 있니?"},
       {"speaker":"","text":"통신 너머로 종이 넘기는 소리. 긴 침묵."},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"미안하다. 나도 이 문자는 못 읽는다. 봉인학 고서에도 몇 글자뿐이었어."},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"잘 기록해 두렴. 지금 읽을 수 없다면, 루스벨을 찾는 일부터 하자. 그 아이가 더 급하다."},
-      {"speaker":"","text":"석비 전체를 천천히 비춘다. 카메라가 마지막 줄의 문장 하나를 오래 잡는다.","cut":"ep43-a"},
+      {"speaker":"","text":"횃불이 석비를 천천히 훑어 내려간다. 마지막 줄의 문장 하나에서, 오래 멈춘다.","cut":"ep43-a"},
       {"speaker":"","text":"가운데에 네 개의 원. 그 아래 한 줄의 글."},
       {"speaker":"","text":"끝내 해석하지 않는다. 자막도 없다."},
     ],
@@ -1329,17 +1321,16 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP44 · 동굴 속의 루스벨 ═════════
   44: {
     brief: [
-      {"speaker":"","text":"[불꽃 발자국] 룬가 얼음 표면의 녹은 흔적을 따라간다. 흔적은 녹았다가 얼고, 다시 녹았다가 얼어 있다.","cut":null},
+      {"speaker":"","text":"룬가 얼음 표면의 녹은 흔적을 따라간다. 흔적은 녹았다가 얼고, 다시 녹았다가 얼어 있다.","place":"불꽃 발자국","cut":null},
       {"speaker":"서리사냥꾼 룬","portraitId":"npc-aurora-hunter","text":"이쪽이오. 이상하군. 불이 지나간 자리를 누가 일부러 다시 얼려 놓았소."},
       {"speaker":"셀라","portraitId":"comp-sella","text":"……루스벨이 자기 발자국을 스스로 얼린 거야. 숨으려고. 아니면—"},
       {"speaker":"도란","portraitId":"comp-doran","text":"아니면 불을 끄려고."},
     ],
     outro: [
-      {"speaker":"","text":"[주민 제보] 평판이 높을수록 주민 제보가 늘어난다(오로라 평판 단계에 따라 대사 분기).","cut":null},
-      {"speaker":"주민(평판 Lv.3 이상)","text":"밤마다 북쪽 동굴에서 붉은 빛이 보여요. 근데 이상하죠. 빛이 날 때마다… 누가 우는 소리가 나요."},
+      {"speaker":"주민(평판 Lv.3 이상)","text":"밤마다 북쪽 동굴에서 붉은 빛이 보여요. 근데 이상하죠. 빛이 날 때마다… 누가 우는 소리가 나요.","place":"주민 제보","cut":null},
       {"speaker":"주민(평판 Lv.2 이하)","text":"북쪽은 위험하오. 그 이상은 모르오."},
       {"speaker":"설인족장 보르(평판 Lv.4 이상)","portraitId":"npc-aurora-chief","text":"그 애한테 전하시오. 지붕 두 채, 아직 유효하다고."},
-      {"speaker":"","text":"[루스벨과 대면] 북쪽 얼음 동굴. 입구의 고드름이 전부 녹아 바닥에 물웅덩이를 이루고 있다.","cut":null},
+      {"speaker":"","text":"북쪽 얼음 동굴. 입구의 고드름이 전부 녹아 바닥에 물웅덩이를 이루고 있다.","place":"루스벨과 대면","cut":null},
       {"speaker":"","text":"동굴 안쪽에서 목소리가 울린다. 갈라지고, 지쳐 있다."},
       {"speaker":"루스벨(목소리)","portraitId":"comp-rusbel","text":"돌아가…… 오지 마."},
       {"speaker":"","text":"리안이 한 발 앞으로 나선다. 숨을 고른다."},
@@ -1365,7 +1356,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP45 · 두 갈래의 진실 ═════════
   45: {
     brief: [
-      {"speaker":"","text":"[루스벨의 고백] 동굴 안쪽. 작은 모닥불. 루스벨이 방열 망토를 두른 채 낡은 돌벽에 기대어 있다. 셀린의 수프를 반 그릇쯤 먹었다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"동굴 안쪽. 작은 모닥불. 루스벨이 방열 망토를 두른 채 낡은 돌벽에 기대어 있다. 셀린의 수프를 반 그릇쯤 먹었다.","route":"B_OR_C","place":"루스벨의 고백","cut":null},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"내 안에 다른 목소리가 있어. 처음엔 그냥 화난 목소리인 줄 알았어.","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"근데 화가 가라앉으면… 그 밑에 다른 게 있어. 기억 같은 거. 누군가의 기억.","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"누구의 기억인지 알 수 있습니까?","route":"B_OR_C"},
@@ -1374,7 +1365,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"눈이 없어진다는 게 뭔데.","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"너처럼 웃는다고.","route":"B_OR_C"},
       {"speaker":"","text":"리안이 할 말을 잃는다. 셀라가 고개를 돌려 웃음을 숨긴다.","anim":"rian-laugh","route":"B_OR_C"},
-      {"speaker":"","text":"[무너진 동굴] 북쪽 얼음 동굴 앞. 입구가 무너져 얼음과 바위로 막혀 있다. 녹았다 언 얼음이 너무 두껍다.","route":"A","cut":null},
+      {"speaker":"","text":"북쪽 얼음 동굴 앞. 입구가 무너져 얼음과 바위로 막혀 있다. 녹았다 언 얼음이 너무 두껍다.","route":"A","place":"무너진 동굴","cut":null},
       {"speaker":"","text":"틈 사이로 아주 희미하게, 누군가의 목소리가 들린다.","route":"A"},
       {"speaker":"루스벨(목소리)","portraitId":"comp-rusbel","text":"……돌아가……","route":"A"},
       {"speaker":"리안","portraitId":"comp-rian","text":"루스벨! 루스벨!","route":"A"},
@@ -1382,12 +1373,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"도란","portraitId":"comp-doran","text":"그만해. 무너져.","route":"A"},
     ],
     outro: [
-      {"speaker":"","text":"[모르스의 기억] 루스벨이 손을 내민다. 손끝의 보랏빛 불꽃이 잠깐 붉은색으로 돌아온다. 불꽃 속에 장면이 비친다.","anim":"ruspell-rage","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"루스벨이 손을 내민다. 손끝의 보랏빛 불꽃이 잠깐 붉은색으로 돌아온다. 불꽃 속에 장면이 비친다.","anim":"ruspell-rage","route":"B_OR_C","place":"모르스의 기억","cut":null},
       {"speaker":"","text":"— 화산지대. 그러나 지금처럼 검지 않다. 푸른 들판과 온천이 있는 땅. 인간 상인과 마족 농부가 같은 장터에서 흥정한다.","route":"B_OR_C"},
       {"speaker":"","text":"왕관을 쓴 이가 장터를 걷는다. 아이들이 그녀의 망토를 잡아당긴다. 그녀가 아이 하나를 번쩍 들어 어깨에 태운다.","route":"B_OR_C"},
       {"speaker":"주인공","player":true,"text":"저 사람이… 모르스?","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"응. 이 안의 목소리가 그 이름을 부를 때마다… 엄청 화를 내. 근데 동시에 엄청 슬퍼해.","route":"B_OR_C"},
-      {"speaker":"","text":"[읽히는 석비] 일행이 루스벨을 부축해 석비 앞으로 간다. 루스벨이 석비를 올려다본다. 입술이 움직인다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"일행이 루스벨을 부축해 석비 앞으로 간다. 루스벨이 석비를 올려다본다. 입술이 움직인다.","route":"B_OR_C","place":"읽히는 석비","cut":null},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"……'나의 백성에게.'","anim":"ruspell-surprise","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"읽을 수 있습니까?!","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"몰라. 그냥… 알아. 안에 있는 누가 아는 거야.","route":"B_OR_C"},
@@ -1395,7 +1386,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"루스벨이 멈춘다. 이마를 짚는다.","route":"B_OR_C"},
       {"speaker":"","text":"……여기서부턴 안 읽혀. 마음이 하나 부족해서 그런가 봐.","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"'문을 닫아라.' 고대목 골렘이 했던 말과 같습니다. 그건 경고가 아니라… 왕이 백성을 지키려던 말이었어요.","anim":"owen-think","route":"B_OR_C"},
-      {"speaker":"","text":"[미르엘의 통신] 통신 수정구가 울린다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"통신 수정구가 울린다.","route":"B_OR_C","place":"미르엘의 통신","cut":null},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"설원 쪽 마력 반응이 크게 흔들렸다. 무슨 일이니? 루스벨을 찾았니?","route":"B_OR_C"},
       {"speaker":"","text":"일행이 서로를 본다. 루스벨이 고개를 젓는다. 손이 떨린다.","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"학교로 가면… 난 '하수인'으로 재판받아. 이사회가, 기록원이. 그 발표 기억하지?","route":"B_OR_C"},
@@ -1409,8 +1400,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"학교가 있는 남쪽이 아니라, 화산의 연기가 보이는 북동쪽을 향해 걷는다.","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"학교 안 가면… 너희도 혼나.","route":"B_OR_C"},
       {"speaker":"리안","portraitId":"comp-rian","text":"1등 데려가는데 왜 혼나.","route":"B_OR_C"},
-      {"speaker":"","text":"[미르엘의 통신]","route":"A"},
-      {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"……찾지 못했구나.","route":"A","cut":null},
+      {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"……찾지 못했구나.","route":"A","place":"미르엘의 통신","cut":null},
       {"speaker":"주인공","player":true,"text":"목소리는 들렸어요. 분명히.","route":"A"},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"이사회는 루스벨이 설원을 지나 화산으로 갔다고 보고 있다. 주인에게로.","route":"A"},
       {"speaker":"미르엘 교수(통신)","portraitId":"npc-mirel","text":"토벌대가 곧 출발한다. 너희도 학교로 돌아오너라. 루스벨을 다시 찾을 기회는… 거기 있을지도 모르니.","route":"A"},
@@ -1422,13 +1412,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP46 · 화산으로 ═════════
   46: {
     brief: [
-      {"speaker":"","text":"[출정] 울토르 정문. 왕국 병사와 학교 지원자로 이루어진 토벌대. 미르엘이 선두에 선다. 손에는 더 이상 붕대가 없다.","route":"A","cut":null},
+      {"speaker":"","text":"울토르 정문. 왕국 병사와 학교 지원자로 이루어진 토벌대. 미르엘이 선두에 선다. 손에는 더 이상 붕대가 없다.","route":"A","place":"출정","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"루스벨은 화산지대로 갔다. 이제 모르스의 성으로 간다.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"나는 그 아이를 해치러 가는 게 아니다. 데려오러 가는 거다. 하지만 그 앞을 마왕이 막는다면… 망설일 시간은 없다.","route":"A"},
       {"speaker":"리안","portraitId":"comp-rian","text":"루스벨 데려오는 거예요. 그게 먼저예요.","anim":"rian-angry","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그래. 그게 먼저다.","route":"A"},
       {"speaker":"","text":"주인공은 학교에서 배운 역사와, 지난 4년 동안 본 것들 사이에서 흔들린다. 그러나 다른 선택지가 없다.","route":"A"},
-      {"speaker":"","text":"[익숙한 땅] 화산지대 입구. 검은 바위와 용암 강. 하늘이 붉다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"화산지대 입구. 검은 바위와 용암 강. 하늘이 붉다.","route":"B_OR_C","place":"익숙한 땅","cut":null},
       {"speaker":"","text":"루스벨이 걸음을 멈춘다.","route":"B_OR_C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"저 땅… 이상하게 익숙해.","route":"B_OR_C"},
       {"speaker":"주인공","player":true,"text":"기억이 있는 거야?","route":"B_OR_C"},
@@ -1437,7 +1427,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"도란","portraitId":"comp-doran","text":"들어가도 돼?","route":"B_OR_C"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"지금?","route":"B_OR_C"},
       {"speaker":"도란","portraitId":"comp-doran","text":"아니. 나중에.","route":"B_OR_C"},
-      {"speaker":"","text":"[마물 마을 (공통, 루트별 대사)] 마을 입구. 뿔과 비늘과 날개를 가진 주민들이 창과 곡괭이를 들고 길을 막는다.","cut":null},
+      {"speaker":"","text":"마을 입구. 뿔과 비늘과 날개를 가진 주민들이 창과 곡괭이를 들고 길을 막는다.","place":"마물 마을","cut":null},
       {"speaker":"","text":"토벌대를 본 주민들이 일제히 무기를 겨눈다. 아이들이 집 안으로 끌려 들어간다.","route":"A"},
       {"speaker":"마물 주민","text":"또 왔군. 인간들. 이번엔 무슨 이름을 붙여서 왔지?","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"길을 비켜라. 우리는 마왕과 그 하수인을 찾으러 왔다.","route":"A"},
@@ -1458,7 +1448,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP47 · 마왕의 성에 도착하기 전에 ═════════
   47: {
     brief: [
-      {"speaker":"","text":"[성문 앞] 토벌대가 성문 앞에 진을 친다. 성문이 스스로 열린다.","route":"A","cut":null},
+      {"speaker":"","text":"토벌대가 성문 앞에 진을 친다. 성문이 스스로 열린다.","route":"A","place":"성문 앞","cut":null},
       {"speaker":"","text":"거대한 뿔과 가시 면류관. 낡았지만 단정한 검은 망토. 그녀가 홀로 걸어 나온다. 호위도, 무기도 없다.","route":"A"},
       {"speaker":"","text":"처음으로 보이는 얼굴. 지쳐 있지만, 온화한 얼굴이다.","route":"A"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"「……………………」","route":"A"},
@@ -1469,7 +1459,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"토벌대의 마법이 일제히 날아간다. 모르스가 손을 들어 막는다. 마법이 흩어진다.","route":"A"},
       {"speaker":"","text":"그녀는 반격하지 않는다. 한 번 더, 같은 말을 한다. 이번엔 조금 더 천천히.","route":"A"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"「……………………」","route":"A"},
-      {"speaker":"","text":"[마물 마을의 하루] 마을 광장의 분수대 — 용암을 식혀 만든 검은 돌 분수 — 가 지역 평판 허브로 열린다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"마을 광장의 분수대 — 용암을 식혀 만든 검은 돌 분수 — 둘레로 주민들이 모여든다. 부탁할 일이 많은 얼굴들이다.","route":"B_OR_C","place":"마물 마을의 하루","cut":null},
       {"speaker":"그롯","portraitId":"npc-demon-smith","text":"인간 망치질은 처음 보는군. 그 망토, 누가 만들었소?","route":"B_OR_C"},
       {"speaker":"리안","portraitId":"comp-rian","text":"울토르의 반 선생님이요. 부서지면 돌아와서 말하래요.","route":"B_OR_C"},
       {"speaker":"그롯","portraitId":"npc-demon-smith","text":"좋은 대장장이구먼. 우리 쪽 말로는 '부서지면 들고 와라'요. 같은 말이지.","route":"B_OR_C"},
@@ -1480,13 +1470,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"봤지? 말이 통하지 않는 상대다.","route":"A"},
       {"speaker":"도란","portraitId":"comp-doran","text":"……근데 한 번도 안 때렸어.","anim":"doran-think","route":"A"},
       {"speaker":"","text":"주인공은 대답하지 못한다.","route":"A"},
-      {"speaker":"","text":"[루스벨과 주민]","route":"B_OR_C"},
-      {"speaker":"마물 주민","text":"그 불꽃… 우리 왕의 분노와 닮았군.","route":"B_OR_C","cut":null},
+      {"speaker":"마물 주민","text":"그 불꽃… 우리 왕의 분노와 닮았군.","route":"B_OR_C","place":"루스벨과 주민","cut":null},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"……알아. 미안해.","route":"B_OR_C"},
       {"speaker":"장로 카즈","portraitId":"npc-demon-elder","text":"사과할 건 없소. 그 분노는 원래 우리 왕이 오백 년 전에 빼앗긴 거요. 당신은 그걸 대신 짊어지고 있었을 뿐이지.","route":"B_OR_C"},
       {"speaker":"주인공","player":true,"text":"모르스를 어떻게 생각하세요?","route":"B_OR_C"},
       {"speaker":"장로 카즈","portraitId":"npc-demon-elder","text":"우리에게 그분은 왕이다. 그리고… 감자를 너무 많이 심는 왕이지.","route":"B_OR_C"},
-      {"speaker":"","text":"[첫 만남 (VOLCANO_REPUTATION Lv.5 달성 시)] 마물 마을 평판이 충분히 쌓이면, 장로 카즈가 일행을 성 아래 밭으로 안내한다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"마을 사람들이 더는 창을 들지 않게 된 어느 저녁, 장로 카즈가 일행을 성 아래 밭으로 안내한다.","route":"B_OR_C","place":"첫 만남","cut":null},
       {"speaker":"","text":"성이 아니라 밭이다.","route":"B_OR_C"},
       {"speaker":"","text":"화산재 밭 한가운데. 뿔 달린 여인이 셔츠 소매를 걷고 쪼그려 앉아 감자를 캐고 있다. 앞치마를 둘렀다.","route":"B_OR_C"},
       {"speaker":"","text":"그녀가 일행을 본다. 흙 묻은 손을 털고, 천천히 일어선다. 루스벨보다 머리 하나가 크다. 뿔까지 치면 두 배다.","route":"B_OR_C"},
@@ -1498,7 +1487,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"모르스가 손을 들어 루스벨의 머리 위에 얹는다. 조심스럽게. 뜨거운 걸 만지는 사람처럼.","anim":"mors-pat","route":"B_OR_C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'미안하다. 그건 원래 내가 져야 할 분노였다.'","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……마왕이, 사과를 하는군요.","anim":"owen-think","route":"B_OR_C"},
-      {"speaker":"모르스","portraitId":"npc-mors","text":"'마왕이라는 이름은 내가 지은 게 아니다. 나는 그냥… 감자를 좋아하는 은둔자다.'","route":"B_OR_C"},
+      {"speaker":"모르스","portraitId":"npc-mors","text":"'마왕이라는 이름은 내가 지은 게 아니다. 오백 년 동안, 내 이름을 물어 온 사람이 없었을 뿐이다.'","route":"B_OR_C"},
       {"speaker":"도란","portraitId":"comp-doran","text":"……여기 온천 들어가도 돼요?","route":"B_OR_C"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"도란!","route":"B_OR_C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'얼마든지.'","anim":"mors-laugh","route":"B_OR_C"},
@@ -1510,7 +1499,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP48 · 마을의 이름으로 ═════════
   48: {
     brief: [
-      {"speaker":"","text":"[여섯 거점 최종 평판] 4학년 2학기. 학기 구조가 멈추고 특수 루프가 시작된다.","cut":null},
+      {"speaker":"","text":"4학년 2학기. 시간표가 멈춘다. 이제부터는 여섯 마을을 직접 돌며 마음을 얻어야 한다.","place":"여섯 거점 최종 평판","cut":null},
       {"speaker":"","text":"주인공이 지금까지 방문한 각 거점의 분수대를 다시 찾는다."},
       {"speaker":"","text":"1. 기본 마을"},
       {"speaker":"","text":"2. 아틀란티스"},
@@ -1522,9 +1511,8 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"기록은 고칠 수 있어요. 하지만 여섯 마을 사람들의 기억을 전부 고칠 수는 없습니다."},
     ],
     outro: [
-      {"speaker":"","text":"[Lv.5 보상] 각 거점에서 마지막 평판 퀘스트가 열린다. 성공하면 희귀 보상과 함께 상징 아이템을 받는다.","cut":null},
-      {"speaker":"","text":"[주민들의 증언]"},
-      {"speaker":"기본 마을 대표","text":"당신은 우리 곁에 있었소. 첫 주에 빵 배달 틀린 것까지 기억하오.","cut":null},
+      {"speaker":"","text":"마을마다 마지막 부탁이 하나씩 남아 있다. 그 부탁을 들어주면, 마을은 자기 이름을 건 상징을 내어 줄 것이다.","place":"Lv.5 보상","cut":null},
+      {"speaker":"기본 마을 대표","text":"당신은 우리 곁에 있었소. 첫 주에 빵 배달 틀린 것까지 기억하오.","place":"주민들의 증언","cut":null},
       {"speaker":"아틀란티스 대표(브라더 모렌)","text":"바다에서, 그리고 겨울 성당에서 우리를 도왔습니다. 오웬 사서님 장작 두 개도요."},
       {"speaker":"천공 신전 대표","text":"기록보다 사람을 먼저 보았습니다."},
       {"speaker":"버려진 신전 대표(언데드 기록자)","text":"폐허에서도 약한 자를 버리지 않았다. 그리고 반납 기한을 지켰지."},
@@ -1538,13 +1526,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP49 · 학교 지하의 기쁨 ═════════
   49: {
     brief: [
-      {"speaker":"","text":"[금지구역 재방문] 모르스의 말(\"학교 아래에 내 기쁨이 잠들어 있다\")을 들고 울토르로 돌아온다. 밤. 본관 지하. 입학식 날 밤 화면에 비쳤던 그 철문.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"모르스의 말(\"학교 아래에 내 기쁨이 잠들어 있다\")을 들고 울토르로 돌아온다. 밤. 본관 지하. 입학식 날 밤 화면에 비쳤던 그 철문.","route":"B_OR_C","place":"금지구역 재방문","cut":null},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"'마왕은 학교에 잠들어 있다.' 학생들끼리 떠도는 괴담인 줄 알았습니다.","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……이제야 의미를 알 것 같습니다. 마왕이 아니라, 왕의 마음 한 조각이었군요.","route":"B_OR_C"},
       {"speaker":"도란","portraitId":"comp-doran","text":"본관 동쪽 계단 3층에서 끊기는 거, 이거 때문이었어. 계단이 아래로 꺾여 있었어.","route":"B_OR_C"},
       {"speaker":"리안","portraitId":"comp-rian","text":"너 4년 동안 그거 계속 생각했어?","route":"B_OR_C"},
       {"speaker":"도란","portraitId":"comp-doran","text":"응.","route":"B_OR_C"},
-      {"speaker":"","text":"[닫힌 문] 토벌 원정에서 돌아온 학교. 주인공이 본관 지하 철문 앞에 선다. 문양이 아주 희미하게 맥박친다.","route":"A","cut":null},
+      {"speaker":"","text":"토벌 원정에서 돌아온 학교. 주인공이 본관 지하 철문 앞에 선다. 문양이 아주 희미하게 맥박친다.","route":"A","place":"닫힌 문","cut":null},
       {"speaker":"","text":"문은 열리지 않는다. 손잡이에 새 자물쇠가 걸려 있다.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"거긴 금지구역이란다. 4년 전 입학식에서 말했지.","route":"A"},
       {"speaker":"주인공","player":true,"text":"교수님, 이 문 뒤에 뭐가 있어요?","route":"A"},
@@ -1552,10 +1540,10 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"그녀의 말에 틀린 곳은 없다. 주인공은 계단을 올라간다. 등 뒤에서 문양이 한 번 더 깜빡인다.","route":"A"},
     ],
     outro: [
-      {"speaker":"","text":"[숨겨진 마법진] 철문 너머. 거대한 황금빛 마법진이 방 전체를 채운다. 공기가 따뜻하다. 봄 냄새가 난다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"철문 너머. 거대한 황금빛 마법진이 방 전체를 채운다. 공기가 따뜻하다. 봄 냄새가 난다.","route":"B_OR_C","place":"숨겨진 마법진","cut":null},
       {"speaker":"성녀 리아나","portraitId":"npc-saint","text":"이건 봉인이라기보다… 보존에 가깝네요. 누군가 아주 오래, 아주 꼼꼼하게 관리해 왔어요.","route":"B_OR_C"},
       {"speaker":"","text":"마법진 가장자리에 작은 책상이 하나 있다. 그 위에 두꺼운 관리 일지.","route":"B_OR_C"},
-      {"speaker":"","text":"[희] 마법진 중앙에서 황금빛 조각이 떠오른다. 아이들의 웃음소리. 축제의 환영.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"마법진 중앙에서 황금빛 조각이 떠오른다. 아이들의 웃음소리. 축제의 환영.","route":"B_OR_C","place":"희","cut":null},
       {"speaker":"","text":"인간과 마족 아이들이 같은 분수대 주위를 뛰어다닌다. 울토르 중앙광장의 분수다. 오백 년 전의.","route":"B_OR_C"},
       {"speaker":"주인공","player":true,"text":"이게… 희?","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"네 개의 감정 중 하나. 기쁨입니다.","route":"B_OR_C"},
@@ -1582,13 +1570,12 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"정적. 마법진의 따뜻한 빛만이 일행의 얼굴을 비춘다.","route":"B_OR_C"},
       {"speaker":"","text":"그 빛 속에서, 철문 쪽 계단 위로 아주 가벼운 발소리가 내려온다. 발소리가 거의 나지 않는 사람이다.","route":"B_OR_C"},
       {"speaker":"미르엘 교수(목소리)","portraitId":"npc-mirel","text":"……밤늦게 다들 여기서 뭘 하니?","route":"B_OR_C"},
-      {"speaker":"","text":"화면 암전.","route":"B_OR_C"},
     ],
   },
   // ═════════ EP50 · 락을 가진 자 ═════════
   50: {
     brief: [
-      {"speaker":"","text":"[희의 방] 황금빛 마법진. 계단 아래로 미르엘이 내려온다. 손에는 촛불 하나. 4년 전과 똑같은 걸음. 발소리가 거의 나지 않는다.","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"황금빛 마법진. 계단 아래로 미르엘이 내려온다. 손에는 촛불 하나. 4년 전과 똑같은 걸음. 발소리가 거의 나지 않는다.","route":"B_OR_C","place":"희의 방","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"……밤늦게 다들 여기서 뭘 하니?","route":"B_OR_C"},
       {"speaker":"","text":"아무도 대답하지 못한다. 셀라가 관리 일지를 등 뒤로 감춘다. 미르엘의 시선이 그 손을 따라간다.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"셀라. 숨길 때는 손이 아니라 눈을 먼저 숨겨야 한단다.","route":"B_OR_C"},
@@ -1596,30 +1583,28 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"주인공","player":true,"text":"오백 년 전 기록에도… 교수님이 있어요.","route":"B_OR_C"},
       {"speaker":"","text":"긴 침묵. 촛불이 흔들린다.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그래.","route":"B_OR_C"},
-      {"speaker":"","text":"[출정 전야] 교장실. 미르엘이 최종 토벌 작전도를 펼친다. 주인공만 남아 있다.","route":"A","cut":null},
+      {"speaker":"","text":"교장실. 미르엘이 최종 토벌 작전도를 펼친다. 주인공만 남아 있다.","route":"A","place":"출정 전야","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"내일이다. 무섭니?","route":"A"},
       {"speaker":"주인공","player":true,"text":"……성문에서 그 사람, 한 번도 안 때렸어요.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"마왕은 원래 처음엔 자비로워 보인단다. 그래야 사람들이 문을 열어 주거든.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"중요한 건 정답이 아니라 이유야. 너는 이유가 있니? 루스벨을 되찾을 이유.","route":"A"},
       {"speaker":"주인공","player":true,"text":"……있어요.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그럼 됐다.","route":"A"},
-      {"speaker":"","text":"이 루트에서 미르엘의 정체는 드러나지 않는다.","route":"A"},
     ],
     outro: [
-      {"speaker":"","text":"[락] 미르엘이 촛불을 끈다. 어둠. 그리고 그녀의 몸에서 빛이 피어오른다. 희의 따뜻한 금빛과 다른, 눈부시고 경박한 황금빛. 그 둘레에 검은빛이 엉긴다.","anim":"mirel-grin","route":"B_OR_C","cut":null},
+      {"speaker":"","text":"미르엘이 촛불을 끈다. 어둠. 그리고 그녀의 몸에서 빛이 피어오른다. 희의 따뜻한 금빛과 다른, 눈부시고 경박한 황금빛. 그 둘레에 검은빛이 엉긴다.","anim":"mirel-grin","route":"B_OR_C","place":"락","cut":null},
       {"speaker":"","text":"그녀가 웃는다. 처음 보는 웃음이다. 정말로, 즐거워 보인다.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"아아, 이제야 말할 수 있네. 사 년 동안 '~란다', '~렴' 하느라 혀가 굳는 줄 알았어.","anim":"mirel-grin","route":"B_OR_C"},
       {"speaker":"리안","portraitId":"comp-rian","text":"……교수님?","anim":"rian-surprise","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"리안. 넌 1학년 때 '선생 주머니에 그거 몇 개째예요?' 하고 물었지. 정답은 마흔세 개야. 다 여기 있어.","route":"B_OR_C"},
       {"speaker":"","text":"그녀가 망토 안쪽을 펼친다. 검은 결정, 가시, 보고서 쪽지들이 우수수 쏟아진다.","route":"B_OR_C"},
-      {"speaker":"","text":"모르스는 너무 고상했어. 마족이면서 인간을 다스릴 품격이 있었지. 다들 그녀를 좋아했어. 나보다.","route":"B_OR_C"},
-      {"speaker":"","text":"나는 그게 싫었어. 정말, 정말 싫었어.","route":"B_OR_C"},
-      {"speaker":"","text":"[고백]","route":"B_OR_C"},
-      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"인간이 마족을 미워하게 만드는 건 아주 쉬웠어. 기록의 첫 장을 바꾸고, 전쟁의 이유를 바꾸고, 마족을 화산으로 밀어 넣으면 됐지.","route":"B_OR_C","cut":null},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"모르스는 너무 고상했어. 마족이면서 인간을 다스릴 품격이 있었지. 다들 그녀를 좋아했어. 나보다.","route":"B_OR_C"},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"나는 그게 싫었어. 정말, 정말 싫었어.","route":"B_OR_C"},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"인간이 마족을 미워하게 만드는 건 아주 쉬웠어. 기록의 첫 장을 바꾸고, 전쟁의 이유를 바꾸고, 마족을 화산으로 밀어 넣으면 됐지.","route":"B_OR_C","place":"고백","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"왕립 기록원? 울토르 기록관? 다 내가 만들었어. 이름만 바꿔 가면서. 너희가 '제도'를 의심하는 동안, 나는 그 제도 뒤에서 차를 마셨고.","route":"B_OR_C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……사람들의 삶을, 장난감으로 만든 겁니까?","anim":"owen-sad","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"오백 년이나 살았는데 재미도 있어야 하지 않겠어? 모르스의 '락(樂)'을 빼앗은 뒤로는, 모든 게 훨씬 재밌어졌어.","route":"B_OR_C"},
-      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그런데 그 오백 살 먹은 마왕이 말이야. ……아, 나도 오백 살이구나. 아무튼. 화산에서 감자나 캐고 있을 땐 신경 쓸 필요도 없었거든. 감정이 하나밖에 안 남아서 비실비실했으니까.","route":"B_OR_C"},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그런데 그 마왕 말이야. 화산에서 감자나 캐고 있을 땐 신경 쓸 필요도 없었거든. 감정이 하나밖에 안 남아서 비실비실했으니까.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그런데 몇 년 전부터 힘이 돌아오더라. 웃기지? 유배지에서 행복해지다니. 그러니까 여기 있는 희가 대답을 하잖아. 숲이 들썩이고, 바다 문이 흔들리고.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"끝까지 따라오면 결국 여기, 내 학교 밑에 닿을 텐데. 그건 곤란하잖아?","route":"B_OR_C"},
       {"speaker":"셀라","portraitId":"comp-sella","text":"그래서… 원인이 필요했던 거네요.","route":"B_OR_C"},
@@ -1630,10 +1615,13 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"리안","portraitId":"comp-rian","text":"표결에서 졌다면서요. 발표는 교수님 뜻이 아니었다면서요!","anim":"rian-angry","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"리안. 내가 '중요한 건 정답이 아니라 이유'라고 가르쳤지?","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그 발표의 이유는 나였어. 정답이지?","route":"B_OR_C"},
-      {"speaker":"","text":"화면이 빠르게 넘어간다. 오백 년 전의 전장. 삼백 년 전의 기록원. 이백 년 전의 기록관. 사 년 전의 입학식.","route":"B_OR_C","cut":"ep50-a"},
+      {"speaker":"","text":"기억이 겹쳐 넘어간다. 오백 년 전의 전장. 삼백 년 전의 기록원. 이백 년 전의 기록관. 사 년 전의 입학식.","route":"B_OR_C","cut":"ep50-a"},
       {"speaker":"","text":"모든 장면에 같은 얼굴이 있다. 머리 모양과 옷만 바뀐 채, 언제나 단상 위에서 미소 짓는 얼굴.","route":"B_OR_C"},
       {"speaker":"","text":"그리고 처음으로 명확하게 — 사슬에 묶인 모르스에게서 황금빛 '락(樂)'을 뽑아내는 그녀의 손.","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"너희가 믿은 오백 년은, 내가 써 준 이야기였어.","route":"B_OR_C"},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"아름다운 이야기였잖아? 착한 인간, 나쁜 마왕. 덕분에 오백 년 동안 아무도 서로를 의심하지 않았어.","route":"B_OR_C"},
+      {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"……그 이야기 밖에 서 있던 사람들은요.","anim":"owen-think","route":"B_OR_C"},
+      {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"이야기 밖은 원래 안 보이는 거야. 그래서 좋은 이야기지.","route":"B_OR_C"},
       {"speaker":"","text":"학교의 모든 봉인 문양이 동시에 점화된다. 본관 창문들이 한꺼번에 황금색으로 빛난다.","route":"B_OR_C","cut":"ep50-b"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"그런데 말이야. 너희가 이걸 누구한테 말할 거니? 학생 넷, 사서 하나, 성녀 하나, 그리고 '마왕의 하수인'?","route":"B_OR_C"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"내일 천공 신전에서 국왕 폐하가 너희를 부를 거야. 마왕에게 홀린 학생들로. 그 고소장은 이미 내가 썼거든.","route":"B_OR_C"},
@@ -1646,7 +1634,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP51 · 왕 앞에 서는 자 ═════════
   51: {
     brief: [
-      {"speaker":"","text":"[천공 신전 심문 (B/C 공통)] 바람이 거센 날. 천공 신전 앞뜰에 임시 심문석이 놓인다. 국왕 레오니스가 중앙에 앉고, 근위병들이 둘러선다.","cut":null},
+      {"speaker":"","text":"바람이 거센 날. 천공 신전 앞뜰에 임시 심문석이 놓인다. 국왕 레오니스가 중앙에 앉고, 근위병들이 둘러선다.","place":"천공 신전 심문","cut":null},
       {"speaker":"","text":"고발인석에 미르엘. 단정한 교장의 옷. 붕대도, 황금빛도 없다. 완벽하게 '피해자 학교의 교장'이다."},
       {"speaker":"","text":"피고석에 주인공과 일행. 그리고 — 국왕의 요청으로 출석한 모르스. 가시 면류관과 뿔이 바람 속에서 검게 빛난다. 근위병들이 저도 모르게 창을 고쳐 쥔다."},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"폐하. 제 학생들이 마왕에게 홀렸습니다. 사 년을 가르친 아이들입니다. 부디 관대한 판결을."},
@@ -1656,7 +1644,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"주인공이 앞으로 나온다."},
     ],
     outro: [
-      {"speaker":"","text":"[여섯 증언 (C: 상징 6개 / B: 부족)] 신전 계단 아래에서 사람들이 올라온다. 여섯 마을의 대표들. 근위병들이 당황해 창을 고쳐 쥔다.","route":"C","cut":null},
+      {"speaker":"","text":"신전 계단 아래에서 사람들이 올라온다. 여섯 마을의 대표들. 근위병들이 당황해 창을 고쳐 쥔다.","route":"C","place":"여섯 증언","cut":null},
       {"speaker":"기본 마을 대표","text":"우리는 이 아이가 우리 마을에 무엇을 했는지 기억합니다. 빵 배달 틀린 것까지.","route":"C"},
       {"speaker":"아틀란티스 대표(브라더 모렌)","text":"우리 바다에서 목숨을 걸었습니다.","route":"C"},
       {"speaker":"천공 신전 대표","text":"불편한 기록을 외면하지 않았습니다. 이 신전의 벽화를 처음 '읽어 준' 사람들입니다.","route":"C"},
@@ -1665,8 +1653,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"마물 마을 대표(장로 카즈)","text":"우리도 이 인간의 말을 믿소. 오백 년 만에 처음으로, 인간을 믿소.","route":"C"},
       {"speaker":"","text":"몇몇 대표만 계단을 올라온다. 오지 않은 마을의 자리가 비어 있다. 바람이 빈자리를 쓸고 지나간다.","route":"B"},
       {"speaker":"","text":"국왕이 빈자리를 본다. 미르엘이 그 시선을 본다. 아주 작게 미소 짓는다.","anim":"king-think","route":"B"},
-      {"speaker":"","text":"[증거]"},
-      {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"울토르 지하에서 발견한 오백 년 치의 관리 일지입니다. 필체를 고발인의 서명과 대조해 주십시오.","cut":null},
+      {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"울토르 지하에서 발견한 오백 년 치의 관리 일지입니다. 필체를 고발인의 서명과 대조해 주십시오.","place":"증거","cut":null},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"버려진 신전 봉인 붕괴 당시 측정 기록. 역류 직전에 바깥쪽 수치가 한 번 튀었다. 장비 오류라고 넘겼지만… 아니었다. 봉인은 바깥에서 깨졌다."},
       {"speaker":"카엘 조교","portraitId":"npc-kael","text":"……보고서는 제때 내는 거다. 언젠가 쓸모가 있으니까."},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"나는 그녀의 힘 일부를 가지고 있었다. 그리고 그 힘 안에 남은 기억을 봤다."},
@@ -1690,17 +1677,17 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
   // ═════════ EP52 · 네 마음이 다시 하나가 될 때 ═════════
   52: {
     brief: [
-      {"speaker":"","text":"[모르스의 성] 성 안 왕좌의 방. 왕좌는 비어 있다. 모르스는 그 아래 계단에 앉아 있다.","route":"A","cut":null},
+      {"speaker":"","text":"성 안 왕좌의 방. 왕좌는 비어 있다. 모르스는 그 아래 계단에 앉아 있다.","route":"A","place":"모르스의 성","cut":null},
       {"speaker":"","text":"토벌대가 들어오자, 그녀가 천천히 일어선다. 망토 아래에서 쇠사슬이 바닥을 긁는다.","route":"A"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"「……………………」","route":"A"},
       {"speaker":"","text":"아무도 알아듣지 못한다. 미르엘이 지팡이를 든다.","route":"A"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"시작해라.","route":"A"},
-      {"speaker":"","text":"[탈출과 대화] 구금 첫날 밤. 성녀가 근위병의 교대 시간을 알려 주고, 카엘이 자물쇠를 녹인다(\"봉인 해제라고 했지, 봉인 소각이라고 안 했다\").","route":"B","cut":null},
+      {"speaker":"","text":"구금 첫날 밤. 성녀가 근위병의 교대 시간을 알려 주고, 카엘이 자물쇠를 녹인다. 「봉인 해제라고 했지, 소각하라고는 안 했다.」 누군가 투덜거린다.","route":"B","place":"탈출과 대화","cut":null},
       {"speaker":"","text":"일행이 모르스와 함께 화산지대로 향한다. 산길의 모닥불.","route":"B"},
       {"speaker":"주인공","player":true,"text":"우리가 본 진실을 믿어도 되는 걸까요? 아무도 안 믿어 주는데.","route":"B"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'의심하는 것부터 시작해라. 너를 가르친 자가 그것 하나는 옳게 가르쳤구나.'","route":"B"},
       {"speaker":"리안","portraitId":"comp-rian","text":"……그 사람이 가르친 거 중에 쓸 만한 거 하나는 있었네.","route":"B"},
-      {"speaker":"","text":"[천공 신전의 최종전] 51막 심문의 연장. 정체가 드러난 미르엘이 천공 신전 위로 떠오른다. 신전의 바람이 황금빛으로 물든다.","route":"C","cut":null},
+      {"speaker":"","text":"심문석이 부서진다. 정체가 드러난 미르엘이 천공 신전 위로 떠오른다. 신전의 바람이 황금빛으로 물든다.","route":"C","place":"천공 신전의 최종전","cut":null},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"역사를 다시 쓰겠다고? 너희가? 그 오백 살 먹은 마왕이?","anim":"mirel-laugh","route":"C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'아니.'","route":"C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'이제부터는 살아 있는 사람들이 직접 쓰게 하겠다.'","route":"C"},
@@ -1717,7 +1704,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"졸업은 선택의 끝이 아니라, 시작에 가깝습니다.","route":"A"},
       {"speaker":"","text":"승리한 것은 분명했다.","route":"A"},
       {"speaker":"","text":"하지만 우리가 무엇을 이긴 것인지는… 아무도 묻지 않았다.","route":"A"},
-      {"speaker":"","text":"[성 앞의 최종전] 미르엘이 왕국군을 이끌고 모르스의 성에 도착한다. '납치된 학생들을 구하러 온 교장'으로서.","route":"B","cut":null},
+      {"speaker":"","text":"미르엘이 왕국군을 이끌고 모르스의 성에 도착한다. '납치된 학생들을 구하러 온 교장'으로서.","route":"B","place":"성 앞의 최종전","cut":null},
       {"speaker":"","text":"성문 앞에서, 왕국군이 보는 앞에서 — 미르엘이 마지막으로 웃는다.","route":"B"},
       {"speaker":"미르엘 교수","portraitId":"npc-mirel","text":"봐. 결국 이렇게 끝나는 거야. 진실이 있어도, 믿어 줄 사람이 없으면 소용없어.","route":"B"},
       {"speaker":"","text":"미르엘이 쓰러진다. 그녀에게서 빠져나온 황금빛 '락(樂)'이 흩어진다. 모르스가 그것을 다 잡지 못한다.","route":"B","cut":"ep52-b1"},
@@ -1728,8 +1715,8 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"주인공","player":true,"text":"이제 어디로 가요?","route":"B"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"'우리를 받아 주는 곳으로. 없다면, 만들면 된다.'","route":"B"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"……그리고 감자는 챙겼대.","route":"B"},
-      {"speaker":"","text":"멀리 새벽빛. 화면 암전.","route":"B"},
-      {"speaker":"","text":"[네 감정의 회수] 전투 중, 미르엘에게서 황금빛 '락(樂)'이 떨어져 나온다.","route":"C","cut":null},
+      {"speaker":"","text":"멀리서 새벽빛이 번진다.","route":"B"},
+      {"speaker":"","text":"전투 중, 미르엘에게서 황금빛 '락(樂)'이 떨어져 나온다.","route":"C","place":"네 감정의 회수","cut":null},
       {"speaker":"","text":"루스벨이 앞으로 나선다. 몸에서 붉은빛이 빠져나온다. 보랏빛 불꽃이 원래의 붉은색으로 돌아온다.","anim":"ruspell-rage","route":"C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"가져가. 오래 빌렸어.","route":"C"},
       {"speaker":"","text":"로(怒) 회수.","route":"C"},
@@ -1748,7 +1735,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"모르스","portraitId":"npc-mors","text":"재미없어도 좋다.","route":"C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"이번에는, 누군가의 삶이니까.","route":"C"},
       {"speaker":"","text":"미르엘이 바람 속으로 흩어진다. 그녀가 서 있던 자리에, 빨간 펜 하나가 떨어진다.","anim":"mirel-think","route":"C"},
-      {"speaker":"","text":"[왕 앞의 새로운 협약] 여섯 마을의 대표가 함께 서 있다. 국왕이 왕관을 벗어 옆에 내려놓는다.","route":"C","cut":null},
+      {"speaker":"","text":"여섯 마을의 대표가 함께 서 있다. 국왕이 왕관을 벗어 옆에 내려놓는다.","route":"C","place":"왕 앞의 새로운 협약","cut":null},
       {"speaker":"국왕 레오니스","portraitId":"npc-king","text":"과거의 잘못을 인정하겠다. 오백 년 전의 잘못도, 오늘 아침까지의 잘못도.","route":"C"},
       {"speaker":"국왕 레오니스","portraitId":"npc-king","text":"마족과 인간의 교류를 다시 시작하겠다. 화산지대 봉쇄령은 오늘로 폐지한다.","route":"C"},
       {"speaker":"모르스","portraitId":"npc-mors","text":"나 역시 오래전의 상처를 핑계 삼지 않겠소.","route":"C"},
@@ -1757,7 +1744,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"4년 전 입학식과 같은 중앙광장. 같은 분수. 같은 종소리.","route":"C","cut":"ep52-c3"},
       {"speaker":"","text":"이번에는 주인공이 졸업생 줄에 서 있다.","route":"C"},
       {"speaker":"","text":"리안과 루스벨이 나란히 서 있다. 졸업생 명단의 화염 계열 수석 자리에 이름이 두 개 적혀 있다. 공동 1위.","route":"C"},
-      {"speaker":"리안","portraitId":"comp-rian","text":"……이건 무효야.","route":"C"},
+      {"speaker":"리안","portraitId":"comp-rian","text":"이건 무효야!","route":"C"},
       {"speaker":"루스벨","portraitId":"comp-rusbel","text":"무효 아니야. 1등 둘이야.","route":"C"},
       {"speaker":"","text":"단상 위에 새 교장 대행이 오른다. 오웬이다. 셔츠 단추를 끝까지 잠갔다. 긴장해서 원고가 떨린다.","route":"C"},
       {"speaker":"사서 오웬","portraitId":"npc-librarian","text":"졸업생 여러분. 울토르에서의 4년을 축하합니다.","route":"C"},
@@ -1767,7 +1754,7 @@ export const EP_SCRIPT_GEN: Record<number, { brief: StoryLine[]; outro: StoryLin
       {"speaker":"","text":"박수. 하객석 맨 뒤에 뿔 한 쌍이 솟아 있다. 모르스가 뒷사람 시야를 가린다며 스스로 맨 뒤에 서 있다. 품에 감자 바구니를 안고.","route":"C"},
       {"speaker":"","text":"그 옆에 반, 셀린, 카엘, 유나, 성녀, 보르, 카즈, 그롯.","route":"C"},
       {"speaker":"반","portraitId":"npc-weapon","text":"부서지면 돌아와서 말해. 졸업해도.","route":"C"},
-      {"speaker":"","text":"카메라가 입학식의 분수대와 같은 구도로 전환된다. 분수 물줄기가 네 갈래로 갈라졌다가, 하나로 모인다.","route":"C"},
+      {"speaker":"","text":"입학식 날의 그 분수대. 물줄기가 네 갈래로 갈라졌다가, 하나로 모인다.","route":"C"},
       {"speaker":"","text":"4년 동안 배운 것은 주문만이 아니었다.","route":"C"},
       {"speaker":"","text":"사람을 믿는 법.","route":"C"},
       {"speaker":"","text":"의심하는 법.","route":"C"},
@@ -1830,7 +1817,7 @@ export const CUTSCENES_GEN: CutsceneDef[] = [
   {"id":"ep48-a","scene":"EP48 [CUTSCENE 48-A] 여섯 상징","full":false,"shot":"여섯 상징이 주인공 앞에 떠오른다. 하나씩 빛이 이어져 하나의 원을 이룬다. 입학식 날 분수 물줄기가 갈라지던 모양과 같다.","refs":[]},
   {"id":"ep49-a","scene":"EP49 [CUTSCENE 49-A] 학교에 남겨진 마음","full":false,"shot":"환영 속에서 인간과 마족이 함께 웃는다. 왕의 모습은 멀리서만 보인다. 황금빛이 주인공의 손으로 스며든다. 따뜻하다.","refs":[]},
   {"id":"ep49-b","scene":"EP49 [CUTSCENE 49-B] 관리 일지","full":false,"shot":"오웬이 책상 위의 관리 일지를 펼친다. 오백 년 치의 기록. 필체가 단 한 번도 바뀌지 않았다. 마지막 장. 최근 날짜들. 셀라가 꺼낸 것은 1학년 리안의 실습 소감문 사본이다. 여백의 빨간 글씨. 「이유는?」 그리고 설원 명령서의 사본. 「발견 시 해치지 말고, 반드시 학교로 데려올 것. — 교장 미르엘」 셋을 나란히 놓는다. 같은 필체. 정적. 마법진의 따뜻한 빛만이 일행의 얼굴을 비춘다. 그 빛 속에서, 철문 쪽 계단 위로 아주 가벼운 발소리가 내려온다. 발소리가 거의 나지 않는 사람이다.","refs":["미르엘 삼면도.jpg","리안 삼면도.jpg","전투 NPC 셀라 삼면도.png","스토리 NPC 일러스트.png"]},
-  {"id":"ep50-a","scene":"EP50 [CUTSCENE 50-A] 500년의 역사","full":false,"shot":"화면이 빠르게 넘어간다. 오백 년 전의 전장. 삼백 년 전의 기록원. 이백 년 전의 기록관. 사 년 전의 입학식. 모든 장면에 같은 얼굴이 있다. 머리 모양과 옷만 바뀐 채, 언제나 단상 위에서 미소 짓는 얼굴. 그리고 처음으로 명확하게 — 사슬에 묶인 모르스에게서 황금빛 '락(樂)'을 뽑아내는 그녀의 손.","refs":["모르스 1페이즈(망토, 면류관), 2페이즈(망토, 면류관 없음) 삼면도.png"]},
+  {"id":"ep50-a","scene":"EP50 [CUTSCENE 50-A] 500년의 역사","full":false,"shot":"기억이 겹쳐 넘어간다. 오백 년 전의 전장. 삼백 년 전의 기록원. 이백 년 전의 기록관. 사 년 전의 입학식. 모든 장면에 같은 얼굴이 있다. 머리 모양과 옷만 바뀐 채, 언제나 단상 위에서 미소 짓는 얼굴. 그리고 처음으로 명확하게 — 사슬에 묶인 모르스에게서 황금빛 '락(樂)'을 뽑아내는 그녀의 손.","refs":["모르스 1페이즈(망토, 면류관), 2페이즈(망토, 면류관 없음) 삼면도.png"]},
   {"id":"ep50-b","scene":"EP50 [CUTSCENE 50-B] 최종 적 전환","full":false,"shot":"학교의 모든 봉인 문양이 동시에 점화된다. 본관 창문들이 한꺼번에 황금색으로 빛난다. 그녀가 사라진다. 웃음소리만 지하에 남는다.","refs":[]},
   {"id":"ep51-a","scene":"EP51 [CUTSCENE 51-A] 왕 앞의 두 사람","full":false,"shot":"그 순간 미르엘의 몸에서 황금빛이 터져 나온다. 더 이상 숨길 이유가 없다는 듯이. 국왕이 눈을 감는다. 미르엘이 고개를 숙인다. 그 얼굴은 아무도 보지 못한다.","refs":["미르엘 삼면도.jpg"]},
   {"id":"ep52-a1","scene":"EP52 [CUTSCENE 52-A1] 마지막 말","full":false,"shot":"모르스가 무릎을 꿇는다. 그녀가 주인공을 본다. 4년 전 성문 앞에서처럼, 아주 잠깐. 그리고 마지막으로, 천천히, 한 문장을 말한다. 고대어. 자막 없음. 화면에 그 문장의 소리가 문자로 떠오른다. 주인공은 읽지 못한다. 그 글자의 모양이 — 설원 석비 마지막 줄의 모양과 같다. 모르스가 쓰러진다. 그녀의 가슴에서 푸른빛이 빠져나와 흩어진다. 눈물처럼.","refs":["모르스 1페이즈(망토, 면류관), 2페이즈(망토, 면류관 없음) 삼면도.png"]},

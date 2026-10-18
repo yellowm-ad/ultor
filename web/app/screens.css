@@ -171,7 +171,8 @@
 @keyframes wx-rise { from { transform: translate(0, 0); } to { transform: translate(0, -256px); } }
 @keyframes wx-rain { from { transform: translate(0, 0); } to { transform: translate(-256px, 512px); } }
 @keyframes wx-sway { from { transform: translateX(-10px); } to { transform: translateX(10px); } }
-@keyframes wx-flash { 0%, 90%, 93%, 95.5%, 100% { opacity: 0; } 91% { opacity: 0.5; } 94.2% { opacity: 0.32; } }
+/* 번개 — 2026-10-18 광과민성: 밝기를 절반 아래로, 한 번 번쩍 + 약한 잔광 */
+@keyframes wx-flash { 0%, 90%, 93.5%, 100% { opacity: 0; } 91% { opacity: 0.2; } 92.2% { opacity: 0.1; } }
 .weather .wx-sway { animation: wx-sway 5.5s ease-in-out infinite alternate; will-change: transform; }
 .weather .wx-sway-slow { animation: wx-sway 8s ease-in-out infinite alternate-reverse; will-change: transform; }
 .weather .wx-snow-far { animation: wx-fall 19s linear infinite; opacity: 0.75; }
@@ -197,7 +198,7 @@
 
 /* 전투 진입 전환(world-screen EncounterTransition, 0.82초) — 번쩍 → 흔들림·빛줄기 → 가운데로 닫히는 어둠 */
 .enc-trans { animation: enc-shake 0.32s steps(2) 2; }
-.enc-trans .enc-flash { position: absolute; inset: 0; background: #fff8e6; mix-blend-mode: screen; opacity: 0; animation: enc-flash 0.34s ease-out both; }
+.enc-trans .enc-flash { position: absolute; inset: 0; background: #f2e6cc; mix-blend-mode: screen; opacity: 0; animation: enc-flash 0.4s ease-out both; }
 .enc-trans .enc-streaks {
   position: absolute; inset: -20%;
   background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255, 236, 190, 0.55) 46px 52px, transparent 52px 120px);
@@ -214,7 +215,7 @@
   opacity: 0; animation: enc-name 0.82s ease-out both;
 }
 @property --r { syntax: '<length-percentage>'; inherits: false; initial-value: 120%; }
-@keyframes enc-flash { 0% { opacity: 0; } 20% { opacity: 0.9; } 100% { opacity: 0; } }
+@keyframes enc-flash { 0% { opacity: 0; } 25% { opacity: 0.35; } 100% { opacity: 0; } }
 @keyframes enc-streaks { 0% { opacity: 0; transform: translateX(-12%); } 40% { opacity: 1; } 100% { opacity: 0.2; transform: translateX(12%); } }
 @keyframes enc-iris { from { --r: 120%; } to { --r: 0%; } }
 @keyframes enc-shake { 0% { transform: translate(5px, -3px); } 50% { transform: translate(-5px, 3px); } 100% { transform: translate(0, 0); } }

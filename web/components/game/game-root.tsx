@@ -96,6 +96,11 @@ function GameShell() {
     }
   }, [state.screen])
 
+  // 설정 「번쩍임 끄기」 — 전투 화면까지 함께 적용되도록 문서 루트에 붙인다(app/globals.css .no-flash)
+  useEffect(() => {
+    document.documentElement.classList.toggle('no-flash', !!state.settings.noFlash)
+  }, [state.settings.noFlash])
+
   if (state.screen === 'title') return <TitleScreen />
   if (state.screen === 'create') return <CreateScreen />
   if (state.screen === 'battle') return <BattleScreen />
