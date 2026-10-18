@@ -211,6 +211,8 @@ export interface ItemDef {
     petAffection?: number // 펫 호감도 증가
     /** 마력캔디 — 먹은 캐릭터(주인공·동료)에게 경험치. 필드 전용(전투 중 사용 불가) */
     grantExp?: number
+    /** 투명한 물약 — 이 초 동안 몸이 투명해져 몬스터에 닿아도 전투가 시작되지 않는다. 필드 전용 */
+    invisibleSec?: number
   }
   /** 먹이: 이 속성 펫이 좋아한다. 생략 = 모든 펫이 조금씩 좋아함 */
   feedElement?: PlayerElement
@@ -522,6 +524,7 @@ export type MapId =
   | 'practice-lab' | 'practice-lab-adv' // 마법 실습실 · 고등 마법 실습실
   | 'council-room' // 교수 회의실
   | 'lab-fire' | 'lab-ice' | 'lab-earth' | 'lab-dark' | 'lab-light' // 교수 연구실
+  | 'lounge-jor' | 'lounge-fen' | 'lounge-hel' // 세 기숙사 휴게실(2층 서쪽 회랑)
   | 'personal-space'
   | 'testroom'
 
@@ -817,6 +820,13 @@ export interface GameState {
   monsterDefeats?: Record<string, number>
   pendingEncounterUid: string | null // 접촉 시 전투 여부를 묻는 대상
   pendingPortalId: string | null // 접촉 시 이동 여부를 묻는 포탈
+  /** 투명 상태가 끝나는 시각(Date.now 기준 ms) — 투명한 물약 · 투명화 마법. 이 시각 전엔 몬스터 접촉·돌진이 없다 */
+  invisibleUntil?: number
+  /** 탐사 마법 질주 · 등불이 끝나는 시각(lib/field-spells) */
+  hasteUntil?: number
+  lightUntil?: number
+  /** 끌어오기 연출(채집물 자리에서 플레이어 쪽으로 빛이 날아온다) — 시전 시각과 자리 */
+  pullFx?: { at: number; cells: { x: number; y: number }[] }
   /** 진행 중인 첫 이동 연출(lib/passages) — 통과하면 이 포탈로 넘어간다. 저장하지 않는다 */
   passage?: { id: import('./passages').PassageId; portalId: string } | null
   gateOpen: boolean // 군 통문 목적지 선택 오버레이

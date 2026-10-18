@@ -140,6 +140,8 @@ export type HeroRole = 'fire' | 'ice' | 'earth'
 
 export interface StoryLine {
   speaker: string // 화자 이름(또는 '' = 나레이션). hero/player 가 있으면 무시되고 실제 이름으로 바뀐다
+  /** 장면 자리(예: '입학식 전 / 교문') — 대화창 제목 칩에 「EP00 · 장소」로 붙는다 */
+  place?: string
   /** 초상화 id(Portrait 컴포넌트) — NPC id 또는 동료 id */
   portraitId?: string
   hero?: HeroRole

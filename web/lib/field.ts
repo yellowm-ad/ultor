@@ -69,9 +69,13 @@ function placeFieldMonsters(map: GameMap, testMode: boolean): FieldMonster[] {
 
   // 넓어진 맵에서 몹이 뭉치지 않도록: 서로 spacing 이상 · 스폰/포탈 주변 비움 · 길 위는 피함.
   // 셀 안에서 못 찾으면 주변 2셀까지 흔들어 보고, 끝내 자리가 없으면 그 마리는 건너뛴다.
+  // 도착 자리(spawn · 부활 자리 · 포탈 — 포탈로 들어오면 그 옆에 선다) 둘레는 알아채는 거리(4.2칸)보다 넓게 비운다(2026-10-18).
+  // 예전 3.2/2.4칸이라 맵에 들어서자마자 몬스터가 바로 옆에 있거나 덮쳐 왔다.
+  const SAFE_R = 4.6
   const clearOf = (x: number, y: number) =>
-    Math.hypot(x - map.spawn.x, y - map.spawn.y) > 3.2 &&
-    map.portals.every((p) => Math.hypot(p.cell.x - x, p.cell.y - y) > 2.4) &&
+    Math.hypot(x - map.spawn.x, y - map.spawn.y) > SAFE_R &&
+    (!map.respawn || Math.hypot(x - map.respawn.x, y - map.respawn.y) > SAFE_R) &&
+    map.portals.every((p) => Math.hypot(p.cell.x - x, p.cell.y - y) > SAFE_R) &&
     !(map.roadAt?.(x, y) ?? false) &&
     !poolBlocks(map.terrain?.pool(x, y)) &&
     !result.some((r) => Math.hypot(r.homeCell.x - x, r.homeCell.y - y) < spacing)

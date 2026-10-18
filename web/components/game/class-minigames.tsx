@@ -910,7 +910,7 @@ function SigilGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
         ))}
         {pts.map((p, i) => (
           <g key={i} onClick={() => press(i)} style={{ cursor: phase === 'input' ? 'pointer' : 'default' }}>
-            <circle cx={p.x} cy={p.y} r={17} fill={lit === i ? color : '#2b2340'} stroke={color} strokeWidth={2} style={{ filter: lit === i ? `drop-shadow(0 0 8px ${color})` : undefined, transition: 'fill 0.12s' }} />
+            <circle cx={p.x} cy={p.y} r={17} fill={lit === i ? color : '#241f17'} stroke={color} strokeWidth={2} style={{ filter: lit === i ? `drop-shadow(0 0 8px ${color})` : undefined, transition: 'fill 0.12s' }} />
             <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={11} fill={lit === i ? '#2a1d10' : '#d8c79c'} pointerEvents="none">
               {i + 1}
             </text>

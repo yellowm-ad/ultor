@@ -17,7 +17,18 @@ import { globalWeekOf as W } from '@/lib/calendar'
 import { EP_SCRIPT_GEN } from '@/lib/story-script-gen'
 
 // ── 화자 헬퍼 ──────────────────────────────────────────────────────────────────
-const N = (text: string): StoryLine => ({ speaker: '', text })
+/**
+ * 나레이션. 대본 표기 「[SCENE 00-01] 장소 — 지문」이 그대로 화면에 나오던 문제(2026-10-18) —
+ * [SCENE·CUTSCENE·INTERLUDE] 꼬리표는 떼고, '장소'는 대화창 제목 칩(place)으로, 지문만 본문으로.
+ */
+const N = (text: string): StoryLine => {
+  const m = /^\[(?:SCENE|CUTSCENE|INTERLUDE)[^\]]*\]\s*(.*)$/.exec(text)
+  if (!m) return { speaker: '', text }
+  const rest = m[1]
+  const dash = rest.indexOf(' — ')
+  if (dash < 0) return { speaker: '', text: `— ${rest} —`, place: rest }
+  return { speaker: '', text: rest.slice(dash + 3), place: rest.slice(0, dash) }
+}
 const npc = (speaker: string, portraitId?: string) => (text: string): StoryLine => ({ speaker, portraitId, text })
 /** 컷신 이미지를 띄우며 시작하는 줄 */
 const cut = (id: string | null, line: StoryLine): StoryLine => ({ ...line, cut: id })

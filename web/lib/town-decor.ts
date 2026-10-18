@@ -473,9 +473,9 @@ const ACADEMY_2F: DecorItem[] = [
   ['academy/wb_candelabra', 20.6, 3.3, W],
   ['academy/wb_potted_fern', 28.0, 3.3, W],
   ['academy/wb_statue_urn', 35.4, 1.7],
-  ['academy/wb_bench_purple_f', 2.0, 11.2],
-  ['academy/wb_candelabra', 3.3, 12.4, W],
-  ['academy/wb_bust', 1.7, 25.6],
+  // (서쪽 회랑 y=11 · 20.4 · 27.6 은 기숙사 휴게실 문 앞 — 2026-10-18 벤치·흉상을 옮김)
+  ['academy/wb_candelabra', 3.3, 15.6, W],
+  ['academy/wb_bust', 1.7, 24.0],
   ['academy/wb_potted_fern', 3.3, 29.6, W],
   ['academy/wb_easel', 1.8, 31.6, W],
 ]
@@ -496,6 +496,22 @@ const PRACTICE_LAB: DecorItem[] = [
   ['academy/wb_crystal_ball', 18.2, 5.0],
   ['academy/wb_book_stack', 2.6, 13.6, W],
 ]
+
+/** 기숙사 휴게실 (18×15) — 가운데 깔개 위 찻상 · 벽난로 앞 둥근 러그 · 북벽 기숙사 문장 책장과 우승컵 · 동쪽 게시판 */
+const loungeDecor = (extra: DecorItem[]): DecorItem[] => [
+  ['academy/wb_rug_round', 9.0, 3.4, { flat: true }],
+  ['academy/wb_teatable', 9.0, 8.0],
+  ['academy/wb_armchair_f', 12.4, 8.2],
+  ['academy/wb_shelf_crest', 6.4, 1.4],
+  ['academy/wb_trophy', 12.0, 1.6],
+  ['academy/wb_notice', 16.6, 7.0],
+  ['academy/wb_clock', 16.6, 2.0],
+  ['academy/wb_book_stack', 2.8, 7.4, W],
+  ...extra,
+]
+const LOUNGE_JOR: DecorItem[] = loungeDecor([['academy/wb_piano', 13.6, 12.2], ['academy/wb_case_crystal', 5.8, 12.6]])
+const LOUNGE_FEN: DecorItem[] = loungeDecor([['academy/wb_potted_tree', 16.4, 11.4], ['academy/wb_planter_round', 6.2, 12.8]])
+const LOUNGE_HEL: DecorItem[] = loungeDecor([['academy/wb_candelabra', 16.4, 11.4, W]])
 
 /** 아틀란티스 대성당 지하 벽화실 (16×14 — 북벽 앞에 네 장의 석판, 가운데 러너) */
 const ATLANTIS_CRYPT: DecorItem[] = [
@@ -577,4 +593,7 @@ export const TOWN_DECOR: Record<string, DecorItem[]> = {
   'academy-3f': ACADEMY_3F,
   'academy-4f': ACADEMY_4F,
   'practice-lab': PRACTICE_LAB,
+  'lounge-jor': LOUNGE_JOR,
+  'lounge-fen': LOUNGE_FEN,
+  'lounge-hel': LOUNGE_HEL,
 }

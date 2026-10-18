@@ -54,6 +54,13 @@ export const HALL_SPR = {
   doorLight: spr('door_light.png', 80, 146, P),
   doorMeeting: spr('door_meeting.png', 112, 153, P),
   archStair: spr('arch_stair.png', 95, 161, P),
+  // 2026-10-18 세 기숙사 휴게실 문(속성 수업관 문 + 상징동물 창·메달)·깃발 — scripts/gen-house-doors.mjs
+  doorHouseJor: spr('door_house_jor.png', 92, 184, P),
+  doorHouseFen: spr('door_house_fen.png', 85, 174, P),
+  doorHouseHel: spr('door_house_hel.png', 88, 177, P),
+  bannerJor: spr('banner_house_jor.png', 46, 115, P),
+  bannerFen: spr('banner_house_fen.png', 46, 115, P),
+  bannerHel: spr('banner_house_hel.png', 46, 115, P),
 }
 
 /** 2층 회랑 확장(2학년 교실 문·3층 계단 — lib/academy-upper.ts)을 maps.ts 가 주입한다(순환 import 방지) */
@@ -62,6 +69,10 @@ export interface HallExt {
   wallDecals: (zBase: number) => IsoPart[]
   /** 2층 벽 창·배너를 비울 x 구간 */
   wallSkip: [number, number][]
+  /** 2층 서벽 창·배너를 비울 y 구간 */
+  wallSkipW?: [number, number][]
+  /** 서쪽 회랑 책장을 뺄 y 구간 */
+  shelfSkipW?: [number, number][]
   /** 회랑 위 추가 구조물(계단 등) */
   structures: (zBase: number) => IsoStructGroup[]
   /** 2층 맵 추가 충돌 */
@@ -123,9 +134,10 @@ function backWalls(zBase: number, doors: WallDoor[], zFrom = zBase, ext?: HallEx
     if (!skipped(x)) decals.push(wallDecal('y', x, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
     if (!skipped(x + 2.5)) decals.push(wallDecal('y', x + 2.5, 150, zBase + FLOOR2 + 150, HALL_SPR.banner))
   }
+  const skippedW = (y: number) => (ext?.wallSkipW ?? []).some(([a, b]) => y + 0.8 > a && y - 0.8 < b)
   for (let y = 5; y < HALL_H - 1; y += 5) {
-    decals.push(wallDecal('x', y, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
-    decals.push(wallDecal('x', y + 2.5, 150, zBase + FLOOR2 + 150, HALL_SPR.banner))
+    if (!skippedW(y)) decals.push(wallDecal('x', y, 240, zBase + FLOOR2 + 60, HALL_SPR.window))
+    if (!skippedW(y + 2.5)) decals.push(wallDecal('x', y + 2.5, 150, zBase + FLOOR2 + 150, HALL_SPR.banner))
   }
   // 1층 문 + 문 위 배너(회랑 바닥판에 가리지 않을 높이까지)
   for (const d of doors) decals.push(wallDecal(d.plane, d.at, d.h, zBase + (d.z0 ?? 0), d.sp))
@@ -261,7 +273,8 @@ function galleryFurniture(onFloor2: boolean, ext?: HallExt): PropDef[] {
   const blockedX = (x: number) => (ext?.wallSkip ?? []).some(([a, b]) => x > a - 0.4 && x < b + 0.4)
   for (const x of [3, 6, 9, 12, 15, 32, 35, 38].filter((x) => !blockedX(x))) out.push(isoProp(`g-shelf-n${x}`, S.shelf, x, 1.0, 0.6, { elev: e, back: b(x), flip: true }))
   // 서쪽 회랑 — 벽에 붙은 책장(책 면이 +x)
-  for (const y of [8, 11, 14, 22, 25, 28, 31]) out.push(isoProp(`g-shelf-w${y}`, S.shelf, 1.0, y, 0.6, { elev: e, back: b(y + 50) }))
+  const blockedY = (y: number) => (ext?.shelfSkipW ?? []).some(([a, b]) => y + 0.6 > a && y - 0.6 < b)
+  for (const y of [8, 11, 14, 22, 25, 28, 31].filter((y) => !blockedY(y))) out.push(isoProp(`g-shelf-w${y}`, S.shelf, 1.0, y, 0.6, { elev: e, back: b(y + 50) }))
   // 회랑 화분 — 대강당 문 왼쪽, 대강당 문과 3층 계단 입구 사이
   ;[[18, 2.6], [27.6, 1.5]].forEach(([x, y], i) => out.push(isoProp(`g-plant-n${i}`, S.plant, x, y, 0.5, { elev: e, back: b(x + 100) })))
   // (서쪽 회랑 y=17.5 벤치 자리는 비밀 통로 — 2026-10-08 벤치 제거, lib/academy-secret.ts)

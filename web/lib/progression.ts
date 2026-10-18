@@ -501,12 +501,12 @@ export function visitMap(state: GameState, mapId: MapId): GameState {
 // ─────────────────────────────────────────────────────────────────────────────
 // 채집 · 낚시 (§33, §35)
 // ─────────────────────────────────────────────────────────────────────────────
-export function gatherAt(state: GameState, nodeKey: string): GameState {
+export function gatherAt(state: GameState, nodeKey: string, reach = 1.6): GameState {
   if (!isActivityUnlocked(state, 'gathering')) return { ...state, toast: '채집은 아직 할 수 없습니다.' }
   const map = MAPS[state.currentMapId]
   const node = gatherNodesForMap(map).find((n) => n.key === nodeKey)
   if (!node || !isNodeReady(state.life, nodeKey)) return state
-  if (Math.hypot(node.cell.x - state.position.x, node.cell.y - state.position.y) > 1.6) return state
+  if (Math.hypot(node.cell.x - state.position.x, node.cell.y - state.position.y) > reach) return state
   const got = rollGather(state.currentMapId, node.kind, hasItem(state.inventory, 'tool-gather-sickle'))
   let inventory = state.inventory
   const gathered = { ...state.collections.gathered }

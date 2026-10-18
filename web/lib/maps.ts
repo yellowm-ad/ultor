@@ -12,6 +12,10 @@ import type { HallDoorKey, HallExt } from '@/lib/academy-hall'
 import {
   FLOOR3_ENTRY_X,
   GALLERY_WALL_SKIP,
+  GALLERY_WALL_SKIP_W,
+  GALLERY_SHELF_SKIP_W,
+  HOUSE_LOUNGE_DOORS,
+  houseDoorFront,
   YEAR2_DOOR_X,
   galleryWallDecals,
   buildUpperFloor,
@@ -798,6 +802,8 @@ const personalSpaceTileAt = (cx: number, cy: number): TileKind =>
 const HALL_EXT: HallExt = {
   wallDecals: galleryWallDecals,
   wallSkip: GALLERY_WALL_SKIP,
+  wallSkipW: GALLERY_WALL_SKIP_W,
+  shelfSkipW: GALLERY_SHELF_SKIP_W,
   structures: () => [],
   blockers: [],
 }
@@ -1248,6 +1254,8 @@ export const MAPS = {
       { id: '2f-to-auditorium', cell: { ...AUD_DOOR_FRONT }, to: 'grand-auditorium', label: '대강당', kind: 'portal' },
       { id: '2f-to-class-year2', cell: { x: YEAR2_DOOR_X, y: 1.3 }, to: 'class-year2', label: '2학년 교실', kind: 'portal' },
       { id: '2f-to-3f', cell: { x: FLOOR3_ENTRY_X, y: 1.3 }, to: 'academy-3f', toSpawn: { ...UF_SPAWN }, label: '3층으로', kind: 'portal' },
+      // 서쪽 회랑 — 세 기숙사 휴게실(1층 속성 수업관 위)
+      ...HOUSE_LOUNGE_DOORS.map((d) => ({ id: `2f-to-${ACADEMY_ROOM_DEFS[d.key].id}`, cell: houseDoorFront(d, 1.4), to: ACADEMY_ROOM_DEFS[d.key].id, label: ACADEMY_ROOM_DEFS[d.key].name, kind: 'portal' as const })),
       // 서쪽 회랑 옛 벤치 자리 — 흰 반짝임, 가까이서 E
       { id: '2f-to-secret', cell: { ...SECRET_DOOR_2F }, to: 'academy-secret', toSpawn: { ...SECRET_SPAWN }, label: '수상한 벽', kind: 'portal', secret: true, sparkleLift: 46 },
     ],

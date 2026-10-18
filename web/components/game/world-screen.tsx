@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
+import type { MapId } from '@/lib/types'
+import { FIELD_SPELLS, HASTE_MULT, isHasted, isInvisible, isLit } from '@/lib/field-spells'
+import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
+import { FieldSpellBar } from '@/components/game/field-spell-bar'
 import { MAPS, zoneAt } from '@/lib/maps'
 import { MONSTERS, NPCS, npcById } from '@/lib/mock-data'
 import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
@@ -11,6 +15,7 @@ import { calmCharges, tickCharges } from '@/lib/monster-charge'
 import { GATHER_NODE_META, isActivityUnlocked, isNearWater, nearestGatherNode } from '@/lib/life'
 import { Button } from '@/components/ui/button'
 import { IsoWorld } from '@/components/game/iso-world'
+import { groundFallbackColor } from '@/components/game/iso-ground'
 import { useGuide } from '@/components/game/guide-trail'
 import { mapLockReason } from '@/lib/passages'
 import { nearestSpot } from '@/lib/activity-spots'
@@ -85,6 +90,9 @@ export function WorldScreen() {
       if (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return
       pressedKeys.current.add(e.code)
       if (e.code === 'KeyE' && !e.repeat) tryInteract()
+      // 탐사 마법 — 숫자 1~5(lib/field-spells 순서)
+      const digit = /^Digit([1-5])$/.exec(e.code)
+      if (digit && !e.repeat) dispatch({ type: 'CAST_FIELD_SPELL', spell: FIELD_SPELLS[Number(digit[1]) - 1].id })
     }
     const up = (e: KeyboardEvent) => pressedKeys.current.delete(e.code)
     // 창 포커스를 잃으면 keyup 이 안 와서 키가 눌린 채로 남는다 → 비움
@@ -115,7 +123,8 @@ export function WorldScreen() {
       // 몬스터 돌진(lib/monster-charge) — 닿으면 바로 전투 전환
       {
         const s = live.current
-        const free = !s.pendingEncounterUid && !s.pendingPortalId && !s.gateOpen && !s.fishing && !s.passage && !s.classScene && s.storyQueue.length === 0
+        // 투명한 동안은 몬스터가 알아채지 못한다(돌진 멈춤)
+        const free = !s.pendingEncounterUid && !s.pendingPortalId && !s.gateOpen && !s.fishing && !s.passage && !s.classScene && s.storyQueue.length === 0 && !isInvisible(s)
         const hit = tickCharges(dt, t, MAPS[s.currentMapId], s.fieldMonsters, s.position, free)
         if (hit) dispatch({ type: 'ENCOUNTER', uid: hit })
       }
@@ -134,7 +143,7 @@ export function WorldScreen() {
       setRunning((prev) => (prev === isRunning ? prev : isRunning))
       if (isMoving) {
         const len = Math.hypot(dx, dy) || 1
-        const sp = MOVE_SPEED * (isRunning ? RUN_MULT : 1)
+        const sp = MOVE_SPEED * (isRunning ? RUN_MULT : 1) * (isHasted(live.current) ? HASTE_MULT : 1)
         dispatch({ type: 'MOVE', dx: (dx / len) * sp * dt, dy: (dy / len) * sp * dt })
       }
     }
@@ -146,12 +155,26 @@ export function WorldScreen() {
   const map = MAPS[state.currentMapId]
   const arenaLobby = useArenaLobby()
   /** 맵 톤(자연 지면 맵) — 1 초과 밝은 지역, 1 미만 어두운 지역. 그 밖의 맵은 1 */
-  const tone = map.terrain?.tone ?? map.ambientTone ?? 1
+  // 등불(탐사 마법) — 어두운 곳을 보통 밝기로
+  const tone = Math.max(map.terrain?.tone ?? map.ambientTone ?? 1, isLit(state) ? 1 : 0)
+  // 지속형 탐사 효과(투명화·질주·등불)가 끝나는 시각에 풀어 준다
+  useEffect(() => {
+    const ends = [state.invisibleUntil, state.hasteUntil, state.lightUntil].filter((t): t is number => !!t)
+    if (!ends.length) return
+    const id = window.setTimeout(() => dispatch({ type: 'INVISIBLE_END' }), Math.max(0, Math.min(...ends) - Date.now()) + 60)
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.invisibleUntil, state.hasteUntil, state.lightUntil])
   const mapNpcs = useMemo(
     () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag])),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [map, state.storyFlags],
   )
+
+  /** 바로 옆의 안 연 숨은 룬 상자 */
+  function nearestCache() {
+    return cachesForMap(map).find((c) => !isCacheOpened(state, c.key) && Math.hypot(c.cell.x - state.position.x, c.cell.y - state.position.y) < CACHE_NEAR) ?? null
+  }
 
   /** E 상호작용 우선순위: NPC → 채집 지점 → 물가 낚시 */
   function tryInteract() {
@@ -170,6 +193,11 @@ export function WorldScreen() {
     const secret = nearestSecret()
     if (secret) {
       dispatch({ type: 'USE_PORTAL', portalId: secret.id })
+      return
+    }
+    const hc = nearestCache()
+    if (hc) {
+      dispatch({ type: 'OPEN_CACHE', key: hc.key })
       return
     }
     const spot = nearestSpot(map.id, state.position)
@@ -301,7 +329,7 @@ export function WorldScreen() {
   }
 
   return (
-    <div ref={viewportRef} className="relative h-full w-full overflow-hidden bg-[#0b0907]" style={{ perspective: 1500 }}>
+    <div ref={viewportRef} className="relative h-full w-full overflow-hidden bg-[#0b0907]" style={{ perspective: 1500, background: outsideFog(map) }}>
       <>
     <IsoWorld
       state={state}
@@ -335,6 +363,8 @@ export function WorldScreen() {
         }}
       />
     )}
+    {/* 이동 마법진으로 넘어온 직후 — 푸른 빛이 번졌다 걷힌다(대계단으로 걸어 오르내릴 때는 없음) */}
+    <TeleportFlash mapId={state.currentMapId} />
     {/* 가장자리 비네트 — 아이소 다이아몬드 여백을 어둡게(밝은 지역은 옅게) */}
     <div
       className="pointer-events-none absolute inset-0 z-10"
@@ -380,6 +410,11 @@ export function WorldScreen() {
             <MessageCircle className="size-3.5" /> {nearRival.player.name}(점수 {nearRival.player.rating})에게 도전 <span className="touch-hide">(E)</span>
           </div>
         </div>
+      )}
+
+      {/* 탐사 마법(순간이동·끌어오기·질주·등불·투명화) — 숫자 키 1~5 */}
+      {!state.classScene && (
+        <FieldSpellBar state={state} raised={state.currentMapId === 'personal-space'} onCast={(spell) => dispatch({ type: 'CAST_FIELD_SPELL', spell })} />
       )}
 
       {/* 내 개인 공간 — 가구 배치 모드 */}
@@ -545,4 +580,32 @@ function DpadBtn({ icon, onDown, onUp }: { icon: ReactNode; onDown: () => void; 
       {icon}
     </button>
   )
+}
+
+/** 맵이 바뀌면 한 번 푸른 섬광 — 같은 좌표계 층 이동(walkArea 포탈)은 제외 */
+function TeleportFlash({ mapId }: { mapId: MapId }) {
+  const prev = useRef(mapId)
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const from = prev.current
+    prev.current = mapId
+    if (from === mapId) return
+    const walked = MAPS[from]?.portals.some((p) => p.walkArea && p.to === mapId)
+    if (!walked) setN((v) => v + 1)
+  }, [mapId])
+  if (!n) return null
+  return <div key={n} className="teleport-flash pointer-events-none absolute inset-0 z-10" />
+}
+
+/**
+ * 맵 바깥(아이소 마름모 밖) 바탕 — 야외 맵은 그 땅빛을 아주 어둡게 깐 안개로(2026-10-18).
+ * 맵 모서리 근처 입구에 서면 화면 절반 가까이가 새까만 구멍처럼 보여 '세상이 끊긴' 느낌이 났다. 실내는 그대로 검정.
+ */
+function outsideFog(map: (typeof MAPS)[MapId]): string | undefined {
+  if (map.kind !== 'field' && !map.terrain && !map.water) return undefined
+  const hex = groundFallbackColor(map).replace('#', '')
+  if (hex.length !== 6) return undefined
+  const ch = (i: number) => parseInt(hex.slice(i, i + 2), 16)
+  const mix = (k: number) => `rgb(${Math.round(ch(0) * k + 11 * (1 - k))},${Math.round(ch(2) * k + 9 * (1 - k))},${Math.round(ch(4) * k + 7 * (1 - k))})`
+  return `radial-gradient(120% 100% at 50% 50%, ${mix(0.55)} 0%, ${mix(0.34)} 55%, ${mix(0.16)} 100%)`
 }

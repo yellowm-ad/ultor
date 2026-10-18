@@ -38,7 +38,7 @@ export const CHARGE = {
   /** 닿았다고 보는 거리 */
   hitR: 0.42,
   /** 맵에 들어온 직후엔 잠깐 봐준다 */
-  graceMs: 2500,
+  graceMs: 4000,
 }
 
 type Charge = { phase: 'alert' | 'run' | 'retreat'; t0: number; pos: Pt; face: Facing4 }

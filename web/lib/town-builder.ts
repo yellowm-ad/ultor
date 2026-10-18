@@ -105,6 +105,10 @@ export interface TownCfg {
   gtower: Spr
   crystals: Spr
   planter: Spr
+  /** 골목·정원에 흩뿌리는 화분 대신 쓸 것(생략 = planter). 광장 네 귀퉁이 화분은 그대로 planter */
+  scatterPlanter?: Spr
+  /** 골목·정원에 흩뿌리는 crystals 대신 쓸 것(생략 = crystals). 광장·입구 장식은 그대로 crystals */
+  scatterCrystals?: Spr
   patch: Spr
   lamp: Spr
   tree: Spr
@@ -284,8 +288,10 @@ export function createTown(cfg: TownCfg): TownOut {
   {
     const rand = mulberry32(cfg.seed)
     type Pick = [Spr, PropKind, number]
-    const pickBlock: Pick[] = [[cfg.patch, 'bush', 0.4], [cfg.planter, 'bush', 0.2], [cfg.crystals, 'bush', 0.25], [cfg.tree, 'tree', 0.15]]
-    const pickGarden: Pick[] = [[cfg.tree, 'tree', 0.42], [cfg.patch, 'bush', 0.28], [cfg.crystals, 'bush', 0.15], [cfg.planter, 'bush', 0.15]]
+    const sp = cfg.scatterPlanter ?? cfg.planter
+    const sc = cfg.scatterCrystals ?? cfg.crystals
+    const pickBlock: Pick[] = [[cfg.patch, 'bush', 0.4], [sp, 'bush', 0.2], [sc, 'bush', 0.25], [cfg.tree, 'tree', 0.15]]
+    const pickGarden: Pick[] = [[cfg.tree, 'tree', 0.42], [cfg.patch, 'bush', 0.28], [sc, 'bush', 0.15], [sp, 'bush', 0.15]]
     const choose = (tbl: Pick[]) => {
       let r = rand()
       for (const [k, kind, w] of tbl) if ((r -= w) <= 0) return { k, kind }
@@ -300,7 +306,7 @@ export function createTown(cfg: TownCfg): TownOut {
         if (z !== 'block' && z !== 'garden') continue
         if (rand() > (z === 'garden' ? 0.62 : 0.18)) continue
         const { k, kind } = choose(z === 'garden' ? pickGarden : pickBlock)
-        const solid = k === cfg.planter || k === cfg.tree
+        const solid = k === cfg.planter || k === sp || k === cfg.tree
         if (put(`fill${n}`, k, jx, jy, { decor: true, solid, kind })) n++
       }
     }

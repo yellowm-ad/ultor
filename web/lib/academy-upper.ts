@@ -56,6 +56,27 @@ const ARCH_H = 200
 export const FLOOR3_ENTRY_X = HALL_CX + 6.6
 const ENTRY_H = 224
 
+// ── 세 기숙사 휴게실(2026-10-18) — 서쪽 회랑, 1층 속성 수업관 문 바로 위층 벽 ──
+//    헬라(불)=화염 수업관 위 · 요르문간드(얼음)=빙결 수업관 위(비밀 통로 '수상한 벽' y=17.5 와 겹치지 않게 조금 아래) · 펜리르(대지)=대지 수업관 위
+export interface HouseLoungeDoor {
+  key: Extract<AcademyRoomKey, 'loungeJor' | 'loungeFen' | 'loungeHel'>
+  /** 서벽 y */
+  at: number
+  door: Spr
+  banner: Spr
+}
+export const HOUSE_LOUNGE_DOORS: HouseLoungeDoor[] = [
+  { key: 'loungeHel', at: 11, door: HALL_SPR.doorHouseHel, banner: HALL_SPR.bannerHel },
+  { key: 'loungeJor', at: 20.4, door: HALL_SPR.doorHouseJor, banner: HALL_SPR.bannerJor },
+  { key: 'loungeFen', at: 27.6, door: HALL_SPR.doorHouseFen, banner: HALL_SPR.bannerFen },
+]
+/** 문 화면 높이 — 메달(위 30px)을 뺀 문 부분이 1층 수업관 문(184)과 같은 크기가 되게 */
+const houseDoorH = (sp: Spr) => (184 * sp.h) / (sp.h - 30)
+const HOUSE_BANNER_H = 150
+const HOUSE_BANNER_OFF = 2.6
+/** 문 앞 셀(포탈 d=1.4 · 되돌아올 때 d=2.9) */
+export const houseDoorFront = (d: HouseLoungeDoor, dist: number) => ({ x: dist, y: d.at })
+
 /** 2층 벽에 붙는 문·아치 — zBase 는 academy-hall 의 기준(1층 맵 0, 2층 맵 -FLOOR2) */
 export function galleryWallDecals(zBase: number): IsoPart[] {
   const z2 = zBase + FLOOR2
@@ -63,8 +84,22 @@ export function galleryWallDecals(zBase: number): IsoPart[] {
     wallDecal('y', YEAR2_DOOR_X, 184, z2, HALL_SPR.doorClass),
     wallDecal('y', FLOOR3_ENTRY_X, ENTRY_H, z2, HALL_SPR.archStair),
     wallDecal('y', FLOOR3_ENTRY_X, 96, z2 + ENTRY_H + 24, HALL_SPR.banner),
+    // 기숙사 휴게실 문 + 양옆 기숙사 깃발
+    ...HOUSE_LOUNGE_DOORS.flatMap((d) => [
+      wallDecal('x', d.at, houseDoorH(d.door), z2, d.door),
+      wallDecal('x', d.at - HOUSE_BANNER_OFF, HOUSE_BANNER_H, z2 + 120, d.banner),
+      wallDecal('x', d.at + HOUSE_BANNER_OFF, HOUSE_BANNER_H, z2 + 120, d.banner),
+    ]),
   ]
 }
+/** 2층 서벽 창·배너를 비울 구간(y) — 휴게실 문과 깃발 자리 */
+export const GALLERY_WALL_SKIP_W: [number, number][] = HOUSE_LOUNGE_DOORS.flatMap((d) => [
+  [d.at - decalHalfWidth(houseDoorH(d.door), d.door), d.at + decalHalfWidth(houseDoorH(d.door), d.door)] as [number, number],
+  [d.at - HOUSE_BANNER_OFF - 0.85, d.at - HOUSE_BANNER_OFF + 0.85] as [number, number],
+  [d.at + HOUSE_BANNER_OFF - 0.85, d.at + HOUSE_BANNER_OFF + 0.85] as [number, number],
+])
+/** 서쪽 회랑 책장을 뺄 구간(y) — 문 앞 */
+export const GALLERY_SHELF_SKIP_W: [number, number][] = HOUSE_LOUNGE_DOORS.map((d) => [d.at - 2.3, d.at + 2.3])
 /** 2층 벽 창·배너를 비워야 하는 구간(x) — 문·아치와 겹치지 않게 */
 export const GALLERY_WALL_SKIP: [number, number][] = [
   [YEAR2_DOOR_X - 2.2, YEAR2_DOOR_X + 2.2],
@@ -190,6 +225,8 @@ export const UF_SPAWN = { x: 2.6, y: DOWN_ARCH_Y }
 /** 상층 방 → 돌아갈 복도와 문 앞 위치 */
 export function upperRoomReturn(key: AcademyRoomKey): { to: MapId; spawn: { x: number; y: number }; label: string } | null {
   if (key === 'year2') return { to: 'academy-2f', spawn: { x: YEAR2_DOOR_X, y: 2.8 }, label: '2층 회랑으로' }
+  const hl = HOUSE_LOUNGE_DOORS.find((d) => d.key === key)
+  if (hl) return { to: 'academy-2f', spawn: houseDoorFront(hl, 2.9), label: '2층 회랑으로' }
   const d3 = FLOOR3_DOORS.find((d) => d.key === key)
   if (d3) return { to: 'academy-3f', spawn: upperDoorFront(d3, 2.8), label: '3층 복도로' }
   const d4 = FLOOR4_DOORS.find((d) => d.key === key)

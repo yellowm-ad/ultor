@@ -250,6 +250,7 @@ const potions: ItemDef[] = [
   { id: 'potion-hp-l', name: '체력 물약(대)', type: 'potion', icon: '/images/items/potion-hp-l.png', description: 'HP를 640 회복한다.', price: 240, sellPrice: 80, useEffect: { healHp: 640 }, stackable: true, maxStack: 99 },
   { id: 'potion-mp-s', name: '마나 물약(소)', type: 'potion', icon: '/images/items/potion-mp-s.png', description: 'MP를 30 회복한다.', price: 35, sellPrice: 12, useEffect: { healMp: 30 }, stackable: true, maxStack: 99 },
   { id: 'potion-mp-m', name: '마나 물약(중)', type: 'potion', icon: '/images/items/potion-mp-m.png', description: 'MP를 160 회복한다.', price: 100, sellPrice: 35, useEffect: { healMp: 160 }, stackable: true, maxStack: 99 },
+  { id: 'potion-invisible', name: '투명한 물약', type: 'potion', icon: '/images/items/potion-invisible.png', description: '마시면 3분 동안 몸이 투명해진다. 몬스터에게 닿아도 전투가 시작되지 않고, 몬스터가 알아채고 덤벼들지도 않는다. 필드에서만 마실 수 있다.', price: 150, sellPrice: 50, useEffect: { invisibleSec: 180 }, stackable: true, maxStack: 99 },
   { id: 'potion-elixir', name: '엘릭서', type: 'potion', icon: '/images/items/potion-gold.png', description: 'HP와 MP를 모두 완전히 회복한다.', price: 500, sellPrice: 150, useEffect: { healHp: 9999, healMp: 9999 }, stackable: true, maxStack: 99 },
 ]
 

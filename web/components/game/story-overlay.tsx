@@ -62,7 +62,7 @@ export function StoryOverlay() {
     {cur?.anim && !(cutId && cutsceneById(cutId)?.full) && <StoryAnimStage key={line} ids={([] as string[]).concat(cur.anim)} side={!!cutId} />}
     <DialogueBox
       zClass="z-[45]"
-      title={beat.title}
+      title={cur?.place ? `${beat.title} · ${cur.place}` : beat.title}
       speaker={speaker}
       italic={!speaker}
       portrait={

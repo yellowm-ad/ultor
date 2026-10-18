@@ -163,7 +163,9 @@ interface Fish { id: number; x: number; y: number; vx: number; vy: number; icon:
 
 function VoyageGame({ onEnd }: { onEnd: (ok: boolean, caught?: number) => void }) {
   const TOTAL = 36
-  const s = useRef({ t: 0, fish: [] as Fish[], nextFish: 1.2, nextWave: 6, wave: null as null | { t: number; grip: boolean }, lives: 3, caught: 0, flash: 0, note: '', noteT: 0, id: 0, done: false })
+  // 2026-10-18 난이도 완화 — 손 놓고 있으면 7초 만에 끝났다(첫 물고기 1.2초 · 거의 1초마다 · 닿을 때마다 하트 1).
+  // 첫 물고기 2.5초 · 처음엔 느리고 드물게 시작해 점점 빨라지고, 맞은 뒤 0.9초는 무적, 하트 4개.
+  const s = useRef({ t: 0, fish: [] as Fish[], nextFish: 2.5, nextWave: 7, wave: null as null | { t: number; grip: boolean }, lives: 4, caught: 0, flash: 0, note: '', noteT: 0, id: 0, done: false, safe: 0 })
   const [, redraw] = useState(0)
   const grip = () => {
     const w = s.current.wave
@@ -182,22 +184,26 @@ function VoyageGame({ onEnd }: { onEnd: (ok: boolean, caught?: number) => void }
       const side = Math.random()
       const x = side < 0.4 ? -6 : side < 0.8 ? 106 : 10 + Math.random() * 80
       const y = side < 0.8 ? 8 + Math.random() * 70 : -6
-      const sp = 15 + Math.random() * 8 + g.t * 0.25
+      const sp = 10 + Math.random() * 5 + g.t * 0.2
       const d = Math.hypot(50 - x, 60 - y)
       g.fish.push({ id: g.id++, x, y, vx: ((50 - x) / d) * sp, vy: ((60 - y) / d) * sp, icon: FISH[Math.floor(Math.random() * FISH.length)] })
-      g.nextFish = Math.max(0.5, 1.15 - g.t * 0.015) * (0.7 + Math.random() * 0.6)
+      g.nextFish = Math.max(0.75, 1.7 - g.t * 0.025) * (0.75 + Math.random() * 0.5)
     }
     for (const f of g.fish) {
       f.x += f.vx * dt
       f.y += f.vy * dt
     }
+    g.safe = Math.max(0, g.safe - dt)
     const hit = g.fish.filter((f) => Math.hypot(f.x - 50, f.y - 60) < 9)
     if (hit.length) {
       g.fish = g.fish.filter((f) => !hit.includes(f))
-      g.lives -= 1
-      g.flash = 0.4
-      g.note = '물고기에 미끄러졌다!'
-      g.noteT = 1.2
+      if (g.safe <= 0) {
+        g.safe = 0.9
+        g.lives -= 1
+        g.flash = 0.4
+        g.note = '물고기에 미끄러졌다!'
+        g.noteT = 1.2
+      }
     }
     // 큰 파도 — 경고 1.2초 안에 붙잡아야 한다
     g.nextWave -= dt

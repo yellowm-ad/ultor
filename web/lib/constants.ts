@@ -251,7 +251,9 @@ export function expSharePerMember(totalExp: number, memberCount: number): number
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  testMode: true,
+  // 테스트 허수아비·「테스트 모드 ON」 — 개발 빌드(next dev · NEXT_PUBLIC_DEV_HOOKS=1)에서만 기본으로 켠다(2026-10-18).
+  // 배포판 새 저장에서 일반 플레이어에게 보이지 않게. 설정 창에서 언제든 켜고 끌 수 있고, 기존 저장은 그대로.
+  testMode: process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEV_HOOKS === '1',
   bgmVolume: 60,
   sfxVolume: 80,
   battleAnimSpeed: 1,

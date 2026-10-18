@@ -283,10 +283,64 @@ const LAB_EARTH = professorLab('lbearth', wallTex('wall_earth.png', 64, 160, 2.2
 const LAB_DARK = professorLab('lbdark', wallTex('wall_dark.png', 64, 160, 2.25), 'academy-dark', isoProp('lbdark-k', R.darkAltar, LW2 - 2.2, 4.5, 0.9, { scale: 0.8 }))
 const LAB_LIGHT = professorLab('lblight', wallTex('wall_light.png', 64, 160, 2.25), 'academy-light', isoProp('lblight-k', R.lightAltar, LW2 - 2.2, 4.5, 0.9, { scale: 0.8 }))
 
+// ── 세 기숙사 휴게실(2026-10-18, 2층 서쪽 회랑) — 18×15. 기숙사 속성 벽판 · 북벽 벽난로와 양옆 기숙사 깃발 ·
+//    가운데 속성 바닥 깔개 위 소파 자리 · 서벽 책장. 가구는 기존 isometric 에셋, 꾸미기 소품(wb_*)은 lib/town-decor.
+//    요르문간드(얼음·뱀) / 펜리르(대지·늑대) / 헬라(불·불사조)
+const HW = 18
+const HH = 15
+function houseLounge(id: string, elem: 'ice' | 'earth' | 'fire', banner: Spr, seats: PropDef[], signature: PropDef[]): RoomDef {
+  const decals: IsoPart[] = [
+    // 북벽 — 벽난로 양옆 큰 깃발, 서벽 — 책장 사이 깃발
+    decal('y', HW / 2 - 3.4, 170, 120, banner),
+    decal('y', HW / 2 + 3.4, 170, 120, banner),
+    decal('x', 7.3, 150, 130, banner),
+    decal('x', 12.4, 150, 130, banner),
+  ]
+  const cx = HW / 2
+  const cy = 7.6
+  return {
+    w: HW,
+    h: HH,
+    // 가운데 타원 깔개 = 기숙사 속성 바닥, 둘레 = 나무 마루
+    tileAt: (x, y) => (Math.hypot((x - cx) / 5.2, (y - cy) / 3.9) < 1 ? (`academy-${elem}` as TileKind) : 'dorm-plank'),
+    structures: roomWalls(id, HW, HH, wallTex(`wall_${elem}.png`, 64, 160, 2.25), decals),
+    props: [
+      { ...isoProp(`${id}-fireplace`, R.fireplace, HW / 2, 1.2, 0.9, { flip: true }), label: '휴게실 벽난로' },
+      isoProp(`${id}-case0`, R.bookcase, 1.4, 4.6, 0.8),
+      isoProp(`${id}-case1`, R.bookcase, 1.4, 10.0, 0.8),
+      isoProp(`${id}-lamp0`, HALL_SPR.lamp, HW - 1.4, 9.4, 0.3),
+      isoProp(`${id}-lamp1`, HALL_SPR.lamp, 4.2, 1.2, 0.3),
+      ...[[1.6, HH - 1.8], [HW - 1.6, HH - 1.8]].map(([x, y], i) => isoProp(`${id}-plant${i}`, HALL_SPR.plant, x, y, 0.5)),
+      ...seats,
+      ...signature,
+    ],
+  }
+}
+const sofaPair = (id: string, sp: Spr) => [isoProp(`${id}-sofa0`, sp, 9, 5.4, 0.8, { flip: true }), isoProp(`${id}-sofa1`, sp, 5.6, 8.4, 0.8)]
+/** 청록 소파(꾸미기 소품 wb_sofa_grey) — 얼음·대지 휴게실. 헬라는 붉은 소파 */
+const TEAL_SOFA = spr('wb_sofa_grey.png', 71, 67, P)
+const LOUNGE_JOR = houseLounge('lgjor', 'ice', HALL_SPR.bannerJor, sofaPair('lgjor', TEAL_SOFA), [
+  isoProp('lgjor-crystal0', R.iceCrystal, 3.8, 12.4, 0.45),
+  isoProp('lgjor-crystal1', R.iceCrystal, 14.6, 4.4, 0.45),
+])
+const LOUNGE_FEN = houseLounge('lgfen', 'earth', HALL_SPR.bannerFen, sofaPair('lgfen', TEAL_SOFA), [
+  isoProp('lgfen-tree', R.earthTree, 14.6, 4.6, 1.2, { scale: 0.8 }),
+  isoProp('lgfen-herb0', R.herbs, 4.4, 12.4, 0.8),
+  isoProp('lgfen-herb1', R.herbs, 13.6, 12.4, 0.8),
+])
+const LOUNGE_HEL = houseLounge('lghel', 'fire', HALL_SPR.bannerHel, sofaPair('lghel', HALL_SPR.sofa), [
+  isoProp('lghel-brazier0', R.brazier, 6.8, 3.6, 0.35),
+  isoProp('lghel-brazier1', R.brazier, 11.2, 3.6, 0.35),
+  isoProp('lghel-brazier2', R.brazier, 3.8, 12.4, 0.35),
+  isoProp('lghel-brazier3', R.brazier, 14.2, 12.4, 0.35),
+  isoProp('lghel-perch', R.perch, 14.6, 4.4, 0.35),
+])
+
 export type AcademyRoomKey =
   | 'fire' | 'ice' | 'earth' | 'auditorium' | 'office' | 'library'
   | 'year2' | 'year3' | 'year4' | 'dark' | 'light' | 'practice' | 'practiceAdv' | 'council'
   | 'labFire' | 'labIce' | 'labEarth' | 'labDark' | 'labLight'
+  | 'loungeJor' | 'loungeFen' | 'loungeHel'
 export const ACADEMY_ROOM_DEFS: Record<AcademyRoomKey, { id: MapId; name: string; def: RoomDef }> = {
   fire: { id: 'class-fire', name: '화염 수업관', def: FIRE },
   ice: { id: 'class-ice', name: '빙결 수업관', def: ICE },
@@ -307,6 +361,9 @@ export const ACADEMY_ROOM_DEFS: Record<AcademyRoomKey, { id: MapId; name: string
   labEarth: { id: 'lab-earth', name: '대지 교수 연구실', def: LAB_EARTH },
   labDark: { id: 'lab-dark', name: '어둠 교수 연구실', def: LAB_DARK },
   labLight: { id: 'lab-light', name: '빛 교수 연구실', def: LAB_LIGHT },
+  loungeJor: { id: 'lounge-jor', name: '요르문간드 휴게실', def: LOUNGE_JOR },
+  loungeFen: { id: 'lounge-fen', name: '펜리르 휴게실', def: LOUNGE_FEN },
+  loungeHel: { id: 'lounge-hel', name: '헬라 휴게실', def: LOUNGE_HEL },
 }
 // ── 울토르 기록관(2026-10-10) — 마을 학교 북관의 '기록관' 건물 안. 14×12, 책장 벽 · 빈 책장 줄. ──
 //    메인 스토리 EP26(벽화 뒤의 옛 '울토르 기록관' 문장)에서 이어지는 곳. 가구는 여기에 책장만 두고 나머지는 lib/town-decor.

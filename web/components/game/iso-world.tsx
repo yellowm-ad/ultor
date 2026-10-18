@@ -1,6 +1,8 @@
 'use client'
 
 import { GuideArrow, GuideSparks, GuideTrail, type useGuide } from '@/components/game/guide-trail'
+import { isInvisible, isLit } from '@/lib/field-spells'
+import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
 import { Fragment, useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
@@ -409,15 +411,17 @@ export function IsoWorld({
     ]
   })
 
-  // ── 포탈/통문: 푸른 계열 마법진 (도트). 건물 위에 항상 렌더 → 클릭 보장 ──
+  // ── 포탈/통문: 바닥에 새겨진 이동 마법진(PixelLab 원판 + scripts/gen-magic-circle.mjs) ──
+  // 밟으면 바로 이동(lib/game-state MOVE) — 클릭하지 않는다. 바닥판은 오브젝트 아래(floor), 빛 기둥·반짝임·이름표는 위(top).
   const portalNodes = useMemo(() => {
     const seen = new Set<string>()
-    const nodes: React.ReactNode[] = []
+    const floor: React.ReactNode[] = []
+    const top: React.ReactNode[] = []
     for (const p of map.portals) {
       // 걸어서 넘어가는 층 연결(대계단)은 표시 없음
       if (p.walkArea) continue
       if (p.secret) {
-        nodes.push(<SecretSparkle key={p.id} at={isoToScreen(p.cell.x, p.cell.y)} lift={p.sparkleLift ?? 40} />)
+        top.push(<SecretSparkle key={p.id} at={isoToScreen(p.cell.x, p.cell.y)} lift={p.sparkleLift ?? 40} />)
         continue
       }
       if (p.kind === 'gate') {
@@ -428,49 +432,12 @@ export function IsoWorld({
       const s0 = isoToScreen(p.cell.x, p.cell.y)
       const s = { sx: s0.sx, sy: s0.sy - stairElevation(map.stairs, p.cell.x, p.cell.y).z }
       const isGate = p.kind === 'gate'
-      const c1 = isGate ? '#3f8cff' : p.kind === 'exit' ? '#5fd0ff' : '#8f7bff' // 링
-      const c2 = isGate ? '#a9d4ff' : p.kind === 'exit' ? '#bff0ff' : '#d9d0ff' // 코어
-      const R = isGate ? 30 : 22
       const label = isGate ? p.label : p.label + (p.requiredLevel ? ` Lv.${p.requiredLevel}+` : '')
-      // 8방향 룬 마크 (마법진 테두리)
-      const runes = Array.from({ length: 8 }).map((_, i) => {
-        const a = (i / 8) * Math.PI * 2
-        return <rect key={i} x={Math.cos(a) * R - 2} y={Math.sin(a) * R * 0.5 - 2} width={4} height={4} fill={c1} />
-      })
-      nodes.push(
-        <g
-          key={p.id}
-          transform={`translate(${s.sx},${s.sy})`}
-          style={{ cursor: 'pointer' }}
-          onClick={() => dispatch(isGate ? { type: 'OPEN_GATE' } : { type: 'USE_PORTAL', portalId: p.id })}
-        >
-          {/* 바깥 마법진 */}
-          <ellipse cx={0} cy={0} rx={R} ry={R * 0.5} fill="none" stroke={`${c1}66`} strokeWidth={5} style={{ animation: 'portal-pulse 2s ease-in-out infinite' }} />
-          <ellipse cx={0} cy={0} rx={R - 6} ry={(R - 6) * 0.5} fill={`${c1}22`} stroke={c1} strokeWidth={2} />
-          {runes}
-          {/* 회전 다이아 */}
-          <g style={{ animation: 'mill-spin 6s linear infinite' }}>
-            <rect x={-3} y={-R * 0.5} width={6} height={6} fill={c2} />
-            <rect x={-3} y={R * 0.5 - 6} width={6} height={6} fill={c2} />
-            <rect x={-R + 2} y={-3} width={6} height={6} fill={c2} />
-            <rect x={R - 8} y={-3} width={6} height={6} fill={c2} />
-          </g>
-          {/* 코어 광원 */}
-          <ellipse cx={0} cy={0} rx={R * 0.42} ry={R * 0.24} fill={c2} opacity={0.9} />
-          <ellipse cx={0} cy={-2} rx={R * 0.22} ry={R * 0.12} fill="#ffffff" opacity={0.85} />
-          {/* 위로 솟는 빛 기둥 */}
-          <rect x={-2} y={-R * 1.6} width={4} height={R * 1.6} fill={`url(#portalBeam)`} opacity={0.5} />
-          {/* 라벨 */}
-          <g transform={`translate(0,${-R - 18})`}>
-            <rect x={-label.length * 4 - 5} y={-9} width={label.length * 8 + 10} height={15} rx={3} fill="rgba(8,10,22,0.82)" stroke={`${c1}88`} strokeWidth={1} />
-            <text x={0} y={2} textAnchor="middle" fontSize={9} fontWeight={700} fill={c2}>{label}</text>
-          </g>
-          {/* 넉넉한 클릭 히트영역 (투명) */}
-          <rect x={-R - 6} y={-R - 26} width={R * 2 + 12} height={R + 34} fill="transparent" />
-        </g>,
-      )
+      const w = isGate ? 136 : 100
+      floor.push(<MagicCircleFloor key={p.id} sx={s.sx} sy={s.sy} w={w} />)
+      top.push(<MagicCircle key={p.id} id={p.id} sx={s.sx} sy={s.sy} w={w} label={label} />)
     }
-    return nodes
+    return { floor, top }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map])
 
@@ -505,7 +472,7 @@ export function IsoWorld({
   const heroFlip = moving && (facing === 'left' || facing === 'down-left' || facing === 'up-left')
   const HD = 88
   const playerNode = (
-    <g key="__player" transform={`translate(${ps.sx},${ps.sy})`}>
+    <g key="__player" transform={`translate(${ps.sx},${ps.sy})`} className={isInvisible(state) && !state.classScene ? 'hero-invisible' : undefined}>
       <ellipse cx={0} cy={2} rx={17} ry={5.5} fill="rgba(0,0,0,0.34)" />
       <g transform={heroFlip ? 'scale(-1,1)' : undefined}>
         <svg
@@ -697,9 +664,9 @@ export function IsoWorld({
         shapeRendering="crispEdges"
       >
         <defs>
-          <linearGradient id="portalBeam" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0" stopColor="#bfe4ff" stopOpacity="0.9" />
-            <stop offset="1" stopColor="#bfe4ff" stopOpacity="0" />
+          <linearGradient id="cacheBeam" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stopColor="#ffe9a0" stopOpacity="0.85" />
+            <stop offset="1" stopColor="#ffe9a0" stopOpacity="0" />
           </linearGradient>
         </defs>
         {/* 지면 */}
@@ -781,13 +748,154 @@ export function IsoWorld({
         />}
         {backLayer}
         {/* 퀘스트 길찾기 안내선 — 지면·바닥 깔개 위, 오브젝트 아래 */}
+        {/* 바닥 이동 마법진 — 바닥 깔개 위, 사람·오브젝트 아래(수업 중엔 숨김) */}
+        {!inClass && portalNodes.floor}
         {guide && !inClass && <GuideTrail guide={guide} stairs={map.stairs} />}
         {/* 오브젝트 (뒤 → 플레이어 → 앞) */}
         {depthSorted}
-        {/* 마법진 포탈 — 건물보다 위에 그려 클릭 보장(수업 중엔 숨김) */}
-        {!inClass && portalNodes}
+        {/* 마법진 빛 기둥·반짝임·이름표 — 오브젝트 위 */}
+        {!inClass && portalNodes.top}
+        {/* 숨은 룬 상자 — 등불이면 멀리서도 빛기둥, 아니면 바로 옆에서만 희미하게 */}
+        {!inClass &&
+          cachesForMap(map)
+            .filter((c) => !isCacheOpened(state, c.key))
+            .map((c) => {
+              const d = Math.hypot(c.cell.x - state.position.x, c.cell.y - state.position.y)
+              const lit = isLit(state)
+              if (!lit && d > CACHE_NEAR + 0.6) return null
+              const s = isoToScreen(c.cell.x, c.cell.y)
+              return <RuneCache key={c.key} sx={s.sx} sy={s.sy} lit={lit} near={d < CACHE_NEAR} />
+            })}
+        {/* 끌어오기(탐사 마법) — 채집물 자리에서 플레이어에게 빛이 날아든다 */}
+        {state.pullFx && Date.now() - state.pullFx.at < 1500 && (
+          <PullFx key={state.pullFx.at} cells={state.pullFx.cells} to={{ sx: ps0.sx, sy: ps0.sy - 30 }} />
+        )}
       </svg>
     </div>
+  )
+}
+
+/** 숨은 룬 상자 — 도트 상자 + 금빛 룬. lit(등불) = 하늘로 솟는 빛기둥, near = 「E 열기」 */
+function RuneCache({ sx, sy, lit, near }: { sx: number; sy: number; lit: boolean; near: boolean }) {
+  return (
+    <g transform={`translate(${sx},${sy})`} style={{ pointerEvents: 'none' }} opacity={lit || near ? 1 : 0.45}>
+      {lit && (
+        <>
+          <rect x={-9} y={-190} width={18} height={190} fill="url(#cacheBeam)" opacity={0.45} />
+          <rect x={-3} y={-190} width={6} height={190} fill="url(#cacheBeam)" className="mc-ring" />
+        </>
+      )}
+      <ellipse cx={0} cy={2} rx={15} ry={5} fill="rgba(0,0,0,0.35)" />
+      {/* 상자 몸통(앞면·옆면) + 뚜껑 + 금테 */}
+      <polygon points="-14,-4 0,3 0,-11 -14,-18" fill="#5a3a1c" />
+      <polygon points="0,3 14,-4 14,-18 0,-11" fill="#3e2812" />
+      <polygon points="-14,-18 0,-11 14,-18 0,-25" fill="#7a5226" />
+      <polyline points="-14,-18 0,-11 14,-18" fill="none" stroke="#e0b050" strokeWidth={2} />
+      <line x1={0} y1={-11} x2={0} y2={3} stroke="#e0b050" strokeWidth={2} />
+      <rect x={-2} y={-10} width={4} height={5} fill="#ffe28a" />
+      {/* 떠도는 룬 */}
+      <g className="cache-rune">
+        <rect x={-8} y={-36} width={3} height={3} fill="#bfeaff" />
+        <rect x={6} y={-41} width={2} height={2} fill="#ffffff" />
+        <rect x={0} y={-48} width={3} height={3} fill="#9fe4ff" />
+      </g>
+      {near && (
+        <g transform="translate(0,-58)">
+          <rect x={-34} y={-10} width={68} height={17} rx={3} fill="rgba(10,12,18,0.86)" stroke="#e0b050" strokeWidth={1.2} />
+          <text x={0} y={3} textAnchor="middle" fontSize={10} fontWeight={800} fill="#ffe7a8">룬 상자 · E</text>
+        </g>
+      )}
+    </g>
+  )
+}
+
+/** 끌어오기 연출 — 각 채집 자리에서 빛 알갱이가 플레이어 가슴께로 날아온다(0.7초) */
+function PullFx({ cells, to }: { cells: { x: number; y: number }[]; to: { sx: number; sy: number } }) {
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      {cells.map((c, i) => {
+        const s = isoToScreen(c.x, c.y)
+        const dx = to.sx - s.sx
+        const dy = to.sy - (s.sy - 14)
+        return (
+          <g key={i} transform={`translate(${s.sx},${s.sy - 14})`}>
+            <g className="pull-mote" style={{ ['--dx' as string]: `${dx}px`, ['--dy' as string]: `${dy}px`, animationDelay: `${i * 0.06}s` }}>
+              <rect x={-3} y={-3} width={6} height={6} fill="#fff6c8" />
+              <rect x={-1.5} y={-1.5} width={3} height={3} fill="#ffffff" />
+            </g>
+            <ellipse cx={0} cy={14} rx={14} ry={6} fill="none" stroke="#ffe08a" strokeWidth={2} className="pull-ring" />
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+const MAGIC_CIRCLE_IMG = '/images/map/portal/magic_circle.png'
+
+/** 이동 마법진 바닥판 — 2:1 로 눕힌 돌 원판 + 아래 두께 그림자 + 안쪽 푸른 빛 고리(숨쉬듯) */
+function MagicCircleFloor({ sx, sy, w }: { sx: number; sy: number; w: number }) {
+  const h = w / 2
+  return (
+    <g transform={`translate(${sx},${sy})`} style={{ pointerEvents: 'none' }}>
+      <ellipse cx={0} cy={2.5} rx={w / 2} ry={h / 2} fill="#07090e" opacity={0.6} />
+      <image href={MAGIC_CIRCLE_IMG} x={-w / 2} y={-h / 2} width={w} height={h} style={{ imageRendering: 'pixelated' }} />
+      {/* 푸른 빛 고리 — 안쪽 금테 둘레(원판 반지름의 약 0.6) */}
+      <ellipse cx={0} cy={0} rx={w * 0.33} ry={h * 0.33} fill="#5fc8ff" opacity={0.18} className="mc-breathe" />
+      <ellipse cx={0} cy={0} rx={w * 0.335} ry={h * 0.335} fill="none" stroke="#2fa8ff" strokeWidth={9} opacity={0.35} className="mc-breathe" />
+      <ellipse cx={0} cy={0} rx={w * 0.335} ry={h * 0.335} fill="none" stroke="#9fe4ff" strokeWidth={2.4} className="mc-ring" />
+      {/* 바깥 돌테 둘레 — 옅은 두 번째 고리 */}
+      <ellipse cx={0} cy={0} rx={w * 0.49} ry={h * 0.49} fill="none" stroke="#3fb4ff" strokeWidth={3} opacity={0.3} className="mc-breathe" />
+      <ellipse cx={0} cy={0} rx={w * 0.49} ry={h * 0.49} fill="none" stroke="#bfeaff" strokeWidth={1} className="mc-ring" />
+    </g>
+  )
+}
+
+/** 이동 마법진 위쪽 — 고리를 따라 도는 빛 알갱이 · 솟아오르는 반짝임 · 이름표(참고: 이동포탈 디자인 참고용.jpg) */
+function MagicCircle({ id, sx, sy, w, label }: { id: string; sx: number; sy: number; w: number; label: string }) {
+  const h = w / 2
+  const r = w * 0.335
+  // 맵마다 같은 모양이 되도록 id 로 고정된 의사난수
+  let seed = 0
+  for (const ch of id) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296)
+  const motes = Array.from({ length: 14 }, (_, i) => {
+    const a = rnd() * Math.PI * 2
+    const d = Math.sqrt(rnd()) * r * 0.95
+    return { x: Math.cos(a) * d, y: Math.sin(a) * d * 0.5, delay: (i * 0.37 + rnd() * 0.5).toFixed(2), dur: (1.8 + rnd() * 1.4).toFixed(2), big: rnd() < 0.3 }
+  })
+  const lw = label.length * 8.6 + 18
+  return (
+    <g transform={`translate(${sx},${sy})`} style={{ pointerEvents: 'none' }}>
+      {/* 고리를 따라 도는 빛 알갱이 — 위에서 본 원을 돌리고 세로로 눌러 바닥에 눕힘 */}
+      <g transform="scale(1,0.5)">
+        <g style={{ animation: 'mill-spin 6s linear infinite' }}>
+          {[0, 1, 2, 3, 4, 5].map((k) => {
+            const a = (k / 6) * Math.PI * 2
+            return <rect key={k} x={Math.cos(a) * r - 1.5} y={Math.sin(a) * r - 3} width={3} height={6} fill={k % 2 ? '#e6f7ff' : '#7fd4ff'} />
+          })}
+        </g>
+      </g>
+      {/* 솟아오르는 반짝임 */}
+      {motes.map((m, i) => (
+        <rect
+          key={i}
+          x={m.x - (m.big ? 1.5 : 1)}
+          y={m.y - (m.big ? 1.5 : 1)}
+          width={m.big ? 3 : 2}
+          height={m.big ? 3 : 2}
+          fill={m.big ? '#ffffff' : '#9fe0ff'}
+          className="mc-mote"
+          style={{ animationDelay: `${m.delay}s`, animationDuration: `${m.dur}s` }}
+        />
+      ))}
+      {/* 이름표 */}
+      <g transform={`translate(0,${-h / 2 - 30})`}>
+        <rect x={-lw / 2} y={-11} width={lw} height={19} rx={3} fill="rgba(10,12,18,0.86)" stroke="#5fb8e8" strokeWidth={1.4} />
+        <rect x={-lw / 2 + 2} y={-9} width={lw - 4} height={15} rx={2} fill="none" stroke="rgba(143,220,255,0.25)" strokeWidth={1} />
+        <text x={0} y={3} textAnchor="middle" fontSize={10.5} fontWeight={800} fill="#dff4ff" letterSpacing={0.5}>{label}</text>
+      </g>
+    </g>
   )
 }
 

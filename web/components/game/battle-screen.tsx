@@ -324,7 +324,7 @@ export function BattleScreen() {
   const availableSkills = actor ? SKILLS.filter((s) => actor.skills.includes(s.id)) : []
   const availableItems = state.inventory
     .map((slot) => ({ slot, item: itemById(slot.itemId) }))
-    .filter((x) => x.item && (x.item.type === 'potion' || x.item.type === 'tool') && !x.item.useEffect?.grantExp && !!x.item.useEffect)
+    .filter((x) => x.item && (x.item.type === 'potion' || x.item.type === 'tool') && !x.item.useEffect?.grantExp && !x.item.useEffect?.invisibleSec && !!x.item.useEffect)
 
   const targetableSide =
     pending?.kind === 'attack'

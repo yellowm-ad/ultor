@@ -38,7 +38,9 @@ import {
   tickAtb,
 } from '@/lib/battle-engine'
 import { addToInventory, consumeIngredients, removeFromInventory } from '@/lib/inventory'
-import { ACTIVITY_META, activityUnlockLabel, gatherNodesForMap, isActivityUnlocked, isNearWater, RECIPE_CATEGORY_ACTIVITY } from '@/lib/life'
+import { ACTIVITY_META, activityUnlockLabel, gatherNodesForMap, isActivityUnlocked, isNearWater, isNodeReady, RECIPE_CATEGORY_ACTIVITY } from '@/lib/life'
+import { fieldSpellById, isInvisible, PULL_RANGE, type FieldSpellId } from '@/lib/field-spells'
+import { CACHE_NEAR, cacheFlag, cacheReward, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
 import {
   adminSetWeek,
   afterBattleDefeat,
@@ -124,6 +126,9 @@ export type Action =
   | { type: 'PORTAL_CONFIRM' }
   | { type: 'PORTAL_CANCEL' }
   | { type: 'TELEPORT'; mapId: MapId }
+  | { type: 'CAST_FIELD_SPELL'; spell: import('@/lib/field-spells').FieldSpellId }
+  | { type: 'INVISIBLE_END' }
+  | { type: 'OPEN_CACHE'; key: string }
   | { type: 'HOUSING_TOGGLE_EDIT' }
   | { type: 'HOUSING_PLACE'; defId: string }
   | { type: 'HOUSING_REMOVE'; id: string }
@@ -451,19 +456,25 @@ function reducer(state: GameState, action: Action): GameState {
           break
         }
       }
+      // 투명한 동안은 닿아도 그냥 지나간다
+      if (touched && isInvisible(state)) touched = null
       // 접촉 — 묻지 않고 바로 전투로(world-screen 이 화면 전환 연출을 보여 준 뒤 ENCOUNTER_FIGHT). 이동은 정지.
       if (touched) return { ...state, facing, pendingEncounterUid: touched }
 
-      // 포탈 타일 접촉 — 이동 여부 확인 (군 통문 gate 는 클릭 전용이라 제외)
+      // 바닥 이동 마법진 — 밟아 들어서는 순간 확인 없이 바로 이동(2026-10-18). 군 통문(gate)은 행선지 고르는 창을 연다.
+      // 이미 마법진 위에 서 있던 걸음(잠긴 곳이라 못 넘어간 뒤 등)은 다시 걸지 않는다 — 밖으로 나갔다 들어와야 한다.
       for (const p of map.portals) {
-        if (p.kind === 'gate' || p.secret) continue
+        if (p.secret) continue
         if (p.walkArea) {
           const a = p.walkArea
           if (nx >= a.x0 && nx <= a.x1 && ny >= a.y0 && ny <= a.y1) return walkToFloor(state, p, { x: nx, y: ny }, facing)
           continue
         }
         const d = Math.hypot(p.cell.x - nx, p.cell.y - ny)
-        if (d < 0.45) return { ...state, facing, pendingPortalId: p.id }
+        if (d >= PORTAL_STEP_R || Math.hypot(p.cell.x - ox, p.cell.y - oy) < PORTAL_STEP_R) continue
+        const onCircle = { ...state, position: { x: nx, y: ny }, facing, currentZoneId: zone?.id ?? state.currentZoneId }
+        if (p.kind === 'gate') return { ...onCircle, gateOpen: true }
+        return travelThroughPortal(onCircle, p.id)
       }
 
       return {
@@ -477,7 +488,7 @@ function reducer(state: GameState, action: Action): GameState {
     case 'ENCOUNTER': {
       if (
         state.classScene || state.screen !== 'world' || state.battle || state.pendingEncounterUid || state.pendingPortalId ||
-        state.gateOpen || state.fishing || state.passage || state.storyQueue.length > 0 ||
+        state.gateOpen || state.fishing || state.passage || state.storyQueue.length > 0 || isInvisible(state) ||
         !state.fieldMonsters.some((f) => f.uid === action.uid)
       )
         return state
@@ -551,6 +562,35 @@ function reducer(state: GameState, action: Action): GameState {
 
     case 'TELEPORT':
       return teleportTo(state, action.mapId)
+
+    // 탐사 마법(lib/field-spells) — 순간이동 · 끌어오기 · 질주 · 등불 · 투명화(중·고급, Lv.30 — 투명한 물약과 같은 효과)
+    case 'CAST_FIELD_SPELL':
+      return castFieldSpell(state, action.spell)
+    // 숨은 룬 상자(lib/hidden-caches) — 가까이에서 E. 저장마다 한 번
+    case 'OPEN_CACHE': {
+      const map = MAPS[state.currentMapId]
+      const c = cachesForMap(map).find((x) => x.key === action.key)
+      if (!c || isCacheOpened(state, c.key) || Math.hypot(c.cell.x - state.position.x, c.cell.y - state.position.y) > CACHE_NEAR + 0.2) return state
+      const r = cacheReward(map, c.key)
+      const name = itemById(r.itemId)?.name ?? r.itemId
+      return {
+        ...state,
+        player: { ...state.player, gold: state.player.gold + r.gold },
+        inventory: addToInventory(state.inventory, r.itemId, r.qty),
+        storyFlags: { ...state.storyFlags, [cacheFlag(c.key)]: true },
+        toast: `숨은 룬 상자를 열었다! ${r.gold}G · ${name} x${r.qty}`,
+      }
+    }
+    // 지속형 탐사 효과가 끝났을 때(world-screen 이 끝나는 시각에 보낸다) — 끝난 것만 지우고 알려 준다
+    case 'INVISIBLE_END': {
+      const now = Date.now() + 50
+      const ended: string[] = []
+      const next = { ...state }
+      if (state.invisibleUntil && state.invisibleUntil <= now) { next.invisibleUntil = undefined; ended.push('투명화') }
+      if (state.hasteUntil && state.hasteUntil <= now) { next.hasteUntil = undefined; ended.push('질주') }
+      if (state.lightUntil && state.lightUntil <= now) { next.lightUntil = undefined; ended.push('등불') }
+      return ended.length ? { ...next, toast: `${ended.join('·')} 효과가 풀렸다.` } : state
+    }
 
     case 'PORTAL_CANCEL': {
       if (!state.pendingPortalId) return state
@@ -700,6 +740,15 @@ function reducer(state: GameState, action: Action): GameState {
       if (item?.type === 'food') return eatFood(state, action.itemId)
       if (!item?.useEffect || !slot) return state
       if (item.useEffect.grantExp) return { ...state, toast: '마력캔디는 가방에서 먹일 캐릭터를 골라 사용하세요.' }
+      if (item.useEffect.invisibleSec) {
+        if (state.battle) return state
+        return {
+          ...state,
+          invisibleUntil: Math.max(state.invisibleUntil ?? 0, Date.now()) + item.useEffect.invisibleSec * 1000,
+          inventory: removeFromInventory(state.inventory, action.itemId, 1),
+          toast: `몸이 투명해졌다. ${Math.round(item.useEffect.invisibleSec / 60)}분 동안 몬스터에 닿아도 싸움이 붙지 않는다.`,
+        }
+      }
 
       if (item.type === 'feed' && item.useEffect.petAffection) {
         const def = petDefById(state.pet.defId)
@@ -1061,6 +1110,43 @@ function teleportTo(state: GameState, mapId: MapId): GameState {
     dest.id,
   )
 }
+
+/** 탐사 마법 시전 — 배운 레벨·MP·상황을 보고 효과를 건다 */
+function castFieldSpell(state: GameState, id: FieldSpellId): GameState {
+  const sp = fieldSpellById(id)
+  if (state.battle || state.classScene || state.storyQueue.length > 0 || state.passage || state.fishing) return state
+  if (state.player.level < sp.level) return { ...state, toast: `${sp.name}은(는) Lv.${sp.level}에 배운다.` }
+  if (state.player.mp < sp.mp) return { ...state, toast: `MP가 부족하다. (${sp.name} ${sp.mp})` }
+  const now = Date.now()
+  const paid = { ...state, player: { ...state.player, mp: state.player.mp - sp.mp } }
+  const until = (cur?: number) => Math.max(cur ?? 0, now) + (sp.sec ?? 0) * 1000
+  switch (id) {
+    case 'teleport':
+      return { ...paid, previousScreen: state.screen, screen: 'worldmap', toast: '순간이동 — 갈 곳을 고르세요.' }
+    case 'pull': {
+      const map = MAPS[state.currentMapId]
+      const near = gatherNodesForMap(map).filter((n) => isNodeReady(state.life, n.key, now) && Math.hypot(n.cell.x - state.position.x, n.cell.y - state.position.y) <= PULL_RANGE)
+      if (!near.length) return { ...state, toast: `주변 ${PULL_RANGE}칸 안에 끌어올 채집물이 없다.` }
+      let next: GameState = paid
+      const got: string[] = []
+      for (const n of near) {
+        next = gatherAt(next, n.key, PULL_RANGE + 0.5)
+        if (next.toast?.startsWith('채집: ')) got.push(next.toast.slice(4))
+      }
+      return { ...next, pullFx: { at: now, cells: near.map((n) => n.cell) }, toast: got.length ? `끌어오기 — ${got.join(' / ')}` : next.toast }
+    }
+    case 'haste':
+      return { ...paid, hasteUntil: until(state.hasteUntil), toast: `질주! ${sp.sec! / 60}분 동안 발이 빨라진다.` }
+    case 'light':
+      return { ...paid, lightUntil: until(state.lightUntil), toast: `등불! ${sp.sec! / 60}분 동안 주변이 밝아지고, 숨은 룬 상자가 빛기둥으로 드러난다.` }
+    case 'vanish':
+      return { ...paid, invisibleUntil: until(state.invisibleUntil), toast: `투명화! ${sp.sec! / 60}분 동안 몬스터가 알아채지 못한다.` }
+  }
+}
+
+/** 이동 마법진을 밟았다고 보는 거리(셀)
+/** 이동 마법진을 밟았다고 보는 거리(셀) — 그림(원판 지름 약 2셀)의 안쪽 금테 정도 */
+const PORTAL_STEP_R = 0.6
 
 /** 같은 좌표계의 위/아래층으로 걸어서 넘어간다 — 확인창·도착 토스트 없이 위치·방향 유지 */
 function walkToFloor(state: GameState, portal: Portal, pos: { x: number; y: number }, facing: GameState['facing']): GameState {

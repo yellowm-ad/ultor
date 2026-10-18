@@ -17,6 +17,7 @@ import { calendarInfo, globalWeekOf } from '@/lib/calendar'
 import type { TermType } from '@/lib/types'
 import { regionOfMap, type RegionId } from '@/lib/regions'
 import { mulberry32 } from '@/lib/rng'
+import { groundBlocked } from '@/lib/collision'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 활동 해금 (§29)
@@ -258,11 +259,13 @@ export function gatherNodesForMap(map: GameMap): GatherNode[] {
   const nodes: GatherNode[] = []
   const blocked = (x: number, y: number) =>
     (map.blockers ?? []).some((b) => x > b.x0 - 0.6 && x < b.x1 + 0.6 && y > b.y0 - 0.6 && y < b.y1 + 0.6)
+  // 걸어서 닿는 곳만(2026-10-18) — 용암·바다로 둘러싸인 섬에 놓여 못 캐는 노드가 있었다(용암 동굴 3곳)
+  const canReach = walkableFrom(map)
   for (let attempt = 0; attempt < target * 30 && nodes.length < target; attempt++) {
     const x = 1.5 + rand() * (map.grid.w - 3)
     const y = 1.5 + rand() * (map.grid.h - 3)
     const tile = map.tileAt?.(x, y)
-    if (tile === 'water' || tile === 'demon-lava' || blocked(x, y)) continue
+    if (tile === 'water' || tile === 'demon-lava' || blocked(x, y) || !canReach(x, y)) continue
     // 자연 지면 용암 맵 — 용암 둑에서 한 칸 넘게 떨어뜨린다(그림이 둑 위로 걸쳐 용암 위에 놓인 듯 보였다)
     if (map.terrain?.liquid === 'lava' && [[1.3, 0], [-1.3, 0], [0, 1.3], [0, -1.3], [1, 1], [-1, -1], [1, -1], [-1, 1]].some(([dx, dy]) => map.terrain!.pool(x + dx, y + dy))) continue
     if (Math.hypot(x - map.spawn.x, y - map.spawn.y) < 2.5) continue
@@ -273,6 +276,48 @@ export function gatherNodesForMap(map: GameMap): GatherNode[] {
   }
   nodeCache.set(map.id, nodes)
   return nodes
+}
+
+/** 출발점(spawn)과 모든 포탈 자리에서 걸어서 닿는 반 칸 격자 — (x,y) 1칸 안에 닿는 칸이 있으면 true */
+export function walkableFrom(map: GameMap): (x: number, y: number) => boolean {
+  const S = 2
+  const BODY = 0.24
+  const { w, h } = map.grid
+  const GW = Math.ceil(w * S)
+  const GH = Math.ceil(h * S)
+  const bl = map.blockers ?? []
+  const solid = (x: number, y: number) =>
+    x < 0.2 || y < 0.2 || x > w - 0.2 || y > h - 0.2 || bl.some((r) => x > r.x0 - BODY && x < r.x1 + BODY && y > r.y0 - BODY && y < r.y1 + BODY) || groundBlocked(map, x, y)
+  const seen = new Uint8Array(GW * GH)
+  const q: number[] = []
+  for (const c of [map.spawn, ...map.portals.map((p) => p.cell)]) {
+    const gx = Math.floor(c.x * S)
+    const gy = Math.floor(c.y * S)
+    if (gx < 0 || gy < 0 || gx >= GW || gy >= GH || seen[gy * GW + gx]) continue
+    seen[gy * GW + gx] = 1
+    q.push(gx, gy)
+  }
+  while (q.length) {
+    const cy = q.pop()!
+    const cx = q.pop()!
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = cx + dx
+      const ny = cy + dy
+      if (nx < 0 || ny < 0 || nx >= GW || ny >= GH || seen[ny * GW + nx]) continue
+      if (solid((nx + 0.5) / S, (ny + 0.5) / S)) continue
+      seen[ny * GW + nx] = 1
+      q.push(nx, ny)
+    }
+  }
+  return (x, y) => {
+    for (let dy = -2; dy <= 2; dy++)
+      for (let dx = -2; dx <= 2; dx++) {
+        const gx = Math.floor(x * S) + dx
+        const gy = Math.floor(y * S) + dy
+        if (gx >= 0 && gy >= 0 && gx < GW && gy < GH && seen[gy * GW + gx]) return true
+      }
+    return false
+  }
 }
 
 export function isNodeReady(life: GameState['life'], key: string, now = Date.now()): boolean {

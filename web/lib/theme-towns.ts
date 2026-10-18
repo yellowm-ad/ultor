@@ -152,6 +152,10 @@ const demon = createTown({
   gtower: spr(D + 'dm_gtower.png', 92, 156, 1.2),
   crystals: spr(D + 'dm_crystals.png', 54, 56, 0.7),
   planter: spr(D + 'dm_planter.png', 40, 52, 0.6),
+  // 2026-10-18 가독성 — 불 화분이 골목마다 29개라 화면 전체가 불꽃으로 번쩍여 NPC·길이 묻혔다. 흩뿌리는 건 버섯 덤불로
+  scatterPlanter: spr('/images/map/props/demon/dem_mushrooms.png', 50, 54, 0.6),
+  // 불 사발(dm_crystals) 38개도 — 광장·입구 장식만 남기고 골목엔 잉걸불 가시덤불
+  scatterCrystals: spr(D + 'dem_thorn_bush.png', 45, 52, 0.6),
   patch: spr(D + 'dm_patch.png', 59, 37, 0.8),
   lamp: spr(D + 'demon_lamp.png', 28, 64, 0.2),
   tree: spr(D + 'demon_tree.png', 59, 76, 0.7),
