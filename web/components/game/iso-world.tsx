@@ -961,7 +961,8 @@ const SPARKLES = [
 function SecretSparkle({ at, lift }: { at: { sx: number; sy: number }; lift: number }) {
   return (
     <g transform={`translate(${at.sx},${at.sy - lift})`} style={{ pointerEvents: 'none' }}>
-      <ellipse cx={0} cy={-50} rx={26} ry={58} fill="#eaf4ff" opacity={0.07} style={{ animation: 'portal-pulse 2.4s ease-in-out infinite', transformBox: 'fill-box', transformOrigin: 'center' }} />
+      {/* 숨은 통로는 '눈썰미 있는 사람만' 알아채게 — 예전엔 portal-pulse 가 투명도를 0.5~0.9 로 덮어써 흰 타원이 크게 번쩍였다 */}
+      <ellipse cx={0} cy={-50} rx={22} ry={50} fill="#eaf4ff" className="secret-haze" />
       {SPARKLES.map(([x, y, d], i) => (
         <g key={i} transform={`translate(${x},${y}) scale(${i % 3 === 0 ? 1.6 : 1.25})`}>
           <g style={{ animation: `secret-twinkle 2.4s ease-in-out ${d}s infinite`, transformBox: 'fill-box', transformOrigin: 'center' }}>

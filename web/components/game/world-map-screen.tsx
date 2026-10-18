@@ -87,8 +87,9 @@ export function WorldMapScreen() {
                   top: fy(z.cell.y0),
                   width: fx(z.cell.x1) - fx(z.cell.x0),
                   height: fy(z.cell.y1) - fy(z.cell.y0),
-                  background: `${z.color}55`,
-                  border: `1px solid ${z.color}bb`,
+                  // 구역이 하나뿐인 맵(실내 등)은 덧칠하지 않는다 — 맵 전체가 남색으로 덮여 보였다(2026-10-18)
+                  background: map.zones.length > 1 ? `${z.color}30` : 'transparent',
+                  border: map.zones.length > 1 ? `1px solid ${z.color}99` : 'none',
                 }}
               >
                 <span className="px-1 text-center text-[10px] leading-tight text-white/90" style={{ textShadow: '0 1px 2px #000' }}>

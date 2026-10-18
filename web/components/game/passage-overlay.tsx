@@ -506,15 +506,17 @@ function MazeGame({ onEnd }: { onEnd: (ok: boolean) => void }) {
           const lit = d <= 1
           const known = lit || seen.has(c)
           const o = maze.open[c]
-          const wall = (bit: number) => (known && !(o & bit) ? '3px solid #6f6250' : '3px solid transparent')
+          // 2026-10-18 가독성 — 안 가 본 칸도 미로 크기가 보이게 옅은 격자, 벽은 밝게, 출구 빛은 멀리서도 희미하게 샌다
+          const wall = (bit: number) => (known && !(o & bit) ? `3px solid ${lit ? '#d8b878' : '#8f7a52'}` : known ? '3px solid transparent' : '3px solid #181410')
+          const isExit = c === maze.exit
           return (
             <div
               key={c}
               className="psg-cell"
               style={{
-                background: !known ? '#0c0a08' : lit ? '#4a4034' : '#2a241d',
+                background: !known ? '#120f0b' : lit ? '#4a4034' : '#2a241d',
                 borderTop: wall(1), borderRight: wall(2), borderBottom: wall(4), borderLeft: wall(8),
-                boxShadow: c === maze.exit && (known || d <= 3) ? 'inset 0 0 14px 4px #fff2b0' : undefined,
+                boxShadow: isExit ? (known || d <= 3 ? 'inset 0 0 14px 4px #fff2b0' : 'inset 0 0 10px 2px rgba(255, 242, 176, 0.32)') : undefined,
               }}
             >
               {known && c !== pos && torches.includes(c) && <span className="psg-torch" />}

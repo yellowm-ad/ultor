@@ -1128,7 +1128,8 @@ function teleportTo(state: GameState, mapId: MapId): GameState {
 /** 탐사 마법 시전 — 배운 레벨·MP·상황을 보고 효과를 건다 */
 function castFieldSpell(state: GameState, id: FieldSpellId): GameState {
   const sp = fieldSpellById(id)
-  if (state.battle || state.classScene || state.storyQueue.length > 0 || state.passage || state.fishing) return state
+  // 필드 화면에서만 — 대화·상점·가방 창이 열린 채 숫자 키를 눌러도 시전되지 않게
+  if (state.screen !== 'world' || state.battle || state.classScene || state.storyQueue.length > 0 || state.passage || state.fishing || state.gateOpen) return state
   if (state.player.level < sp.level) return { ...state, toast: `${sp.name}은(는) Lv.${sp.level}에 배운다.` }
   if (state.player.mp < sp.mp) return { ...state, toast: `MP가 부족하다. (${sp.name} ${sp.mp})` }
   const now = Date.now()
@@ -1249,9 +1250,13 @@ function startBattleFromField(state: GameState, fieldMonsterUid: string): GameSt
   // 4대4 — 접촉한 몬스터 + 같은 지역 무리(일반 2~4마리 / 보스는 호위 2마리)
   const monsterDefs = [primaryDef]
   if (!primaryDef.isTestMonster) {
-    const pool = MONSTERS.filter(
-      (m) => !m.isTestMonster && !isBossRank(m.rank) && m.zoneKinds.some((k) => primaryDef.zoneKinds.includes(k)),
-    )
+    // 무리는 '이 맵에 실제로 사는 몬스터' 중에서, 맵 권장 레벨 +2 를 넘지 않게(2026-10-18).
+    // 예전엔 같은 지형 종류 전체에서 뽑아 첫 숲(권장 Lv.3)의 Lv.1 들쥐 옆에 Lv.9 늑대·Lv.15 나무 골렘이 붙어 Lv.1~3 이 거의 졌다.
+    const mapIds = new Set(state.fieldMonsters.map((f) => f.monsterId))
+    const cap = Math.max(primaryDef.level, MAPS[state.currentMapId]?.recommendedLevel ?? primaryDef.level) + 2
+    const fits = (m: (typeof MONSTERS)[number]) => !m.isTestMonster && !isBossRank(m.rank) && m.level <= cap
+    let pool = MONSTERS.filter((m) => fits(m) && mapIds.has(m.id))
+    if (!pool.length) pool = MONSTERS.filter((m) => fits(m) && m.zoneKinds.some((k) => primaryDef.zoneKinds.includes(k)))
     const extra = isBossRank(primaryDef.rank) ? 2 : 1 + Math.floor(Math.random() * 3)
     for (let i = 0; i < extra && pool.length > 0 && monsterDefs.length < MAX_ENEMIES; i++) {
       monsterDefs.push(pool[Math.floor(Math.random() * pool.length)])
