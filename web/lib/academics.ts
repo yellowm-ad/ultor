@@ -8,6 +8,7 @@
 //   · 수업이 곧 스킬 습득 경로다(§4): 과목의 teachesSkills 를 수업 진도(점수)에 따라 차례로 배운다.
 //       - 수업 점수가 SKILL_SCORE_SPAN 까지 오르는 동안 균등 간격으로 하나씩(첫 스킬도 첫 과제 이후)
 //       - 학기 정산에서 D 이상으로 이수하면 못 배운 스킬도 모두 습득(낙제 F 면 남은 스킬은 놓친다)
+//   · 소환 마법(옛 펫, 2026-10-31)도 각 속성 과목의 마지막 진도로 배운다.
 //   · 1학년 3원소 기초 → 2학년 3원소 심화(광역·상태이상·전술) → 3학년 어둠·빛 개방 + 상급 3원소
 //     → 4학년 최상위 스킬. 바람은 끝까지 가르치지 않는다(모르스 전용).
 //   · 과목은 다른 시스템을 여는 역할도 한다(unlocksActivities/unlocksRecipes — 해금 시점 자체는 lib/life.ts 캘린더 기준).
@@ -48,9 +49,9 @@ const C = 3 // 과목당 학점(4과목 × 3 = 학기당 12학점)
 
 export const COURSES: CourseDef[] = [
   // ── 1학년 1학기 — 3원소 입문 ──────────────────────────────────────────────
-  { id: 'FIRE_101', name: '화염마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, teacherNpcId: 'npc-job-trainer', description: '불씨를 다루는 법부터 화염 강타까지.', teachesSkills: ['fire-basic-1', 'fire-basic-2', 'fire-basic-3'] },
-  { id: 'ICE_101', name: '빙결마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, description: '서리와 얼음 방패, 냉기 제어의 기초.', teachesSkills: ['ice-basic-1', 'ice-basic-2', 'ice-basic-3'] },
-  { id: 'EARTH_101', name: '대지마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, description: '돌과 흙을 움직이고 몸을 굳히는 법.', teachesSkills: ['earth-basic-1', 'earth-basic-2', 'earth-basic-3'] },
+  { id: 'FIRE_101', name: '화염마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, teacherNpcId: 'npc-job-trainer', description: '불씨를 다루는 법부터 화염 강타까지.', teachesSkills: ['fire-basic-1', 'fire-basic-2', 'fire-basic-3', 'summon-emberling'] },
+  { id: 'ICE_101', name: '빙결마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, description: '서리와 얼음 방패, 냉기 제어의 기초.', teachesSkills: ['ice-basic-1', 'ice-basic-2', 'ice-basic-3', 'summon-frostkit'] },
+  { id: 'EARTH_101', name: '대지마법 기초', department: 'magic', year: 1, term: 'semester1', required: true, credit: C, description: '돌과 흙을 움직이고 몸을 굳히는 법.', teachesSkills: ['earth-basic-1', 'earth-basic-2', 'earth-basic-3', 'summon-pebblemole'] },
   { id: 'FIELD_101', name: '실전 탐사 I', department: 'life', year: 1, term: 'semester1', required: false, credit: C, description: '에르디아 숲 견학과 채집·응급 처치 기초.', teachesSkills: ['n-firstaid', 'n-focus'], unlocksActivities: ['gathering'] },
   // ── 1학년 2학기 ──────────────────────────────────────────────────────────
   { id: 'ELEMENT_102', name: '원소 상성', department: 'magic', year: 1, term: 'semester2', required: true, credit: C, teacherNpcId: 'npc-job-trainer', description: '불꽃 > 얼음 > 대지 순환 상성과 상태이상 응용.', teachesSkills: ['fire-adv-1', 'ice-adv-1', 'earth-adv-1'] },
@@ -58,22 +59,22 @@ export const COURSES: CourseDef[] = [
   { id: 'HISTORY_101', name: '마법사 역사 입문', department: 'history', year: 1, term: 'semester2', required: false, credit: C, teacherNpcId: 'npc-librarian', description: '울토르의 건립과 인마대전 개요.' },
   { id: 'BIO_101', name: '마법 생물학', department: 'life', year: 1, term: 'semester2', required: false, credit: C, description: '물과 바다의 마법 생물.', unlocksActivities: ['fishing'] },
   // ── 2학년 1학기 — 3원소 심화 I(광역) ─────────────────────────────────────
-  { id: 'TRIAD_201', name: '3원소 심화 I — 광역', department: 'magic', year: 2, term: 'semester1', required: true, credit: C, description: '한 번에 여러 적을 상대하는 광역 마법과 아군 보호.', teachesSkills: ['fire-adv-2', 'ice-adv-2', 'earth-adv-2'] },
+  { id: 'TRIAD_201', name: '3원소 심화 I — 광역', department: 'magic', year: 2, term: 'semester1', required: true, credit: C, description: '한 번에 여러 적을 상대하는 광역 마법과 아군 보호.', teachesSkills: ['fire-adv-2', 'ice-adv-2', 'earth-adv-2', 'summon-magma-pup'] },
   { id: 'ALCHEMY_201', name: '연금술 I', department: 'life', year: 2, term: 'semester1', required: true, credit: C, description: '약초 조합과 물약 제조.', unlocksActivities: ['alchemy'] },
   { id: 'ECOLOGY_201', name: '마법 생태학 I', department: 'life', year: 2, term: 'semester1', required: true, credit: C, description: '해양·심해 생태계와 채집학.' },
   { id: 'COOKING_201', name: '요리학', department: 'life', year: 2, term: 'semester1', required: false, credit: C, description: '전투 보조 요리와 식재료.', unlocksActivities: ['cooking'] },
   // ── 2학년 2학기 — 3원소 심화 II(상태이상·제어) + 전투학 ────────────────────
-  { id: 'TRIAD_202', name: '3원소 심화 II — 제어', department: 'magic', year: 2, term: 'semester2', required: true, credit: C, description: '화상·마비·수면으로 전장을 지배하는 법.', teachesSkills: ['fire-adv-3', 'ice-adv-3', 'earth-adv-3', 'fire-adv-4'] },
+  { id: 'TRIAD_202', name: '3원소 심화 II — 제어', department: 'magic', year: 2, term: 'semester2', required: true, credit: C, description: '화상·마비·수면으로 전장을 지배하는 법.', teachesSkills: ['fire-adv-3', 'ice-adv-3', 'earth-adv-3', 'fire-adv-4', 'summon-glacier-owl'] },
   { id: 'BATTLE_202', name: '마법 전투학', department: 'magic', year: 2, term: 'semester2', required: true, credit: C, description: '전위·후위·보조 포지션과 파티 전술.', teachesSkills: ['n-rally', 'n-laststand'] },
   { id: 'RUINS_202', name: '고대 유적학', department: 'history', year: 2, term: 'semester2', required: false, credit: C, description: '하늘 유적과 고대 구조물.' },
   { id: 'HUNT_202', name: '사냥학', department: 'life', year: 2, term: 'semester2', required: false, credit: C, description: '몬스터 부산물 채취와 손질.', unlocksActivities: ['hunting'] },
   // ── 3학년 1학기 — 어둠·빛 개방 ───────────────────────────────────────────
-  { id: 'DARK_301', name: '암흑마법 응용', department: 'magic', year: 3, term: 'semester1', required: true, credit: C, description: '약화·은신·환술, 그리고 잡몹을 한 번에 끝내는 사신의 낙인.', teachesSkills: ['dark-curse', 'dark-veil', 'dark-illusion', 'dark-execute'] },
-  { id: 'LIGHT_301', name: '광휘마법 응용', department: 'magic', year: 3, term: 'semester1', required: true, credit: C, description: '치유·축복·정화·소생 — 동료를 지키는 빛.', teachesSkills: ['light-heal', 'light-might', 'light-purify', 'light-revive'] },
+  { id: 'DARK_301', name: '암흑마법 응용', department: 'magic', year: 3, term: 'semester1', required: true, credit: C, description: '약화·은신·환술, 그리고 잡몹을 한 번에 끝내는 사신의 낙인.', teachesSkills: ['dark-curse', 'dark-veil', 'dark-illusion', 'dark-execute', 'summon-shade'] },
+  { id: 'LIGHT_301', name: '광휘마법 응용', department: 'magic', year: 3, term: 'semester1', required: true, credit: C, description: '치유·축복·정화·소생 — 동료를 지키는 빛.', teachesSkills: ['light-heal', 'light-might', 'light-purify', 'light-revive', 'summon-wisp'] },
   { id: 'HOUSING_301', name: '하우징 제작', department: 'craft', year: 3, term: 'semester1', required: true, credit: C, description: '가구 제작과 공간 설계.', unlocksActivities: ['furniture'] },
   { id: 'DEMON_301', name: '마족학', department: 'history', year: 3, term: 'semester1', required: false, credit: C, description: '마족의 생태와 역사.' },
   // ── 3학년 2학기 — 상급 3원소 ─────────────────────────────────────────────
-  { id: 'ELEMENT_302', name: '고급 원소학', department: 'magic', year: 3, term: 'semester2', required: true, credit: C, description: '3원소 상급 마법과 복합 운용.', teachesSkills: ['fire-high-1', 'ice-high-1', 'earth-high-1', 'fire-high-2', 'ice-high-2', 'earth-high-2'] },
+  { id: 'ELEMENT_302', name: '고급 원소학', department: 'magic', year: 3, term: 'semester2', required: true, credit: C, description: '3원소 상급 마법과 복합 운용.', teachesSkills: ['fire-high-1', 'ice-high-1', 'earth-high-1', 'fire-high-2', 'ice-high-2', 'earth-high-2', 'summon-golem-cub'] },
   { id: 'MAGITECH_302', name: '마법 공학', department: 'craft', year: 3, term: 'semester2', required: true, credit: C, description: '마도구 제작 II.', unlocksActivities: ['magicTool'] },
   { id: 'ALCHEMY_302', name: '고급 연금술', department: 'life', year: 3, term: 'semester2', required: true, credit: C, description: '촉매와 재료 변환.' },
   { id: 'COSTUME_302', name: '의상 제작', department: 'craft', year: 3, term: 'semester2', required: false, credit: C, description: '코스튬 제작.', unlocksActivities: ['costume'] },

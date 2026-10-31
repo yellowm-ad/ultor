@@ -6,7 +6,7 @@ import type { GameState } from '@/lib/types'
 import { useGame } from '@/lib/game-state'
 import { POSITION_META } from '@/lib/constants'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
-import { petDefById, petStatsForLevel } from '@/lib/pets'
+import { skillById } from '@/lib/mock-data'
 import { expProgressPercent, MAX_LEVEL } from '@/lib/exp-table'
 import { Sparkles } from 'lucide-react'
 import { calendarShortLabel } from '@/lib/calendar'
@@ -19,7 +19,7 @@ export function Hud() {
   return (
     <HudView
       player={state.player}
-      pet={state.pet}
+      summons={state.player.summonSkills ?? []}
       heroPos={state.formation.positions.hero ?? 'front'}
       testMode={!!state.settings.testMode}
       weekly={state.weekly}
@@ -32,7 +32,7 @@ export function Hud() {
 
 type HudProps = {
   player: GameState['player']
-  pet: GameState['pet']
+  summons: string[]
   heroPos: NonNullable<GameState['formation']['positions']['hero']>
   testMode: boolean
   weekly: GameState['weekly']
@@ -41,13 +41,11 @@ type HudProps = {
   dispatch: ReturnType<typeof useGame>['dispatch']
 }
 
-const HudView = memo(function HudView({ player, pet, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
-  const petDef = petDefById(pet.defId)!
-  const petMaxHp = petStatsForLevel(petDef, pet.level).maxHp
+const HudView = memo(function HudView({ player, summons, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
 
   return (
     <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
-      {/* 좌측: 캐릭터 + 펫 상태 — 박스 없이 초상+바만 화면 위에 직접 떠 있음(원신풍) */}
+      {/* 좌측: 캐릭터 상태 + 소환 칸 — 박스 없이 초상+바만 화면 위에 직접 떠 있음(원신풍) */}
       <div className="pointer-events-auto flex flex-col gap-2">
         <div className="title-enter-1 flex items-center gap-2.5">
           <div className="portrait-ring flex size-12 shrink-0 items-end justify-center overflow-hidden">
@@ -80,18 +78,19 @@ const HudView = memo(function HudView({ player, pet, heroPos, testMode, weekly, 
         {/* 학사 달력 + 이번 주 필수 미션 + 식사 버프 */}
         <WeekTracker weekly={weekly} calendar={calendar} mealBuff={mealBuff} dispatch={dispatch} />
 
-        {/* 펫 미니 상태 */}
-        <div className="title-enter-2 hidden items-center gap-2 pl-1 sm:flex">
-          <div className="portrait-ring flex size-9 shrink-0 items-center justify-center">
-            <Image src={petDef.icon} alt={pet.nickname} width={18} height={18} />
+        {/* 소환 마법 칸(옛 펫 자리) — 작게 */}
+        {summons.length > 0 && (
+          <div className="title-enter-2 hidden items-center gap-1 pl-1 sm:flex" title="소환 마법 칸 — 전투에서 마법 › 소환으로 부른다">
+            {summons.map((id) => {
+              const s = skillById(id)
+              return s ? (
+                <span key={id} className="hud-summon-slot">
+                  <Image src={s.icon} alt={s.name} width={22} height={22} unoptimized />
+                </span>
+              ) : null
+            })}
           </div>
-          <div className="flex w-32 flex-col gap-1">
-            <span className="hud-clean-text hud-clean-label truncate text-[11px] text-gold-soft">{pet.nickname}</span>
-            <div className="hud-clean-bar-track hud-clean-bar-thin">
-              <div className="hud-clean-bar-fill hud-bar-hp" style={{ width: `${(pet.hp / Math.max(1, petMaxHp)) * 100}%` }} />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* 우측: 아이콘 메뉴 — 박스 버튼 대신 순수 아이콘 */}
@@ -101,6 +100,7 @@ const HudView = memo(function HudView({ player, pet, heroPos, testMode, weekly, 
           <MenuIcon src="/images/icons/hud/backpack.png" label="가방" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'inventory' })} />
           <MenuIcon src="/images/icons/menu/hud-craft.png" label="제작" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: 'npc-workbench' })} />
           <MenuIcon src="/images/icons/hud/character.png" label="정보" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'character' })} />
+          <MenuIcon src="/images/icons/hud/magic.png" label="마법" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'magic' })} />
           <MenuIcon src="/images/icons/hud/party.png" label="파티" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'party' })} />
           <MenuIcon src="/images/icons/hud/settings.png" label="설정" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'settings' })} />
         </div>

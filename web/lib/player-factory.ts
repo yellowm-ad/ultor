@@ -1,8 +1,7 @@
-import type { GameState, Pet, PlayerAppearance, PlayerCharacter } from '@/lib/types'
+import type { GameState, PlayerAppearance, PlayerCharacter } from '@/lib/types'
 import { VILLAGE_LAYOUT } from '@/lib/village-layout'
 import { computeStatsForLevel, STARTING_GOLD, DEFAULT_SETTINGS } from '@/lib/constants'
 import { MAPS } from '@/lib/maps'
-import { createPet, DEFAULT_STARTER_PET } from '@/lib/pets'
 import { createInitialCalendar } from '@/lib/calendar'
 import { createInitialAcademics } from '@/lib/academics'
 
@@ -32,24 +31,20 @@ export function createPlayer(name: string, appearance: Partial<PlayerAppearance>
     equipped: {},
     learnedSkills: [...STARTER_SKILLS],
     equippedSkills: [...STARTER_SKILLS],
+    summonSkills: [],
+    skillMastery: {},
+    gear: {},
   }
-}
-
-export function createStarterPet(defId: string = DEFAULT_STARTER_PET): Pet {
-  return createPet(defId, { level: 1, affection: 45 })
 }
 
 export function createInitialGameState(): GameState {
   const player = createPlayer('')
-  const pet = createStarterPet()
   const village = MAPS.village
 
   return {
     screen: 'title',
     previousScreen: 'title',
     player,
-    pet,
-    ownedPets: [pet],
     position: { ...village.spawn },
     facing: 'down',
     currentMapId: 'village',
@@ -58,7 +53,7 @@ export function createInitialGameState(): GameState {
       { itemId: 'potion-hp-s', qty: 5 },
       { itemId: 'potion-mp-s', qty: 3 },
       { itemId: 'tool-escape', qty: 3 },
-      { itemId: 'feed-any', qty: 2 },
+      { itemId: 'scroll-mastery', qty: 2 },
     ],
     fieldMonsters: [],
     pendingEncounterUid: null,

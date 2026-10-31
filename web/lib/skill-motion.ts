@@ -1,3 +1,4 @@
+import { skillVfx } from '@/lib/skill-vfx'
 import type { BattleFx } from '@/lib/types'
 
 // ============================================================================
@@ -100,6 +101,10 @@ export function skillMotion(fx: BattleFx, speed: 1 | 2 = 1): SkillMotion {
     const castMs = tier === 1 ? 280 : tier === 2 ? 450 : 700
     m = { style: 'support', ultimate: false, castMs, impactMs: castMs + 150, waves: tier === 3 ? 2 : 1, waveGapMs: 380, finaleMs: 0, totalMs: castMs + (tier === 3 ? 1500 : 1000) }
   }
+
+  // 스킬별 도트 애니메이션이 있으면 그 시간표를 따른다(lib/skill-vfx)
+  const custom = skillVfx(fx.skillId)
+  if (custom) m = { ...m, castMs: custom.castMs, impactMs: custom.impactMs, waves: 1, waveGapMs: 0, finaleMs: m.ultimate ? custom.impactMs : 0, totalMs: custom.totalMs }
 
   const s = (n: number) => Math.round(n * k)
   return { ...m, tier, castMs: s(m.castMs), impactMs: s(m.impactMs), waveGapMs: s(m.waveGapMs), finaleMs: s(m.finaleMs), totalMs: s(m.totalMs) }

@@ -2,6 +2,7 @@
 
 // 제작대 — 「제작대 UI 개선안.png」 참고 (2026-10-03). 공용 GameWindow(검은 틀 + 아이보리 패널).
 // 왼쪽 분류(PixelLab 아이콘) · 가운데 레시피 목록 · 오른쪽 상세(완성품 · 제작 수량 · 필요 재료 · 제작하기).
+// 2026-10-31: 분류 맨 위 「장비 강화」 — 골드로 +1~+10 강화(components/game/enhance-panel.tsx).
 
 import Image from 'next/image'
 import { useState } from 'react'
@@ -11,6 +12,7 @@ import type { CraftStationKind, RecipeCategory, RecipeDef } from '@/lib/types'
 import { activityUnlockLabel, isActivityUnlocked, RECIPE_CATEGORY_ACTIVITY, RECIPE_CATEGORY_LABEL } from '@/lib/life'
 import { ingredientLabel, ownedFor } from '@/lib/inventory'
 import { Divider, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Slot, Sparkle } from '@/components/game/game-window'
+import { EnhanceDetail, EnhanceList } from '@/components/game/enhance-panel'
 
 const CATEGORIES: RecipeCategory[] = ['equipment', 'candy', 'alchemy', 'cooking', 'magicTool', 'furniture', 'costume']
 
@@ -64,6 +66,8 @@ export function CraftScreen() {
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [qty, setQty] = useState(1)
+  const [enhance, setEnhance] = useState(false)
+  const [enhId, setEnhId] = useState<string | null>(null)
   if (!npc || state.screen !== 'craft') return null
 
   const close = () => dispatch({ type: 'CLOSE_OVERLAY' })
@@ -119,6 +123,7 @@ export function CraftScreen() {
       <div className="gw-cols">
         {/* 분류 */}
         <nav className="gw-side" aria-label="제작 분류">
+          <SideItem icon={menuIcon('craft-enhance')} label="장비 강화" active={enhance} onClick={() => setEnhance(true)} />
           {CATEGORIES.map((c) => (
             <SideItem
               key={c}
@@ -126,8 +131,9 @@ export function CraftScreen() {
               label={`${RECIPE_CATEGORY_LABEL[c]} 제작`}
               count={RECIPES.filter((r) => (r.category ?? 'equipment') === c && maxCraftable(r, state.inventory) > 0).length}
               locked={!isActivityUnlocked(state, RECIPE_CATEGORY_ACTIVITY[c])}
-              active={tab === c}
+              active={!enhance && tab === c}
               onClick={() => {
+                setEnhance(false)
                 setTab(c)
                 setSelectedId(null)
                 setQty(1)
@@ -136,7 +142,11 @@ export function CraftScreen() {
           ))}
         </nav>
 
+        {enhance && <EnhanceList selectedId={enhId} onPick={setEnhId} />}
+        {enhance && <EnhanceDetail itemId={enhId} />}
+
         {/* 레시피 목록 */}
+        {!enhance && (
         <section className="gw-panel is-flex p-3">
           <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <div className="gw-chips">
@@ -189,8 +199,10 @@ export function CraftScreen() {
             })}
           </div>
         </section>
+        )}
 
         {/* 상세 */}
+        {!enhance && (
         <aside className="gw-panel is-flex is-pad">
           {selected && output ? (
             <>
@@ -249,6 +261,7 @@ export function CraftScreen() {
             </div>
           )}
         </aside>
+        )}
       </div>
     </GameWindow>
   )

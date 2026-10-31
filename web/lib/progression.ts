@@ -7,7 +7,7 @@ import type { BattleState, GameState, MapId, Position, Stats } from '@/lib/types
 import { calendarInfo, calendarLabel, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { beatById, beatsFor, STORY_CYCLE, type StoryTrigger } from '@/lib/story'
 import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests, migrateWeekly, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
-import { addCourseScore, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
+import { addCourseScore, courseById, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
 import { classForWeek, classGrade, classMetaFor, examGames, GRADE_REWARD, MASTERY_LABEL, masteryLevel, professorById, type MiniGameType } from '@/lib/curriculum'
 import { mulberry32 } from '@/lib/rng'
 import { isSemesterStoryWeek } from '@/lib/story-episodes'
@@ -44,9 +44,9 @@ import { addToInventory, hasItem, removeFromInventory } from '@/lib/inventory'
 import { applyExp, questExpMult } from '@/lib/exp-table'
 import { getEffectiveStats } from '@/lib/derived'
 import { itemById, monsterById, SKILLS } from '@/lib/mock-data'
-import { computeStatsForLevel, expSharePerMember, formationError, FORMATION_LIMITS, MAX_GUESTS, SKILL_LOADOUT_SIZE } from '@/lib/constants'
-import { combatantFromPet, combatantFromPlayer, expShareMemberCount, type PartyMemberInput } from '@/lib/battle-engine'
-import { petDefById } from '@/lib/pets'
+import { computeStatsForLevel, expSharePerMember, formationError, FORMATION_LIMITS, MAX_GUESTS, SKILL_LOADOUT_SIZE, SUMMON_SLOT_SIZE } from '@/lib/constants'
+import { combatantFromPlayer, expShareMemberCount, type PartyMemberInput } from '@/lib/battle-engine'
+import { CLASS_MASTERY_XP, grantMastery, MASTERY_MAX, MASTERY_XP_PER_USE, masteryOf, skillGrade } from '@/lib/skill-mastery'
 import { MAPS } from '@/lib/maps'
 import { regionOfMap } from '@/lib/regions'
 
@@ -240,13 +240,17 @@ export function startClass(state: GameState, test?: { game: MiniGameType }): Gam
   const games: MiniGameType[] =
     test ? [test.game] : wc.kind === 'midterm' || wc.kind === 'final' ? examGames(wc.kind, wc.courseIds, rand) : [choices[Math.floor(rand() * choices.length)]]
   const seat = classSeatFor(meta.room)
+  // 실습 주제 — 시험이 아닌 수업은 이 과목에서 배운 스킬 하나를 깊게 다룬다(숙련도 상승)
+  const topicSkillId = wc.kind === 'midterm' || wc.kind === 'final' ? null : classTopicSkill(state, wc.courseId, seed)
+  const topic = topicSkillId ? skillOf(topicSkillId) : undefined
   return {
     ...state,
     classScene: {
       courseId: wc.courseId,
       courseIds: wc.courseIds,
       kind: wc.kind,
-      label: wc.label,
+      label: topic ? `${wc.label} · 실습 「${topic.name}」` : wc.label,
+      topicSkillId: topicSkillId ?? undefined,
       professorId: meta.professorId,
       room: meta.room,
       games,
@@ -327,6 +331,14 @@ function settleClass(state: GameState): GameState {
   }
   // 시험 통과 플래그(§34) — 낙제해도 스토리는 막히지 않는다
   if (isExam && grade !== 'D') next = setStoryFlag(next, `${sc.kind === 'midterm' ? 'MIDTERM' : 'FINAL'}_Y${info.year}${info.termType === 'semester1' ? 'S1' : 'S2'}_PASSED`)
+  // 실습 주제 스킬 숙련도 — 강의 0.6배 · 기말 대비 실습 주간 1.5배
+  if (sc.topicSkillId) {
+    const xp = Math.max(1, Math.round(CLASS_MASTERY_XP[grade] * (sc.kind === 'practice' ? 1.5 : 0.6) * (1 + (skillGrade(skillOf(sc.topicSkillId) ?? { id: '', mpCost: 0 }) - 1) * 0.5)))
+    const lvBefore = masteryOf(next.player, sc.topicSkillId).lv
+    next = grantSkillMastery({ ...next, toast: null }, { [sc.topicSkillId]: xp })
+    const lvAfter = masteryOf(next.player, sc.topicSkillId).lv
+    lines.push(`「${skillOf(sc.topicSkillId)?.name}」 숙련 +${xp}${lvAfter > lvBefore ? ` (숙련도 Lv.${lvAfter}!)` : ''}`)
+  }
   // 새 스킬
   const before = next.player.learnedSkills.length
   next = refreshSkills(next)
@@ -441,19 +453,82 @@ export function refreshSkills(state: GameState): GameState {
   const learned = state.player.learnedSkills.filter(valid)
   const add = earnedSkillIds(state).filter((id) => !learned.includes(id))
   const learnedSkills = [...learned, ...add]
-  const equipped = state.player.equippedSkills.filter((id) => learnedSkills.includes(id))
-  for (const id of add) if (equipped.length < SKILL_LOADOUT_SIZE) equipped.push(id)
-  if (add.length === 0 && learnedSkills.length === state.player.learnedSkills.length && equipped.length === state.player.equippedSkills.length) return state
-  return { ...state, player: { ...state.player, learnedSkills, equippedSkills: equipped } }
+  // 소환 마법은 전투 장착 칸이 아니라 소환 전용 칸(최대 SUMMON_SLOT_SIZE)에 들어간다
+  const equipped = state.player.equippedSkills.filter((id) => learnedSkills.includes(id) && !isSummonSkill(id))
+  const summons = (state.player.summonSkills ?? []).filter((id) => learnedSkills.includes(id) && isSummonSkill(id))
+  for (const id of add) {
+    if (isSummonSkill(id)) {
+      if (summons.length < SUMMON_SLOT_SIZE) summons.push(id)
+    } else if (equipped.length < SKILL_LOADOUT_SIZE) equipped.push(id)
+  }
+  const sameSummons = summons.length === (state.player.summonSkills ?? []).length
+  if (add.length === 0 && learnedSkills.length === state.player.learnedSkills.length && equipped.length === state.player.equippedSkills.length && sameSummons) return state
+  return { ...state, player: { ...state.player, learnedSkills, equippedSkills: equipped, summonSkills: summons } }
 }
 
-/** 스킬 장착/해제 */
+export function isSummonSkill(id: string): boolean {
+  return SKILLS.find((x) => x.id === id)?.kind === 'summon'
+}
+
+/** 스킬 장착/해제 — 소환 마법은 소환 전용 칸에 넣고 뺀다 */
 export function toggleEquipSkill(state: GameState, skillId: string): GameState {
   const { learnedSkills, equippedSkills } = state.player
   if (!learnedSkills.includes(skillId)) return state
+  if (isSummonSkill(skillId)) {
+    const summons = state.player.summonSkills ?? []
+    if (summons.includes(skillId)) return { ...state, player: { ...state.player, summonSkills: summons.filter((id) => id !== skillId) } }
+    if (summons.length >= SUMMON_SLOT_SIZE) return { ...state, toast: `소환 마법 칸은 ${SUMMON_SLOT_SIZE}개입니다. 먼저 하나를 빼 주세요.` }
+    return { ...state, player: { ...state.player, summonSkills: [...summons, skillId] } }
+  }
   if (equippedSkills.includes(skillId)) return { ...state, player: { ...state.player, equippedSkills: equippedSkills.filter((id) => id !== skillId) } }
   if (equippedSkills.length >= SKILL_LOADOUT_SIZE) return { ...state, toast: `전투 스킬은 최대 ${SKILL_LOADOUT_SIZE}개까지 장착할 수 있습니다.` }
   return { ...state, player: { ...state.player, equippedSkills: [...equippedSkills, skillId] } }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 스킬 숙련도(PRD v2.1 §S1) — 전투 사용 · 수업 실습 주제 · 숙련의 스크롤
+// ─────────────────────────────────────────────────────────────────────────────
+const skillOf = (id: string) => SKILLS.find((x) => x.id === id)
+
+/** 숙련 경험치 지급 + 레벨이 오른 스킬을 알림에 붙인다 */
+export function grantSkillMastery(state: GameState, gains: Record<string, number>): GameState {
+  const r = grantMastery(state.player, gains, skillOf)
+  const note = r.ups.length ? `숙련도 상승! ${r.ups.map((u) => `${skillOf(u.skillId)?.name ?? u.skillId} Lv.${u.lv}`).join(', ')}` : null
+  return { ...state, player: r.player, toast: note ? joinToast(state.toast, note) : state.toast }
+}
+
+/** 전투가 끝나면(승패·도주 무관) 주인공이 쓴 스킬 횟수만큼 숙련 경험치 */
+function applySkillUses(state: GameState, battle: BattleState): GameState {
+  const uses = battle.skillUses ?? {}
+  const gains: Record<string, number> = {}
+  for (const [id, n] of Object.entries(uses)) gains[id] = n * MASTERY_XP_PER_USE
+  return Object.keys(gains).length ? grantSkillMastery(state, gains) : state
+}
+
+/** 스킬 숙련의 스크롤 — 마법 창에서 고른 스킬에 읽는다 */
+export function readMasteryScroll(state: GameState, itemId: string, skillId: string): GameState {
+  const item = itemById(itemId)
+  const skill = skillOf(skillId)
+  if (!item?.useEffect?.masteryXp || !skill || !hasItem(state.inventory, itemId)) return state
+  if (!state.player.learnedSkills.includes(skillId)) return { ...state, toast: '아직 배우지 않은 마법입니다.' }
+  if (item.scrollElement && (skill.element ?? 'none') !== item.scrollElement) return { ...state, toast: `${item.name}은(는) 이 마법에 쓸 수 없습니다.` }
+  if (masteryOf(state.player, skillId).lv >= MASTERY_MAX) return { ...state, toast: `${skill.name}은(는) 이미 숙련도 최대입니다.` }
+  const next = grantSkillMastery({ ...state, inventory: removeFromInventory(state.inventory, itemId, 1), toast: null }, { [skillId]: item.useEffect.masteryXp })
+  return { ...next, toast: joinToast(`${item.name}을(를) 읽었다 — ${skill.name} 숙련 +${item.useEffect.masteryXp}`, next.toast) }
+}
+
+/**
+ * 수업의 실습 주제 스킬 — 그 과목이 가르치는 스킬 중 이미 배운 것 하나(주차 시드로 고정).
+ * 아직 배운 게 없으면 null(첫 진도를 나가는 수업).
+ */
+export function classTopicSkill(state: GameState, courseId: string, seed: number): string | null {
+  const list = (courseById(courseId)?.teachesSkills ?? []).filter((id) => state.player.learnedSkills.includes(id))
+  if (!list.length) return null
+  // 숙련도가 낮은 스킬이 주제로 더 잘 나온다
+  const weights = list.map((id) => MASTERY_MAX + 1 - masteryOf(state.player, id).lv)
+  let r = (seed % 997) / 997 * weights.reduce((a, b) => a + b, 0)
+  for (let i = 0; i < list.length; i++) if ((r -= weights[i]) <= 0) return list[i]
+  return list[list.length - 1]
 }
 
 function skillNames(ids: string[]): string {
@@ -580,10 +655,9 @@ export function battleStats(state: GameState): Stats {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 파티 · 진형 · 펫 (PRD v2.0 §16~20, 2026-10-02 개편)
-//   진형 6칸(전위 2 · 후위 2 · 지원 2) + 펫 고정 1칸.
+// 파티 · 진형 (PRD v2.0 §16~20, 2026-10-02 개편 · 2026-10-31 펫 폐지)
+//   진형 6칸(전위 2 · 후위 2 · 지원 2). 펫은 소환 마법으로 편입(전투 중 2~3턴 등장).
 //   파티 = 주인공 + 학교 NPC 0~3명(솔로 가능). 남는 2칸은 임시 합류 NPC(호위·동행).
-//   펫은 주인공만(보유 펫 중 1마리, state.pet) — 포지션과 무관하게 고정 펫 슬롯으로 참가.
 // ─────────────────────────────────────────────────────────────────────────────
 export function recruitCompanion(state: GameState, id: string): GameState {
   const def = schoolNpcById(id)
@@ -660,14 +734,6 @@ export function formationMemberIds(state: Pick<GameState, 'companions'>): string
   return [...partyMemberIds(state), ...(state.companions.guests ?? []).slice(0, MAX_GUESTS).map((g) => g.id)].slice(0, COMPANION_SLOTS + 1)
 }
 
-/** 주인공 펫 교체 — 펫은 주인공만 데리고 다닌다(동료 펫 없음) */
-export function setMemberPet(state: GameState, memberId: string, defId: string | null): GameState {
-  if (memberId !== 'hero' || !defId) return state
-  const found = state.ownedPets.find((p) => p.defId === defId)
-  if (!found) return state
-  return { ...state, pet: found }
-}
-
 function defaultPositionOf(id: string): Position {
   if (id === 'hero') return 'front'
   return schoolNpcById(id)?.combat?.defaultPosition ?? guestNpcById(id)?.defaultPosition ?? 'rear'
@@ -706,7 +772,7 @@ export function normalizeFormation(state: GameState): GameState {
   }
   // 2) 전위가 비었으면 → 주인공을 전위로(전위가 0명이었으니 넘칠 일은 없다)
   if (count().front < FORMATION_LIMITS.front.min && ids.length > 0) positions.hero = 'front'
-  // 펫은 주인공 전용(state.pet) — 옛 세이브의 동료 펫 배정(formation.pets)은 버린다
+  // 옛 세이브의 동료 펫 배정(formation.pets)은 버린다(펫 폐지 — 소환 마법으로 편입)
   return { ...state, formation: { positions } }
 }
 
@@ -761,14 +827,13 @@ export function removeGuest(state: GameState, id: string): GameState {
 }
 
 /**
- * 전투 진형 구성 — 주인공(+고정 펫) · 파티 동료 · 임시 NPC 와 각자의 포지션.
+ * 전투 진형 구성 — 주인공 · 파티 동료 · 임시 NPC 와 각자의 포지션(소환수는 전투 중 소환 마법으로 나온다).
  */
 export function battleParty(state: GameState): PartyMemberInput[] {
   const pos = (id: string): Position => state.formation.positions[id] ?? defaultPositionOf(id)
   const weapon = state.player.equipped.weapon ? itemById(state.player.equipped.weapon)?.weaponElement : undefined
   const hero = combatantFromPlayer(state.player, battleStats(state), weapon)
-  const heroPet = petDefById(state.pet.defId) ? combatantFromPet(state.pet, 'hero') : null
-  const members: PartyMemberInput[] = [{ combatant: hero, position: pos('hero'), pet: heroPet }]
+  const members: PartyMemberInput[] = [{ combatant: hero, position: pos('hero') }]
   for (const id of state.companions.party.slice(0, COMPANION_SLOTS)) {
     const def = schoolNpcById(id)
     const prog = state.companions.recruited[id]
@@ -895,14 +960,8 @@ export function afterBattleVictory(state: GameState, battle: BattleState): GameS
   }
   if (levelUps.length) next = { ...next, toast: joinToast(next.toast, `동료 레벨 업! ${levelUps.join(', ')}`) }
 
-  // 펫 경험치 — 이번 전투에 참가한 펫(전위 주인) 각각 1인 몫(나누는 인원에는 포함되지 않음)
-  for (const pc of battle.combatants.filter((c) => c.kind === 'pet')) {
-    const owned = next.ownedPets.find((p) => p.defId === pc.refId)
-    if (!owned) continue
-    const r = applyExp(owned.level, owned.exp, share)
-    const upd = { ...owned, level: r.newLevel, exp: r.newExp, hp: Math.max(1, pc.hp), mp: pc.mp }
-    next = { ...next, ownedPets: next.ownedPets.map((p) => (p.defId === upd.defId ? upd : p)), pet: next.pet.defId === upd.defId ? { ...next.pet, level: upd.level, exp: upd.exp } : next.pet }
-  }
+  // 스킬 숙련도 — 주인공이 이번 전투에서 쓴 스킬
+  next = applySkillUses(next, battle)
 
   // 사냥 부산물
   let inventory = next.inventory
@@ -931,11 +990,11 @@ export function afterBattleVictory(state: GameState, battle: BattleState): GameS
 }
 
 export function afterBattleDefeat(state: GameState, battle: BattleState): GameState {
-  const next = syncCompanionsFromBattle(state, battle, 0.2)
+  const next = applySkillUses(syncCompanionsFromBattle(state, battle, 0.2), battle)
   const mealBuff = next.mealBuff && next.mealBuff.battlesLeft > 1 ? { ...next.mealBuff, battlesLeft: next.mealBuff.battlesLeft - 1 } : null
   return { ...next, mealBuff }
 }
 
 export function afterBattleFled(state: GameState, battle: BattleState | null): GameState {
-  return battle ? syncCompanionsFromBattle(state, battle) : state
+  return battle ? applySkillUses(syncCompanionsFromBattle(state, battle), battle) : state
 }

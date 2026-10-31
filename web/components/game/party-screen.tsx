@@ -5,7 +5,9 @@ import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Bar, GameWindow, HeadPill, menuIcon, Ribbon } from '@/components/game/game-window'
 import { countPositions, expSharePerMember, FORMATION_LIMITS, MAX_GUESTS, MAX_PARTY_SIZE, POSITION_META, POSITIONS } from '@/lib/constants'
-import { AFFECTION_TIER_META, affectionTier, petDefById, petStatsForLevel } from '@/lib/pets'
+import { skillById } from '@/lib/mock-data'
+import { masteryOf } from '@/lib/skill-mastery'
+import { SUMMON_SLOT_SIZE } from '@/lib/constants'
 import { canRecruit, COMBAT_NPCS, COMPANION_SLOTS, companionStats, guestNpcById, guestStats, schoolNpcById, type SchoolNpc } from '@/lib/companions'
 import { expRequiredForLevel } from '@/lib/exp-table'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
@@ -36,38 +38,16 @@ function PositionPicker({ memberId, value }: { memberId: string; value: Position
   )
 }
 
-/** 주인공 펫 선택 — 펫은 주인공만 데리고 다니고, 포지션과 무관하게 고정 펫 칸에서 함께 싸운다 */
-function PetPicker() {
-  const { state, dispatch } = useGame()
-  return (
-    <select
-      className="w-full rounded border border-[#c8b48a] bg-white/70 px-1.5 py-1 text-[11.5px]"
-      value={state.pet.defId}
-      onChange={(e) => dispatch({ type: 'SET_MEMBER_PET', memberId: 'hero', defId: e.target.value || null })}
-    >
-      {state.ownedPets.map((p) =>
-        petDefById(p.defId) ? (
-          <option key={p.defId} value={p.defId}>
-            🐾 {p.nickname} Lv.{p.level}
-          </option>
-        ) : null,
-      )}
-    </select>
-  )
-}
-
 export function PartyScreen() {
   const { state, dispatch } = useGame()
   const [swapSlot, setSwapSlot] = useState<number | null>(null)
   if (state.screen !== 'party') return null
   const close = () => dispatch({ type: 'SET_SCREEN', screen: 'world' })
 
-  const { player, pet, companions, formation } = state
+  const { player, companions, formation } = state
   const guests = companions.guests ?? []
   const pos = (id: string): Position => formation.positions[id] ?? 'rear'
-  const petDef = petDefById(pet.defId)
-  const petStats = petDef ? petStatsForLevel(petDef, pet.level) : null
-  const petTierMeta = AFFECTION_TIER_META[affectionTier(pet.affection)]
+  const summons = player.summonSkills ?? []
   const partyCount = 1 + companions.party.length
   const bench = Object.keys(companions.recruited).filter((id) => !companions.party.includes(id))
   // 진형 6칸 사용 현황(파티 + 임시 NPC)
@@ -85,7 +65,7 @@ export function PartyScreen() {
         <span>
           {partyCount === 1 ? '단독 전투 — 경험치 100% 획득 (성장 빠름 · 전투 어려움)' : `${partyCount}인 파티 — 1인당 ${sharePct}% (전투 안정 · 성장 더딤)`}
         </span>
-        <span className="opacity-60">1인 100% · 2인 55% · 3인 40% · 4인 32.5% / 펫은 1인 몫을 따로 받음</span>
+        <span className="opacity-60">1인 100% · 2인 55% · 3인 40% · 4인 32.5%</span>
       </div>
 
       {/* 핵심 전투원 — 주인공 + 동료 최대 3 */}
@@ -98,7 +78,6 @@ export function PartyScreen() {
           <div className="text-[10px] opacity-70">Lv.{player.level} · 주인공</div>
           <Bars hp={player.hp / player.stats.maxHp} mp={player.mp / player.stats.maxMp} exp={player.exp / expRequiredForLevel(player.level)} />
           <PositionPicker memberId="hero" value={pos('hero')} />
-          <PetPicker />
         </div>
 
         {Array.from({ length: Math.max(0, COMPANION_SLOTS - guests.length) }).map((_, i) => {
@@ -142,47 +121,43 @@ export function PartyScreen() {
             </div>
           )
         })}
-      </div>
-
-      {/* 펫 고정 슬롯 + 임시 합류 NPC 2칸 */}
-      <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        <div className="gw-panel flex items-center gap-2 p-2.5">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-black/15">
-            {petDef && <Image src={petDef.icon} alt="" width={28} height={28} />}
-          </div>
-          <div className="min-w-0 text-xs">
-            <div className="font-semibold">주인공 펫 {petDef ? `· ${pet.nickname}` : '없음'}</div>
-            <div className="text-[10px] opacity-70">펫은 주인공 전용 고정 칸 — 주인공 포지션과 무관하게 항상 함께 싸움</div>
-          </div>
-        </div>
-        {Array.from({ length: MAX_GUESTS }).map((_, i) => {
-          const g = guests[i]
-          const def = g ? guestNpcById(g.id) : undefined
-          if (!g || !def) {
-            return (
-              <div key={i} className="flex items-center justify-center rounded-lg border border-dashed border-violet-400/40 p-2.5 text-center text-[10px] text-white/50">
-                임시 합류 자리 — 호위 임무 NPC · 임시 동행 NPC
-              </div>
-            )
-          }
+        {/* 임시 합류 NPC(호위·동행) — 동료 자리 하나를 대신 쓴다 */}
+        {guests.map((g) => {
+          const def = guestNpcById(g.id)
+          if (!def) return null
           const s = guestStats(def, g.level)
           return (
-            <div key={i} className="gw-panel flex items-center gap-2 p-2.5 ring-1 ring-violet-400/60">
-              <div className="flex h-12 w-10 shrink-0 items-end justify-center overflow-hidden">
-                <HeroSprite sheet={def.sprite} dir="down" px={44} />
+            <div key={g.id} className="gw-panel party-card ring-1 ring-violet-400/60">
+              <div className="flex h-14 items-end justify-center overflow-hidden">
+                <HeroSprite sheet={def.sprite} dir="down" px={56} />
               </div>
-              <div className="min-w-0 flex-1 text-xs">
-                <div className="flex items-center gap-1 font-semibold">
-                  {def.name}
-                  <span className="rounded bg-violet-900/60 px-1 text-[9px] text-violet-100">{def.role === 'escort' ? '호위' : '동행'}</span>
-                </div>
-                <div className="text-[10px] opacity-70">Lv.{g.level} · 자동 행동 · 경험치 분배 제외</div>
-                <Bars hp={g.hp / s.maxHp} mp={g.mp / s.maxMp} />
-                <div className="mt-1">
-                  <PositionPicker memberId={def.id} value={pos(def.id)} />
-                </div>
+              <div className="text-center text-xs font-semibold">
+                {def.name} <span className="rounded bg-violet-900/60 px-1 text-[9px] text-violet-100">{def.role === 'escort' ? '호위' : '동행'}</span>
               </div>
+              <div className="text-[10px] opacity-70">Lv.{g.level} · 자동 행동</div>
+              <Bars hp={g.hp / s.maxHp} mp={g.mp / s.maxMp} />
+              <PositionPicker memberId={def.id} value={pos(def.id)} />
             </div>
+          )
+        })}
+      </div>
+
+      {/* 소환 마법 칸 4개(옛 펫 고정 칸 · 예비 전력 칸 폐지, 2026-10-31) — 전투에서 소환수가 2~3턴 함께 싸운다 */}
+      <div className="party-summon-row mt-2.5">
+        <span className="party-summon-label">소환 마법</span>
+        {Array.from({ length: SUMMON_SLOT_SIZE }).map((_, i) => {
+          const sk = summons[i] ? skillById(summons[i]) : undefined
+          return (
+            <button
+              key={i}
+              type="button"
+              className={`party-summon-slot ${sk ? '' : 'is-empty'}`}
+              title={sk ? `${sk.name} — 숙련도 Lv.${masteryOf(player, sk.id).lv}` : '빈 소환 칸 — 마법 창에서 넣기'}
+              onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'magic' })}
+            >
+              {sk ? <Image src={sk.icon} alt={sk.name} width={30} height={30} unoptimized /> : <span>+</span>}
+              {sk && <em>Lv.{masteryOf(player, sk.id).lv}</em>}
+            </button>
           )
         })}
       </div>
@@ -199,34 +174,8 @@ export function PartyScreen() {
         ))}
       </div>
 
-      {/* 주인공 펫 선택 */}
-      <div className="mt-3 mb-1.5 text-[13px] font-display text-[#f3e6c2]">보유 펫 — 주인공 펫 선택</div>
-      <div className="flex flex-wrap gap-2">
-        {state.ownedPets.map((p) => {
-          const d = petDefById(p.defId)
-          if (!d) return null
-          const active = p.defId === pet.defId
-          return (
-            <button
-              key={p.defId}
-              onClick={() => dispatch({ type: 'SET_ACTIVE_PET', defId: p.defId })}
-              className={`gw-panel flex items-center gap-1.5 px-2 py-1 text-[11px] ${active ? 'ring-2 ring-gold' : 'opacity-75'}`}
-            >
-              <Image src={d.icon} alt="" width={20} height={20} />
-              {p.nickname} Lv.{p.level}
-              {active && <span className="text-[9px]">({AFFECTION_TIER_META[affectionTier(p.affection)].label})</span>}
-            </button>
-          )
-        })}
-      </div>
-      {petDef && petStats && (
-        <div className="mt-1 text-[10px] text-muted-foreground">
-          {pet.nickname}: {petDef.species} · HP {pet.hp}/{petStats.maxHp} · 애정도 {pet.affection}% ({petTierMeta.label})
-        </div>
-      )}
-
       <p className="gw-note mt-3">
-        진형은 전위 2 · 후위 2 · 보조 2, 총 6자리 중 최대 4인(주인공 + 3)이 골라 섭니다. 펫은 주인공만 데리고 다니며, 주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸웁니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
+        진형은 전위 2 · 후위 2 · 보조 2, 총 6자리 중 최대 4인(주인공 + 3)이 골라 섭니다. 소환수는 따로 데리고 다니지 않고, 소환 마법 칸에 넣은 마법으로 전투 중에 불러 2~3턴 함께 싸웁니다. 호위 임무·임시 동행 NPC가 합류하면 동료 자리 하나를 대신 씁니다.
         동료는 전투에서 직접 조작하며(전투 화면 &lsquo;동료 수동/자동&rsquo;), 각자 레벨이 있어 승리 경험치를 나눠 받습니다. 동료를 모두 빼고 혼자 다닐 수도 있습니다. 합류 조건은 임시값입니다.
       </p>
       </section>

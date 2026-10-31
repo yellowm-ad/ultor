@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { BattleFx, Element } from '@/lib/types'
 import { fxTier, skillMotion, type MotionTier } from '@/lib/skill-motion'
+import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxLayer } from '@/lib/skill-vfx'
 
 /** 연출 색 키 — 속성 없음(null)은 'none' */
 type FxKey = Element | 'none'
@@ -121,11 +122,14 @@ export function SkillFxLayer({
   posOf,
   groundOf,
   speed = 1,
+  vfxScale = 1,
 }: {
   fx: BattleFx | undefined
   posOf: (uid: string) => FxPos | undefined
   groundOf?: (uid: string) => FxPos | undefined
   speed?: 1 | 2
+  /** 도트 애니메이션 크기 배율 — 마법 창 미리보기처럼 작은 무대에서 줄인다 */
+  vfxScale?: number
 }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState<FxBox>({ w: 0, h: 0 })
@@ -140,7 +144,7 @@ export function SkillFxLayer({
   }, [])
   return (
     <div ref={boxRef} className="pointer-events-none absolute inset-0 z-30" aria-hidden>
-      {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} stage={boxRef} />}
+      {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} stage={boxRef} vfxScale={vfxScale} />}
     </div>
   )
 }
@@ -152,6 +156,7 @@ function FxScene({
   speed,
   box,
   stage,
+  vfxScale,
 }: {
   fx: BattleFx
   posOf: (uid: string) => FxPos | undefined
@@ -159,6 +164,7 @@ function FxScene({
   speed: 1 | 2
   box: FxBox
   stage: React.RefObject<HTMLDivElement | null>
+  vfxScale: number
 }) {
   const m = skillMotion(fx, speed)
   const fxKey: FxKey = fx.element ?? 'none'
@@ -181,8 +187,11 @@ function FxScene({
   const supportCol =
     fx.archetype === 'heal' ? { a: '#8fe89a', b: '#f2fff0' } : col
   const hits = fx.archetype === 'magicAttack' || fx.archetype === 'attack'
+  // 스킬별 도트 애니메이션(lib/skill-vfx) — 있으면 절차형 공격·지원 연출 대신 이걸 재생한다
+  const custom = skillVfx(fx.skillId)
+  const k = speed === 2 ? 0.5 : 1
   // 타격감 — 맞는 순간마다 전장이 짧게 흔들린다(첫 타·궁극기 마무리는 크게). 전장(battle-stage)의 큰 흔들림(tier3+)과 겹치지 않게 작은 것만
-  useShakes(stage, hits ? waves.map((w) => ({ at: waveAt(w), px: w === 0 ? 2 + tier : 1.5 + tier * 0.5 })) : [])
+  useShakes(stage, custom ? (custom.shakes ?? []).map((x) => ({ at: x.at * k, px: x.px })) : hits ? waves.map((w) => ({ at: waveAt(w), px: w === 0 ? 2 + tier : 1.5 + tier * 0.5 })) : [])
 
   return (
     <>
@@ -219,8 +228,10 @@ function FxScene({
         </>
       )}
 
+      {custom && <PixelVfx vfx={custom} k={k} box={box} sizeScale={vfxScale} sourcePos={sourcePos} sourceGround={sourceGround} targets={targets} center={center} />}
+
       {/* ── 공격 마법 ── */}
-      {fx.archetype === 'magicAttack' && (
+      {!custom && fx.archetype === 'magicAttack' && (
         <>
           {(m.style === 'quick' || m.style === 'bolt') &&
             sourcePos &&
@@ -319,7 +330,7 @@ function FxScene({
         </>
       )}
 
-      {fx.archetype === 'attack' &&
+      {!custom && fx.archetype === 'attack' &&
         targetPositions.map((tp, i) => (
           <span key={i}>
             <SlashImpact pos={tp} color={col} scale={scale} tier={tier} delay={m.impactMs - 120 + i * 50} />
@@ -327,13 +338,13 @@ function FxScene({
           </span>
         ))}
 
-      {fx.archetype === 'debuff' &&
+      {!custom && fx.archetype === 'debuff' &&
         targetPositions.flatMap((tp, i) => waves.map((w) => <DebuffCloud key={`${i}-${w}`} pos={tp} color={col} scale={scale} tier={tier} delay={waveAt(w) - 150 + i * 80} />))}
 
-      {fx.archetype === 'heal' &&
+      {!custom && fx.archetype === 'heal' &&
         targetPositions.flatMap((tp, i) => waves.map((w) => <HealGlow key={`${i}-${w}`} pos={tp} color={col} scale={scale} tier={tier} delay={waveAt(w) - 150 + i * 70} />))}
 
-      {fx.archetype === 'buff' &&
+      {!custom && fx.archetype === 'buff' &&
         targetPositions.flatMap((tp, i) => waves.map((w) => <BuffRing key={`${i}-${w}`} pos={tp} color={col} tier={tier} delay={waveAt(w) - 150 + i * 70} />))}
 
       {fx.archetype === 'utility' && targetPositions.map((tp, i) => <UtilityPulse key={i} pos={tp} tier={tier} delay={m.impactMs - 120} />)}
@@ -352,7 +363,7 @@ function FxScene({
         ))}
 
       {/* 전체 대상(aoe) 강한 스킬 — 화면 전체를 살짝 물들이는 플래시 */}
-      {fx.aoe && fx.power >= 2 && (
+      {!custom && fx.aoe && fx.power >= 2 && (
         <div
           className="fx-screen-flash absolute inset-0"
           style={{ background: `radial-gradient(circle at 50% 45%, ${col.a}55, transparent 68%)`, animationDelay: `${m.impactMs}ms` }}
@@ -371,6 +382,111 @@ function FxScene({
       )}
     </>
   )
+}
+
+/**
+ * 스킬별 도트 애니메이션 — 64×64 · 16프레임 가로 띠를 레이어마다 위치·크기·시각에 맞춰 재생한다.
+ * 위치는 전장 대비 %(FxPos), 크기는 px. screen 레이어는 전장 가로 폭 × size 로 키워 화면을 덮는다.
+ */
+function PixelVfx({
+  vfx,
+  k,
+  box,
+  sizeScale,
+  sourcePos,
+  sourceGround,
+  targets,
+  center,
+}: {
+  vfx: SkillVfx
+  k: number
+  box: FxBox
+  sizeScale: number
+  sourcePos?: FxPos
+  sourceGround?: FxPos
+  targets: { pos: FxPos; ground: FxPos }[]
+  center?: FxPos
+}) {
+  const out: React.ReactNode[] = []
+  vfx.layers.forEach((layer, li) => {
+    const anchors: { pos: FxPos; to?: FxPos }[] =
+      layer.at === 'caster' ? (sourcePos ? [{ pos: sourcePos }] : [])
+      : layer.at === 'casterGround' ? (sourceGround ? [{ pos: sourceGround }] : [])
+      : layer.at === 'target' ? targets.map((t) => ({ pos: t.pos }))
+      : layer.at === 'targetGround' ? targets.map((t) => ({ pos: t.ground }))
+      : layer.at === 'center' ? (center ? [{ pos: center }] : [])
+      : layer.at === 'screen' ? screenTiles(box, layer.size * sizeScale)
+      : sourcePos ? targets.map((t) => ({ pos: sourcePos, to: t.pos })) : []
+    const copies = layer.scatter ? layer.scatter.count + 1 : 1
+    anchors.forEach((a, ai) => {
+      for (let c = 0; c < copies; c++) {
+        // 흩뿌림 — 결정적(같은 스킬은 같은 배치) 의사난수
+        const r1 = c ? Math.sin((li + 1) * 12.9898 + c * 78.233 + ai * 3.1) : 0
+        const r2 = c ? Math.sin((li + 1) * 39.346 + c * 11.135 + ai * 7.7) : 0
+        const sx = layer.scatter ? r1 * layer.scatter.spreadX : 0
+        const sy = layer.scatter ? r2 * layer.scatter.spreadY : 0
+        const jitter = layer.scatter && c ? Math.abs(Math.sin(c * 4.7 + li)) * layer.scatter.jitterMs : 0
+        out.push(
+          <PixelVfxSprite
+            key={`${li}-${ai}-${c}`}
+            layer={layer}
+            box={box}
+            pos={a.pos}
+            to={a.to}
+            offset={{ x: ((layer.dx ?? 0) + sx) * sizeScale, y: ((layer.dy ?? 0) + sy) * sizeScale }}
+            startMs={(layer.startMs + jitter + (layer.at === 'screen' ? (ai % 5) * 45 : ai * 70)) * k}
+            k={k}
+            scale={(c ? 0.78 : 1) * sizeScale}
+          />,
+        )
+      }
+    })
+  })
+  return <>{out}</>
+}
+
+/**
+ * 화면 전체 레이어 — 한 장을 크게 키우면 도트가 뭉툭해지므로, 이 크기 그대로 전장을 덮도록 격자로 깐다(줄마다 반 칸 어긋나게).
+ */
+function screenTiles(box: FxBox, px: number): { pos: FxPos }[] {
+  if (!box.w || !box.h || px <= 0) return [{ pos: { left: 50, top: 50 } }]
+  const step = px * 0.72
+  const cols = Math.ceil(box.w / step) + 1
+  const rows = Math.ceil(box.h / step) + 1
+  const out: { pos: FxPos }[] = []
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) out.push({ pos: { left: ((c * step + (r % 2 ? step / 2 : 0)) / box.w) * 100, top: ((r * step + step * 0.3) / box.h) * 100 } })
+  return out
+}
+
+function PixelVfxSprite({ layer, box, pos, to, offset, startMs, k, scale }: { layer: VfxLayer; box: FxBox; pos: FxPos; to?: FxPos; offset: { x: number; y: number }; startMs: number; k: number; scale: number }) {
+  const px = Math.round(layer.size * scale)
+  const cycle = layer.cycleMs * k
+  const repeat = layer.repeat ?? 1
+  const travel = to ? { x: ((to.left - pos.left) / 100) * box.w, y: ((to.top - pos.top) / 100) * box.h } : null
+  const style: CSSProperties = {
+    left: `${pos.left}%`,
+    top: `${pos.top}%`,
+    width: px,
+    height: px,
+    marginLeft: -px / 2 + offset.x,
+    marginTop: -px / 2 + offset.y,
+    backgroundImage: `url(${vfxSheet(layer.sheet)})`,
+    backgroundSize: `${px * VFX_FRAMES}px ${px}px`,
+    transform: layer.flip ? 'scaleX(-1)' : undefined,
+    mixBlendMode: layer.blend === 'screen' ? 'screen' : undefined,
+    opacity: layer.opacity,
+    zIndex: 10 + (layer.z ?? 0),
+    ['--vfx-w' as string]: `${px * VFX_FRAMES}px`,
+    ['--vfx-tx' as string]: `${travel?.x ?? 0}px`,
+    ['--vfx-ty' as string]: `${travel?.y ?? 0}px`,
+    animation: [
+      `vfx-strip ${cycle}ms steps(${VFX_FRAMES}) ${startMs}ms ${repeat} both`,
+      `vfx-life ${cycle * repeat}ms linear ${startMs}ms forwards`,
+      ...(travel ? [`vfx-travel ${cycle * repeat}ms cubic-bezier(.35,0,.75,1) ${startMs}ms both`] : []),
+    ].join(', '),
+  }
+  return <div className="vfx-sprite absolute" style={style} />
 }
 
 /** 맞는 순간마다 전장을 짧게 흔든다 — Web Animations(합성 단계 transform)라 다시 그리기 없음 */

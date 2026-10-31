@@ -11,7 +11,8 @@ import { itemById } from '@/lib/mock-data'
 import { schoolNpcById } from '@/lib/companions'
 import { SlotSparkle } from '@/components/game/inventory-icons'
 import { Divider, GameWindow, menuIcon } from '@/components/game/game-window'
-import type { ItemDef, ItemRarity, ItemType, StatKey } from '@/lib/types'
+import type { GearMods, ItemDef, ItemRarity, ItemType, StatKey } from '@/lib/types'
+import { gearOf, gearTotalBonus, isEnhanceable, STAT_SHORT } from '@/lib/gear-enhance'
 
 type TabId = ItemType | 'all'
 
@@ -22,7 +23,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'accessory', label: '장신구' },
   { id: 'potion', label: '물약' },
   { id: 'tool', label: '도구' },
-  { id: 'feed', label: '먹이' },
+  { id: 'scroll', label: '스크롤' },
   { id: 'material', label: '재료' },
   // 생활 콘텐츠 — 요리/어획물/가구·코스튬(가구 탭에 함께)
   { id: 'food', label: '요리' },
@@ -39,7 +40,7 @@ const TYPE_LABEL: Record<ItemType, string> = {
   accessory: '장신구',
   potion: '물약',
   tool: '도구',
-  feed: '펫 먹이',
+  scroll: '숙련 스크롤',
   material: '재료',
   food: '요리',
   fish: '물고기',
@@ -73,7 +74,7 @@ const COLS = 6
 const inTab = (item: ItemDef, tab: TabId) => tab === 'all' || item.type === tab || !!TAB_ALSO[tab]?.includes(item.type)
 
 /** 상세 패널의 수치 줄(회복량·스탯 보너스·요구 레벨 등) */
-function detailLines(item: ItemDef): [string, string][] {
+function detailLines(item: ItemDef, mods?: GearMods): [string, string][] {
   const out: [string, string][] = []
   const u = item.useEffect
   if (u?.healHp) out.push(['HP 회복', `${u.healHp}`])
@@ -81,11 +82,14 @@ function detailLines(item: ItemDef): [string, string][] {
   if (u?.reviveOnly) out.push(['효과', '전투불능 부활'])
   if (u?.cureStatus) out.push(['효과', '상태이상 해제'])
   if (u?.escapeBattle) out.push(['효과', '전투 이탈'])
-  if (u?.petAffection) out.push(['펫 호감도', `+${u.petAffection}`])
+  if (u?.masteryXp) out.push(['스킬 숙련', `+${u.masteryXp}${item.scrollElement ? '' : ' (아무 스킬)'}`])
   if (u?.grantExp) out.push(['경험치', `+${u.grantExp}`])
-  for (const [k, v] of Object.entries(item.statBonus ?? {}) as [StatKey, number][]) {
+  // 장비는 강화·잠재력이 반영된 값
+  const bonus = mods && isEnhanceable(item) ? gearTotalBonus(item, mods) : item.statBonus ?? {}
+  for (const [k, v] of Object.entries(bonus) as [StatKey, number][]) {
     if (v) out.push([STAT_LABEL[k], `${v > 0 ? '+' : ''}${v}`])
   }
+  if (mods && mods.pot.length) out.push(['잠재력', mods.pot.map((p) => `${STAT_SHORT[p.stat]} +${p.value}`).join(' · ')])
   if (item.statusResist) out.push(['상태이상 저항', `${item.statusResist}%`])
   if (item.mealBuff) out.push(['식사 효과', `${item.mealBuff.battles}전투 지속`])
   if (item.requiredLevel) out.push(['요구 레벨', `Lv.${item.requiredLevel}`])
@@ -186,6 +190,7 @@ export function InventoryScreen() {
                   >
                     <Image src={cell.item.icon} alt={cell.item.name} width={44} height={44} className="inv-slot-icon" />
                     {cell.slot.qty > 1 && <span className="inv-qty">{cell.slot.qty}</span>}
+                    {gearOf(state.player.gear, cell.item.id).enh > 0 && <span className="inv-enh">+{gearOf(state.player.gear, cell.item.id).enh}</span>}
                   </button>
                 ) : (
                   <div key={`empty-${i}`} className="inv-slot is-empty" aria-hidden>
@@ -209,7 +214,10 @@ export function InventoryScreen() {
                     <Image src={selectedItem.icon} alt={selectedItem.name} width={64} height={64} />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="inv-detail-name">{selectedItem.name}</h3>
+                    <h3 className="inv-detail-name">
+                      {selectedItem.name}
+                      {gearOf(state.player.gear, selectedItem.id).enh > 0 && <span className="gear-enh-tag">+{gearOf(state.player.gear, selectedItem.id).enh}</span>}
+                    </h3>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <span className="gw-pill">{selectedItem.rarity ? `${RARITY_LABEL[selectedItem.rarity]} ${TYPE_LABEL[selectedItem.type]}` : TYPE_LABEL[selectedItem.type]}</span>
                       <span className="gw-pill is-soft">보유 {selectedSlot?.qty ?? 0}개</span>
@@ -217,9 +225,9 @@ export function InventoryScreen() {
                   </div>
                 </div>
 
-                {detailLines(selectedItem).length > 0 && (
+                {detailLines(selectedItem, gearOf(state.player.gear, selectedItem.id)).length > 0 && (
                   <dl className="inv-detail-lines">
-                    {detailLines(selectedItem).map(([k, v], i) => (
+                    {detailLines(selectedItem, gearOf(state.player.gear, selectedItem.id)).map(([k, v], i) => (
                       <div key={`${k}-${i}`}>
                         <dt>{k}</dt>
                         <dd>{v}</dd>
@@ -269,9 +277,9 @@ export function InventoryScreen() {
                         먹기
                       </button>
                     )}
-                    {selectedItem.type === 'feed' && (
-                      <button type="button" className="gw-btn is-gold" onClick={() => dispatch({ type: 'USE_ITEM_FIELD', itemId: selectedItem.id })}>
-                        먹이 주기
+                    {selectedItem.type === 'scroll' && (
+                      <button type="button" className="gw-btn is-gold" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'magic' })}>
+                        마법 창에서 읽기
                       </button>
                     )}
                     <button type="button" className="gw-btn" onClick={() => dispatch({ type: 'SELL_ITEM', itemId: selectedItem.id })}>

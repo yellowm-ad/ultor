@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { SKILLS, MONSTERS, NPCS, itemById } from '@/lib/mock-data'
-import { PET_DEFS } from '@/lib/pets'
 import { GUEST_NPCS } from '@/lib/companions'
 import { MINIGAME_META } from '@/lib/curriculum'
 import { POSITION_META } from '@/lib/constants'
@@ -49,7 +48,7 @@ const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[nu
   { key: 'pet', label: '펫 스킬(습득 불가)', filter: (s) => s.owner === 'pet' },
 ]
 
-type Section = 'char' | 'skills' | 'items' | 'pets' | 'school' | 'story' | 'obj' | 'room' | null
+type Section = 'char' | 'skills' | 'items' | 'school' | 'story' | 'obj' | 'room' | null
 
 /** 컷신·연출 동작이 들어 있는 스토리 장면 — 관리자 '컷신' 탭에서 바로 재생 */
 const CUT_BEATS = STORY_BEATS.filter((b) => b.lines.some((l) => l.cut || l.anim))
@@ -111,7 +110,7 @@ export function AdminPanel() {
           HP {state.player.hp}/{state.player.stats.maxHp} · MP {state.player.mp}/{state.player.stats.maxMp} · Gold{' '}
           {state.player.gold}
         </div>
-        <div>스킬 {state.player.learnedSkills.length}개(장착 {state.player.equippedSkills.length}) · 펫 {state.ownedPets.length}마리 · 맵 {state.currentMapId}</div>
+        <div>스킬 {state.player.learnedSkills.length}개(장착 {state.player.equippedSkills.length}) · 소환 {(state.player.summonSkills ?? []).length}칸 · 맵 {state.currentMapId}</div>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-gold/20 px-2 py-1.5">
@@ -120,7 +119,6 @@ export function AdminPanel() {
             ['char', '캐릭터'],
             ['skills', '스킬'],
             ['items', '아이템'],
-            ['pets', '펫'],
             ['school', '학사'],
             ['story', '컷신'],
             ['obj', '오브젝트'],
@@ -225,30 +223,6 @@ export function AdminPanel() {
           </div>
         )}
 
-        {section === 'pets' && (
-          <div className="space-y-2">
-            <Button size="sm" className="w-full" onClick={() => dispatch({ type: 'ADMIN_GRANT_ALL_PETS' })}>
-              전체 펫 {PET_DEFS.length}종 획득
-            </Button>
-            <div className="text-white/60">활성 펫: {state.pet.nickname || petName(state.pet.defId)}</div>
-            <div className="grid grid-cols-1 gap-0.5">
-              {state.ownedPets.map((p) => (
-                <div key={p.defId} className="flex items-center justify-between rounded px-1 py-0.5 odd:bg-white/5">
-                  <span className="truncate">
-                    {petName(p.defId)} Lv.{p.level}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant={state.pet.defId === p.defId ? 'default' : 'outline'}
-                    onClick={() => dispatch({ type: 'ADMIN_SET_ACTIVE_PET', defId: p.defId })}
-                  >
-                    활성화
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {section === 'school' && (
           <div className="space-y-3">
@@ -462,9 +436,6 @@ export function AdminPanel() {
   )
 }
 
-function petName(defId: string) {
-  return PET_DEFS.find((d) => d.id === defId)?.name ?? defId
-}
 
 /** 관리자 '오브젝트' 탭 — 편집 모드 켜기, 선택한 오브젝트 이동·제거, PixelLab 오브젝트 추가, 파일 저장/불러오기 */
 function ObjectEditorSection({

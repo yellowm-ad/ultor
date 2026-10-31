@@ -1,11 +1,13 @@
 'use client'
 
-// 내 정보 — 공용 GameWindow(검은 틀 + 아이보리 패널). 왼쪽 프로필 · 가운데 장비·스탯 · 오른쪽 마법 장착.
+// 내 정보 — 공용 GameWindow(검은 틀 + 아이보리 패널). 왼쪽 프로필 · 가운데 장비·스탯 · 오른쪽 장비 강화·잠재력.
+// 마법(스킬) 관리는 2026-10-31 HUD 「마법」 창(components/game/magic-screen.tsx)으로 분리했다.
 
 import { useGame } from '@/lib/game-state'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
-import { elementColor, elementLabel, POSITION_META, SKILL_LOADOUT_SIZE } from '@/lib/constants'
-import { itemById, SKILLS } from '@/lib/mock-data'
+import { POSITION_META } from '@/lib/constants'
+import { gearOf, STAT_SHORT } from '@/lib/gear-enhance'
+import { itemById } from '@/lib/mock-data'
 import { getEffectiveStats } from '@/lib/derived'
 import { expProgressPercent, expRequiredForLevel, MAX_LEVEL } from '@/lib/exp-table'
 import type { EquipSlot, StatKey } from '@/lib/types'
@@ -32,7 +34,7 @@ export function CharacterScreen() {
 
   const { player } = state
   const effStats = getEffectiveStats(player)
-  const learnedSkills = SKILLS.filter((s) => player.learnedSkills.includes(s.id))
+  const learnedCount = player.learnedSkills.length
   const heroPos = state.formation.positions.hero ?? 'front'
 
   return (
@@ -110,7 +112,7 @@ export function CharacterScreen() {
                     onClick={() => item && dispatch({ type: 'UNEQUIP_ITEM', slot })}
                     title={item ? `${item.name} — 눌러서 해제` : `${SLOT_LABELS[slot]} 없음 (가방에서 장착)`}
                   >
-                    <Slot icon={item ? item.icon : menuIcon(SLOT_ICON[slot])} label={item ? item.name : SLOT_LABELS[slot]} />
+                    <Slot icon={item ? item.icon : menuIcon(SLOT_ICON[slot])} label={item ? `${item.name}${gearOf(player.gear, item.id).enh ? ` +${gearOf(player.gear, item.id).enh}` : ''}` : SLOT_LABELS[slot]} />
                   </button>
                 )
               })}
@@ -129,32 +131,42 @@ export function CharacterScreen() {
           </div>
         </section>
 
-        {/* 마법 */}
+        {/* 장비 상세 — 강화 단계 · 잠재력(스킬은 2026-10-31 「마법」 창으로 분리) */}
         <aside className="gw-panel is-flex is-pad">
-          <Ribbon>
-            배운 마법 · 전투 장착 {player.equippedSkills.length}/{SKILL_LOADOUT_SIZE}
-          </Ribbon>
-          <p className="mb-2 text-[12px] text-[#8a7c62]">마법은 학교 수업으로 배웁니다. 눌러서 전투에 들고 갈 마법을 고르세요.</p>
-          <div className="gw-scroll is-fill flex flex-col gap-1.5 pr-1">
-            {learnedSkills.length === 0 && <div className="gw-empty">배운 마법이 없습니다.</div>}
-            {learnedSkills.map((s) => {
-              const on = player.equippedSkills.includes(s.id)
-              const locked = (s.levelRequired ?? 0) > player.level
+          <Ribbon>장비 강화 · 잠재력</Ribbon>
+          <div className="gw-scroll is-fill flex flex-col gap-2 pr-1">
+            {(['weapon', 'armor', 'accessory'] as EquipSlot[]).map((slot) => {
+              const itemId = player.equipped[slot]
+              const item = itemId ? itemById(itemId) : null
+              const m = itemId ? gearOf(player.gear, itemId) : null
               return (
-                <button
-                  key={s.id}
-                  type="button"
-                  title={`${s.description}${locked ? ` (Lv.${s.levelRequired}부터 사용 가능)` : ''}`}
-                  onClick={() => dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id })}
-                  className={`char-skill ${on ? 'is-on' : ''} ${locked ? 'is-locked' : ''}`}
-                >
-                  <span className="el" style={{ background: elementColor(s.element) }} />
-                  <span className="font-semibold text-[#2c2a33]">{s.name}</span>
-                  <span className="text-[11px] text-[#8a7c62]">{elementLabel(s.element)}</span>
-                  <span className="tag">{locked ? `Lv.${s.levelRequired}` : on ? '장착 중' : ''}</span>
-                </button>
+                <div key={slot} className="gw-box text-[12px]">
+                  <div className="flex items-center justify-between font-semibold text-[#2c2a33]">
+                    <span>{item ? item.name : `${SLOT_LABELS[slot]} 없음`}</span>
+                    {m && m.enh > 0 && <span className="gear-enh-tag">+{m.enh}</span>}
+                  </div>
+                  {m && m.pot.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {m.pot.map((p, i) => (
+                        <span key={i} className="gw-pill is-purple">
+                          {STAT_SHORT[p.stat]} +{p.value}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    item && <div className="mt-1 text-[11px] text-[#8a7c62]">잠재력 없음 — 제작대에서 강화하면 열려요</div>
+                  )}
+                </div>
               )
             })}
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" className="gw-btn is-sm flex-1" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: 'npc-workbench' })}>
+              장비 강화
+            </button>
+            <button type="button" className="gw-btn is-gold is-sm flex-1" onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'magic' })}>
+              마법 관리 ({learnedCount})
+            </button>
           </div>
         </aside>
       </div>

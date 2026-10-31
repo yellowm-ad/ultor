@@ -18,7 +18,7 @@ const ROLE_LABEL: Record<string, string> = {
   weaponMerchant: '무기 상인',
   potionMerchant: '물약 상인',
   toolMerchant: '도구 상인',
-  petTamer: '펫 조련사',
+  petTamer: '두루마리 상인',
   housing: '하우징 촌장',
   arenaMaster: '투기장장',
   guard: '경비대장',
@@ -64,7 +64,6 @@ export function DialogueScreen() {
   }
 
   const isShopkeeper = ['weaponMerchant', 'potionMerchant', 'toolMerchant'].includes(npc.role)
-  const isTamer = npc.role === 'petTamer'
   const isProfessor = npc.role === 'professor'
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'
@@ -100,7 +99,7 @@ export function DialogueScreen() {
   const lastLine = lineIdx >= lines.length - 1
 
   const favorAct = !!favor && !banter && (favor.st === 'ready' || (favor.st === 'asked' && favorHave >= favor.rule.qty))
-  const hasActions = isShopkeeper || isTamer || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct
+  const hasActions = isShopkeeper || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -128,14 +127,9 @@ export function DialogueScreen() {
                 {courseNotes.length ? `다음 수업 마법 — ${courseNotes.join(' · ')}` : '이번 학기 수업 마법은 모두 익혔거나 방학입니다.'}
               </span>
             )}
-            {(isShopkeeper || isTamer) && (
+            {isShopkeeper && (
               <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_SHOP', npcId: npc.id })}>
-                {isTamer ? '먹이 상점' : '상점 열기'}
-              </button>
-            )}
-            {isTamer && (
-              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_TAMER', npcId: npc.id })}>
-                펫 훈련
+                상점 열기
               </button>
             )}
             {isCraftStation && (

@@ -100,6 +100,7 @@ export type SkillKind =
   | 'stealth' // 어둠: 아군 은신
   | 'illusion' // 어둠: 환술
   | 'execute' // 어둠: 일반 몬스터 즉사(보스 피해 0)
+  | 'summon' // 소환 마법(옛 펫) — 소환수가 전장에 나와 몇 턴 함께 싸우고 돌아간다
 
 export interface SkillStatusRider {
   id: StatusId
@@ -129,8 +130,12 @@ export interface Skill {
   levelRequired?: number
   /** 주인공 습득 조건. 생략 = 학교 수업으로 배우지 않는 스킬(펫·몬스터·NPC 전용) */
   learnRequirements?: LearnRequirement[]
-  /** 습득 주체 — 'pet' 펫 훈련 전용, 'mors' 모르스 전용(바람). 생략 = 학생/NPC/몬스터 공용 */
+  /** 습득 주체 — 'pet' 소환수 전용(소환수가 스스로 쓰는 기술), 'mors' 모르스 전용(바람). 생략 = 학생/NPC/몬스터 공용 */
   owner?: 'pet' | 'mors'
+  /** 스킬 등급(1 하급 · 2 중급 · 3 상급 · 4 최상급) — 생략 시 lib/skill-mastery skillGrade 가 id·MP 로 가늠 */
+  grade?: 1 | 2 | 3 | 4
+  /** 소환 마법 — 불러낼 소환수(lib/pets SUMMON_DEFS id)와 기본으로 머무는 턴 */
+  summon?: { creatureId: string; turns: number }
   mpCost: number
   atbCost?: number // 사용 후 추가 ATB 차감(궁극기 후딜)
   power: number // 위력 배율
@@ -159,7 +164,7 @@ export type ItemType =
   | 'accessory'
   | 'potion'
   | 'tool'
-  | 'feed'
+  | 'scroll' // 스킬 숙련의 스크롤(옛 펫 먹이)
   | 'material'
   // 생활 콘텐츠(§학사 PRD 33~38)
   | 'food' // 요리 — 먹으면 회복 + 식사 버프
@@ -208,14 +213,15 @@ export interface ItemDef {
     escapeBattle?: boolean
     cureStatus?: boolean
     atbBoost?: number // 대상 ATB 즉시 가산
-    petAffection?: number // 펫 호감도 증가
+    /** 스킬 숙련의 스크롤 — 고른 스킬에 숙련 경험치 */
+    masteryXp?: number
     /** 마력캔디 — 먹은 캐릭터(주인공·동료)에게 경험치. 필드 전용(전투 중 사용 불가) */
     grantExp?: number
     /** 투명한 물약 — 이 초 동안 몸이 투명해져 몬스터에 닿아도 전투가 시작되지 않는다. 필드 전용 */
     invisibleSec?: number
   }
-  /** 먹이: 이 속성 펫이 좋아한다. 생략 = 모든 펫이 조금씩 좋아함 */
-  feedElement?: PlayerElement
+  /** 숙련의 스크롤: 이 속성 스킬에만 쓸 수 있다(생략 = 어떤 스킬이든) */
+  scrollElement?: PlayerElement | 'none'
   stackable: boolean
   maxStack: number
   /** 장비 성장 단계(전직 5단계와 동일 축). 소모품·재료는 생략 가능 */
@@ -239,6 +245,19 @@ export interface MealBuffDef {
   label: string
   statPct: Partial<Record<StatKey, number>> // 0.1 = +10%
   battles: number
+}
+
+/** 장비 잠재력 한 줄 */
+export interface PotentialLine {
+  stat: StatKey
+  value: number
+}
+
+/** 장비 강화 상태(lib/gear-enhance) — enh 현재 단계 · best 도달했던 최고 단계 · pot 잠재력(최대 4줄) */
+export interface GearMods {
+  enh: number
+  best: number
+  pot: PotentialLine[]
 }
 
 export interface InventorySlot {
@@ -268,8 +287,9 @@ export interface RecipeDef {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 펫 (§20~22) — 주인공 전용 고정 펫 슬롯 1칸(포지션 무관). 동료 NPC 는 펫이 없다.
-// 펫 레벨은 전투 경험치 1인 몫을 따로 받아 성장한다.
+// 소환수(옛 펫, 2026-10-31 개편) — 펫을 기르는 시스템은 폐지되고 '소환 마법'으로 편입됐다.
+// 소환 마법을 쓰면 소환수가 전장에 나와 2~3턴 함께 싸우고 돌아간다(lib/pets SUMMON_DEFS).
+// 아래 Pet/PetTrainableSkill 은 옛 세이브를 읽기 위한 형태만 남긴다.
 // ─────────────────────────────────────────────────────────────────────────────
 export type PetRarity = 'common' | 'rare' | 'special'
 
@@ -328,8 +348,12 @@ export interface Combatant {
   element: SkillElement
   /** 아군 핵심 전투원의 포지션(펫·몬스터는 없음) */
   position?: Position
-  /** 펫 — 주인 전투원 uid */
+  /** 소환수 — 주인 전투원 uid */
   ownerUid?: string
+  /** 소환수 — 남은 행동 턴(0 이 되면 돌아간다) */
+  summonTurns?: number
+  /** 스킬 숙련도(스킬 id → Lv.1~10) — 위력·MP 소모 보정 */
+  mastery?: Record<string, number>
   /** 몬스터 등급 — 즉사 판정·AI 에 사용 */
   rank?: MonsterRank
   aiProfile?: AiProfile
@@ -344,10 +368,8 @@ export interface Combatant {
   effects: ActiveEffect[]
   isTestMonster?: boolean
   traits?: MonsterTrait[]
-  /** 펫 호감도 보정: 치명타율 가산 */
+  /** 치명타율 가산 */
   bonusCrit?: number
-  /** 펫 호감도 '헌신' 지원 공격 확률 */
-  supportChance?: number
   /** 임시 합류 NPC(호위 대상 'escort' · 임시 동행 'guest') — 조작 불가 자동 행동, 경험치 분배 제외 */
   guest?: 'escort' | 'guest'
   /** 동료(ally) 외형 — 4등신 히어로 시트를 빌려 쓰거나(학생) NPC 도트를 쓴다. 적도 히어로 시트를 쓸 수 있다(폭주한 루스벨) */
@@ -723,6 +745,12 @@ export interface PlayerCharacter {
   learnedSkills: string[]
   /** 전투에 들고 가는 스킬(최대 SKILL_LOADOUT_SIZE) — learnedSkills 의 부분집합 */
   equippedSkills: string[]
+  /** 소환 마법 전용 칸(최대 SUMMON_SLOT_SIZE) — learnedSkills 의 부분집합 */
+  summonSkills?: string[]
+  /** 스킬 숙련도(lib/skill-mastery) — 없는 스킬은 Lv.1 */
+  skillMastery?: Record<string, { lv: number; xp: number }>
+  /** 장비 강화 상태(lib/gear-enhance) — 장비 id → 강화 단계·잠재력 */
+  gear?: Record<string, GearMods>
 }
 
 export interface BattleLogEntry {
@@ -744,6 +772,8 @@ export interface BattleFx {
   mpCost?: number // 연출 등급(tier) 산정 근거 — 클수록 더 화려하고 광범위한 연출
   /** 스킬 이름 — 궁극기 연출에서 화면에 띄운다 */
   skillName?: string
+  /** 스킬 id — 스킬별 도트 애니메이션(lib/skill-vfx)을 찾는다 */
+  skillId?: string
   /** 물리 기술 — 기를 모으지 않고 바로 친다 */
   physical?: boolean
 }
@@ -760,15 +790,15 @@ export interface BattleState {
   originCell: { x: number; y: number }
   fieldMonsterUid?: string
   rewardExp?: number
-  /** 경험치 분배 — 핵심 전투원(주인공+동료) 1인당 몫. 펫도 같은 몫을 따로 받는다 */
+  /** 경험치 분배 — 핵심 전투원(주인공+동료) 1인당 몫 */
   rewardExpShare?: number
   rewardGold?: number
   rewardDrops?: string[]
   leveledUp?: boolean
   /** 자동 전투 — 켜면 주인공·동료 모두 AI 가 행동 */
   auto?: boolean
-  /** 이번 전투의 펫 귀속(주인공 펫 고정 슬롯) */
-  petLinks?: PetLink[]
+  /** 주인공이 이번 전투에서 쓴 스킬 횟수 — 끝나면 숙련 경험치로 바뀐다 */
+  skillUses?: Record<string, number>
   /** 사냥 활동 해금 여부 — 승리 시 계통별 부산물(huntDrops)을 추가로 굴린다 */
   huntEnabled?: boolean
   huntDrops?: string[]
@@ -787,7 +817,7 @@ export type ScreenId =
   | 'character'
   | 'party'
   | 'shop'
-  | 'tamer'
+  | 'magic' // 마법 — 배운 스킬·숙련도·장착·소환 칸 관리
   | 'settings'
   | 'dialogue'
   | 'craft'
@@ -813,8 +843,9 @@ export interface GameState {
   screen: ScreenId
   previousScreen: ScreenId
   player: PlayerCharacter
-  pet: Pet
-  ownedPets: Pet[] // 보유 펫 도감(활성 펫 포함)
+  /** 옛 펫 시스템(폐지) — 옛 세이브에만 있다. 불러올 때 소환 마법으로 바뀐다(lib/save) */
+  pet?: Pet
+  ownedPets?: Pet[]
   position: { x: number; y: number }
   facing: Facing
   currentMapId: MapId
@@ -979,6 +1010,8 @@ export interface ClassSceneState {
   alert?: boolean
   seed: number
   returnTo: { mapId: MapId; position: { x: number; y: number } }
+  /** 실습 주제 스킬(이 수업이 깊게 다루는 배운 스킬) — 끝나면 숙련도가 오른다 */
+  topicSkillId?: string
   /** 결과창 표시용(정산 후 채움) */
   result?: { score: number; grade: ClassResultRec['grade']; lines: string[] }
 }
@@ -1037,8 +1070,6 @@ export interface GuestMember {
 /** 진형 — key 는 'hero' 또는 학교 NPC id */
 export interface FormationState {
   positions: Record<string, Position>
-  /** 전위 동료에게 붙인 펫(동료 id → 보유 펫 defId). 주인공 펫은 state.pet(전위일 때만 동행) — 통합 PRD §26 */
-  pets?: Record<string, string>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

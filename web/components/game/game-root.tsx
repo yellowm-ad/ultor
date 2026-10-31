@@ -18,7 +18,7 @@ import { ShopScreen } from '@/components/game/shop-screen'
 import { InventoryScreen } from '@/components/game/inventory-screen'
 import { CharacterScreen } from '@/components/game/character-screen'
 import { PartyScreen } from '@/components/game/party-screen'
-import { TamerScreen } from '@/components/game/tamer-screen'
+import { MagicScreen } from '@/components/game/magic-screen'
 import { SettingsScreen } from '@/components/game/settings-screen'
 import { CraftScreen } from '@/components/game/craft-screen'
 import { WorldMapScreen } from '@/components/game/world-map-screen'
@@ -44,7 +44,7 @@ const CLOSABLE_WITH_ESC = new Set<ScreenId>([
   'character',
   'party',
   'shop',
-  'tamer',
+  'magic',
   'settings',
   'craft',
   'worldmap',
@@ -123,7 +123,7 @@ function GameShell() {
       {state.screen === 'shop' && <ShopScreen />}
       {state.screen === 'character' && <CharacterScreen />}
       {state.screen === 'party' && <PartyScreen />}
-      {state.screen === 'tamer' && <TamerScreen />}
+      {state.screen === 'magic' && <MagicScreen />}
       {state.screen === 'craft' && <CraftScreen />}
       {state.screen === 'settings' && <SettingsScreen />}
       {state.screen === 'worldmap' && <WorldMapScreen />}

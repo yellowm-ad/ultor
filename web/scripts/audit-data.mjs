@@ -34,7 +34,7 @@ dup('아이템', ITEMS)
 dup('몬스터', MONSTERS)
 dup('NPC', NPCS)
 dup('레시피', RECIPES)
-dup('펫', PET_DEFS)
+dup('소환수', PET_DEFS)
 dup('세계관', LORE)
 dup('스토리 장면', STORY_BEATS)
 
@@ -119,6 +119,33 @@ for (const e of LORE) {
   if (e.unlock?.flag && !flagOk(e.unlock.flag)) warn(`세계관 ${e.id}`, `해금 장면 없음 ${e.unlock.flag}`)
 }
 
-console.log(`아이템 ${itemIds.size} · 몬스터 ${monsterIds.size} · 맵 ${mapIds.size} · NPC ${npcIds.size} · 동료 ${compIds.size} · 펫 ${PET_DEFS.length} · 레시피 ${RECIPES.length} · 스토리 장면 ${beatIds.size} · 세계관 ${LORE.length}`)
+// 아이템 중복 — 같은 이름 · 「+N」 이 붙은 단계별 복제품(2026-10-31 강화 시스템 도입 후 금지) · 같은 그림을 쓰는 장비
+{
+  const all = [...new Map([...ITEMS, ...LIFE_ITEMS].map((i) => [i.id, i])).values()]
+  const byName = new Map()
+  for (const it of all) {
+    if (byName.has(it.name)) warn('아이템', `이름 중복 「${it.name}」 ${byName.get(it.name)} / ${it.id}`)
+    byName.set(it.name, it.id)
+    if (/\+\d+\s*$/.test(it.name)) warn('아이템', `「+N」 단계 복제품 ${it.id} 「${it.name}」 — 강화 시스템으로 대체할 것`)
+  }
+  const gearIcon = new Map()
+  for (const it of all) {
+    if (!['weapon', 'armor', 'accessory'].includes(it.type)) continue
+    if (gearIcon.has(it.icon)) warn('장비', `아이콘 공유 ${it.icon} — ${gearIcon.get(it.icon)} / ${it.id}`)
+    gearIcon.set(it.icon, it.id)
+  }
+  // 아이콘 파일이 실제로 있는지(public/)
+  const fs = await import('node:fs')
+  for (const it of all) if (it.icon && !fs.existsSync(`public${it.icon}`)) warn('아이템', `아이콘 파일 없음 ${it.id} → ${it.icon}`)
+  for (const sk of SKILLS) if (sk.icon && !fs.existsSync(`public${sk.icon}`)) warn('스킬', `아이콘 파일 없음 ${sk.id} → ${sk.icon}`)
+  // 스킬별 도트 애니메이션 시트(lib/skill-vfx)
+  const { SKILL_VFX, VFX_SHEETS } = await import('../lib/skill-vfx.ts')
+  for (const id of Object.keys(SKILL_VFX)) if (!skillIds.has(id)) warn('스킬 연출', `스킬 없음 ${id}`)
+  for (const sh of VFX_SHEETS) if (!fs.existsSync(`public/images/battle/vfx/skills/${sh}.png`)) warn('스킬 연출', `시트 없음 ${sh}`)
+  // 소환 마법 → 소환수
+  for (const sk of SKILLS) if (sk.kind === 'summon' && !PET_DEFS.some((p) => p.id === sk.summon?.creatureId)) warn('스킬', `소환수 없음 ${sk.id}`)
+}
+
+console.log(`아이템 ${itemIds.size} · 몬스터 ${monsterIds.size} · 맵 ${mapIds.size} · NPC ${npcIds.size} · 동료 ${compIds.size} · 소환수 ${PET_DEFS.length} · 레시피 ${RECIPES.length} · 스토리 장면 ${beatIds.size} · 세계관 ${LORE.length}`)
 console.log(problems.length ? `문제 ${problems.length}건\n` + problems.join('\n') : '문제 없음')
 process.exitCode = problems.length ? 1 : 0

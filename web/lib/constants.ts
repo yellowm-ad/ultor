@@ -187,8 +187,8 @@ export const MAX_PARTY_SIZE = 4
 export const MAX_GUESTS = 2
 /** 적 최대 수 */
 export const MAX_ENEMIES = 4
-/** 펫 — 주인공만 데리고 다닌다(주인공 포지션과 무관하게 고정 펫 칸에서 함께 싸움) */
-export const MAX_ACTIVE_PETS = 1
+/** 소환 마법 전용 칸(2026-10-31 — 옛 펫 고정 칸 대신) */
+export const SUMMON_SLOT_SIZE = 4
 /** 전투에 들고 가는 스킬 슬롯 수 */
 export const SKILL_LOADOUT_SIZE = 8
 

@@ -1,10 +1,12 @@
 // ============================================================================
-// 펫 시스템 — 설계: Documents/울토르 시스템 DB.md §6
-// 도감 8종 + 호감도 4구간 + 스킬 훈련.
-// 2026-10-02 개편: 펫은 주인공만 데리고 다닌다(보유 펫 중 1마리). 진형과 별개인 고정 펫 슬롯으로 포지션 무관 참가. 동료 고유 펫 없음.
-// 레벨 상한 100 — 주인공과 같은 경험치 곡선(lib/exp-table)을 쓴다.
+// 소환수 — 설계: 울토르_시스템_개편_PRD_v2.1 §S2 (2026-10-31 개편)
+//   펫을 기르고 먹이 주던 시스템은 폐지됐다. 예전 펫 8종은 '소환 마법'으로 부르는 소환수가 된다.
+//   · 소환 마법(스킬 kind 'summon')을 쓰면 소환수가 전장에 나와 2턴(숙련도 7부터 3턴) 동안 자동으로 싸우고 돌아간다.
+//   · 소환수 능력치 = 시전자 레벨 성장식 × 소환 마법 숙련도 배율. 숙련도 4·8 에서 소환수가 기술을 하나씩 더 쓴다.
+//   · 한 번에 한 마리 — 소환 중에 다시 부르면 먼저 있던 소환수가 돌아가고 새로 나온다.
 // ============================================================================
-import type { AffectionTier, Pet, PetDef, Stats } from '@/lib/types'
+import type { Combatant, PetDef, Stats } from '@/lib/types'
+import { masteryPowerMult } from '@/lib/skill-mastery'
 
 const common = (s: Partial<Stats>): Stats => ({
   maxHp: 40,
@@ -18,6 +20,7 @@ const common = (s: Partial<Stats>): Stats => ({
   ...s,
 })
 
+/** 소환수 8종(옛 펫 도감). innateSkills = 처음부터 쓰는 기술, trainableSkills[i].minLevel = 그 기술이 열리는 소환 마법 숙련도 */
 export const PET_DEFS: PetDef[] = [
   {
     id: 'pet-emberling',
@@ -30,8 +33,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 9, maxMp: 4, atk: 1.4, matk: 1.4, def: 0.7, mdef: 0.7, spd: 1, luck: 0.5 },
     innateSkills: ['pet-scratch'],
     trainableSkills: [
-      { skillId: 'pet-fire-breath', minLevel: 9, costGold: 400 },
-      { skillId: 'pet-guard', minLevel: 15, costGold: 600 },
+      { skillId: 'pet-fire-breath', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-guard', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -45,8 +48,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 12, maxMp: 4, atk: 1.7, matk: 1.1, def: 1, mdef: 0.8, spd: 1, luck: 0.5 },
     innateSkills: ['pet-bite'],
     trainableSkills: [
-      { skillId: 'pet-burn-fang', minLevel: 11, costGold: 700 },
-      { skillId: 'pet-roar-atk', minLevel: 23, costGold: 1200 },
+      { skillId: 'pet-burn-fang', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-roar-atk', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -60,8 +63,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 8, maxMp: 6, atk: 1, matk: 1.5, def: 0.6, mdef: 0.9, spd: 1.2, luck: 0.6 },
     innateSkills: ['pet-scratch'],
     trainableSkills: [
-      { skillId: 'pet-frost-nip', minLevel: 9, costGold: 400 },
-      { skillId: 'pet-slow-howl', minLevel: 17, costGold: 650 },
+      { skillId: 'pet-frost-nip', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-slow-howl', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -75,8 +78,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 7, maxMp: 8, atk: 0.8, matk: 1.8, def: 0.6, mdef: 1, spd: 1.3, luck: 0.7 },
     innateSkills: ['pet-peck'],
     trainableSkills: [
-      { skillId: 'pet-ice-shard', minLevel: 11, costGold: 700 },
-      { skillId: 'pet-mp-song', minLevel: 23, costGold: 1200 },
+      { skillId: 'pet-ice-shard', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-mp-song', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -90,8 +93,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 14, maxMp: 3, atk: 1.1, matk: 0.8, def: 1.2, mdef: 1, spd: 0.7, luck: 0.4 },
     innateSkills: ['pet-headbutt'],
     trainableSkills: [
-      { skillId: 'pet-stone-skin', minLevel: 9, costGold: 400 },
-      { skillId: 'pet-taunt', minLevel: 15, costGold: 600 },
+      { skillId: 'pet-stone-skin', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-taunt', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -105,8 +108,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 17, maxMp: 3, atk: 1.4, matk: 0.6, def: 1.5, mdef: 1.1, spd: 0.6, luck: 0.4 },
     innateSkills: ['pet-slam'],
     trainableSkills: [
-      { skillId: 'pet-quake-stomp', minLevel: 13, costGold: 800 },
-      { skillId: 'pet-shield-ally', minLevel: 23, costGold: 1300 },
+      { skillId: 'pet-quake-stomp', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-shield-ally', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -120,8 +123,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 7, maxMp: 9, atk: 0.5, matk: 1.6, def: 0.6, mdef: 1.1, spd: 1.1, luck: 0.9 },
     innateSkills: ['pet-glow'],
     trainableSkills: [
-      { skillId: 'pet-heal-lite', minLevel: 7, costGold: 600 },
-      { skillId: 'pet-cleanse', minLevel: 19, costGold: 1100 },
+      { skillId: 'pet-heal-lite', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-cleanse', minLevel: 8, costGold: 0 },
     ],
   },
   {
@@ -135,8 +138,8 @@ export const PET_DEFS: PetDef[] = [
     growth: { maxHp: 8, maxMp: 5, atk: 1.6, matk: 1.2, def: 0.6, mdef: 0.7, spd: 1.5, luck: 1 },
     innateSkills: ['pet-shadow-claw'],
     trainableSkills: [
-      { skillId: 'pet-silence-hiss', minLevel: 11, costGold: 800 },
-      { skillId: 'pet-blind-dust', minLevel: 21, costGold: 1200 },
+      { skillId: 'pet-silence-hiss', minLevel: 4, costGold: 0 },
+      { skillId: 'pet-blind-dust', minLevel: 8, costGold: 0 },
     ],
   },
 ]
@@ -145,73 +148,35 @@ export function petDefById(id: string): PetDef | undefined {
   return PET_DEFS.find((p) => p.id === id)
 }
 
-/** 캐릭터 생성 시 고를 수 있는 첫 펫 */
-export const STARTER_PET_IDS = ['pet-emberling', 'pet-frostkit', 'pet-pebblemole'] as const
-export const DEFAULT_STARTER_PET = 'pet-emberling'
+/** 소환 마법 id ↔ 소환수 id */
+export const summonSkillIdOf = (petId: string) => `summon-${petId.replace(/^pet-/, '')}`
 
-
-export function petStatsForLevel(def: PetDef, level: number): Stats {
-  const out = { ...def.baseStats }
-  ;(Object.keys(out) as (keyof Stats)[]).forEach((k) => {
-    // Lv.100 성장식(PRD §15)과 같은 형태 — base + growth × (level − 1)
-    out[k] = Math.max(1, Math.round(def.baseStats[k] + (def.growth[k] ?? 0) * (Math.max(1, level) - 1)))
+/** 소환수 전투원 — 시전자 레벨·숙련도로 능력치를 정한다 */
+export function summonCombatant(def: PetDef, owner: Combatant, masteryLv: number, turns: number): Combatant {
+  const mult = masteryPowerMult(masteryLv)
+  const stats = { ...def.baseStats }
+  ;(Object.keys(stats) as (keyof Stats)[]).forEach((k) => {
+    // 시전자 레벨을 따라 자란다(옛 펫 성장식 그대로) — 숙련도가 오를수록 더 강하게
+    stats[k] = Math.max(1, Math.round((def.baseStats[k] + (def.growth[k] ?? 0) * (Math.max(1, owner.level) - 1)) * mult))
   })
-  return out
-}
-
-export function createPet(defId: string, opts?: { level?: number; affection?: number; nickname?: string }): Pet {
-  const def = petDefById(defId)!
-  const level = opts?.level ?? 1
-  const stats = petStatsForLevel(def, level)
+  const skills = [...def.innateSkills, ...def.trainableSkills.filter((t) => masteryLv >= t.minLevel).map((t) => t.skillId)]
   return {
-    defId,
-    nickname: opts?.nickname ?? def.name,
-    level,
-    exp: 0,
-    affection: opts?.affection ?? 40,
-    learnedSkills: [...def.innateSkills],
+    uid: `summon-${def.id}`,
+    side: owner.side,
+    kind: 'pet',
+    refId: def.id,
+    name: def.name,
+    icon: def.icon,
+    element: def.element,
+    level: owner.level,
+    stats,
     hp: stats.maxHp,
     mp: stats.maxMp,
+    skills,
+    atb: 60, // 나오자마자 곧 움직이게
+    effects: [],
+    ownerUid: owner.uid,
+    summonTurns: turns,
+    alive: true,
   }
-}
-
-// ─── 호감도 ──────────────────────────────────────────────────────────────────
-
-export function affectionTier(affection: number): AffectionTier {
-  if (affection >= 75) return 'devoted'
-  if (affection >= 50) return 'close'
-  if (affection >= 20) return 'familiar'
-  return 'unfamiliar'
-}
-
-export const AFFECTION_TIER_META: Record<
-  AffectionTier,
-  { label: string; statMult: number; critBonus: number; disobeyChance: number; supportChance: number; note: string }
-> = {
-  unfamiliar: { label: '낯섦', statMult: 1.0, critBonus: 0, disobeyChance: 0.1, supportChance: 0, note: '가끔 명령을 무시한다' },
-  familiar: { label: '익숙', statMult: 1.0, critBonus: 0, disobeyChance: 0, supportChance: 0, note: '정상 참여' },
-  close: { label: '친밀', statMult: 1.05, critBonus: 0.05, disobeyChance: 0, supportChance: 0, note: '전 스탯 +5%, 치명타 +5%' },
-  devoted: { label: '헌신', statMult: 1.12, critBonus: 0.05, disobeyChance: 0, supportChance: 0.25, note: '전 스탯 +12%, 25% 확률 지원 공격' },
-}
-
-export function clampAffection(v: number): number {
-  return Math.max(0, Math.min(100, Math.round(v)))
-}
-
-// ─── 스킬 훈련 ───────────────────────────────────────────────────────────────
-
-export interface TrainCheck {
-  ok: boolean
-  reason?: string
-}
-
-export function canTrain(pet: Pet, skillId: string, gold: number, hasItem: (id: string) => boolean): TrainCheck {
-  const def = petDefById(pet.defId)
-  const t = def?.trainableSkills.find((s) => s.skillId === skillId)
-  if (!t) return { ok: false, reason: '이 펫이 배울 수 없는 스킬입니다.' }
-  if (pet.learnedSkills.includes(skillId)) return { ok: false, reason: '이미 배운 스킬입니다.' }
-  if (pet.level < t.minLevel) return { ok: false, reason: `펫 레벨 ${t.minLevel} 이상 필요합니다.` }
-  if (gold < t.costGold) return { ok: false, reason: '골드가 부족합니다.' }
-  if (t.costItemId && !hasItem(t.costItemId)) return { ok: false, reason: '훈련서가 필요합니다.' }
-  return { ok: true }
 }

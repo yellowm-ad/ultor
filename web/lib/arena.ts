@@ -39,7 +39,6 @@ export function buildArenaTeam(state: GameState, pid: string): ArenaTeam {
     // 상대 화면에서 주인공은 "다른 사람" — 성별 히어로 시트로 그린다(pixel-hero playerSheet 와 같은 이름)
     if (u.kind === 'hero') u.appearance = { kind: 'hero', sheet: `protag-${gender}` }
     units.push(u)
-    if (m.pet) units.push(unitOf(m.pet))
   }
   return {
     pid,
@@ -89,7 +88,6 @@ export function initArenaBattle(state: GameState, opponent: ArenaTeam, match: Ar
     .map((m) => ({
       ...m,
       combatant: { ...m.combatant, hp: m.combatant.stats.maxHp, mp: m.combatant.stats.maxMp, alive: true },
-      pet: m.pet ? { ...m.pet, hp: m.pet.stats.maxHp, mp: m.pet.stats.maxMp, alive: true } : m.pet,
     }))
   const battle = initBattle(party, [], state.position)
   const enemies = opponent.units.slice(0, 6).map(enemyFromUnit)

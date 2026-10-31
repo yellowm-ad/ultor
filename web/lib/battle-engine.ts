@@ -22,19 +22,18 @@ import type {
   BattleState,
   Combatant,
   MonsterDef,
-  Pet,
-  PetLink,
   PlayerCharacter,
   Position,
   Skill,
   SkillElement,
   Stats,
 } from '@/lib/types'
-import { ATB, MAX_ACTIVE_PETS, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
+import { ATB, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
 import { MONSTERS, itemById, skillById } from '@/lib/mock-data'
 import { rollHuntDrops } from '@/lib/life'
 import { testMonsterExpReward } from '@/lib/exp-table'
-import { petDefById, affectionTier, AFFECTION_TIER_META, petStatsForLevel } from '@/lib/pets'
+import { petDefById, summonCombatant } from '@/lib/pets'
+import { masteredMpCost, masteryPowerMult, summonTurnsFor } from '@/lib/skill-mastery'
 import {
   STATUS_DEFS,
   applyDebuff,
@@ -82,46 +81,16 @@ export function combatantFromPlayer(player: PlayerCharacter, effectiveStats?: St
     stats,
     hp: player.hp,
     mp: player.mp,
-    // 전투에는 장착 스킬만 들고 간다(레벨 제한 미달 스킬 제외)
-    skills: player.equippedSkills.filter((id) => {
+    // 전투에는 장착 스킬 + 소환 칸 마법만 들고 간다(레벨 제한 미달 스킬 제외)
+    skills: Array.from(new Set([...player.equippedSkills, ...(player.summonSkills ?? [])])).filter((id) => {
       const s = skillById(id)
       return !!s && (s.levelRequired ?? 0) <= player.level
     }),
+    mastery: Object.fromEntries(Object.entries(player.skillMastery ?? {}).map(([id, m]) => [id, m.lv])),
     atb: 0,
     effects: [],
     weaponElement,
     alive: player.hp > 0,
-  }
-}
-
-export function combatantFromPet(pet: Pet, ownerUid: string, uid = 'pet'): Combatant {
-  const def = petDefById(pet.defId)!
-  const raw = petStatsForLevel(def, pet.level)
-  const tier = affectionTier(pet.affection)
-  const meta = AFFECTION_TIER_META[tier]
-  const stats = { ...raw }
-  ;(Object.keys(stats) as (keyof Stats)[]).forEach((k) => {
-    stats[k] = Math.max(1, Math.round(stats[k] * meta.statMult))
-  })
-  return {
-    uid,
-    side: 'player',
-    kind: 'pet',
-    refId: pet.defId,
-    name: pet.nickname,
-    icon: def.icon,
-    element: def.element,
-    level: pet.level,
-    stats,
-    hp: Math.min(pet.hp, stats.maxHp),
-    mp: Math.min(pet.mp, stats.maxMp),
-    skills: pet.learnedSkills,
-    atb: 0,
-    effects: [],
-    ownerUid,
-    bonusCrit: meta.critBonus,
-    supportChance: meta.supportChance,
-    alive: pet.hp > 0,
   }
 }
 
@@ -174,13 +143,11 @@ export function applyPosition(c: Combatant, position: Position): Combatant {
 export interface PartyMemberInput {
   combatant: Combatant // 포지션 미적용 상태
   position: Position
-  /** 이 캐릭터가 데려가는 펫 — 전위일 때만 실제로 참가 */
-  pet?: Combatant | null
 }
 
 /**
- * 전투 시작. party = 진형 6칸의 전투원(주인공 + 동료 최대 3 + 임시 NPC 최대 2) — 포지션과 펫을 함께 넘긴다.
- * 펫은 진형과 별개인 고정 펫 슬롯으로 주인과 PetLink 로 묶여 참가한다.
+ * 전투 시작. party = 진형 6칸의 전투원(주인공 + 동료 최대 3 + 임시 NPC 최대 2) — 포지션을 함께 넘긴다.
+ * 소환수는 전투 중 소환 마법으로만 나온다(kind 'summon').
  */
 export function initBattle(
   party: PartyMemberInput[],
@@ -191,17 +158,8 @@ export function initBattle(
 ): BattleState {
   const members = party.slice(0, MAX_PARTY_SIZE + MAX_GUESTS)
   const core = members.map((m) => applyPosition(m.combatant, m.position))
-  const petLinks: PetLink[] = []
-  const pets: Combatant[] = []
-  // 펫은 주인공 전용 고정 칸 — 주인공 포지션과 무관하게 함께 싸운다
-  members.forEach((m) => {
-    if (!m.pet || m.combatant.kind !== 'hero' || pets.length >= MAX_ACTIVE_PETS) return
-    const owner = core.find((c) => c.uid === m.combatant.uid)!
-    pets.push({ ...m.pet, ownerUid: owner.uid })
-    petLinks.push({ petUid: m.pet.uid, ownerCombatantUid: owner.uid })
-  })
   const enemies = monsterDefs.slice(0, MAX_ENEMIES).map(combatantFromMonster)
-  const combatants = [...core, ...pets, ...enemies]
+  const combatants = [...core, ...enemies]
 
   const entries: BattleLogEntry[] = []
   log(entries, `${enemies.map((e) => e.name).join(', ')}이(가) 나타났다!`, 'system')
@@ -217,16 +175,10 @@ export function initBattle(
     originCell,
     fieldMonsterUid,
     huntEnabled: opts.huntEnabled,
-    petLinks,
   }
 }
 
-/** 펫 귀속 검증 — 주인이 전투에 있으면 true(주인 포지션과 무관) */
-export function validPetLink(battle: BattleState, link: PetLink): boolean {
-  return battle.combatants.some((c) => c.uid === link.ownerCombatantUid)
-}
-
-/** 플레이어가 직접 조작하는 전투원 — 주인공 + 파티 동료(임시 NPC·펫 제외) */
+/** 플레이어가 직접 조작하는 전투원 — 주인공 + 파티 동료(임시 NPC·소환수 제외) */
 export function isPlayerControlled(c: Combatant): boolean {
   return c.side === 'player' && (c.kind === 'hero' || (c.kind === 'ally' && !c.guest))
 }
@@ -293,7 +245,7 @@ export function tickAtb(battle: BattleState): BattleState {
   if (block.blocked) {
     log(entries, block.reason ?? `${actor.name}은(는) 움직이지 못했다.`, 'status')
     endActorTurn(actor, entries)
-    return { ...battle, combatants, log: entries, tick, activeUid: null, round: battle.round + 1 }
+    return { ...battle, combatants: dismissSummons(combatants, entries), log: entries, tick, activeUid: null, round: battle.round + 1 }
   }
 
   return { ...battle, combatants, log: entries, tick, activeUid: actor.uid }
@@ -495,7 +447,6 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
     } else {
       log(entries, `${actor.name}의 공격 — 노릴 대상이 보이지 않는다.`)
     }
-    maybeSupportAttack(entries, combatants, actor)
     return done(fx)
   }
 
@@ -514,12 +465,18 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
       log(entries, `${actor.name}은(는) 침묵 상태라 스킬을 쓸 수 없다!`, 'status')
       return done()
     }
-    if (actor.mp < skill.mpCost) {
+    const mLv = actor.mastery?.[skill.id] ?? 1
+    const mpCost = masteredMpCost(skill, mLv)
+    if (actor.mp < mpCost) {
       log(entries, `MP가 부족하다!`, 'system')
       return done()
     }
-    actor.mp -= skill.mpCost
+    actor.mp -= mpCost
     if (skill.atbCost) actor.atb -= skill.atbCost
+    // 숙련도 — 위력 +4%/Lv. 주인공이 쓴 횟수는 전투가 끝나면 숙련 경험치가 된다
+    const power = skill.power * masteryPowerMult(mLv)
+    const skillUses = actor.kind === 'hero' ? { ...(battle.skillUses ?? {}), [skill.id]: (battle.skillUses?.[skill.id] ?? 0) + 1 } : battle.skillUses
+    const doneSkill = (fx?: BattleFx): ResolveResult => ({ battle: { ...battle, combatants, log: entries, lastFx: fx ?? battle.lastFx, skillUses } })
 
     const isMagic = !skill.physical
     const enemyList = combatants.filter((c) => c.side !== actor.side && c.alive)
@@ -535,6 +492,7 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
       power,
       mpCost: skill.mpCost,
       skillName: skill.name,
+      skillId: skill.id,
       physical: !!skill.physical,
     })
     /** 적 대상 목록 — 단일 대상은 은신·환술 보정 */
@@ -555,14 +513,14 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
     switch (skill.kind) {
       case 'attack':
       case 'debuff': {
-        if (skill.kind === 'attack' || skill.power > 0) {
+        if (skill.kind === 'attack' || power > 0) {
           const targets = enemyTargets()
           for (const t of targets) {
-            damageTarget(entries, actor, t, skill.power, isMagic, skill.element, `[${skill.name}]`)
+            damageTarget(entries, actor, t, power, isMagic, skill.element, `[${skill.name}]`)
             applyStatusRider(entries, actor, t, skill)
             applyDebuffRider(entries, t, skill)
           }
-          return done(mkFx(targets, isMagic ? 'magicAttack' : 'attack'))
+          return doneSkill(mkFx(targets, isMagic ? 'magicAttack' : 'attack'))
         }
         const targets = enemyTargets()
         log(entries, `${actor.name}의 [${skill.name}]!`)
@@ -570,13 +528,13 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
           applyStatusRider(entries, actor, t, skill)
           applyDebuffRider(entries, t, skill)
         }
-        return done(mkFx(targets, 'debuff'))
+        return doneSkill(mkFx(targets, 'debuff'))
       }
       case 'illusion': {
         const targets = enemyTargets()
         log(entries, `${actor.name}의 [${skill.name}]!`)
         for (const t of targets) applyDebuffRider(entries, t, skill)
-        return done(mkFx(targets, 'debuff'))
+        return doneSkill(mkFx(targets, 'debuff'))
       }
       case 'execute': {
         const targets = enemyTargets()
@@ -596,16 +554,16 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
             log(entries, `${t.name}은(는) 죽음의 손길을 피했다.`, 'info')
           }
         }
-        return done(mkFx(targets, 'debuff'))
+        return doneSkill(mkFx(targets, 'debuff'))
       }
       case 'heal': {
         const targets = allyTargets().filter((t) => t.alive)
         for (const t of targets) {
-          const heal = Math.round(statWithEffects(actor, 'matk') * skill.power * healMult(actor))
+          const heal = Math.round(statWithEffects(actor, 'matk') * power * healMult(actor))
           t.hp = Math.min(t.stats.maxHp, t.hp + heal)
           log(entries, `${actor.name}의 [${skill.name}]! ${t.name}의 HP를 ${heal} 회복했다.`, 'heal')
         }
-        return done(mkFx(targets, 'heal'))
+        return doneSkill(mkFx(targets, 'heal'))
       }
       case 'revive': {
         const targets = allyTargets(true).filter((t) => !t.alive && t.kind !== 'pet')
@@ -617,7 +575,7 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
           t.hp = Math.max(1, Math.round(t.stats.maxHp * (skill.reviveHpRatio ?? 0.5) * healMult(actor)))
           log(entries, `${actor.name}의 [${skill.name}]! ${t.name}이(가) 되살아났다!`, 'system')
         }
-        return done(mkFx(targets, 'heal'))
+        return doneSkill(mkFx(targets, 'heal'))
       }
       case 'buff':
       case 'stealth': {
@@ -636,7 +594,23 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
         }
         const who = targets.length === 1 && targets[0].uid !== actor.uid ? ` ${targets[0].name}에게` : ''
         log(entries, skill.kind === 'stealth' ? `${actor.name}의 [${skill.name}]!${who} 그림자가 드리워졌다.` : `${actor.name}의 [${skill.name}]!${who} 효과가 적용되었다.`)
-        return done(mkFx(targets, 'buff', 1))
+        return doneSkill(mkFx(targets, 'buff', 1))
+      }
+      case 'summon': {
+        // 소환 — 한 번에 한 마리. 먼저 나와 있던 소환수는 돌아가고 새로 나온다
+        const def = skill.summon ? petDefById(skill.summon.creatureId) : undefined
+        if (!def) return doneSkill()
+        for (let i = combatants.length - 1; i >= 0; i--) {
+          if (combatants[i].kind === 'pet' && combatants[i].ownerUid === actor.uid) {
+            log(entries, `${combatants[i].name}이(가) 돌아갔다.`, 'info')
+            combatants.splice(i, 1)
+          }
+        }
+        const turns = summonTurnsFor(mLv, skill.summon!.turns)
+        const sc = summonCombatant(def, actor, mLv, turns)
+        combatants.push(sc)
+        log(entries, `${actor.name}의 [${skill.name}]! ${def.name}이(가) 나타났다! (${turns}턴)`, 'system')
+        return doneSkill({ ...mkFx([sc], 'buff', 1), aoe: false })
       }
       case 'utility': {
         const utilTarget = skill.targeting === 'self' ? actor : find(action.targetUid) ?? actor
@@ -649,10 +623,10 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
           actor.mp = Math.min(actor.stats.maxMp, actor.mp + restored)
           log(entries, `${actor.name}의 [${skill.name}]! MP를 ${restored} 회복했다.`, 'heal')
         }
-        return done({ ...mkFx([utilTarget], 'utility', 1), aoe: false })
+        return doneSkill({ ...mkFx([utilTarget], 'utility', 1), aoe: false })
       }
     }
-    return done()
+    return doneSkill()
   }
 
   if (action.type === 'item') {
@@ -698,18 +672,7 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
   return { battle: { ...battle, combatants, log: entries }, itemConsumed, fled }
 }
 
-/** 펫 '헌신' 호감도: 주인이 공격할 때 자기 펫이 확률로 추가 타격 */
-function maybeSupportAttack(entries: BattleLogEntry[], combatants: Combatant[], actor: Combatant) {
-  const pet = combatants.find((c) => c.kind === 'pet' && c.alive && c.ownerUid === actor.uid)
-  if (!pet || !pet.supportChance || Math.random() > pet.supportChance) return
-  const enemies = aliveEnemies(combatants).filter((c) => !isStealthed(c))
-  if (enemies.length === 0) return
-  const t = enemies[Math.floor(Math.random() * enemies.length)]
-  log(entries, `${pet.name}이(가) 지원 공격!`, 'info')
-  damageTarget(entries, pet, t, 0.6, false, pet.element, '지원 공격')
-}
-
-// ─── 자동 행동(NPC · 펫 · 몬스터) ────────────────────────────────────────────
+// ─── 자동 행동(NPC · 소환수 · 몬스터) ────────────────────────────────────────────
 
 /** 표적 성향에 따른 가중치(§33) */
 function targetWeight(profile: AiProfile, t: Combatant): number {
@@ -756,7 +719,7 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
   if (!skillBlocked(actor) && actor.skills.length > 0) {
     const usable = actor.skills
       .map((id) => skillById(id))
-      .filter((s): s is Skill => !!s && actor.mp >= s.mpCost && canUseSkill(actor, s))
+      .filter((s): s is Skill => !!s && actor.mp >= masteredMpCost(s, actor.mastery?.[s.id]) && canUseSkill(actor, s))
     const has = (k: Skill['kind']) => usable.filter((s) => s.kind === k)
 
     // 1) 쓰러진 동료가 있으면 부활 우선
@@ -776,6 +739,7 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
       const candidates = usable.filter((s) => {
         if (s.kind === 'heal' || s.kind === 'revive') return false
         if (s.kind === 'execute') return foes.some(isExecutable)
+        if (s.kind === 'summon') return !allies.some((c) => c.kind === 'pet' && c.ownerUid === actor.uid)
         if (s.kind === 'stealth') return allies.some((a) => !isStealthed(a) && a.kind !== 'pet')
         if (s.cleanse) return allies.some((a) => a.effects.some((e) => e.kind !== 'buff'))
         return true
@@ -808,11 +772,6 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
 export function resolveEnemyTurn(battle: BattleState, actorUid: string): BattleState {
   const actor = battle.combatants.find((c) => c.uid === actorUid)
   if (!actor) return battle
-  // 펫은 주인이 전투에 있을 때만 행동 — 귀속이 깨졌으면 대기
-  if (actor.kind === 'pet') {
-    const link = battle.petLinks?.find((l) => l.petUid === actor.uid)
-    if (!link || !validPetLink(battle, link)) return battle
-  }
   const action = chooseAutoAction(actor, battle.combatants)
   const { battle: next } = resolveAction(battle, actorUid, action)
   return next
@@ -824,6 +783,17 @@ function endActorTurn(actor: Combatant, entries: BattleLogEntry[]) {
   actor.atb = Math.max(0, actor.atb - ATB.THRESHOLD)
   const expired = decayEffects(actor)
   for (const name of expired) log(entries, `${actor.name}의 ${name} 효과가 사라졌다.`, 'info')
+  if (actor.summonTurns != null) actor.summonTurns -= 1
+}
+
+/** 머무는 턴을 다 쓴(또는 쓰러진) 소환수를 전장에서 내보낸다 */
+function dismissSummons(list: Combatant[], entries: BattleLogEntry[]): Combatant[] {
+  return list.filter((c) => {
+    if (c.kind !== 'pet') return true
+    if (c.alive && (c.summonTurns ?? 1) > 0) return true
+    log(entries, c.alive ? `${c.name}이(가) 할 일을 마치고 돌아갔다.` : `${c.name}이(가) 사라졌다.`, 'info')
+    return false
+  })
 }
 
 /** 행동을 마친 activeUid 의 ATB/효과를 정리하고 activeUid 를 비운다 */
@@ -832,7 +802,7 @@ export function advanceTurn(battle: BattleState): BattleState {
   const entries = [...battle.log]
   const actor = combatants.find((c) => c.uid === battle.activeUid)
   if (actor) endActorTurn(actor, entries)
-  return { ...battle, combatants, log: entries, activeUid: null, round: battle.round + 1 }
+  return { ...battle, combatants: dismissSummons(combatants, entries), log: entries, activeUid: null, round: battle.round + 1 }
 }
 
 export function checkBattleEnd(battle: BattleState): BattleState {

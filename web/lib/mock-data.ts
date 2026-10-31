@@ -94,7 +94,17 @@ const SKILL_DEFS: Skill[] = [
   { id: 'wind-vacuum-blade', name: '진공의 칼날', element: 'wind', owner: 'mors', mpCost: 14, power: 2.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'bleed', chance: 0.45 }, icon: WIND, description: '공기를 찢어 만든 진공의 칼날이 적 하나를 베어낸다.' },
   { id: 'wind-tempest', name: '종언의 폭풍', element: 'wind', owner: 'mors', mpCost: 30, atbCost: 35, power: 2.8, kind: 'attack', targeting: 'allEnemies', debuff: { id: 'accDown', magnitude: 0.3, turns: 3 }, icon: WIND, description: '모든 것을 끝내는 폭풍. 적 전체를 강타하고 눈을 가린다.' },
 
-  // ── 펫: 고유 스킬 ──────────────────────────────────────────────────────
+  // ── 소환 마법(옛 펫, 2026-10-31) — 소환수가 2~3턴 함께 싸운다(lib/pets summonCombatant) ─────────
+  { id: 'summon-emberling', name: '이글릿 소환', element: 'fire', grade: 1, mpCost: 9, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-emberling', turns: 2 }, icon: '/images/pets/emberling.png', description: '불도마뱀 이글릿을 불러낸다. 할퀴고 불꽃을 뿜으며 2턴 동안 함께 싸운다.' },
+  { id: 'summon-frostkit', name: '서리 소환', element: 'ice', grade: 1, mpCost: 9, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-frostkit', turns: 2 }, icon: '/images/pets/frostkit.png', description: '눈여우 서리를 불러낸다. 차가운 이빨로 적을 둔화시키며 2턴 동안 함께 싸운다.' },
+  { id: 'summon-pebblemole', name: '모구 소환', element: 'earth', grade: 1, mpCost: 9, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-pebblemole', turns: 2 }, icon: '/images/pets/pebblemole.png', description: '돌두더지 모구를 불러낸다. 단단한 몸으로 들이받고 버티며 2턴 동안 함께 싸운다.' },
+  { id: 'summon-magma-pup', name: '마그누 소환', element: 'fire', grade: 2, mpCost: 13, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-magma-pup', turns: 2 }, icon: '/images/pets/magma-pup.png', description: '용암 강아지 마그누를 불러낸다. 달아오른 송곳니로 적을 물어뜯는다.' },
+  { id: 'summon-glacier-owl', name: '서리깃 소환', element: 'ice', grade: 2, mpCost: 13, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-glacier-owl', turns: 2 }, icon: '/images/pets/glacier-owl.png', description: '빙하 올빼미 서리깃을 불러낸다. 얼음 파편을 날리고 마나의 노래를 부른다.' },
+  { id: 'summon-golem-cub', name: '바우 소환', element: 'earth', grade: 3, mpCost: 17, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-golem-cub', turns: 2 }, icon: '/images/pets/golem-cub.png', description: '꼬마 골렘 바우를 불러낸다. 땅을 울리고 아군 전체에 수호의 벽을 세운다.' },
+  { id: 'summon-shade', name: '그늘 소환', element: 'dark', grade: 2, mpCost: 13, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-shade', turns: 2 }, icon: '/images/pets/shade.png', description: '그림자 고양이 그늘을 불러낸다. 그림자 발톱과 침묵의 쉿으로 적을 흐트러뜨린다.' },
+  { id: 'summon-wisp', name: '하양 소환', element: 'light', grade: 2, mpCost: 13, power: 0, kind: 'summon', targeting: 'self', summon: { creatureId: 'pet-wisp', turns: 2 }, icon: '/images/pets/wisp.png', description: '빛 정령 하양을 불러낸다. 아군을 치유하고 상태이상을 씻어 낸다.' },
+
+  // ── 소환수 기술(소환수가 스스로 쓴다) ──────────────────────────────────────────────────────
   { id: 'pet-scratch', name: '할퀴기', element: null, owner: 'pet', mpCost: 0, power: 0.8, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: NEUT, description: '발톱으로 적을 할퀸다.' },
   { id: 'pet-bite', name: '물어뜯기', element: null, owner: 'pet', mpCost: 0, power: 0.9, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: NEUT, description: '적을 세게 물어뜯는다.' },
   { id: 'pet-peck', name: '쪼기', element: null, owner: 'pet', mpCost: 0, power: 0.8, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: NEUT, description: '부리로 적을 빠르게 쫀다.' },
@@ -103,7 +113,7 @@ const SKILL_DEFS: Skill[] = [
   { id: 'pet-glow', name: '온빛', element: 'light', owner: 'pet', mpCost: 3, power: 0.6, kind: 'heal', targeting: 'singleAlly', icon: LIGHT, description: '부드러운 빛으로 아군을 감싸 HP를 회복한다.' },
   { id: 'pet-shadow-claw', name: '그림자 발톱', element: 'dark', owner: 'pet', mpCost: 0, power: 1.0, kind: 'attack', physical: true, targeting: 'singleEnemy', icon: DARK, description: '그림자를 두른 발톱으로 적을 벤다.' },
 
-  // ── 펫: 훈련 스킬 ──────────────────────────────────────────────────────
+  // ── 소환수 기술 — 소환 마법 숙련도 4·8 에서 열린다 ──────────────────────────────────────────────────────
   { id: 'pet-fire-breath', name: '불꽃 숨결', element: 'fire', owner: 'pet', mpCost: 6, power: 1.2, kind: 'attack', targeting: 'singleEnemy', status: { id: 'burn', chance: 0.3 }, icon: FIRE, description: '작은 불꽃을 내뿜어 적을 태운다.' },
   { id: 'pet-guard', name: '가드', element: null, owner: 'pet', mpCost: 4, power: 0, kind: 'buff', targeting: 'self', buff: { id: 'ironWall', magnitude: 0.4, turns: 3 }, icon: NEUT, description: '몸을 웅크려 방어 태세를 취한다.' },
   { id: 'pet-burn-fang', name: '작열의 송곳니', element: 'fire', owner: 'pet', mpCost: 7, power: 1.3, kind: 'attack', physical: true, targeting: 'singleEnemy', status: { id: 'burn', chance: 0.4 }, icon: FIRE, description: '달아오른 송곳니로 적을 물어 화상을 남긴다.' },
@@ -138,7 +148,7 @@ export function skillById(id: string): Skill | undefined {
 export function skillsForElement(element: string | null): Skill[] {
   return SKILLS.filter((s) => s.element === element)
 }
-/** 학교 수업으로 배우는 학생 스킬(펫·모르스 전용 제외) */
+/** 학교 수업으로 배우는 학생 스킬(소환수 기술·모르스 전용 제외 — 소환 마법은 학생 스킬) */
 export function isStudentSkill(s: Skill): boolean {
   return !s.owner && !!s.learnRequirements?.length
 }
@@ -171,24 +181,31 @@ const ROBE_BONUS: Record<Tier, Partial<Stats>> = {
 }
 /** 상점/일반 장비 기본 배치(§장비·아이템 PRD §6) — T5는 기본값 mythic, unique는 필드보스 제작 전용 */
 const RARITY_BY_TIER: Record<Tier, ItemRarity> = { 1: 'common', 2: 'uncommon', 3: 'rare', 4: 'mythic', 5: 'mythic' }
-const ELEM_KO = { fire: '화염', ice: '빙결', earth: '대지', dark: '암흑', light: '광휘' } as const
-const WAND_ICON: Record<Tier, string> = {
-  1: '/images/items/wand.svg',
-  2: '/images/items/wand.svg',
-  3: '/images/items/wand-adv.svg',
-  4: '/images/items/wand-adv.svg',
-  5: '/images/items/wand-adv.svg',
-}
 
-// 5속성 × 5티어 = 25종(§29). 바람 완드는 존재하지 않는다.
-const wands: ItemDef[] = (['fire', 'ice', 'earth', 'dark', 'light'] as const).flatMap((el) =>
-  ([1, 2, 3, 4, 5] as Tier[]).map(
-    (t): ItemDef => ({
+/**
+ * 속성 완드 — 2026-10-31 강화 시스템 도입으로 「화염 완드 +1 ~ +4」 같은 단계별 복제품을 없앴다.
+ * 속성마다 이름이 다른 세 자루(입문 T1 · 숙련 T3 · 정점 T5)만 두고, 그 사이는 제작대 장비 강화(+1~+10)로 키운다.
+ * 옛 세이브의 T2·T4 완드는 불러올 때 아래 단계 완드 + 강화 단계로 바뀐다(lib/save).
+ */
+const WAND_LINE = {
+  fire: { ko: '화염', names: ['화염 완드', '홍염의 지팡이', '겁화의 대지팡이'] },
+  ice: { ko: '빙결', names: ['빙결 완드', '서리꽃 지팡이', '영구동토의 대지팡이'] },
+  earth: { ko: '대지', names: ['대지 완드', '암석 지팡이', '태산의 대지팡이'] },
+  dark: { ko: '암흑', names: ['암흑 완드', '그림자 지팡이', '심연의 대지팡이'] },
+  light: { ko: '광휘', names: ['광휘 완드', '여명의 지팡이', '태양의 대지팡이'] },
+} as const
+const WAND_TIERS: Tier[] = [1, 3, 5]
+const WAND_DESC = ['기운이 깃든 입문용 완드.', '마법을 오래 다룬 이들이 쓰는 지팡이.', '마법의 정점에 선 자만이 다룬다는 대지팡이.']
+
+// 5속성 × 3단계 = 15종. 바람 완드는 존재하지 않는다.
+const wands: ItemDef[] = (Object.keys(WAND_LINE) as (keyof typeof WAND_LINE)[]).flatMap((el) =>
+  WAND_TIERS.map(
+    (t, i): ItemDef => ({
       id: `wand-${el}-t${t}`,
-      name: `${ELEM_KO[el]} 완드${t > 1 ? ' +' + (t - 1) : ''}`,
+      name: WAND_LINE[el].names[i],
       type: 'weapon',
-      icon: WAND_ICON[t],
-      description: `${ELEM_KO[el]} 기운이 깃든 완드. 같은 속성 스킬 위력 +8%.`,
+      icon: `/images/items/wand-${el}-t${t}.png`,
+      description: `${WAND_LINE[el].ko} ${WAND_DESC[i]} 같은 속성 스킬 위력 +8%.`,
       price: WAND_PRICE[t],
       sellPrice: Math.round(WAND_PRICE[t] * 0.3),
       requiredLevel: REQ_LEVEL(t),
@@ -209,8 +226,8 @@ const robes: ItemDef[] = ([1, 2, 3, 4, 5] as Tier[]).map(
     id: `robe-t${t}`,
     name: ['신입생', '2학년', '3학년', '4학년', '수석'][t - 1] + '의 로브',
     type: 'armor',
-    icon: '/images/items/robe.svg',
-    description: '울토르 마법학교 지급 로브.',
+    icon: `/images/items/robe-t${t}.png`,
+    description: ['울토르 마법학교 신입생에게 지급되는 수수한 로브.', '2학년부터 입는 로브. 소매에 학년 수가 놓여 있다.', '3학년 로브. 안감에 방호 문양이 짜여 있다.', '4학년 로브. 금실 테두리가 마력을 붙잡아 둔다.', '수석 졸업생에게만 허락된 로브.'][t - 1],
     price: ROBE_PRICE[t],
     sellPrice: Math.round(ROBE_PRICE[t] * 0.3),
     requiredLevel: REQ_LEVEL(t),
@@ -236,12 +253,12 @@ const hats: ItemDef[] = [
 ]
 
 const accessories: ItemDef[] = [
-  { id: 'acc-ring-luck', name: '행운의 반지', type: 'accessory', icon: '/images/items/ring.svg', description: '착용자에게 행운을 더한다.', price: 600, sellPrice: 180, statBonus: { luck: 5 }, stackable: false, maxStack: 1, tier: 2, rarity: 'uncommon', shopBuyable: true, craftable: false },
-  { id: 'acc-amulet-mana', name: '마나의 목걸이', type: 'accessory', icon: '/images/items/amulet.svg', description: 'MP 최대치를 늘려준다.', price: 900, sellPrice: 270, statBonus: { maxMp: 20 }, stackable: false, maxStack: 1, tier: 2, rarity: 'uncommon', shopBuyable: true, craftable: false },
-  { id: 'acc-brooch-guard', name: '수호의 브로치', type: 'accessory', icon: '/images/items/amulet.svg', description: '방어력과 마법방어력을 높인다.', price: 1100, sellPrice: 330, statBonus: { def: 4, mdef: 4 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
-  { id: 'acc-band-swift', name: '신속의 팔찌', type: 'accessory', icon: '/images/items/ring.svg', description: '속도를 높여 ATB가 빨리 찬다.', price: 1200, sellPrice: 360, statBonus: { spd: 4 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
-  { id: 'acc-charm-ward', name: '방호 부적', type: 'accessory', icon: '/images/items/scroll.svg', description: '상태이상 저항 +15%.', price: 1500, sellPrice: 450, statusResist: 15, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
-  { id: 'acc-pendant-vitality', name: '활력의 펜던트', type: 'accessory', icon: '/images/items/amulet.svg', description: '최대 HP를 크게 늘린다.', price: 1400, sellPrice: 420, statBonus: { maxHp: 40 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
+  { id: 'acc-ring-luck', name: '행운의 반지', type: 'accessory', icon: '/images/items/acc-ring-luck.png', description: '착용자에게 행운을 더한다.', price: 600, sellPrice: 180, statBonus: { luck: 5 }, stackable: false, maxStack: 1, tier: 2, rarity: 'uncommon', shopBuyable: true, craftable: false },
+  { id: 'acc-amulet-mana', name: '마나의 목걸이', type: 'accessory', icon: '/images/items/acc-amulet-mana.png', description: 'MP 최대치를 늘려준다.', price: 900, sellPrice: 270, statBonus: { maxMp: 20 }, stackable: false, maxStack: 1, tier: 2, rarity: 'uncommon', shopBuyable: true, craftable: false },
+  { id: 'acc-brooch-guard', name: '수호의 브로치', type: 'accessory', icon: '/images/items/acc-brooch-guard.png', description: '방어력과 마법방어력을 높인다.', price: 1100, sellPrice: 330, statBonus: { def: 4, mdef: 4 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
+  { id: 'acc-band-swift', name: '신속의 팔찌', type: 'accessory', icon: '/images/items/acc-band-swift.png', description: '속도를 높여 ATB가 빨리 찬다.', price: 1200, sellPrice: 360, statBonus: { spd: 4 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
+  { id: 'acc-charm-ward', name: '방호 부적', type: 'accessory', icon: '/images/items/acc-charm-ward.png', description: '상태이상 저항 +15%.', price: 1500, sellPrice: 450, statusResist: 15, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
+  { id: 'acc-pendant-vitality', name: '활력의 펜던트', type: 'accessory', icon: '/images/items/acc-pendant-vitality.png', description: '최대 HP를 크게 늘린다.', price: 1400, sellPrice: 420, statBonus: { maxHp: 40 }, stackable: false, maxStack: 1, tier: 3, rarity: 'rare', shopBuyable: true, craftable: false },
 ]
 
 const potions: ItemDef[] = [
@@ -261,13 +278,15 @@ const tools: ItemDef[] = [
   { id: 'tool-haste-sand', name: '가속의 모래', type: 'tool', icon: '/images/items/tool-haste-sand.png', description: '대상의 ATB를 즉시 50 채운다.', price: 120, sellPrice: 36, useEffect: { atbBoost: 50 }, stackable: true, maxStack: 20 },
 ]
 
-const feeds: ItemDef[] = [
-  { id: 'feed-fire', name: '매콤한 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '불꽃 속성 펫이 좋아한다. 호감도 +12.', price: 80, sellPrice: 24, feedElement: 'fire', useEffect: { petAffection: 12 }, stackable: true, maxStack: 30 },
-  { id: 'feed-ice', name: '시원한 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '얼음 속성 펫이 좋아한다. 호감도 +12.', price: 80, sellPrice: 24, feedElement: 'ice', useEffect: { petAffection: 12 }, stackable: true, maxStack: 30 },
-  { id: 'feed-earth', name: '든든한 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '대지 속성 펫이 좋아한다. 호감도 +12.', price: 80, sellPrice: 24, feedElement: 'earth', useEffect: { petAffection: 12 }, stackable: true, maxStack: 30 },
-  { id: 'feed-dark', name: '그늘진 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '어둠 속성 펫이 좋아한다. 호감도 +12.', price: 80, sellPrice: 24, feedElement: 'dark', useEffect: { petAffection: 12 }, stackable: true, maxStack: 30 },
-  { id: 'feed-light', name: '반짝이는 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '빛 속성 펫이 좋아한다. 호감도 +12.', price: 80, sellPrice: 24, feedElement: 'light', useEffect: { petAffection: 12 }, stackable: true, maxStack: 30 },
-  { id: 'feed-any', name: '평범한 먹이', type: 'feed', icon: '/images/items/vial-green.svg', description: '어떤 펫이든 조금 좋아한다. 호감도 +6.', price: 40, sellPrice: 12, useEffect: { petAffection: 6 }, stackable: true, maxStack: 30 },
+/** 스킬 숙련의 스크롤(옛 펫 먹이, 2026-10-31) — 마법 창에서 스킬을 골라 읽으면 그 스킬 숙련 경험치가 오른다 */
+const scrolls: ItemDef[] = [
+  { id: 'scroll-mastery', name: '스킬 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery.png', description: '아무 스킬 하나의 숙련 경험치 +6. 마법 창에서 스킬을 골라 읽는다.', price: 120, sellPrice: 36, useEffect: { masteryXp: 6 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-fire', name: '불꽃 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-fire.png', description: '불꽃 속성 스킬 하나의 숙련 경험치 +12.', price: 220, sellPrice: 66, scrollElement: 'fire', useEffect: { masteryXp: 12 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-ice', name: '얼음 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-ice.png', description: '얼음 속성 스킬 하나의 숙련 경험치 +12.', price: 220, sellPrice: 66, scrollElement: 'ice', useEffect: { masteryXp: 12 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-earth', name: '대지 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-earth.png', description: '대지 속성 스킬 하나의 숙련 경험치 +12.', price: 220, sellPrice: 66, scrollElement: 'earth', useEffect: { masteryXp: 12 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-dark', name: '어둠 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-dark.png', description: '어둠 속성 스킬 하나의 숙련 경험치 +12.', price: 260, sellPrice: 78, scrollElement: 'dark', useEffect: { masteryXp: 12 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-light', name: '빛 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-light.png', description: '빛 속성 스킬 하나의 숙련 경험치 +12.', price: 260, sellPrice: 78, scrollElement: 'light', useEffect: { masteryXp: 12 }, stackable: true, maxStack: 99 },
+  { id: 'scroll-mastery-high', name: '상급 숙련의 스크롤', type: 'scroll', icon: '/images/items/scroll-mastery-high.png', description: '아무 스킬 하나의 숙련 경험치 +30. 최상급 마법을 익힐 때 특히 요긴하다.', price: 1200, sellPrice: 360, useEffect: { masteryXp: 30 }, stackable: true, maxStack: 99 },
 ]
 
 // ── 에르디아 숲 재료·제작 장비 (§장비·아이템 PRD §24, §27) ──────────────────────
@@ -460,7 +479,7 @@ const GEAR_ITEMS: ItemDef[] = scaleGear([
   ...accessories,
   ...potions,
   ...tools,
-  ...feeds,
+  ...scrolls,
   ...forestMaterials,
   ...forestCraftedAccessories,
   ...forestUniqueGear,
@@ -666,7 +685,7 @@ const MONSTERS_LEGACY: MonsterDef[] = [
   // 에르디아 숲 (권장레벨 저지대 체감 난이도 완화 — 저레벨 잡몹 비중 확대 + 체력 전역 1/3 하향)
   { id: 'mon-field-mouse', name: '들쥐', level: 1, icon: '/images/monsters/mon-field-mouse.png', element: null, family: 'beast', stats: mstat(1, { maxHp: 0.34, atk: 0.8 }), skills: [], expReward: 8, goldReward: 5, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-forest-fiber', chance: 0.4 }] },
   { id: 'mon-glow-moth', name: '빛날개나방', level: 1, icon: '/images/monsters/mon-glow-moth.png', element: 'light', family: 'beast', stats: mstat(1, { maxHp: 0.34, spd: 1.2 }), traits: ['swift'], skills: [], expReward: 9, goldReward: 5, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-fairy-dust', chance: 0.3 }] },
-  { id: 'mon-forest-raccoon', name: '숲너구리', level: 2, icon: '/images/monsters/mon-forest-raccoon.png', element: 'earth', family: 'beast', stats: mstat(2, { maxHp: 0.34 }), skills: [], expReward: 18, goldReward: 12, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.3 }, { itemId: 'feed-any', chance: 0.15 }, { itemId: 'mat-forest-fiber', chance: 0.45 }] },
+  { id: 'mon-forest-raccoon', name: '숲너구리', level: 2, icon: '/images/monsters/mon-forest-raccoon.png', element: 'earth', family: 'beast', stats: mstat(2, { maxHp: 0.34 }), skills: [], expReward: 18, goldReward: 12, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.3 }, { itemId: 'scroll-mastery', chance: 0.08 }, { itemId: 'mat-forest-fiber', chance: 0.45 }] },
   { id: 'mon-thorn-vine', name: '가시덩굴', level: 3, icon: '/images/monsters/mon-thorn-vine.png', element: 'earth', family: 'plant', stats: mstat(3, { maxHp: 0.48, def: 1.3, spd: 0.6 }), traits: ['tank'], skills: [], expReward: 26, goldReward: 15, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-hp-s', chance: 0.25 }, { itemId: 'mat-thorn-shard', chance: 0.45 }] },
   { id: 'mon-sprite-green', name: '초록 요정', level: 4, icon: '/images/monsters/mon-sprite-green.png', element: null, family: 'beast', stats: mstat(4, { maxHp: 0.34, spd: 1.4, luck: 1.5 }), traits: ['swift'], skills: [], expReward: 30, goldReward: 22, zoneKinds: ['forest'], dropTable: [{ itemId: 'potion-mp-s', chance: 0.3 }, { itemId: 'mat-fairy-dust', chance: 0.35 }] },
   { id: 'mon-grey-wolf', name: '회색 늑대', level: 5, icon: '/images/monsters/mon-grey-wolf.png', element: 'ice', family: 'beast', stats: mstat(5, { maxHp: 0.34, atk: 1.2, spd: 1.2 }), traits: ['aggressive'], skills: [], expReward: 38, goldReward: 24, zoneKinds: ['forest'], dropTable: [{ itemId: 'mat-wolf-fang', chance: 0.4 }] },
@@ -710,7 +729,7 @@ const MONSTERS_LEGACY: MonsterDef[] = [
   { id: 'mon-shallows-eel', name: '얕은여울 뱀장어', level: 5, icon: '/images/monsters/mon-shallows-eel.png', element: 'ice', family: 'aquatic', stats: mstat(5, { maxHp: 0.67, spd: 1.4 }), traits: ['swift'], skills: [], expReward: 42, goldReward: 26, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-eel-scale', chance: 0.4 }] },
   { id: 'mon-siren-larva', name: '세이렌 유충', level: 7, icon: '/images/monsters/mon-siren-larva.png', element: null, family: 'aquatic', stats: mstat(7, { maxHp: 0.67, matk: 1.3 }), traits: ['caster'], skills: ['pet-silence-hiss'], expReward: 54, goldReward: 34, zoneKinds: ['sea'], dropTable: [{ itemId: 'acc-amulet-mana', chance: 0.05 }, { itemId: 'mat-siren-scale', chance: 0.35 }] },
   { id: 'mon-reef-turtle', name: '암초 거북', level: 9, icon: '/images/monsters/mon-reef-turtle.png', element: 'ice', family: 'aquatic', stats: mstat(9, { maxHp: 1.14, def: 1.6, spd: 0.5 }), traits: ['tank'], skills: [], expReward: 70, goldReward: 44, zoneKinds: ['sea'], dropTable: [{ itemId: 'mat-reef-fragment', chance: 0.45 }] },
-  { id: 'mon-tide-elemental', name: '밀물 정령', level: 11, icon: '/images/monsters/mon-tide-elemental.png', element: 'ice', family: 'aquatic', stats: mstat(11, { maxHp: 0.67, matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['ice-basic-3'], expReward: 88, goldReward: 52, zoneKinds: ['sea'], dropTable: [{ itemId: 'wand-ice-t2', chance: 0.06 }, { itemId: 'mat-tide-essence', chance: 0.4 }] },
+  { id: 'mon-tide-elemental', name: '밀물 정령', level: 11, icon: '/images/monsters/mon-tide-elemental.png', element: 'ice', family: 'aquatic', stats: mstat(11, { maxHp: 0.67, matk: 1.5, maxMp: 1.6 }), traits: ['caster'], skills: ['ice-basic-3'], expReward: 88, goldReward: 52, zoneKinds: ['sea'], dropTable: [{ itemId: 'wand-ice-t1', chance: 0.06 }, { itemId: 'mat-tide-essence', chance: 0.4 }] },
   {
     id: 'mon-jelly-queen',
     name: '해파리 여왕',
@@ -754,7 +773,7 @@ const MONSTERS_LEGACY: MonsterDef[] = [
   { id: 'mon-frost-revenant', name: '서리 망령', level: 22, icon: '/images/monsters/mon-frost-revenant.png', element: 'ice', family: 'undead', stats: mstat(22, { matk: 1.6, spd: 1.1 }), traits: ['caster'], skills: ['ice-basic-3', 'ice-adv-1'], expReward: 200, goldReward: 122, zoneKinds: ['ruins'], dropTable: [{ itemId: 'mat-frost-crystal', chance: 0.4 }] },
   { id: 'mon-dark-mage', name: '흑마법사', level: 25, icon: '/images/monsters/mon-dark-mage.png', element: 'dark', family: 'darkmage', stats: mstat(25, { matk: 1.8, maxMp: 1.8 }), traits: ['caster'], skills: ['fire-adv-2', 'ice-adv-2'], expReward: 240, goldReward: 150, zoneKinds: ['ruins'], dropTable: [{ itemId: 'acc-charm-ward', chance: 0.1 }, { itemId: 'mat-dark-ink', chance: 0.35 }] },
   { id: 'mon-stone-titan', name: '석상 거인', level: 28, icon: '/images/monsters/mon-stone-titan.png', element: 'earth', family: 'construct', stats: mstat(28, { maxHp: 2.2, def: 1.9, spd: 0.5, atk: 1.3 }), traits: ['tank'], skills: ['earth-high-1'], expReward: 300, goldReward: 190, zoneKinds: ['ruins'], rank: 'miniBoss', dropTable: [{ itemId: 'robe-t4', chance: 0.1 }, { itemId: 'mat-statue-fragment', chance: 0.8 }] },
-  { id: 'mon-azka-herald', name: '모르스의 전령', level: 32, icon: '/images/monsters/mon-azka-herald.png', element: 'fire', family: 'darkmage', stats: mstat(32, { maxHp: 2.4, matk: 2.0, maxMp: 2.0, atk: 1.4 }), traits: ['caster', 'aggressive'], rank: 'elite', skills: ['fire-high-1', 'fire-adv-3'], expReward: 420, goldReward: 280, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t4', chance: 0.15 }, { itemId: 'potion-elixir', chance: 0.3 }, { itemId: 'mat-mors-seal', chance: 0.35 }] },
+  { id: 'mon-azka-herald', name: '모르스의 전령', level: 32, icon: '/images/monsters/mon-azka-herald.png', element: 'fire', family: 'darkmage', stats: mstat(32, { maxHp: 2.4, matk: 2.0, maxMp: 2.0, atk: 1.4 }), traits: ['caster', 'aggressive'], rank: 'elite', skills: ['fire-high-1', 'fire-adv-3'], expReward: 420, goldReward: 280, zoneKinds: ['ruins'], dropTable: [{ itemId: 'wand-fire-t3', chance: 0.15 }, { itemId: 'potion-elixir', chance: 0.3 }, { itemId: 'mat-mors-seal', chance: 0.35 }] },
   {
     id: 'mon-stone-titan-king',
     name: '석상 거인왕',
@@ -853,7 +872,7 @@ const NPCS_BASE: NpcDef[] = [
   { id: 'npc-weapon', name: '대장장이 반', role: 'weaponMerchant', icon: '/images/npc/npc-weapon.png', zoneId: 'z-shops', cell: { x: 39, y: 20 }, greeting: ['다섯 속성 완드, 다 갖춰놨다네. 레벨에 맞는 걸로 골라 가시게.'], shopItemIds: [...wands.map((w) => w.id), ...robes.map((r) => r.id), ...hats.map((h) => h.id), ...accessories.map((a) => a.id)] },
   { id: 'npc-potion', name: '약사 셀린', role: 'potionMerchant', icon: '/images/npc/npc-potion.png', zoneId: 'z-shops', cell: { x: 43.2, y: 19.8 }, greeting: ['신선한 물약이 방금 들어왔어요. 통문 밖으로 나가기 전엔 꼭 챙기세요!'], shopItemIds: potions.map((p) => p.id) },
   { id: 'npc-tool', name: '만물상 토비', role: 'toolMerchant', icon: '/images/npc/npc-tool.png', zoneId: 'z-shops', cell: { x: 46, y: 20.2 }, greeting: ['도구는 다 여기 있습니다. 가속의 모래, 이거 전투에서 꽤 쓸만해요.'], shopItemIds: [...tools.map((t) => t.id), 'tool-rod-basic'] },
-  { id: 'npc-tamer', name: '조련사 리코', role: 'petTamer', icon: '/images/npc/npc-tamer.png', zoneId: 'z-shops', cell: { x: 48.2, y: 22.6 }, greeting: ['펫한테 새 재주를 가르쳐 볼까? 먹이도 팔고 있어.', '햇살 농가에서 펫 농장도 준비 중이라던데.'], shopItemIds: feeds.map((f) => f.id) },
+  { id: 'npc-tamer', name: '두루마리 상인 리코', role: 'toolMerchant', icon: '/images/npc/npc-tamer.png', zoneId: 'z-shops', cell: { x: 48.2, y: 22.6 }, greeting: ['숙련의 스크롤 있어! 한 장 읽으면 손에 익은 마법이 한결 매끄러워지지.', '소환수랑 놀던 시절이 그립긴 해. 요즘은 다들 소환 마법으로 부르더라고.'], shopItemIds: scrolls.map((f) => f.id) },
   // ── 제작 장인(2026-10-08 제작대 오브젝트 → 사람 NPC, PixelLab 도트) — 말을 걸면 각자의 제작 화면이 열린다(id 는 예전 그대로) ──
   { id: 'npc-alchemy-pot', name: '연금술 장인 이졸데', role: 'craftStation', station: 'alchemy_pot', icon: '/images/npc/npc-alchemy-pot.png', zoneId: 'z-dorm', cell: { x: 11.2, y: 19.8 }, roam: 0.5, greeting: ['어머, 손님이네. 가마 불 조절 중이니까 너무 가까이 오진 마.', '약초랑 결정만 가져와. 물약으로 바꾸는 건 내 몫이니까.'] },
   // ── 기숙사 마을 — 공동 식당 ──

@@ -14,7 +14,7 @@ import { ShopScreen } from '@/components/game/shop-screen'
 import { InventoryScreen } from '@/components/game/inventory-screen'
 import { CharacterScreen } from '@/components/game/character-screen'
 import { PartyScreen } from '@/components/game/party-screen'
-import { TamerScreen } from '@/components/game/tamer-screen'
+import { MagicScreen } from '@/components/game/magic-screen'
 import { SettingsScreen } from '@/components/game/settings-screen'
 import { Toast } from '@/components/game/toast'
 import { AdminPanel } from '@/components/game/admin-panel'
@@ -84,7 +84,7 @@ function AdminShell() {
   // 1) 타이틀이면 즉시 기본 캐릭터로 START_GAME
   useEffect(() => {
     if (!booted && state.screen === 'title') {
-      dispatch({ type: 'START_GAME', name: '관리자', appearance: {}, starterPetId: 'pet-emberling' })
+      dispatch({ type: 'START_GAME', name: '관리자', appearance: {} })
       setBooted(true)
     }
   }, [booted, state.screen, dispatch])
@@ -118,7 +118,7 @@ function AdminShell() {
       <InventoryScreen />
       <CharacterScreen />
       <PartyScreen />
-      <TamerScreen />
+      <MagicScreen />
       <SettingsScreen />
       {/* 관리자 '컷신' 탭의 장면 재생용 */}
       {state.storyQueue.length > 0 && <StoryOverlay />}

@@ -7,11 +7,12 @@
 // ============================================================================
 
 import type { GameState, Gender } from '@/lib/types'
-import { computeStatsForLevel } from '@/lib/constants'
+import { computeStatsForLevel, SUMMON_SLOT_SIZE } from '@/lib/constants'
+import { summonSkillIdOf } from '@/lib/pets'
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { defaultAppearance, STARTER_SKILLS } from '@/lib/player-factory'
 import { ensureParty, refreshSkills } from '@/lib/progression'
-import { itemById } from '@/lib/mock-data'
+import { itemById, skillById } from '@/lib/mock-data'
 
 // 버전은 키가 아니라 값(SaveFile.version) 안에 둔다 — 키에 버전을 붙이면 버전이 바뀔 때 옛 세이브를 못 찾는다.
 /** 세이브 슬롯 수(타이틀 CONTINUE · 설정 저장 화면) */
@@ -202,6 +203,8 @@ export function mergeSave(base: GameState, saved: Partial<GameState>): GameState
  *   · 스킬: 전직 자동 습득분을 버리고 수업 이수 기록으로 다시 계산(+ 시작 스킬), 장착 슬롯 재구성
  *   · 파티: 1학년 동기 자동 합류 + 4인 편성 + 진형 정리
  *   · 장비: 존재하지 않는 아이템 해제
+ *   · 2026-10-31 개편: 펫 → 소환 마법(보유 펫마다 소환 마법 습득, 펫 레벨로 숙련도), 펫 먹이 → 숙련의 스크롤,
+ *     단계별 완드(T2·T4, 「+1」「+3」) → 아래 단계 완드 + 강화 단계
  * 이후 런타임은 신규 규칙만 쓴다.
  */
 export function migrateLoadedState(state: GameState, raw: Partial<GameState>): GameState {
@@ -217,6 +220,46 @@ export function migrateLoadedState(state: GameState, raw: Partial<GameState>): G
       equippedSkills: [...STARTER_SKILLS],
     }
   }
+  // ── 2026-10-31: 펫 · 먹이 · 단계별 완드 ──
+  let inventory = state.inventory
+  const gear = { ...(player.gear ?? {}) }
+  const relabel: Record<string, string> = {}
+  for (const slot of inventory) {
+    const m = /^wand-(\w+)-t([24])$/.exec(slot.itemId)
+    if (m) {
+      const to = `wand-${m[1]}-t${Number(m[2]) - 1}`
+      relabel[slot.itemId] = to
+      gear[to] = { enh: Math.max(gear[to]?.enh ?? 0, 4), best: Math.max(gear[to]?.best ?? 0, 4), pot: gear[to]?.pot ?? [] }
+    }
+  }
+  inventory = inventory
+    .map((slot) => (relabel[slot.itemId] ? { ...slot, itemId: relabel[slot.itemId] } : slot.itemId.startsWith('feed-') ? { itemId: 'scroll-mastery', qty: slot.qty } : slot))
+    .reduce<GameState['inventory']>((acc, slot) => {
+      const same = acc.find((x) => x.itemId === slot.itemId)
+      if (same) same.qty += slot.qty
+      else acc.push({ ...slot })
+      return acc
+    }, [])
+  const equippedRaw = Object.fromEntries(Object.entries(player.equipped).map(([k, id]) => [k, id && relabel[id] ? relabel[id] : id]))
+  player = { ...player, equipped: equippedRaw, gear }
+  const oldPets = [...(raw.ownedPets ?? []), ...(raw.pet ? [raw.pet] : [])]
+  if (oldPets.length) {
+    const learned = new Set(player.learnedSkills ?? [])
+    const summons = [...(player.summonSkills ?? [])]
+    const mastery = { ...(player.skillMastery ?? {}) }
+    for (const pet of oldPets) {
+      const id = summonSkillIdOf(pet.defId)
+      if (!skillById(id)) continue
+      learned.add(id)
+      if (!summons.includes(id) && summons.length < SUMMON_SLOT_SIZE) summons.push(id)
+      // 펫 레벨 10마다 숙련도 1 (최대 10)
+      mastery[id] = { lv: Math.max(mastery[id]?.lv ?? 1, Math.min(10, 1 + Math.floor((pet.level ?? 1) / 10))), xp: 0 }
+    }
+    player = { ...player, learnedSkills: [...learned], summonSkills: summons, skillMastery: mastery }
+  }
+  const { pet: _pet, ownedPets: _owned, ...stateNoPets } = state
+  state = { ...(stateNoPets as GameState), inventory }
+
   const level = Math.max(1, Math.min(MAX_LEVEL, player.level || 1))
   const stats = computeStatsForLevel(level)
   const equipped = { ...player.equipped }
@@ -230,6 +273,9 @@ export function migrateLoadedState(state: GameState, raw: Partial<GameState>): G
     equipped,
     learnedSkills: player.learnedSkills ?? [...STARTER_SKILLS],
     equippedSkills: player.equippedSkills ?? (player.learnedSkills ?? []).slice(0, 8),
+    summonSkills: player.summonSkills ?? [],
+    skillMastery: player.skillMastery ?? {},
+    gear: player.gear ?? {},
     appearance: defaultAppearance(player.appearance ?? {}),
   }
   const formation = state.formation?.positions ? state.formation : { positions: { hero: 'front' as const } }

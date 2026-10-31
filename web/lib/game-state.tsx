@@ -22,11 +22,11 @@ import { activitySpotById, ARCADE_REWARD_GOLD } from '@/lib/activity-spots'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
 import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
-import { createInitialGameState, createPlayer, createStarterPet } from '@/lib/player-factory'
+import { createInitialGameState, createPlayer } from '@/lib/player-factory'
 import { defeatKey, generateFieldMonsters, pruneDefeats, wanderState } from '@/lib/field'
 import { monsterView } from '@/lib/monster-charge'
 import { getEffectiveStats } from '@/lib/derived'
-import { canTrain, clampAffection, createPet, petDefById, petStatsForLevel, PET_DEFS } from '@/lib/pets'
+import { enhanceCost, enhanceOnce, gearName, gearOf, isEnhanceable, ENHANCE_MAX } from '@/lib/gear-enhance'
 import {
   advanceTurn,
   awaitsPlayerInput,
@@ -52,7 +52,7 @@ import {
   classGameDone,
   dropQuest,
   finishClass,
-  setMemberPet,
+  readMasteryScroll,
   startClass,
   battleExpShare,
   battleParty,
@@ -89,24 +89,25 @@ import { mergeSave, migrateLoadedState, writeSave } from '@/lib/save'
 import { VILLAGE_LAYOUT, villageShift } from '@/lib/village-layout'
 
 export type Action =
-  | { type: 'START_GAME'; name: string; appearance: Partial<PlayerAppearance>; starterPetId: string }
+  | { type: 'START_GAME'; name: string; appearance: Partial<PlayerAppearance> }
   | { type: 'SET_SCREEN'; screen: ScreenId }
   | { type: 'MOVE'; dx: number; dy: number }
   | { type: 'OPEN_NPC'; npcId: string }
   | { type: 'OPEN_SHOP'; npcId: string }
-  | { type: 'OPEN_TAMER'; npcId: string }
   | { type: 'OPEN_CRAFT'; npcId: string }
   | { type: 'CLOSE_OVERLAY' }
   | { type: 'BUY_ITEM'; itemId: string }
   | { type: 'SELL_ITEM'; itemId: string }
   | { type: 'CRAFT_ITEM'; recipeId: string }
   | { type: 'USE_ITEM_FIELD'; itemId: string }
-  | { type: 'PET_TRAIN'; skillId: string }
+  /** 제작대 장비 강화 — 골드만 쓴다(lib/gear-enhance) */
+  | { type: 'ENHANCE_GEAR'; itemId: string }
+  /** 스킬 숙련의 스크롤 읽기 — 마법 창에서 스킬을 골라 */
+  | { type: 'USE_MASTERY_SCROLL'; itemId: string; skillId: string }
   | { type: 'REST' }
   | { type: 'EQUIP_ITEM'; itemId: string; slot: EquipSlot }
   | { type: 'UNEQUIP_ITEM'; slot: EquipSlot }
   | { type: 'TOGGLE_EQUIP_SKILL'; skillId: string }
-  | { type: 'SET_ACTIVE_PET'; defId: string }
   | { type: 'START_BATTLE'; fieldMonsterUid: string }
   /** 천공 콜로세움 창 — 신분이 없으면 이때 넘겨준 것으로(무작위 값은 리듀서 밖에서 만든다) */
   | { type: 'OPEN_ARENA'; identity: ArenaIdentity }
@@ -153,8 +154,6 @@ export type Action =
   | { type: 'ADMIN_CLEAR_SKILLS' }
   | { type: 'ADMIN_GIVE_ALL_ITEMS' }
   | { type: 'ADMIN_SET_GOLD'; gold: number }
-  | { type: 'ADMIN_GRANT_ALL_PETS' }
-  | { type: 'ADMIN_SET_ACTIVE_PET'; defId: string }
   | { type: 'ADMIN_HEAL_FULL' }
   | { type: 'ADMIN_RESPAWN_MONSTERS' }
   // ── 4년제 학사·생활·동료 ────────────────────────────────────────────────────
@@ -179,7 +178,6 @@ export type Action =
   | { type: 'REMOVE_GUEST'; guestId: string }
   | { type: 'BATTLE_SET_AUTO'; auto: boolean }
   | { type: 'ACCEPT_QUEST'; instanceId: string }
-  | { type: 'SET_MEMBER_PET'; memberId: string; defId: string | null }
   | { type: 'DROP_QUEST'; instanceId: string }
   | { type: 'START_CLASS' }
   | { type: 'ADMIN_CLASS_TEST'; game: import('@/lib/curriculum').MiniGameType }
@@ -238,14 +236,11 @@ function reducerCore(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'START_GAME': {
       const player = createPlayer(action.name, action.appearance)
-      const pet = createStarterPet(action.starterPetId)
       const fieldMonsters = generateFieldMonsters(MAPS.village, state.settings.testMode, state.monsterDefeats)
       // 새 게임 — 1학년 1학기 1주차부터(주간 퀘스트 생성 + 입학 스토리 비트 큐잉)
       return newGameProgress({
         ...state,
         player,
-        pet,
-        ownedPets: [pet],
         currentMapId: 'village',
         currentZoneId: 'z-quad',
         position: { ...MAPS.village.spawn },
@@ -288,9 +283,6 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'ACCEPT_QUEST':
       return acceptQuest(state, action.instanceId)
-
-    case 'SET_MEMBER_PET':
-      return setMemberPet(state, action.memberId, action.defId)
 
     case 'DROP_QUEST':
       return dropQuest(state, action.instanceId)
@@ -377,12 +369,6 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'TOGGLE_EQUIP_SKILL':
       return toggleEquipSkill(state, action.skillId)
-
-    case 'SET_ACTIVE_PET': {
-      const found = state.ownedPets.find((p) => p.defId === action.defId)
-      if (!found) return state
-      return { ...state, pet: found, toast: `${found.nickname}을(를) 데리고 다닙니다. (고정 펫 슬롯으로 함께 싸웁니다)` }
-    }
 
     case 'ADMIN_SET_WEEK':
       return adminSetWeek(state, action.week)
@@ -695,9 +681,6 @@ function reducerCore(state: GameState, action: Action): GameState {
     case 'OPEN_SHOP':
       return { ...state, activeNpcId: action.npcId, activeShopId: action.npcId, previousScreen: state.screen, screen: 'shop' }
 
-    case 'OPEN_TAMER':
-      return { ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'tamer' }
-
     case 'OPEN_CRAFT':
       return { ...state, activeNpcId: action.npcId, previousScreen: state.screen, screen: 'craft' }
 
@@ -719,10 +702,19 @@ function reducerCore(state: GameState, action: Action): GameState {
       const item = itemById(action.itemId)
       const slot = state.inventory.find((s) => s.itemId === action.itemId)
       if (!item || !slot) return state
+      const inventory = removeFromInventory(state.inventory, action.itemId, 1)
+      // 마지막 한 개를 팔면 장착·강화 상태도 함께 사라진다
+      let player = { ...state.player, gold: state.player.gold + item.sellPrice }
+      if (!inventory.some((s) => s.itemId === action.itemId)) {
+        const equipped = Object.fromEntries(Object.entries(player.equipped).filter(([, id]) => id !== action.itemId))
+        const gear = { ...(player.gear ?? {}) }
+        delete gear[action.itemId]
+        player = { ...player, equipped, gear }
+      }
       return {
         ...state,
-        player: { ...state.player, gold: state.player.gold + item.sellPrice },
-        inventory: removeFromInventory(state.inventory, action.itemId, 1),
+        player,
+        inventory,
         toast: `${item.name}을(를) 판매했습니다. (+${item.sellPrice}G)`,
       }
     }
@@ -764,19 +756,7 @@ function reducerCore(state: GameState, action: Action): GameState {
         }
       }
 
-      if (item.type === 'feed' && item.useEffect.petAffection) {
-        const def = petDefById(state.pet.defId)
-        const liked = !item.feedElement || item.feedElement === def?.element
-        const gain = liked ? item.useEffect.petAffection : Math.round(item.useEffect.petAffection * 0.5)
-        const pet = { ...state.pet, affection: clampAffection(state.pet.affection + gain) }
-        return {
-          ...state,
-          pet,
-          ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
-          inventory: removeFromInventory(state.inventory, action.itemId, 1),
-          toast: `${state.pet.nickname}의 호감도가 ${gain} 올랐다. (${pet.affection}%)`,
-        }
-      }
+      if (item.type === 'scroll') return { ...state, toast: '숙련의 스크롤은 마법 창(HUD 「마법」)에서 스킬을 골라 읽어요.' }
 
       let hp = state.player.hp
       let mp = state.player.mp
@@ -791,39 +771,11 @@ function reducerCore(state: GameState, action: Action): GameState {
       }
     }
 
-    case 'PET_TRAIN': {
-      const def = petDefById(state.pet.defId)
-      const t = def?.trainableSkills.find((s) => s.skillId === action.skillId)
-      if (!t) return state
-      const check = canTrain(state.pet, action.skillId, state.player.gold, (id) =>
-        state.inventory.some((s) => s.itemId === id),
-      )
-      if (!check.ok) return { ...state, toast: check.reason ?? '훈련할 수 없습니다.' }
-      let inventory = state.inventory
-      if (t.costItemId) inventory = removeFromInventory(inventory, t.costItemId, 1)
-      const pet = { ...state.pet, learnedSkills: [...state.pet.learnedSkills, action.skillId] }
-      return {
-        ...state,
-        player: { ...state.player, gold: state.player.gold - t.costGold },
-        pet,
-        ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
-        inventory,
-        toast: '펫이 새 스킬을 배웠다!',
-      }
-    }
-
     case 'REST': {
       const eff = getEffectiveStats(state.player)
-      const petDef = petDefById(state.pet.defId)
-      const petMax = petDef ? petStatsForLevel(petDef, state.pet.level) : null
-      const pet = petMax
-        ? { ...state.pet, hp: petMax.maxHp, mp: petMax.maxMp }
-        : state.pet
       return healCompanions({
         ...state,
         player: { ...state.player, hp: eff.maxHp, mp: eff.maxMp },
-        pet,
-        ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
         activeNpcId: null,
         screen: 'world',
         toast: '기숙사에서 충분히 쉬었다. 파티 전원의 HP·MP가 모두 회복되었다.',
@@ -842,6 +794,27 @@ function reducerCore(state: GameState, action: Action): GameState {
         toast: `${item.name}을(를) 장착했습니다.`,
       }
     }
+
+    case 'ENHANCE_GEAR': {
+      const item = itemById(action.itemId)
+      if (!isEnhanceable(item) || !state.inventory.some((s) => s.itemId === action.itemId)) return state
+      const mods = gearOf(state.player.gear, action.itemId)
+      if (mods.enh >= ENHANCE_MAX) return { ...state, toast: `${item.name}은(는) 이미 +${ENHANCE_MAX} 입니다.` }
+      const cost = enhanceCost(item, mods.enh)
+      if (state.player.gold < cost) return { ...state, toast: '골드가 부족합니다.' }
+      const r = enhanceOnce(item, mods)
+      const gear = { ...(state.player.gear ?? {}), [action.itemId]: r.mods }
+      const msg =
+        r.outcome === 'success'
+          ? `강화 성공! ${gearName(item, r.mods)}`
+          : r.outcome === 'drop'
+            ? `강화 실패… ${gearName(item, r.mods)}(으)로 한 단계 떨어졌다.`
+            : `강화 실패. +${mods.enh} 그대로 유지된다.`
+      return { ...state, player: { ...state.player, gold: state.player.gold - cost, gear }, toast: msg }
+    }
+
+    case 'USE_MASTERY_SCROLL':
+      return readMasteryScroll(state, action.itemId, action.skillId)
 
     case 'UNEQUIP_ITEM': {
       const equipped = { ...state.player.equipped }
@@ -879,22 +852,20 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'ADMIN_TOGGLE_SKILL': {
       const has = state.player.learnedSkills.includes(action.skillId)
-      if (!has && !isStudentSkill(SKILLS.find((s) => s.id === action.skillId)!)) return state // 펫·모르스 전용은 배울 수 없다
+      if (!has && !isStudentSkill(SKILLS.find((s) => s.id === action.skillId)!)) return state // 소환수 기술·모르스 전용은 배울 수 없다
       const learnedSkills = has
         ? state.player.learnedSkills.filter((id) => id !== action.skillId)
         : [...state.player.learnedSkills, action.skillId]
-      const equippedSkills = has
-        ? state.player.equippedSkills.filter((id) => id !== action.skillId)
-        : state.player.equippedSkills.length < 8
-          ? [...state.player.equippedSkills, action.skillId]
-          : state.player.equippedSkills
-      return { ...state, player: { ...state.player, learnedSkills, equippedSkills } }
+      // 장착 칸·소환 칸 배치는 refreshSkills 와 같은 규칙(toggleEquipSkill)으로
+      const player = { ...state.player, learnedSkills, equippedSkills: state.player.equippedSkills.filter((id) => id !== action.skillId), summonSkills: (state.player.summonSkills ?? []).filter((id) => id !== action.skillId) }
+      return has ? { ...state, player } : toggleEquipSkill({ ...state, player }, action.skillId)
     }
 
     case 'ADMIN_LEARN_ALL_SKILLS': {
-      // 학생이 배울 수 있는 스킬 전부(바람·펫 전용 제외)
+      // 학생이 배울 수 있는 스킬 전부(바람·소환수 기술 제외) — 소환 마법은 소환 칸 4개에
       const learnedSkills = SKILLS.filter(isStudentSkill).map((s) => s.id)
-      return { ...state, player: { ...state.player, learnedSkills, equippedSkills: learnedSkills.slice(0, 8) } }
+      const summonIds = SKILLS.filter((s) => s.kind === 'summon').map((s) => s.id)
+      return { ...state, player: { ...state.player, learnedSkills, equippedSkills: learnedSkills.filter((id) => !summonIds.includes(id)).slice(0, 8), summonSkills: summonIds.slice(0, 4) } }
     }
 
     case 'ADMIN_CLEAR_SKILLS':
@@ -908,26 +879,11 @@ function reducerCore(state: GameState, action: Action): GameState {
     case 'ADMIN_SET_GOLD':
       return { ...state, player: { ...state.player, gold: Math.max(0, Math.round(action.gold)) } }
 
-    case 'ADMIN_GRANT_ALL_PETS': {
-      const ownedPets = PET_DEFS.map((d) => createPet(d.id, { level: state.player.level, affection: 80 }))
-      const pet = ownedPets.find((p) => p.defId === state.pet.defId) ?? ownedPets[0] ?? state.pet
-      return { ...state, ownedPets, pet }
-    }
-
-    case 'ADMIN_SET_ACTIVE_PET': {
-      const found = state.ownedPets.find((p) => p.defId === action.defId)
-      if (!found) return state
-      return { ...state, pet: found }
-    }
-
     case 'ADMIN_HEAL_FULL': {
-      const stats = state.player.stats
-      const petDef = petDefById(state.pet.defId)
-      const petStats = petDef ? petStatsForLevel(petDef, state.pet.level) : null
+      const stats = getEffectiveStats(state.player)
       return {
         ...state,
         player: { ...state.player, hp: stats.maxHp, mp: stats.maxMp },
-        pet: petStats ? { ...state.pet, hp: petStats.maxHp, mp: petStats.maxMp } : state.pet,
       }
     }
 
@@ -1018,7 +974,6 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (!state.battle) return state
       if (state.battle.pvp) return endArenaBattle(state, state.battle.victory)
       const heroC = state.battle.combatants.find((c) => c.uid === 'hero')
-      const petC = state.battle.combatants.find((c) => c.uid === 'pet')
 
       if (state.battle.victory) {
         const prevLevel = state.player.level
@@ -1034,11 +989,6 @@ function reducerCore(state: GameState, action: Action): GameState {
           beaten && fieldMonsters.length < state.fieldMonsters.length
             ? { ...pruneDefeats(state.monsterDefeats), [defeatKey(state.currentMapId, beaten)]: Date.now() }
             : state.monsterDefeats
-
-        // 펫은 실제로 싸웠을 때(주인공 전위)만 HP 반영·호감도 상승
-        const pet = petC
-          ? { ...state.pet, hp: Math.max(1, petC.hp), mp: petC.mp, affection: clampAffection(state.pet.affection + 2) }
-          : state.pet
 
         // 경험치·레벨업(스탯 갱신 + 레벨 조건 스킬)은 퀘스트 경험치와 같은 경로
         const leveled = grantHeroExp(
@@ -1059,8 +1009,6 @@ function reducerCore(state: GameState, action: Action): GameState {
         return afterBattleVictory(
           {
             ...leveled,
-            pet,
-            ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
             inventory,
             fieldMonsters,
             monsterDefeats,
@@ -1074,12 +1022,9 @@ function reducerCore(state: GameState, action: Action): GameState {
 
       const village = MAPS.village
       const respawnPos = village.respawn ?? village.spawn
-      const pet = { ...state.pet, hp: Math.max(1, Math.round(state.pet.hp * 0.2)) }
       return reopenStoryBattle(afterBattleDefeat({
         ...state,
         player: { ...state.player, hp: 1, mp: Math.max(1, Math.round(state.player.stats.maxMp * 0.2)) },
-        pet,
-        ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
         currentMapId: 'village',
         position: { ...respawnPos },
         currentZoneId: zoneAt(village, respawnPos.x, respawnPos.y)?.id ?? state.currentZoneId,
@@ -1220,14 +1165,10 @@ function leaveBattle(
   toast: string,
 ): GameState {
   const heroC = resolved?.combatants.find((c) => c.uid === 'hero')
-  const petC = resolved?.combatants.find((c) => c.uid === 'pet')
-  const pet = petC ? { ...state.pet, hp: Math.max(1, petC.hp), mp: petC.mp } : state.pet
   return {
     ...state,
     inventory,
     player: heroC ? { ...state.player, hp: Math.max(1, heroC.hp), mp: heroC.mp } : state.player,
-    pet,
-    ownedPets: state.ownedPets.map((p) => (p.defId === pet.defId ? pet : p)),
     battle: null,
     screen: 'world',
     toast,

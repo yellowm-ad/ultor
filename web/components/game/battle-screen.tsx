@@ -8,6 +8,7 @@ import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
+import { masteredMpCost } from '@/lib/skill-mastery'
 import { SkillFxLayer, type FxPos } from '@/components/game/skill-fx'
 import { skillMotion } from '@/lib/skill-motion'
 import { DiamondMark } from '@/components/game/ui-motifs'
@@ -322,6 +323,8 @@ export function BattleScreen() {
   /** 지금 명령을 고를 수 있는가(내 차례이고 대상 고르는 중이 아님) */
   const canAct = isHeroTurn && !pending
   const availableSkills = actor ? SKILLS.filter((s) => actor.skills.includes(s.id)) : []
+  /** 숙련도가 반영된 MP 소모 */
+  const mpOf = (s: { id: string; mpCost: number }) => masteredMpCost(s, actor?.mastery?.[s.id])
   const availableItems = state.inventory
     .map((slot) => ({ slot, item: itemById(slot.itemId) }))
     .filter((x) => x.item && (x.item.type === 'potion' || x.item.type === 'tool') && !x.item.useEffect?.grantExp && !x.item.useEffect?.invisibleSec && !!x.item.useEffect)
@@ -373,7 +376,7 @@ export function BattleScreen() {
     if (!(n >= 1 && n <= 9)) return
     if (menu === 'skill') {
       const s = availableSkills[n - 1]
-      if (!s || !actor || actor.mp < s.mpCost) return
+      if (!s || !actor || actor.mp < mpOf(s)) return
       setMenu('root')
       if (s.targeting === 'allEnemies' || s.targeting === 'allAllies' || s.targeting === 'self') submit({ type: 'skill', skillId: s.id, targetUid: actor.uid })
       else setPending({ kind: 'skill', skill: s })
@@ -615,7 +618,7 @@ export function BattleScreen() {
                         <button
                           key={s.id}
                           type="button"
-                          disabled={!actor || actor.mp < s.mpCost}
+                          disabled={!actor || actor.mp < mpOf(s)}
                           onClick={() => {
                             setMenu('root')
                             if (s.targeting === 'allEnemies' || s.targeting === 'allAllies' || s.targeting === 'self') {
@@ -628,11 +631,11 @@ export function BattleScreen() {
                           className="battle-fan-item gem-btn"
                         >
                           <Image src={s.icon} alt={s.name} width={26} height={26} />
-                          <span className="battle-fan-mp">{s.mpCost}</span>
+                          <span className="battle-fan-mp">{mpOf(s)}</span>
                           {i < 9 && <span className="battle-fan-key">{i + 1}</span>}
                           <span className="battle-tip">
                             <b>{s.name}</b>
-                            <i>MP {s.mpCost}{actor && actor.mp < s.mpCost ? ' · MP 부족' : ''}</i>
+                            <i>MP {mpOf(s)}{actor?.mastery?.[s.id] ? ` · 숙련 Lv.${actor.mastery[s.id]}` : ''}{actor && actor.mp < mpOf(s) ? ' · MP 부족' : ''}</i>
                             {s.description}
                           </span>
                         </button>

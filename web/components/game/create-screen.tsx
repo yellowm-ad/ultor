@@ -8,7 +8,6 @@ import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { DiamondMark } from '@/components/game/ui-motifs'
 import { PLAYER_ELEMENTS, ELEMENT_META } from '@/lib/constants'
 import { STARTER_SKILLS } from '@/lib/player-factory'
-import { petDefById, STARTER_PET_IDS } from '@/lib/pets'
 import { skillById } from '@/lib/mock-data'
 import type { Gender } from '@/lib/types'
 
@@ -48,11 +47,10 @@ export function CreateScreen() {
   const { dispatch } = useGame()
   const [name, setName] = useState('')
   const [gender, setGender] = useState<Gender>('male')
-  const [petId, setPetId] = useState<string>(STARTER_PET_IDS[0])
   const starterSkill = skillById(STARTER_SKILLS[0])
 
   // 화면을 꽉 채우지 않는 창 형식(2026-10-10) — 타이틀 삽화를 흐리게 깔고, 가운데 '입학 원서' 창 하나에 전부 담는다.
-  //   왼쪽 = 주인공 모습(마법진 위) + 성별, 오른쪽 = 이름 · 첫 펫 · 시작 마술 · 배울 마법, 아래 = 뒤로 / 입학하기
+  //   왼쪽 = 주인공 모습(마법진 위) + 성별, 오른쪽 = 이름 · 시작 마술 · 배울 마법(첫 펫 고르기는 2026-10-31 폐지 — 소환 마법으로 배운다), 아래 = 뒤로 / 입학하기
   return (
     <div className="create-root screen-fade-in relative flex h-full w-full items-center justify-center overflow-hidden bg-[#0b0907] p-4 sm:p-8">
       <div className="title-bg-frame">
@@ -105,24 +103,6 @@ export function CreateScreen() {
 
             <div className="create-field">
               <span className="create-label">
-                <DiamondMark size={8} />첫 펫
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {STARTER_PET_IDS.map((id) => {
-                  const d = petDefById(id)!
-                  return (
-                    <button key={id} type="button" onClick={() => setPetId(id)} className={`create-pet ${petId === id ? 'is-on' : ''}`}>
-                      <Image src={d.icon} alt="" width={40} height={40} />
-                      {d.name}
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="create-note">펫은 주인공이 전위에 설 때 함께 싸웁니다.</p>
-            </div>
-
-            <div className="create-field">
-              <span className="create-label">
                 <DiamondMark size={8} />
                 시작 마술
               </span>
@@ -150,7 +130,7 @@ export function CreateScreen() {
                   </span>
                 ))}
               </div>
-              <p className="create-note">불꽃·얼음·대지는 1학년부터, 어둠·빛은 3학년부터 배웁니다.</p>
+              <p className="create-note">불꽃·얼음·대지는 1학년부터, 어둠·빛은 3학년부터 배웁니다. 소환수를 부르는 소환 마법도 각 속성 수업에서 익힙니다.</p>
             </div>
           </div>
         </div>
@@ -163,7 +143,7 @@ export function CreateScreen() {
             variant="default"
             size="lg"
             className="px-10 text-base"
-            onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 신입생', appearance: { gender }, starterPetId: petId })}
+            onClick={() => dispatch({ type: 'START_GAME', name: name.trim() || '이름없는 신입생', appearance: { gender } })}
           >
             입학하기
           </Button>
