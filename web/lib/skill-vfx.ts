@@ -38,6 +38,34 @@ export interface VfxLayer {
   opacity?: number
   /** 쌓는 순서(클수록 위) */
   z?: number
+  /** 재생할 프레임 구간 [처음, 끝](0~15) — 생략 시 16프레임 전부 */
+  range?: [number, number]
+  /** 마지막 프레임을 이만큼 더 붙잡아 둔다(ms) — 기를 모으는 자세 유지 등 */
+  holdMs?: number
+  /** 가장자리 흐림 — 'radial'(기본) 64px 칸 경계가 안 보이게 둥글게 흐린다 · 'none' 그대로 */
+  fade?: 'radial' | 'none'
+}
+
+/** 화염 방사 빔(도트) — 용의 입 같은 시작점에 에너지를 모았다가 대상들 가운데로 길게 뿜는다(skill-fx FlameBeam) */
+export interface VfxBeam {
+  /** 시전자 몸통 기준 입 위치(px) */
+  dx: number
+  dy: number
+  /** 뿜기 시작 · 지속(ms) */
+  startMs: number
+  durMs: number
+  /** 모으기 시트 — 뿜기 직전 chargeMs 동안 */
+  charge: string
+  chargeSize: number
+  chargeMs: number
+  /** 줄기 시트(가로로 이어 붙는 불길) — 한 조각 크기(px), 한 바퀴 시간 */
+  stream: string
+  segment: number
+  streamMs: number
+  /** 꽂히는 끝 */
+  head: string
+  headSize: number
+  headMs: number
 }
 
 export interface SkillVfx {
@@ -48,6 +76,7 @@ export interface SkillVfx {
   totalMs: number
   /** 화면 흔들림(시각 ms → 세기 px) */
   shakes?: { at: number; px: number }[]
+  beam?: VfxBeam
 }
 
 export const vfxSheet = (name: string) => `/images/battle/vfx/skills/${name}.png`
@@ -129,18 +158,35 @@ export const SKILL_VFX: Record<string, SkillVfx> = {
     shakes: [{ at: 1150, px: 8 }],
   },
   // ── 불꽃 · 최상급 — 전투 화면을 꽉 채운다 ─────────────────────────────────
+  // 멸화의 심판 — 용이 나타나 입에 화염 에너지를 모았다가(기 모으기) 한 번에 빔 형태의 화염 방사를 길게 뿜는다
   'fire-master-1': {
     castMs: 1700,
-    impactMs: 2350,
+    impactMs: 2250,
     totalMs: 5000,
+    beam: {
+      dx: 255,
+      dy: -235,
+      startMs: 2100,
+      durMs: 1700,
+      charge: 'fire-master-1-charge',
+      chargeSize: 260,
+      chargeMs: 1150,
+      stream: 'fire-master-1-stream',
+      segment: 230,
+      streamMs: 520,
+      head: 'fire-master-1-head',
+      headSize: 380,
+      headMs: 700,
+    },
+    shakes: [{ at: 2150, px: 10 }, ...Array.from({ length: 11 }, (_, i) => ({ at: 2300 + i * 130, px: 4 + (i % 3) })), { at: 3750, px: 7 }],
     layers: [
-      L('fire-master-1-dragon', 'caster', 400, 900, 1500, { dx: 110, dy: -175, z: 4 }),
-      L('fire-master-1-wall', 'screen', 440, 2050, 1400, { opacity: 0.92, z: 2 }),
-      L('fire-master-1-nova', 'center', 520, 2350, 1200, { blend: 'screen', z: 5, scatter: { count: 3, spreadX: 260, spreadY: 90, jitterMs: 260 } }),
-      // 잔불 — 「발화」의 불씨 레이어를 대상 주변에 흩뿌린다
-      L('fire-adv-3-burn', 'targetGround', 150, 3000, 700, { repeat: 3, z: 1, scatter: { count: 3, spreadX: 90, spreadY: 26, jitterMs: 240 } }),
+      // 용 — 등장해 고개를 젖히며 입을 벌린 채 기를 모은다(0~3프레임, 마지막 자세 유지) → 뿜는 동안(8~11 반복) → 마무리(12~15)
+      L('fire-master-1-dragon', 'caster', 440, 500, 900, { dx: 90, dy: -180, z: 4, range: [0, 3], holdMs: 700 }),
+      L('fire-master-1-dragon', 'caster', 440, 2100, 410, { dx: 90, dy: -180, z: 4, range: [8, 11], repeat: 4 }),
+      L('fire-master-1-dragon', 'caster', 440, 3740, 520, { dx: 90, dy: -180, z: 4, range: [12, 15] }),
+      L('fire-master-1-nova', 'center', 460, 2250, 800, { blend: 'screen', z: 5, repeat: 2, scatter: { count: 2, spreadX: 150, spreadY: 60, jitterMs: 300 } }),
+      L('fire-adv-3-burn', 'targetGround', 150, 3700, 700, { repeat: 2, z: 1, scatter: { count: 3, spreadX: 90, spreadY: 26, jitterMs: 240 } }),
     ],
-    shakes: [{ at: 2050, px: 6 }, { at: 2350, px: 12 }, { at: 2650, px: 8 }, { at: 3000, px: 5 }],
   },
   'fire-master-2': {
     castMs: 1700,
@@ -191,7 +237,7 @@ export const SKILL_VFX: Record<string, SkillVfx> = {
     impactMs: 640,
     totalMs: 2100,
     layers: [
-      L('ice-adv-2-snow', 'screen', 420, 300, 700, { repeat: 2, opacity: 0.45, blend: 'screen' }),
+      L('ice-adv-2-snow', 'screen', 420, 300, 700, { repeat: 2, opacity: 0.35, blend: 'screen' }),
       L('ice-adv-2-vortex', 'target', 200, 480, 700, { repeat: 2, z: 2 }),
     ],
     shakes: [{ at: 640, px: 4 }],
@@ -209,7 +255,7 @@ export const SKILL_VFX: Record<string, SkillVfx> = {
     impactMs: 950,
     totalMs: 2800,
     layers: [
-      L('ice-high-1-storm', 'screen', 440, 600, 800, { repeat: 2, opacity: 0.55, blend: 'screen' }),
+      L('ice-high-1-storm', 'screen', 440, 600, 800, { repeat: 2, opacity: 0.38, blend: 'screen' }),
       L('ice-high-1-icicles', 'target', 260, 850, 700, { repeat: 2, dy: -40, z: 3, scatter: { count: 2, spreadX: 80, spreadY: 20, jitterMs: 180 } }),
       L('ice-high-1-mist', 'targetGround', 280, 1300, 1000, { z: 1 }),
     ],
@@ -236,7 +282,7 @@ export const SKILL_VFX: Record<string, SkillVfx> = {
       L('ice-master-1-beams', 'center', 520, 1500, 1100, { dy: -40, blend: 'screen', z: 2, scatter: { count: 3, spreadX: 260, spreadY: 40, jitterMs: 200 } }),
       L('ice-master-1-prison', 'targetGround', 360, 2100, 1400, { dy: -150, z: 4 }),
       // 서리 덮개 — 화면 전체 눈폭풍을 옅게(전용 시트는 배경이 안 빠져 쓰지 않음)
-      L('ice-high-1-storm', 'screen', 440, 2200, 750, { repeat: 2, opacity: 0.45, blend: 'screen', z: 5 }),
+      L('ice-high-1-storm', 'screen', 440, 2200, 750, { repeat: 2, opacity: 0.3, blend: 'screen', z: 5 }),
       L('ice-master-1-shatter', 'target', 380, 3350, 1000, { blend: 'screen', z: 6 }),
     ],
     shakes: [{ at: 2300, px: 9 }, { at: 3400, px: 12 }],
@@ -260,4 +306,4 @@ export function skillVfx(skillId: string | undefined): SkillVfx | undefined {
 }
 
 /** 시트 이름 전체(점검·자르기 스크립트용) */
-export const VFX_SHEETS = Array.from(new Set(Object.values(SKILL_VFX).flatMap((v) => v.layers.map((l) => l.sheet))))
+export const VFX_SHEETS = Array.from(new Set(Object.values(SKILL_VFX).flatMap((v) => [...v.layers.map((l) => l.sheet), ...(v.beam ? [v.beam.charge, v.beam.stream, v.beam.head] : [])])))

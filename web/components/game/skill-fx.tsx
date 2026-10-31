@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { BattleFx, Element } from '@/lib/types'
 import { fxTier, skillMotion, type MotionTier } from '@/lib/skill-motion'
-import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxLayer } from '@/lib/skill-vfx'
+import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxBeam, type VfxLayer } from '@/lib/skill-vfx'
 
 /** 연출 색 키 — 속성 없음(null)은 'none' */
 type FxKey = Element | 'none'
@@ -190,6 +190,9 @@ function FxScene({
   // 스킬별 도트 애니메이션(lib/skill-vfx) — 있으면 절차형 공격·지원 연출 대신 이걸 재생한다
   const custom = skillVfx(fx.skillId)
   const k = speed === 2 ? 0.5 : 1
+  const beamMouth: FxPos | undefined =
+    custom?.beam && sourcePos && box.w ? { left: sourcePos.left + ((custom.beam.dx * vfxScale) / box.w) * 100, top: sourcePos.top + ((custom.beam.dy * vfxScale) / box.h) * 100 } : undefined
+  const chargePos = beamMouth ?? sourcePos
   // 타격감 — 맞는 순간마다 전장이 짧게 흔들린다(첫 타·궁극기 마무리는 크게). 전장(battle-stage)의 큰 흔들림(tier3+)과 겹치지 않게 작은 것만
   useShakes(stage, custom ? (custom.shakes ?? []).map((x) => ({ at: x.at * k, px: x.px })) : hits ? waves.map((w) => ({ at: waveAt(w), px: w === 0 ? 2 + tier : 1.5 + tier * 0.5 })) : [])
 
@@ -223,11 +226,12 @@ function FxScene({
           <FloorCircle pos={sourceGround} color={col.a} size={62 + tier * 30} durMs={m.ultimate ? m.finaleMs : m.castMs + 380} star={tier >= 3} />
           {tier >= 3 && <FloorCircle pos={sourceGround} color={col.b} size={36 + tier * 18} durMs={m.ultimate ? m.finaleMs : m.castMs + 380} reverse />}
           {m.ultimate && <AuraColumn pos={sourceGround} color={col} durMs={m.castMs + 200} />}
-          <Gather pos={sourcePos} color={col} count={3 + tier * 4} radius={28 + tier * 16} durMs={m.castMs} />
-          {fx.archetype === 'magicAttack' && <ChargeOrb pos={sourcePos} color={col} size={10 + tier * 9} durMs={m.castMs} />}
+          <Gather pos={chargePos ?? sourcePos} color={col} count={3 + tier * 4} radius={(28 + tier * 16) * (beamMouth ? 1.4 : 1)} durMs={beamMouth && custom?.beam ? custom.beam.startMs * k : m.castMs} />
+          {fx.archetype === 'magicAttack' && <ChargeOrb pos={chargePos ?? sourcePos} color={col} size={(10 + tier * 9) * (beamMouth ? 1.6 : 1)} durMs={beamMouth && custom?.beam ? custom.beam.startMs * k : m.castMs} />}
         </>
       )}
 
+      {custom?.beam && beamMouth && center && <FlameBeam beam={custom.beam} from={beamMouth} to={center} box={box} color={col} k={k} sizeScale={vfxScale} />}
       {custom && <PixelVfx vfx={custom} k={k} box={box} sizeScale={vfxScale} sourcePos={sourcePos} sourceGround={sourceGround} targets={targets} center={center} />}
 
       {/* ── 공격 마법 ── */}
@@ -450,7 +454,7 @@ function PixelVfx({
  */
 function screenTiles(box: FxBox, px: number): { pos: FxPos }[] {
   if (!box.w || !box.h || px <= 0) return [{ pos: { left: 50, top: 50 } }]
-  const step = px * 0.72
+  const step = px * 0.55
   const cols = Math.ceil(box.w / step) + 1
   const rows = Math.ceil(box.h / step) + 1
   const out: { pos: FxPos }[] = []
@@ -459,10 +463,116 @@ function screenTiles(box: FxBox, px: number): { pos: FxPos }[] {
   return out
 }
 
-function PixelVfxSprite({ layer, box, pos, to, offset, startMs, k, scale }: { layer: VfxLayer; box: FxBox; pos: FxPos; to?: FxPos; offset: { x: number; y: number }; startMs: number; k: number; scale: number }) {
+const FADE_MASK = 'radial-gradient(closest-side, #000 58%, rgba(0,0,0,0.55) 80%, transparent 100%)'
+
+/**
+ * 화염 방사 빔 — 용의 입에서 대상들 가운데(조금 더 멀리)까지.
+ *   ① 입에 화염 에너지가 모인다(charge 시트) → ② 빔 경로를 따라 기울인 도트 불길 줄기(stream 시트)가 입에서부터 순식간에 뻗어
+ *   나가 쏟아지는 동안 계속 일렁인다 → ③ 꽂히는 끝에서 불길이 계속 터진다(head 시트). 절차형 Beam 은 밑에 옅은 빛으로만 깐다.
+ */
+function FlameBeam({ beam, from, to, box, color, k, sizeScale }: { beam: VfxBeam; from: FxPos; to: FxPos; box: FxBox; color: { a: string; b: string }; k: number; sizeScale: number }) {
+  if (!box.w || !box.h) return null
+  const start = beam.startMs * k
+  const dur = beam.durMs * k
+  const extend = 1.1
+  const dxPx = ((to.left - from.left) / 100) * box.w * extend
+  const dyPx = ((to.top - from.top) / 100) * box.h * extend
+  const lenPx = Math.hypot(dxPx, dyPx)
+  const ang = (Math.atan2(dyPx, dxPx) * 180) / Math.PI
+  const seg = beam.segment * sizeScale
+  const gap = seg * 0.5
+  const n = Math.max(2, Math.ceil(lenPx / gap))
+  const end = { left: from.left + (to.left - from.left) * extend, top: from.top + (to.top - from.top) * extend }
+  const sprites: React.ReactNode[] = []
+  // ① 모으기
+  sprites.push(
+    <PixelVfxSprite
+      key="charge"
+      layer={{ sheet: beam.charge, at: 'center', size: beam.chargeSize, startMs: 0, cycleMs: beam.chargeMs, holdMs: 80, z: 5, blend: 'screen' }}
+      box={box}
+      pos={from}
+      offset={{ x: 0, y: 0 }}
+      startMs={start - beam.chargeMs * k}
+      k={k}
+      scale={sizeScale}
+    />,
+  )
+  // ② 줄기 — 입 쪽부터 차례로 켜지며(빔이 뻗어 나감) 끝날 때까지 일렁인다. 굵기는 끝으로 갈수록 조금 커진다
+  for (let i = 0; i < n; i++) {
+    const t = i / n
+    const pos = { left: from.left + (to.left - from.left) * extend * ((i * gap) / lenPx), top: from.top + (to.top - from.top) * extend * ((i * gap) / lenPx) }
+    const on = start + i * 22 * k
+    const repeat = Math.max(1, Math.round((start + dur - on) / (beam.streamMs * k)))
+    sprites.push(
+      <PixelVfxSprite
+        key={`s${i}`}
+        layer={{ sheet: beam.stream, at: 'center', size: beam.segment * (0.85 + 0.45 * t), startMs: 0, cycleMs: beam.streamMs, repeat, z: 4 }}
+        box={box}
+        pos={pos}
+        offset={{ x: 0, y: 0 }}
+        startMs={on}
+        k={k}
+        scale={sizeScale}
+        rotateDeg={ang}
+        phase={(i * 5) % 16}
+      />,
+    )
+  }
+  // ③ 꽂히는 끝 — 계속 터진다
+  const headRepeat = Math.max(1, Math.round((dur - 120 * k) / (beam.headMs * k)))
+  sprites.push(
+    <PixelVfxSprite
+      key="head"
+      layer={{ sheet: beam.head, at: 'center', size: beam.headSize, startMs: 0, cycleMs: beam.headMs, repeat: headRepeat, z: 6 }}
+      box={box}
+      pos={end}
+      offset={{ x: 0, y: -beam.headSize * 0.15 * sizeScale }}
+      startMs={start + 120 * k}
+      k={k}
+      scale={sizeScale}
+    />,
+  )
+  return (
+    <>
+      <div className="absolute inset-0" style={{ opacity: 0.4 }}>
+        <Beam from={from} to={to} extend={extend} box={box} width={seg * 0.55} color={color} startMs={start} durMs={dur} ripples={0} />
+      </div>
+      {sprites}
+    </>
+  )
+}
+
+function PixelVfxSprite({
+  layer,
+  box,
+  pos,
+  to,
+  offset,
+  startMs,
+  k,
+  scale,
+  rotateDeg,
+  phase = 0,
+}: {
+  layer: VfxLayer
+  box: FxBox
+  pos: FxPos
+  to?: FxPos
+  offset: { x: number; y: number }
+  startMs: number
+  k: number
+  scale: number
+  /** 기울이기(빔 줄기) */
+  rotateDeg?: number
+  /** 이어 붙인 줄기가 똑같이 움직이지 않게 반복 애니메이션 시작을 몇 프레임 당긴다 */
+  phase?: number
+}) {
   const px = Math.round(layer.size * scale)
   const cycle = layer.cycleMs * k
   const repeat = layer.repeat ?? 1
+  const [f0, f1] = layer.range ?? [0, VFX_FRAMES - 1]
+  const nFrames = f1 - f0 + 1
+  const hold = (layer.holdMs ?? 0) * k
   const travel = to ? { x: ((to.left - pos.left) / 100) * box.w, y: ((to.top - pos.top) / 100) * box.h } : null
   const style: CSSProperties = {
     left: `${pos.left}%`,
@@ -473,16 +583,19 @@ function PixelVfxSprite({ layer, box, pos, to, offset, startMs, k, scale }: { la
     marginTop: -px / 2 + offset.y,
     backgroundImage: `url(${vfxSheet(layer.sheet)})`,
     backgroundSize: `${px * VFX_FRAMES}px ${px}px`,
-    transform: layer.flip ? 'scaleX(-1)' : undefined,
+    transform: rotateDeg != null ? `rotate(${rotateDeg}deg)` : layer.flip ? 'scaleX(-1)' : undefined,
     mixBlendMode: layer.blend === 'screen' ? 'screen' : undefined,
     opacity: layer.opacity,
     zIndex: 10 + (layer.z ?? 0),
-    ['--vfx-w' as string]: `${px * VFX_FRAMES}px`,
+    ['--vfx-x0' as string]: `${-f0 * px}px`,
+    ['--vfx-x1' as string]: `${-(f1 + 1) * px}px`,
+    // 64px 칸 경계가 사각형으로 보이지 않게 가장자리를 둥글게 흐린다
+    ...(layer.fade === 'none' ? {} : { maskImage: FADE_MASK, WebkitMaskImage: FADE_MASK }),
     ['--vfx-tx' as string]: `${travel?.x ?? 0}px`,
     ['--vfx-ty' as string]: `${travel?.y ?? 0}px`,
     animation: [
-      `vfx-strip ${cycle}ms steps(${VFX_FRAMES}) ${startMs}ms ${repeat} both`,
-      `vfx-life ${cycle * repeat}ms linear ${startMs}ms forwards`,
+      `vfx-strip ${cycle}ms steps(${nFrames}) ${startMs - (phase / nFrames) * cycle}ms ${repeat} both`,
+      `vfx-life ${cycle * repeat + hold}ms linear ${startMs}ms forwards`,
       ...(travel ? [`vfx-travel ${cycle * repeat}ms cubic-bezier(.35,0,.75,1) ${startMs}ms both`] : []),
     ].join(', '),
   }
