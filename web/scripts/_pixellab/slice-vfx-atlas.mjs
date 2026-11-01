@@ -10,6 +10,8 @@ const sharp = require('sharp')
 const [atlas, orderFile] = process.argv.slice(2)
 const order = JSON.parse(fs.readFileSync(orderFile, 'utf8'))
 const OUT = 'public/images/battle/vfx/skills'
+/** 세로로 몇 배 굵게 펼까 */
+const THICKEN = { 'fire-master-1-cannon-stream': 3, 'dark-sentence-bolt': 1.8 }
 fs.mkdirSync(OUT, { recursive: true })
 for (let n = 0; n < order.length; n++) {
   const ox = (n % 8) * 256
@@ -32,6 +34,15 @@ for (let n = 0; n < order.length; n++) {
         console.log(`  · ${order[n]} 프레임 ${f} 잔여물 비움`)
         continue
       }
+    }
+    // 굵게 — 가늘게 나온 빔 줄기는 가운데를 기준으로 세로로 늘린다(도트 그대로, 2026-11-01 에너지포)
+    const thick = THICKEN[order[n]]
+    if (thick) {
+      const h = Math.round(64 / thick)
+      const band = await cell.clone().png().toBuffer()
+      const mid = await sharp(band).extract({ left: 0, top: Math.round((64 - h) / 2), width: 64, height: h }).resize(64, 64, { kernel: 'nearest', fit: 'fill' }).png().toBuffer()
+      frames.push({ input: mid, left: f * 64, top: 0 })
+      continue
     }
     frames.push({ input: await cell.png().toBuffer(), left: f * 64, top: 0 })
   }

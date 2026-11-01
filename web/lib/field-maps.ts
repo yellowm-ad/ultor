@@ -419,6 +419,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
   const liquidTile: TileKind = LIQUID_TILE[theme.liquid ?? 'water']
   const riverW = theme.river?.width ?? 0
   const riverDist = new Float32Array(theme.river ? w * h : 0)
+  let riverPath: Pt[] = []
   if (theme.river) {
     let best: Pt[] = []
     let bestBad = Infinity
@@ -438,6 +439,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
         best = pts
       }
     }
+    riverPath = best
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         let d = 1e9
@@ -445,7 +447,16 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
         riverDist[y * w + x] = Math.sqrt(d)
       }
   }
-  const riverAt = (x: number, y: number) => riverW > 0 && riverDist[idx(x, y)] < riverW
+  // 건널목 — 출구가 없는 막다른 특수 맵(용암 동굴 등)은 길이 입구에만 있어 강에 다리가 생기지 않았다(2026-11-01: 맞은편에 못 감).
+  //  강 줄기의 1/3·2/3 지점에 식은 바위 건널목을 깔아 어느 쪽으로든 건너가게 한다.
+  const fords: Pt[] = []
+  if (theme.river && !spec.exits.length) {
+    const inside = riverPath.filter((p) => p.x > 1.5 && p.y > 1.5 && p.x < w - 1.5 && p.y < h - 1.5)
+    if (inside.length) for (const f of [0.33, 0.67]) fords.push(inside[Math.floor((inside.length - 1) * f)])
+  }
+  const FORD_R = riverW + 1.3
+  const fordAt = (x: number, y: number) => fords.some((f) => Math.hypot(x - f.x, y - f.y) < FORD_R)
+  const riverAt = (x: number, y: number) => riverW > 0 && riverDist[idx(x, y)] < riverW && !fordAt(x + 0.5, y + 0.5)
 
   const blobs: (Pt & { r: number; kind: TileKind })[] = []
   for (const b of theme.blobs ?? []) {
@@ -487,6 +498,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       if (hubbed && theme.hub && Math.hypot(x - center.x, y - center.y) < 2.6) return theme.hub
       return theme.road
     }
+    if (fords.length && riverW && riverDist[idx(x, y)] < FORD_R && fordAt(x + 0.5, y + 0.5)) return theme.road
     if (riverAt(x, y)) return liquidTile
     for (const b of blobs) {
       const wob = Math.sin(Math.atan2(y - b.y, x - b.x) * 3 + b.x) * 0.35
@@ -555,6 +567,7 @@ export function buildFieldMap(spec: FieldMapSpec): BuiltFieldMap {
       const inHub = hubbed && Math.hypot(x - center.x, y - center.y) + wob < 2.6
       if (inHub && theme.hub) return theme.hub
       if (inHub || roadF(x, y) + wob < ROAD_W) return theme.road
+      if (riverF && fords.length && riverF(x, y) < FORD_R && fords.some((f) => Math.hypot(x - f.x, y - f.y) + wob < FORD_R)) return theme.road
       if (riverF && riverF(x, y) + wob * 1.4 < riverW) return liquidTile
       for (const b of blobs) {
         const d = Math.hypot(x - b.x, y - b.y)

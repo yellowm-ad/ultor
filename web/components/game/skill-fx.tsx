@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { BattleFx, Element } from '@/lib/types'
 import { fxTier, skillMotion, type MotionTier } from '@/lib/skill-motion'
-import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxBeam, type VfxLayer } from '@/lib/skill-vfx'
+import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxBeam, type VfxLayer, type VfxScreen } from '@/lib/skill-vfx'
 
 /** 연출 색 키 — 속성 없음(null)은 'none' */
 type FxKey = Element | 'none'
@@ -143,8 +143,32 @@ export function SkillFxLayer({
     return () => ro.disconnect()
   }, [])
   return (
-    <div ref={boxRef} className="pointer-events-none absolute inset-0 z-30" aria-hidden>
-      {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} stage={boxRef} vfxScale={vfxScale} />}
+    <>
+      {/* 색 반전·흑백 같은 backdrop-filter 는 연출 레이어 밖(바로 아래 층)에 둔다 — 레이어 안에 화면 합성(screen) 스프라이트가 있으면
+          그 레이어가 따로 묶여 뒤쪽 전장을 보지 못한다(2026-11-01) */}
+      {fx && <BackdropFx key={`b${fx.fxId}`} fx={fx} k={speed === 2 ? 0.5 : 1} />}
+      <div ref={boxRef} className="pointer-events-none absolute inset-0 z-30" aria-hidden>
+        {fx && <FxScene key={fx.fxId} fx={fx} posOf={posOf} groundOf={groundOf ?? posOf} speed={speed} box={box} stage={boxRef} vfxScale={vfxScale} />}
+      </div>
+    </>
+  )
+}
+
+/** 화면 뒤집기 층 — 최상급 반전(cosmic.invertAt) · 스킬별 invert · 환술 흑백 */
+function BackdropFx({ fx, k }: { fx: BattleFx; k: number }) {
+  const v = skillVfx(fx.skillId)
+  if (!v) return null
+  const t = (startMs: number, durMs: number) => ({ animationDelay: `${Math.round(startMs * k)}ms`, animationDuration: `${Math.round(durMs * k)}ms` })
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[29]" aria-hidden>
+      {v.cosmic && <div className="fx-invert absolute inset-0" style={t(v.cosmic.invertAt, 760)} />}
+      {v.screens?.map((sc, i) =>
+        sc.kind === 'invert' ? (
+          <div key={i} className="fx-invert absolute inset-0" style={t(sc.startMs, sc.durMs)} />
+        ) : sc.kind === 'illusion' ? (
+          <div key={i} className="fx-illusion-mono absolute inset-0" style={t(sc.startMs, sc.durMs)} />
+        ) : null,
+      )}
     </div>
   )
 }
@@ -198,13 +222,11 @@ function FxScene({
 
   return (
     <>
-      {/* 궁극기 — 전장이 어두워지고 기술 이름이 뜬다 */}
+      {/* 궁극기 — 전장이 어두워진다(기술 이름 띄우기는 2026-11-01 뺐다) */}
       {m.ultimate && <div className="fx-dim absolute inset-0" style={dur(m.finaleMs + 250)} />}
-      {m.ultimate && fx.skillName && (
-        <div className="fx-ult-name" style={{ ...dur(m.castMs + 450), color: col.b, textShadow: `0 0 10px ${col.a}, 0 0 22px ${col.a}, 0 2px 0 #000` }}>
-          {fx.skillName}
-        </div>
-      )}
+      {/* 최상급 — 별이 흐르는 우주로 바뀌었다가 터지는 순간 색이 한 번 뒤집힌다 */}
+      {custom?.cosmic && <CosmicVeil cosmic={custom.cosmic} endMs={custom.totalMs * k} />}
+      {custom?.screens?.map((sc, i) => <ScreenFx key={`sc${i}`} fx={sc} k={k} />)}
 
       {/* 궁극기 — 기를 모으는 동안 화면 가장자리에서 시전자 쪽으로 몰리는 집중선 */}
       {m.ultimate && sourcePos && (
@@ -420,6 +442,7 @@ function PixelVfx({
       : layer.at === 'targetGround' ? targets.map((t) => ({ pos: t.ground }))
       : layer.at === 'center' ? (center ? [{ pos: center }] : [])
       : layer.at === 'screen' ? screenTiles(box, layer.size * sizeScale)
+      : layer.at === 'fall' ? targets.map((t) => ({ pos: { left: t.pos.left + 16, top: t.pos.top - 70 }, to: t.pos }))
       : sourcePos ? targets.map((t) => ({ pos: sourcePos, to: t.pos })) : []
     const copies = layer.scatter ? layer.scatter.count + 1 : 1
     anchors.forEach((a, ai) => {
@@ -497,11 +520,26 @@ function FlameBeam({ beam, from, to, box, color, k, sizeScale }: { beam: VfxBeam
       scale={sizeScale}
     />,
   )
-  // ② 줄기 — 입 쪽부터 차례로 켜지며(빔이 뻗어 나감) 끝날 때까지 일렁인다. 굵기는 끝으로 갈수록 조금 커진다
+  // ①' 발사 섬광 — 입에서 터지며 반동
+  if (beam.muzzle)
+    sprites.push(
+      <PixelVfxSprite
+        key="muzzle"
+        layer={{ sheet: beam.muzzle, at: 'center', size: beam.muzzleSize ?? beam.chargeSize, startMs: 0, cycleMs: 520, repeat: Math.max(1, Math.round(dur / (520 * k))), z: 7, blend: 'screen' }}
+        box={box}
+        pos={from}
+        offset={{ x: 0, y: 0 }}
+        startMs={start - 40 * k}
+        k={k}
+        scale={sizeScale}
+        rotateDeg={ang}
+      />,
+    )
+  // ② 줄기 — 입 쪽부터 순식간에 켜지며(포가 뻗어 나감) 끝날 때까지 일렁인다. 굵기는 끝으로 갈수록 조금 커진다
   for (let i = 0; i < n; i++) {
     const t = i / n
     const pos = { left: from.left + (to.left - from.left) * extend * ((i * gap) / lenPx), top: from.top + (to.top - from.top) * extend * ((i * gap) / lenPx) }
-    const on = start + i * 22 * k
+    const on = start + i * (beam.muzzle ? 9 : 22) * k
     const repeat = Math.max(1, Math.round((start + dur - on) / (beam.streamMs * k)))
     sprites.push(
       <PixelVfxSprite
@@ -534,7 +572,7 @@ function FlameBeam({ beam, from, to, box, color, k, sizeScale }: { beam: VfxBeam
   )
   return (
     <>
-      <div className="absolute inset-0" style={{ opacity: 0.4 }}>
+      <div className="absolute inset-0" style={{ opacity: beam.muzzle ? 0.75 : 0.4 }}>
         <Beam from={from} to={to} extend={extend} box={box} width={seg * 0.55} color={color} startMs={start} durMs={dur} ripples={0} />
       </div>
       {sprites}
@@ -600,6 +638,58 @@ function PixelVfxSprite({
     ].join(', '),
   }
   return <div className="vfx-sprite absolute" style={style} />
+}
+
+/** 별 하늘 텍스처 — 320×180 칸에 작은 별(1칸)과 드문 십자 별을 흩뿌린다(결정적) */
+function starTex(color: string) {
+  return pixelTex(`stars2:${color}`, 320, 180, (x, y) => {
+    const h = ((x * 73856093) ^ (y * 19349663) ^ 0x5bd1e995) >>> 0
+    const r = (h % 10000) / 10000
+    if (r < 0.0035) return color
+    if (r < 0.0055) return 'rgba(255,255,255,0.7)'
+    // 십자 별 — 칸(31×27)마다 1/6 확률로 하나
+    const cx = x - (x % 31) + 15
+    const cy = y - (y % 27) + 13
+    const hc = (((cx * 2654435761) ^ (cy * 40503)) >>> 0) % 6
+    if (hc === 0 && ((x === cx && Math.abs(y - cy) <= 2) || (y === cy && Math.abs(x - cx) <= 2))) return Math.abs(x - cx) + Math.abs(y - cy) <= 1 ? '#ffffff' : color
+    return null
+  })
+}
+
+/**
+ * 최상급 연출 — 기를 모으는 동안 전장이 깊은 우주로 바뀐다(성운 + 흐르는 별, 가운데로 빨려 드는 줌).
+ * 터지는 순간(invertAt) 화면 색이 한 번 뒤집혔다 돌아온다. 「번쩍임 끄기」·동작 줄이기에서는 반전을 뺀다(globals.css).
+ */
+function CosmicVeil({ cosmic, endMs }: { cosmic: { a: string; b: string; invertAt: number }; endMs: number }) {
+  return (
+    <>
+      <div
+        className="fx-cosmic absolute inset-0"
+        style={{
+          ...dur(endMs),
+          background: `radial-gradient(ellipse at 50% 42%, ${cosmic.a}55, transparent 55%), radial-gradient(ellipse at 22% 70%, #6a2cff40, transparent 50%), radial-gradient(ellipse at 80% 25%, #1fb6ff38, transparent 48%), #05030c`,
+        }}
+      />
+      <div
+        className="fx-cosmic-stars absolute inset-0"
+        style={{ ...dur(endMs), backgroundImage: `url(${starTex(cosmic.b)})`, backgroundSize: '100% 100%', imageRendering: 'pixelated' }}
+      />
+      <div
+        className="fx-cosmic-stars fx-cosmic-stars-far absolute inset-0"
+        style={{ ...dur(endMs), backgroundImage: `url(${starTex(cosmic.a)})`, backgroundSize: '50% 50%', imageRendering: 'pixelated' }}
+      />
+    </>
+  )
+}
+
+/** 스킬별 화면 효과 — 반전·환술 세계·색 덮기·심연 */
+function ScreenFx({ fx, k }: { fx: VfxScreen; k: number }) {
+  const t = { animationDelay: `${fx.startMs * k}ms`, animationDuration: `${Math.round(fx.durMs * k)}ms` }
+  // invert · 환술 흑백은 BackdropFx(연출 레이어 밖)가 그린다 — 여기서는 붉은 하늘만
+  if (fx.kind === 'invert') return null
+  if (fx.kind === 'illusion') return <div className="fx-illusion-sky absolute inset-0" style={t} />
+  if (fx.kind === 'void') return <div className="fx-void absolute inset-0" style={t} />
+  return <div className="fx-tint absolute inset-0" style={{ ...t, background: `radial-gradient(ellipse at 50% 50%, ${fx.color ?? '#c0102a'}55, ${fx.color ?? '#c0102a'}cc)` }} />
 }
 
 /** 맞는 순간마다 전장을 짧게 흔든다 — Web Animations(합성 단계 transform)라 다시 그리기 없음 */

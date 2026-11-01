@@ -543,4 +543,37 @@ export const SCRIPT_BEATS: StoryBeat[] = [
     setFlags: ['RUSPELL_FLED'],
     lines: EP_SCRIPT_GEN[37]?.outro ?? [],
   },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // EP52 A루트 — 모르스 최종전(2026-11-01). 루스벨을 찾지 못한 채 토벌대로 온 루트에서만,
+  //   모르스의 성(왕좌의 방)에 들어서면 대치 → 바로 보스전(mon-mors, 여성 모르스 외형).
+  //   모르스는 고대어로만 말한다(자막 없음). 쓰러뜨린 뒤의 결말은 EP52 outro(스토리 미션 보상 때).
+  //   B·C 루트에서 모르스는 동료 — 이 장면은 나오지 않는다.
+  // ══════════════════════════════════════════════════════════════════════════
+  {
+    id: 'EP52_MORS_FINAL',
+    arcId: 'CH7',
+    title: 'EP52 — 왕좌의 방',
+    trigger: { type: 'VISIT', mapId: 'demon-castle' },
+    route: 'A',
+    minWeek: 180,
+    setFlags: ['MORS_FINAL_FOUGHT'],
+    battle: { monsterIds: ['mon-mors'] },
+    lines: [
+      N('[SCENE 52-A] 모르스의 성 — 비어 있는 왕좌 아래, 모르스가 계단에서 천천히 일어선다. 망토 아래에서 쇠사슬이 바닥을 긁는다.'),
+      MORS('「……………………」'),
+      N('알아들을 수 없는 말. 그런데 이상하게, 화난 목소리는 아니다.'),
+      MIREL('시작해라.'),
+      N('바람이 분다. 아무도 쓰지 않는다고 배운 속성의 바람이.'),
+    ],
+  },
+  {
+    id: 'EP52_MORS_FALLEN',
+    arcId: 'CH7',
+    title: '쇠사슬이 멈춘 뒤',
+    trigger: { type: 'DEFEAT', monsterId: 'mon-mors' },
+    route: 'A',
+    setFlags: ['MORS_DEFEATED'],
+    lines: [N('쇠사슬이 바닥에 떨어진다. 모르스는 더 싸우지 않는다. 학사 수첩(J)에서 마지막 스토리 미션을 마무리하자.')],
+  },
 ]

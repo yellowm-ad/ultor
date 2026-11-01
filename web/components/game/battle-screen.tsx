@@ -10,10 +10,11 @@ import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
 import { masteredMpCost } from '@/lib/skill-mastery'
 import { SkillFxLayer, type FxPos } from '@/components/game/skill-fx'
+import { previewFx } from '@/components/game/magic-screen'
 import { skillMotion } from '@/lib/skill-motion'
 import { DiamondMark } from '@/components/game/ui-motifs'
 import { MAPS } from '@/lib/maps'
-import type { BattleAction, BattleLogEntry, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
+import type { BattleAction, BattleFx, BattleLogEntry, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
 import { POSITION_META } from '@/lib/constants'
 import { FlaskConical, Shield, Sparkles, Swords } from 'lucide-react'
 
@@ -198,6 +199,27 @@ export function BattleScreen() {
   // 행동은 리듀서에서 즉시 계산되지만, 화면은 연출에 맞춰 따라간다:
   //  · 첫 타격(impactMs) 전까지는 직전 HP·로그를 그대로 보여 주고(hold)
   //  · 연출이 끝날 때(totalMs)까지 다음 행동·입력을 멈춘다(busy)
+  // 개발 빌드 전용 — 크롬 자동 점검에서 스킬 연출만 따로 재생한다: window.__fxTest('fire-master-1')
+  const [testFx, setTestFx] = useState<BattleFx | undefined>()
+  useEffect(() => {
+    if (!(process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_DEV_HOOKS === '1') || !battle) return
+    const w = window as unknown as { __fxTest?: (id: string) => string }
+    w.__fxTest = (id: string) => {
+      const s = skillById(id)
+      if (!s) return 'no-skill'
+      const base = previewFx(s, Date.now())
+      const hero = battle.combatants.find((c) => c.kind === 'hero')
+      if (!hero) return 'no-hero'
+      const foes = battle.combatants.filter((c) => c.side !== hero.side && c.alive).map((c) => c.uid)
+      const friends = battle.combatants.filter((c) => c.side === hero.side && c.alive).map((c) => c.uid)
+      const toSelf = base.targetUids[0] === 'hero'
+      setTestFx({ ...base, sourceUid: hero.uid, targetUids: toSelf ? (base.aoe ? friends : [hero.uid]) : base.aoe ? foes : foes.slice(0, 1) })
+      return 'ok'
+    }
+    return () => {
+      delete w.__fxTest
+    }
+  }, [battle])
   const fx = battle?.lastFx
   const motion = fx ? skillMotion(fx, speed) : null
   const [, bumpFx] = useReducer((n: number) => n + 1, 0)
@@ -532,7 +554,7 @@ export function BattleScreen() {
             fxRole={fxRoleOf(c.uid)}
           />
         ))}
-        <SkillFxLayer fx={battle.lastFx} posOf={fxPosOf} groundOf={fxGroundOf} speed={speed} />
+        <SkillFxLayer fx={testFx ?? battle.lastFx} posOf={fxPosOf} groundOf={fxGroundOf} speed={speed} />
       </div>
 
       {/* ── 로그 스트립 — 상단 가운데(하늘 쪽). 바닥에 두면 앞줄 전투원 발밑을 가려서 위로 올림 ── */}

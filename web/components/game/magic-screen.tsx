@@ -50,7 +50,7 @@ const inTab = (s: Skill, tab: Tab) =>
   tab === 'all' ? true : tab === 'summon' ? s.kind === 'summon' : s.kind !== 'summon' && (s.element ?? 'none') === tab
 
 /** 미리보기용 연출 갈래 — 전투 엔진 mkFx 와 같은 분류 */
-function previewFx(s: Skill, n: number): BattleFx {
+export function previewFx(s: Skill, n: number): BattleFx {
   const archetype: BattleFx['archetype'] =
     s.kind === 'attack'
       ? s.physical

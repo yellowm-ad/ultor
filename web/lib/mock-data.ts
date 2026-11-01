@@ -811,12 +811,12 @@ const MONSTERS_LEGACY: MonsterDef[] = [
     aura: 'rage-violet',
   },
   // 최종보스 — 모르스(유실된 바람 속성, storyBoss). 랜덤 풀·필드 배치에 나오지 않고 최종전 스토리로만 등장한다.
-  // ⚠ 전용 도트 미제작 — 임시로 '모르스의 전령' 그림을 빌려 쓴다.
+  // 외형 = 스토리의 여성 모르스 4등신 시트(npc-mors-walk → sprites/npc-mors, 2026-11-01).
   {
     id: 'mon-mors',
     name: '모르스',
     level: 50,
-    icon: '/images/monsters/mon-azka-herald.png',
+    icon: '/images/npc/portrait-story-mors.png',
     element: 'wind',
     family: 'darkmage',
     stats: mstat(50, { maxHp: 8, atk: 2.2, def: 2.6, matk: 2.6, mdef: 2.6, maxMp: 4, spd: 1.15, luck: 2 }),
@@ -827,6 +827,7 @@ const MONSTERS_LEGACY: MonsterDef[] = [
     zoneKinds: [],
     rank: 'storyBoss',
     aiProfile: 'finisher',
+    heroSheet: 'npc-mors',
   },
   // 테스트몹
   { id: 'mon-training-dummy', name: '훈련용 허수아비', level: 1, icon: '/images/monsters/dummy.svg', element: null, family: 'test', stats: { maxHp: 30, maxMp: 0, atk: 1, def: 1, matk: 0, mdef: 1, spd: 1, luck: 0 }, skills: [], expReward: 0, goldReward: 0, zoneKinds: ['forest', 'sea', 'ruins'], isTestMonster: true },
