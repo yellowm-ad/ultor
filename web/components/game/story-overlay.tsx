@@ -10,11 +10,12 @@ import { SCHOOL_NPCS } from '@/lib/companions'
 import type { Gender } from '@/lib/types'
 import { HeroPortrait, Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import { cutsceneById, cutsceneSrc } from '@/lib/cutscenes'
 import { STORY_ANIM_CELL, STORY_ANIM_FRAMES, storyAnimSrc } from '@/lib/story-anims'
 import { applyLineOverride, useDialogueOverridesVersion } from '@/lib/dialogue-overrides'
 import { cutsceneOverrideUrl, isAdminPage, onCutsceneStoreChange } from '@/lib/cutscene-store'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 /**
  * 대화집의 삼원(화염/빙결/대지) 화자 대사 — PRD v2.0 이후 주인공은 고정 속성이 없으므로,
@@ -68,7 +69,7 @@ export function StoryOverlay() {
       portrait={
         hasPortrait ? isPlayer ? (
           <span className="flex h-full w-full items-end justify-center overflow-hidden bg-[#1c1822]">
-            <HeroSprite sheet={playerSheet(state.player.appearance.gender)} dir="down" px={150} />
+            <HeroSprite sheet={heroSheet(state)} dir="down" px={150} />
           </span>
         ) : hero ? <HeroPortrait element={hero.element} gender={hero.gender} className="h-full w-full" /> : <Portrait id={cur!.portraitId!} className="h-full w-full" /> : undefined
       }

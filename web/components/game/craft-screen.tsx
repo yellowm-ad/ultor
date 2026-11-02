@@ -14,7 +14,7 @@ import { ingredientLabel, ownedFor } from '@/lib/inventory'
 import { Divider, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Slot, Sparkle } from '@/components/game/game-window'
 import { EnhanceDetail, EnhanceList } from '@/components/game/enhance-panel'
 
-const CATEGORIES: RecipeCategory[] = ['equipment', 'candy', 'alchemy', 'cooking', 'magicTool', 'furniture', 'costume']
+const CATEGORIES: RecipeCategory[] = ['equipment', 'candy', 'alchemy', 'cooking', 'magicTool', 'furniture']
 
 const CATEGORY_ICON: Record<RecipeCategory, string> = {
   equipment: 'craft-equipment',
@@ -23,7 +23,6 @@ const CATEGORY_ICON: Record<RecipeCategory, string> = {
   cooking: 'craft-cooking',
   magicTool: 'craft-magictool',
   furniture: 'cat-furniture',
-  costume: 'craft-costume',
 }
 
 const STATION_LABEL: Record<CraftStationKind, string> = {

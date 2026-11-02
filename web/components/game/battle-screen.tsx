@@ -6,7 +6,7 @@ import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
 import { masteredMpCost } from '@/lib/skill-mastery'
 import { SkillFxLayer, type FxPos } from '@/components/game/skill-fx'
@@ -17,6 +17,7 @@ import { MAPS } from '@/lib/maps'
 import type { BattleAction, BattleFx, BattleLogEntry, Combatant, Element, Position, Skill, SpriteSheet } from '@/lib/types'
 import { POSITION_META } from '@/lib/constants'
 import { FlaskConical, Shield, Sparkles, Swords } from 'lucide-react'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 /** 상태이상/버프 뱃지 아이콘 — 데스크톱 "속성, 아이템 각종 아이콘.png" 시트에서 크롭 */
 const STATUS_ICON: Record<string, string> = {
@@ -549,7 +550,7 @@ export function BattleScreen() {
             active={actor?.uid === c.uid}
             targetable={targetableSide === 'player' && c.kind !== 'pet' && (reviveTargeting ? !c.alive : c.alive)}
             onClick={() => handleTargetClick(c)}
-            heroSheet={c.kind === 'hero' ? playerSheet(state.player.appearance.gender) : undefined}
+            heroSheet={c.kind === 'hero' ? heroSheet(state) : undefined}
             heroAnim={c.uid === animUid ? heroAnim : undefined}
             fxRole={fxRoleOf(c.uid)}
           />
@@ -592,7 +593,7 @@ export function BattleScreen() {
                   } flex size-11 items-center justify-center`}
                 >
                   {c.kind === 'hero' ? (
-                    <HeroSprite sheet={playerSheet(state.player.appearance.gender)} dir="down" px={34} />
+                    <HeroSprite sheet={heroSheet(state)} dir="down" px={34} />
                   ) : c.appearance?.kind === 'hero' ? (
                     <HeroSprite sheet={c.appearance.sheet} dir="down" px={34} />
                   ) : (

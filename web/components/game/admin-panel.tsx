@@ -267,6 +267,9 @@ export function AdminPanel() {
                 </Button>
               ))}
             </div>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => dispatch({ type: 'ADMIN_GIVE_ALL_COSTUMES' })}>
+              코스튬 전부 지급
+            </Button>
             <Button size="sm" variant="outline" className="w-full" onClick={() => dispatch({ type: 'ADMIN_FISH_TEST' })}>
               낚시 미니게임 테스트
             </Button>

@@ -12,6 +12,7 @@ import { isoToScreen } from '@/lib/iso'
 import { professorById } from '@/lib/curriculum'
 import { schoolNpcById } from '@/lib/companions'
 import { HeroSprite } from '@/components/game/pixel-hero'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const STUDENT_SHEETS = ['student-m1', 'student-f1', 'student-m2', 'student-f2', 'student-m3', 'student-f3']
 const CELL = 96
@@ -99,7 +100,7 @@ export function useClassActorEntities(state: GameState, map: GameMap): { sortY: 
           <foreignObject x={-DISPLAY / 2} y={-DISPLAY + 7 + (DISPLAY - 74) / 2} width={DISPLAY} height={DISPLAY} style={{ overflow: 'visible' }}>
             {mate ? (
               <div style={{ width: DISPLAY, height: DISPLAY, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                <HeroSprite sheet={mate.sprite} dir="up" px={78} />
+                <HeroSprite sheet={npcSheet(state, mate.id) ?? mate.sprite} dir="up" px={78} />
               </div>
             ) : (
               <ClassActorSprite sheet={sheet} fps={5 + (i % 3)} delay={(i * 0.37) % 1.5} />

@@ -5,13 +5,14 @@ import { memo } from 'react'
 import type { GameState } from '@/lib/types'
 import { useGame } from '@/lib/game-state'
 import { POSITION_META } from '@/lib/constants'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import { skillById } from '@/lib/mock-data'
 import { expProgressPercent, MAX_LEVEL } from '@/lib/exp-table'
 import { Sparkles } from 'lucide-react'
 import { calendarShortLabel } from '@/lib/calendar'
 import { questTemplateById, REQUIRED_OPTIONAL, weekCompletion } from '@/lib/quests'
 import { itemById } from '@/lib/mock-data'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 // 걷는 동안 게임 상태는 매 프레임 바뀌지만(위치) HUD 에 보이는 값은 그대로다 — 보이는 값만 넘겨 memo 로 다시 그리기를 건너뛴다
 export function Hud() {
@@ -19,6 +20,7 @@ export function Hud() {
   return (
     <HudView
       player={state.player}
+      sheet={heroSheet(state)}
       summons={state.player.summonSkills ?? []}
       heroPos={state.formation.positions.hero ?? 'front'}
       testMode={!!state.settings.testMode}
@@ -31,6 +33,8 @@ export function Hud() {
 }
 
 type HudProps = {
+  /** 입은 코스튬 시트(lib/costumes) */
+  sheet: string
   player: GameState['player']
   summons: string[]
   heroPos: NonNullable<GameState['formation']['positions']['hero']>
@@ -41,7 +45,7 @@ type HudProps = {
   dispatch: ReturnType<typeof useGame>['dispatch']
 }
 
-const HudView = memo(function HudView({ player, summons, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
+const HudView = memo(function HudView({ player, sheet, summons, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
 
   return (
     <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
@@ -49,7 +53,7 @@ const HudView = memo(function HudView({ player, summons, heroPos, testMode, week
       <div className="pointer-events-auto flex flex-col gap-2">
         <div className="title-enter-1 flex items-center gap-2.5">
           <div className="portrait-ring flex size-12 shrink-0 items-end justify-center overflow-hidden">
-            <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={44} />
+            <HeroSprite sheet={sheet} dir="down" px={44} />
           </div>
           <div className="flex w-40 flex-col gap-1 sm:w-48">
             <div className="hud-clean-text hud-clean-label flex items-center gap-1.5 text-[13px]">

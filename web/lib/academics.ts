@@ -77,7 +77,7 @@ export const COURSES: CourseDef[] = [
   { id: 'ELEMENT_302', name: '고급 원소학', department: 'magic', year: 3, term: 'semester2', required: true, credit: C, description: '3원소 상급 마법과 복합 운용.', teachesSkills: ['fire-high-1', 'ice-high-1', 'earth-high-1', 'fire-high-2', 'ice-high-2', 'earth-high-2', 'summon-golem-cub'] },
   { id: 'MAGITECH_302', name: '마법 공학', department: 'craft', year: 3, term: 'semester2', required: true, credit: C, description: '마도구 제작 II.', unlocksActivities: ['magicTool'] },
   { id: 'ALCHEMY_302', name: '고급 연금술', department: 'life', year: 3, term: 'semester2', required: true, credit: C, description: '촉매와 재료 변환.' },
-  { id: 'COSTUME_302', name: '의상 제작', department: 'craft', year: 3, term: 'semester2', required: false, credit: C, description: '코스튬 제작.', unlocksActivities: ['costume'] },
+  { id: 'COSTUME_302', name: '마법 의복학', department: 'craft', year: 3, term: 'semester2', required: false, credit: C, description: '마법 의복과 학교 예복의 역사 — 직접 만들지는 않는다(코스튬은 옷장에서 갈아입는다).' },
   // ── 4학년 1학기 — 최상위 3원소 + 암광 심화 ───────────────────────────────
   { id: 'ANCIENT_MAGIC_401', name: '고대 마법', department: 'magic', year: 4, term: 'semester1', required: true, credit: C, description: '잊힌 고대 마법 체계 — 3원소의 정점.', teachesSkills: ['fire-master-1', 'ice-master-1', 'earth-master-1'] },
   { id: 'DUSKDAWN_401', name: '암광 심화', department: 'magic', year: 4, term: 'semester1', required: true, credit: C, description: '어둠과 빛의 고급 운용 — 광역 약화·광역 회복·축복.', teachesSkills: ['dark-seal', 'light-sanctuary', 'dark-miasma', 'light-wisdom', 'light-bulwark', 'dark-gaze', 'light-ward', 'light-haste'] },

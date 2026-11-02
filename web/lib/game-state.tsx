@@ -17,6 +17,7 @@ import { ARENA_MAP_ID, initArenaBattle, type ArenaIdentity, type ArenaMatch, typ
 import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
 import { FURNITURE_BY_ID } from '@/lib/housing'
+import { baseCostumeOf, costumeById, COSTUMES, emptyWardrobe, ownsCostume } from '@/lib/costumes'
 import { mapLockReason, passageFlag, passageFor } from '@/lib/passages'
 import { activitySpotById, ARCADE_REWARD_GOLD } from '@/lib/activity-spots'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
@@ -123,6 +124,9 @@ export type Action =
   | { type: 'PASSAGE_DONE'; fish?: number }
   | { type: 'ADMIN_PASSAGE_TEST'; id: import('@/lib/passages').PassageId }
   | { type: 'ADMIN_FISH_TEST' }
+  /** 코스튬(스킨) 갈아입기 — owner 'hero' 또는 동료 NPC id. costumeId 가 없으면 기본 복장으로 */
+  | { type: 'COSTUME_WEAR'; owner: string; costumeId?: string }
+  | { type: 'ADMIN_GIVE_ALL_COSTUMES' }
   | { type: 'SPOT_USE'; spotId: string }
   | { type: 'PASSAGE_CANCEL' }
   | { type: 'PORTAL_CONFIRM' }
@@ -540,6 +544,19 @@ function reducerCore(state: GameState, action: Action): GameState {
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
     }
 
+    case 'COSTUME_WEAR': {
+      const c = action.costumeId ? costumeById(action.costumeId) : baseCostumeOf(action.owner)
+      if (!c || c.owner !== action.owner || !ownsCostume(state, c.id)) return state
+      const wd = state.wardrobe ?? emptyWardrobe()
+      const worn = { ...wd.worn }
+      if (c.base) delete worn[action.owner]
+      else worn[action.owner] = c.id
+      return { ...state, wardrobe: { ...wd, worn }, toast: `${c.name}(으)로 갈아입었다.` }
+    }
+    case 'ADMIN_GIVE_ALL_COSTUMES': {
+      const wd = state.wardrobe ?? emptyWardrobe()
+      return { ...state, wardrobe: { ...wd, owned: COSTUMES.filter((c) => !c.base).map((c) => c.id) }, toast: `코스튬 ${COSTUMES.filter((c) => !c.base).length}벌 지급` }
+    }
     // 낚시 미니게임 테스트 — 지금 맵의 어종으로 한 판(낚시터 규칙: 해금·낚싯대·물가 무시)
     case 'ADMIN_FISH_TEST':
       return state.fishing || state.passage || state.classScene || state.battle ? state : startFishing({ ...state, screen: 'world' }, true)

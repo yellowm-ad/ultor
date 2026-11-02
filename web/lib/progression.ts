@@ -49,6 +49,7 @@ import { combatantFromPlayer, expShareMemberCount, type PartyMemberInput } from 
 import { CLASS_MASTERY_XP, grantMastery, MASTERY_MAX, MASTERY_XP_PER_USE, masteryOf, skillGrade } from '@/lib/skill-mastery'
 import { MAPS } from '@/lib/maps'
 import { regionOfMap } from '@/lib/regions'
+import { npcSheet } from '@/lib/costumes'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 공용
@@ -838,7 +839,7 @@ export function battleParty(state: GameState): PartyMemberInput[] {
     const def = schoolNpcById(id)
     const prog = state.companions.recruited[id]
     if (!def?.combat || !prog) continue
-    members.push({ combatant: combatantFromCompanion(def, prog), position: pos(id) })
+    members.push({ combatant: combatantFromCompanion(def, prog, npcSheet(state, id)), position: pos(id) })
   }
   for (const g of (state.companions.guests ?? []).slice(0, MAX_GUESTS)) {
     const def = guestNpcById(g.id)

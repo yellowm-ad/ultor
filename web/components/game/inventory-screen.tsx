@@ -28,7 +28,7 @@ const TABS: { id: TabId; label: string }[] = [
   // 생활 콘텐츠 — 요리/어획물/가구·코스튬(가구 탭에 함께)
   { id: 'food', label: '요리' },
   { id: 'fish', label: '물고기' },
-  { id: 'furniture', label: '가구·의상' },
+  { id: 'furniture', label: '가구' },
 ]
 
 /** 탭 하나에 여러 타입을 묶어 보여줄 때 */

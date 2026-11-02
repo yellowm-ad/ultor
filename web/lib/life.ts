@@ -31,7 +31,6 @@ export type ActivityId =
   | 'hunting'
   | 'furniture'
   | 'magicTool'
-  | 'costume'
 
 export const ACTIVITY_META: Record<ActivityId, { name: string; year: number; term: TermType }> = {
   gathering: { name: '채집', year: 1, term: 'semester1' },
@@ -42,7 +41,6 @@ export const ACTIVITY_META: Record<ActivityId, { name: string; year: number; ter
   hunting: { name: '사냥', year: 2, term: 'semester2' },
   furniture: { name: '가구 제작', year: 1, term: 'semester2' },
   magicTool: { name: '마도구 제작', year: 3, term: 'semester2' },
-  costume: { name: '코스튬 제작', year: 3, term: 'semester2' },
 }
 
 export function activityUnlockWeek(a: ActivityId): number {
@@ -68,7 +66,6 @@ export const RECIPE_CATEGORY_ACTIVITY: Record<RecipeCategory, ActivityId> = {
   cooking: 'cooking',
   magicTool: 'magicTool',
   furniture: 'furniture',
-  costume: 'costume',
   candy: 'crafting', // 마력캔디 — 기본 제작과 같은 시기(1학년 2학기)에 열린다
 }
 
@@ -78,7 +75,6 @@ export const RECIPE_CATEGORY_LABEL: Record<RecipeCategory, string> = {
   cooking: '요리',
   magicTool: '마도구',
   furniture: '가구',
-  costume: '코스튬',
   candy: '마력캔디',
 }
 
@@ -164,9 +160,9 @@ const foodItems: ItemDef[] = [
 /** 연금술·마도구·가구·코스튬 결과물 */
 const craftedLifeItems: ItemDef[] = [
   // 마력캔디 — 주인공·동료가 먹으면 경험치(필드 전용, 전투 중 사용 불가)
-  { id: 'candy-mana-s', name: '작은 마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana-s'), description: '마력이 응축된 작은 사탕. 주인공이나 동료가 먹으면 경험치 +400.', price: 0, sellPrice: 20, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 400 } },
-  { id: 'candy-mana', name: '마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana'), description: '마력 결정을 녹여 굳힌 사탕. 주인공이나 동료가 먹으면 경험치 +4,000.', price: 0, sellPrice: 120, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 4000 } },
-  { id: 'candy-mana-l', name: '진한 마력캔디', type: 'potion', icon: LIFE_ICON('candy-mana-l'), description: '희귀 촉매로 농축한 사탕. 주인공이나 동료가 먹으면 경험치 +40,000.', price: 0, sellPrice: 900, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 40000 } },
+  { id: 'candy-mana-s', name: '작은 마력캔디', type: 'potion', icon: `/images/items/life/candy-mana-s.png` /* PixelLab 도트(2026-11-02) */, description: '마력이 응축된 작은 사탕. 주인공이나 동료가 먹으면 경험치 +400.', price: 0, sellPrice: 20, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 400 } },
+  { id: 'candy-mana', name: '마력캔디', type: 'potion', icon: `/images/items/life/candy-mana.png` /* PixelLab 도트(2026-11-02) */, description: '마력 결정을 녹여 굳힌 사탕. 주인공이나 동료가 먹으면 경험치 +4,000.', price: 0, sellPrice: 120, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 4000 } },
+  { id: 'candy-mana-l', name: '진한 마력캔디', type: 'potion', icon: `/images/items/life/candy-mana-l.png` /* PixelLab 도트(2026-11-02) */, description: '희귀 촉매로 농축한 사탕. 주인공이나 동료가 먹으면 경험치 +40,000.', price: 0, sellPrice: 900, stackable: true, maxStack: 99, shopBuyable: false, useEffect: { grantExp: 40000 } },
   { id: 'alch-catalyst', name: '희귀 촉매', type: 'material', icon: LIFE_ICON('alch-catalyst'), description: '고급 연금술과 마도구 제작에 쓰이는 촉매.', price: 0, sellPrice: 80, stackable: true, maxStack: 30, shopBuyable: false, tags: ['core'] },
   { id: 'alch-tonic', name: '전투 강장제', type: 'potion', icon: LIFE_ICON('alch-tonic'), description: '대상의 ATB를 즉시 35 채우고 HP 30 회복.', price: 0, sellPrice: 30, stackable: true, maxStack: 20, useEffect: { atbBoost: 35, healHp: 30 } },
   { id: 'tool-rod-basic', name: '견습생 낚싯대', type: 'tool', icon: LIFE_ICON('tool-rod-basic'), description: '물가에서 E(상호작용)로 낚시를 할 수 있다. 가방에 있기만 하면 된다.', price: 120, sellPrice: 30, stackable: false, maxStack: 1 },
@@ -175,7 +171,7 @@ const craftedLifeItems: ItemDef[] = [
   { id: 'tool-explore-lantern', name: '탐사용 마력 등불', type: 'tool', icon: LIFE_ICON('tool-explore-lantern'), description: '탐사용 마도구. (던전 시야 시스템 도입 시 사용 예정)', price: 0, sellPrice: 90, stackable: false, maxStack: 1, shopBuyable: false },
   { id: 'furn-herb-pot', name: '허브 화분', type: 'furniture', icon: LIFE_ICON('furn-herb-pot'), description: '개인 공간용 가구. (하우징 가구 인벤토리 연동 예정)', price: 0, sellPrice: 40, stackable: true, maxStack: 10, shopBuyable: false },
   { id: 'furn-hide-rug', name: '가죽 러그', type: 'furniture', icon: LIFE_ICON('furn-hide-rug'), description: '개인 공간용 가구. (하우징 가구 인벤토리 연동 예정)', price: 0, sellPrice: 60, stackable: true, maxStack: 10, shopBuyable: false },
-  { id: 'cos-festival-cape', name: '축제 망토', type: 'costume', icon: LIFE_ICON('cos-festival-cape'), description: '학교 축제용 코스튬. (외형 시스템 도입 시 착용 예정)', price: 0, sellPrice: 100, stackable: false, maxStack: 1, shopBuyable: false },
+  { id: 'cos-festival-cape', name: '축제 망토', type: 'costume', icon: LIFE_ICON('cos-festival-cape'), description: '예전에 만들어 둔 축제 망토. 코스튬 제작이 없어져 입을 수는 없지만 상점에 팔 수 있다.', price: 0, sellPrice: 100, stackable: false, maxStack: 1, shopBuyable: false },
 ]
 
 export const LIFE_ITEMS: ItemDef[] = [...gatherItems, ...huntItems, ...fishItems, ...foodItems, ...craftedLifeItems]
@@ -477,8 +473,7 @@ export const LIFE_RECIPES: RecipeDef[] = [
   // 가구
   { id: 'furn-herb-pot', station: 'magic_workbench', category: 'furniture', ingredients: [{ itemId: 'tag:wood', quantity: 2 }, { itemId: 'tag:herb', quantity: 2 }], outputItemId: 'furn-herb-pot', outputQuantity: 1 },
   { id: 'furn-hide-rug', station: 'magic_workbench', category: 'furniture', ingredients: [{ itemId: 'hunt-hide', quantity: 4 }], outputItemId: 'furn-hide-rug', outputQuantity: 1 },
-  // 코스튬
-  { id: 'cos-festival-cape', station: 'magic_workbench', category: 'costume', ingredients: [{ itemId: 'hunt-hide', quantity: 3 }, { itemId: 'tag:flower', quantity: 4 }], outputItemId: 'cos-festival-cape', outputQuantity: 1 },
+  // (코스튬 제작은 2026-11-02 폐기 — 코스튬은 lib/costumes 옷장으로)
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────

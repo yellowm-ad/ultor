@@ -29,6 +29,7 @@ import { ARENA_MAP_ID, newArenaIdentity } from '@/lib/arena'
 import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
 import { addProp, moveProp, useMapOverridesVersion } from '@/lib/map-overrides'
 import { setMapEditor, useMapEditor } from '@/lib/map-editor'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -296,7 +297,7 @@ export function IsoWorld({
             <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
             <foreignObject x={-RD / 2} y={-RD + 12} width={RD} height={RD} style={{ overflow: 'visible' }}>
               <div style={{ width: RD, height: RD, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-                <HeroSprite sheet={def.sprite} dir={moving ? walkDir : spot.facing} walking={moving} px={RD} />
+                <HeroSprite sheet={npcSheet(state, def.id) ?? def.sprite} dir={moving ? walkDir : spot.facing} walking={moving} px={RD} />
               </div>
             </foreignObject>
             <g transform="translate(0,-60)">
@@ -490,7 +491,7 @@ export function IsoWorld({
           overflow="hidden"
           style={{ imageRendering: 'pixelated' }}
         >
-          <image href={`/images/sprites/protag-${state.player.appearance.gender}.png`} width={704} height={968} />
+          <image href={`/images/sprites/${heroSheet(state)}.png`} width={704} height={968} />
         </svg>
       </g>
     </g>

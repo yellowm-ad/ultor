@@ -4,7 +4,7 @@
 // 마법(스킬) 관리는 2026-10-31 HUD 「마법」 창(components/game/magic-screen.tsx)으로 분리했다.
 
 import { useGame } from '@/lib/game-state'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import { POSITION_META } from '@/lib/constants'
 import { gearOf, STAT_SHORT } from '@/lib/gear-enhance'
 import { itemById } from '@/lib/mock-data'
@@ -12,6 +12,8 @@ import { getEffectiveStats } from '@/lib/derived'
 import { expProgressPercent, expRequiredForLevel, MAX_LEVEL } from '@/lib/exp-table'
 import type { EquipSlot, StatKey } from '@/lib/types'
 import { Bar, GameWindow, HeadPill, menuIcon, Ribbon, Slot } from '@/components/game/game-window'
+import { CostumeButton } from '@/components/game/wardrobe'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const STAT_LABELS: Record<StatKey, string> = {
   maxHp: '최대 HP',
@@ -56,7 +58,7 @@ export function CharacterScreen() {
         {/* 프로필 */}
         <section className="gw-panel is-flex is-pad">
           <div className="char-stage">
-            <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={110} />
+            <HeroSprite sheet={heroSheet(state)} dir="down" px={110} />
           </div>
           <div className="mt-3 text-center">
             <div className="font-display text-[17px] font-bold text-[#2c2a33]">{player.name}</div>
@@ -64,6 +66,9 @@ export function CharacterScreen() {
               <span className="gw-pill is-gold">Lv.{player.level}</span>
               <span className="gw-pill is-soft">{POSITION_META[heroPos].label}</span>
               <span className="gw-pill is-soft">고정 속성 없음</span>
+            </div>
+            <div className="mt-2 flex justify-center">
+              <CostumeButton owner="hero" name={player.name} />
             </div>
           </div>
           <div className="mt-3 space-y-2 text-[12.5px] text-[#6c6150]">

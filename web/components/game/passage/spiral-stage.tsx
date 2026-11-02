@@ -13,9 +13,9 @@
 
 import { useMemo, useRef } from 'react'
 import { useGame } from '@/lib/game-state'
-import { schoolNpcById } from '@/lib/companions'
 import { drawHero, keyCap, noFlash, rng, useCanvasLoop, useHud, useImages, useInput, VH, VW, type Key } from './px-engine'
 import { StageHud, TouchPad } from './stage-ui'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const FLOORS = 8
 const X0 = 64 // 계단 왼쪽 끝
@@ -110,16 +110,16 @@ const SRC = {
 
 export function SpiralStage({ onEnd }: { onEnd: (ok: boolean) => void }) {
   const { state } = useGame()
-  const heroSheet = `/images/sprites/protag-${state.player.appearance.gender}.png`
+  const heroSrc = `/images/sprites/${heroSheet(state)}.png`
   const mates = state.companions.party
-    .map((id) => schoolNpcById(id)?.sprite)
+    .map((id) => npcSheet(state, id))
     .filter(Boolean)
     .slice(0, 3) as string[]
   const sheets = useImages({
-    hero: heroSheet,
-    m0: mates[0] ? `/images/sprites/${mates[0]}.png` : heroSheet,
-    m1: mates[1] ? `/images/sprites/${mates[1]}.png` : heroSheet,
-    m2: mates[2] ? `/images/sprites/${mates[2]}.png` : heroSheet,
+    hero: heroSrc,
+    m0: mates[0] ? `/images/sprites/${mates[0]}.png` : heroSrc,
+    m1: mates[1] ? `/images/sprites/${mates[1]}.png` : heroSrc,
+    m2: mates[2] ? `/images/sprites/${mates[2]}.png` : heroSrc,
   })
   const img = useImages(SRC)
   const seed = useMemo(() => (Math.random() * 1e9) | 0, [])

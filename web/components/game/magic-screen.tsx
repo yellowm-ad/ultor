@@ -22,10 +22,11 @@ import {
   type SkillGrade,
 } from '@/lib/skill-mastery'
 import type { BattleFx, Skill } from '@/lib/types'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
 import { SkillFxLayer } from '@/components/game/skill-fx'
 import { Bar, Divider, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Sparkle } from '@/components/game/game-window'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 type Tab = 'all' | 'fire' | 'ice' | 'earth' | 'dark' | 'light' | 'none' | 'summon'
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -88,7 +89,7 @@ const STAGE_POS: Record<string, { left: number; top: number }> = {
 }
 
 /** 이펙트 미리보기 — 전투와 같은 연출 레이어(SkillFxLayer)를 작은 무대에서 재생 */
-function SkillPreview({ skill, gender }: { skill: Skill; gender: 'male' | 'female' }) {
+function SkillPreview({ skill, sheet }: { skill: Skill; sheet: string }) {
   const [n, setN] = useState(0)
   const [fx, setFx] = useState<BattleFx | undefined>(undefined)
   // 고를 때마다 한 번 자동 재생
@@ -107,7 +108,7 @@ function SkillPreview({ skill, gender }: { skill: Skill; gender: 'male' | 'femal
         </div>
       )}
       <div className="magic-stage-actor" style={{ left: `${STAGE_POS.hero.left}%`, top: `${STAGE_POS.hero.top}%` }}>
-        <HeroSprite sheet={playerSheet(gender)} dir="right" px={74} />
+        <HeroSprite sheet={sheet} dir="right" px={74} />
       </div>
       {!creature && (
         <>
@@ -313,7 +314,7 @@ function MagicDetail({ skill, has, scrolls }: { skill: Skill; has: boolean; scro
   return (
     <>
       <div className="gw-scroll is-fill">
-        <SkillPreview skill={skill} gender={player.appearance.gender} />
+        <SkillPreview skill={skill} sheet={heroSheet(state)} />
 
         <div className="mt-3 flex items-start gap-3">
           <div className="craft-medal !size-14">

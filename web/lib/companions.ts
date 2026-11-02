@@ -532,7 +532,8 @@ export function createCompanionProgress(def: SchoolNpc, heroLevel: number): Comp
   return { level, exp: 0, hp: stats.maxHp, mp: stats.maxMp }
 }
 
-export function combatantFromCompanion(def: SchoolNpc, prog: CompanionProgress): Combatant {
+/** sheet = 입은 코스튬 시트(lib/costumes npcSheet) — 없으면 기본 도트 */
+export function combatantFromCompanion(def: SchoolNpc, prog: CompanionProgress, sheet?: SpriteSheet): Combatant {
   const stats = companionStats(def, prog.level)
   return {
     uid: `ally-${def.id}`,
@@ -549,7 +550,7 @@ export function combatantFromCompanion(def: SchoolNpc, prog: CompanionProgress):
     skills: companionSkills(def, prog.level),
     atb: 0,
     effects: [],
-    appearance: { kind: 'hero', sheet: def.sprite },
+    appearance: { kind: 'hero', sheet: sheet ?? def.sprite },
     alive: prog.hp > 0,
   }
 }

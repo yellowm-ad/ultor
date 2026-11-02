@@ -10,13 +10,16 @@ import { masteryOf } from '@/lib/skill-mastery'
 import { SUMMON_SLOT_SIZE } from '@/lib/constants'
 import { canRecruit, COMBAT_NPCS, COMPANION_SLOTS, companionStats, guestNpcById, guestStats, schoolNpcById, type SchoolNpc } from '@/lib/companions'
 import { expRequiredForLevel } from '@/lib/exp-table'
-import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
+import { HeroSprite } from '@/components/game/pixel-hero'
 import type { Position } from '@/lib/types'
+import { CostumeButton } from '@/components/game/wardrobe'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const ROLE_LABEL = { student: '학생', professor: '교수', story: '조교' } as const
 
 function NpcFace({ def, px = 56 }: { def: SchoolNpc; px?: number }) {
-  return <HeroSprite sheet={def.sprite} dir="down" px={px} />
+  const { state } = useGame()
+  return <HeroSprite sheet={npcSheet(state, def.id) ?? def.sprite} dir="down" px={px} />
 }
 
 /** 포지션 선택 — 전위/후위/지원 */
@@ -72,12 +75,13 @@ export function PartyScreen() {
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
         <div className="gw-panel party-card">
           <div className="flex h-14 items-end justify-center overflow-hidden">
-            <HeroSprite sheet={playerSheet(player.appearance.gender)} dir="down" px={56} />
+            <HeroSprite sheet={heroSheet(state)} dir="down" px={56} />
           </div>
           <div className="text-center text-xs font-semibold">{player.name}</div>
           <div className="text-[10px] opacity-70">Lv.{player.level} · 주인공</div>
           <Bars hp={player.hp / player.stats.maxHp} mp={player.mp / player.stats.maxMp} exp={player.exp / expRequiredForLevel(player.level)} />
           <PositionPicker memberId="hero" value={pos('hero')} />
+          <CostumeButton owner="hero" name={player.name} className="mt-0.5" />
         </div>
 
         {Array.from({ length: Math.max(0, COMPANION_SLOTS - guests.length) }).map((_, i) => {
@@ -117,6 +121,7 @@ export function PartyScreen() {
                 <button type="button" className="gw-btn is-quiet is-sm" onClick={() => dispatch({ type: 'TOGGLE_PARTY_MEMBER', companionId: def.id })}>
                   빼기
                 </button>
+                <CostumeButton owner={def.id} name={def.name} />
               </div>
             </div>
           )

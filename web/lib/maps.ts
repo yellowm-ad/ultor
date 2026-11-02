@@ -28,6 +28,7 @@ import {
   UF_SPAWN,
 } from '@/lib/academy-upper'
 import { ACADEMY_ROOM_DEFS, ARCHIVE_ROOM, ROOM_PAD_TOP, roomBlockers as roomBlockersAc } from '@/lib/academy-rooms'
+import { ANNEX_PAD_TOP, annexSpaces, GRAND_LIBRARY_ARCHIVE_RETURN } from '@/lib/annex'
 import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
@@ -122,7 +123,7 @@ const VILLAGE_BASE_ZONES: ZoneDef[] = [
 
 /** 북쪽 확장 지구 — 지금 좌표(밀린 뒤) 기준 */
 const VILLAGE_NORTH_ZONES: ZoneDef[] = [
-  z('z-north-school', 'school', '학교 북관', 2, 2, 17, VILLAGE_NORTH, '#6a5bd6', '연구동과 실습동이 안뜰을 둘러싼 학교 북쪽 별관.'),
+  z('z-north-school', 'school', '학교 북관', 2, 2, 17, VILLAGE_NORTH, '#6a5bd6', '소환·무속성 마법관 · 연금·제작관 · 동아리관이 안뜰을 둘러싼 학교 북쪽 별관.'),
   z('z-north-garden', 'park', '학교 정원', 20, 2, 33, VILLAGE_NORTH, '#4e9c4a', '중앙 대광장 북쪽으로 이어지는 학교 정원.'),
   z('z-north-lot', 'shopStreet', '꽃길 장터', 36, 2, 50, VILLAGE_NORTH, '#d98aa0', '빵집·꽃집·책방이 우물 마당을 둘러싼 작은 장터.'),
 ]
@@ -310,9 +311,10 @@ const BUILDING_SPRITE: Record<string, Rs> = {
   'b-statue-saint': B_('b_statue', 86, 156, 43, 134),
   'b-gazebo': B_('b_gazebo', 120, 143, 60, 114),
   // 북쪽 확장 — 학교 북관
-  'b-north-lab': B_('b_guildhall', 173, 204, 87, 118),
-  'b-north-hallA': B_('b_hall_small', 157, 178, 79, 100),
-  'b-north-hallB': B_('b_hall_small', 157, 178, 79, 100),
+  // 2026-11-02 PixelLab — 본관 양식, 색감만 다르게(청회색 석재 / 붉은 벽돌·청동 지붕 / 목조·테라코타)
+  'b-north-hallA': B_('b_annex_arcane', 200, 198, 100, 88),
+  'b-north-lab': B_('b_annex_craft', 200, 230, 100, 122),
+  'b-north-hallB': B_('b_club_hall', 200, 203, 100, 97),
 }
 // kind 별 (동일 스프라이트 반복)
 const KIND_BUILDING_SPRITE: Partial<Record<PropDef['kind'], Rs>> = {
@@ -661,9 +663,10 @@ function villageProps(): PropDef[] {
   // ════════ 북쪽 확장 띠 (옛 좌표 y -10.5–0) — 학교 북관 / 학교 정원 / 꽃길 장터(가게·노점은 lib/town-decor.ts) ════════
   // place() 는 y<2.5 를 외곽 순환로로 보고 걸러내므로 여기는 직접 push 한다.
   // 학교 북관 (x2.5–16.8) — 북쪽에 건물 3동, 남쪽에 안뜰
-  P.push({ id: 'b-north-hallA', kind: 'hall', cell: { x: 3.2, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '실습동' })
-  P.push({ id: 'b-north-lab', kind: 'hall', cell: { x: 7.6, y: -10.0 }, size: { w: 2.8, d: 2.6 }, label: '마법 연구동' })
-  P.push({ id: 'b-north-hallB', kind: 'hall', cell: { x: 12.4, y: -9.8 }, size: { w: 2.8, d: 2.6 }, label: '기록관' })
+  // 2026-11-02 — 세 건물을 새 용도로(내부 = lib/annex.ts): 소환·무속성 마법관 / 연금·제작관 / 동아리관
+  P.push({ id: 'b-north-hallA', kind: 'hall', cell: { x: 3.2, y: -9.8 }, size: { w: 3.2, d: 3.05 }, collide: { w: 2.6, d: 2.4 }, label: '소환·무속성 마법관' })
+  P.push({ id: 'b-north-lab', kind: 'hall', cell: { x: 7.6, y: -10.0 }, size: { w: 3.2, d: 3.05 }, collide: { w: 2.6, d: 2.4 }, label: '연금·제작관' })
+  P.push({ id: 'b-north-hallB', kind: 'hall', cell: { x: 12.4, y: -9.8 }, size: { w: 3.2, d: 3.05 }, collide: { w: 2.6, d: 2.4 }, label: '동아리관' })
   // (관측탑 자리에는 회색 성곽 탑 대신 망원경·지구본을 놓았다 — lib/town-decor VILLAGE '학교 북관')
   P.push({ id: 'b-north-statue', kind: 'statue', cell: { x: NORTH_COURT.x, y: NORTH_COURT.y }, size: { w: 1.0, d: 1.0 }, label: '초대 교장 상' })
   P.push({ id: 'be-nc0', kind: 'bench', cell: { x: NORTH_COURT.x - 2.4, y: NORTH_COURT.y + 0.4 }, variant: 'l' })
@@ -882,6 +885,39 @@ const FIELD_MAPS = Object.fromEntries(
 /** 안전 마을 출구 → 갈림길(3단계) 맵의 해당 포탈 앞 */
 const townReturn = (town: string) => FIELD.townReturns[town]
 
+// ── 학교 북관 3동 · 중앙 대도서관 내부(lib/annex.ts) ──
+/** 건물 앞 셀(지금 마을 좌표) — 마을 포탈 자리이자 나올 때 도착점 근처 */
+const ANNEX_FRONT = {
+  // 문은 세 건물 모두 왼쪽 앞면(+y 쪽) 가운데
+  arcane: villageShift({ x: 3.2, y: -7.6 }),
+  craft: villageShift({ x: 7.6, y: -7.8 }),
+  club: villageShift({ x: 12.4, y: -7.6 }),
+  library: villageShift({ x: LIBRARY.x - 0.3, y: LIBRARY.y + 3.6 }),
+}
+const outOf = (c: { x: number; y: number }) => ({ x: c.x, y: c.y + 1.4 })
+const ANNEX_MAPS: Partial<Record<MapId, GameMap>> = Object.fromEntries(
+  annexSpaces({ arcane: outOf(ANNEX_FRONT.arcane), craft: outOf(ANNEX_FRONT.craft), club: outOf(ANNEX_FRONT.club), library: outOf(ANNEX_FRONT.library) }).map((sp) => [
+    sp.id,
+    {
+      id: sp.id,
+      name: sp.name,
+      kind: 'town',
+      grid: { w: sp.w, h: sp.h },
+      bg: 'school',
+      render: 'iso',
+      assets: 'raster',
+      tileAt: sp.tileAt,
+      props: sp.props,
+      structures: sp.structures,
+      padTop: ANNEX_PAD_TOP,
+      blockers: buildBlockers(sp.props, sp.edge),
+      zones: [z(`z-${sp.id}`, 'school', sp.name, 0, 0, sp.w, sp.h, '#5b6bd6', sp.desc)],
+      spawn: sp.spawn,
+      portals: sp.portals,
+    } as GameMap,
+  ]),
+)
+
 export const MAPS = {
   ...FIELD_MAPS,
   village: {
@@ -916,8 +952,11 @@ export const MAPS = {
       { id: 'gate-volcano', cell: villageShift({ x: 43.5, y: 36.6 }), to: 'volcano', label: '화산지대', kind: 'gate', requiredLevel: 41 },
       { id: 'personal-space-enter', cell: villageShift({ x: 42, y: 5 }), to: 'personal-space', label: '내 개인 공간', kind: 'portal' },
       { id: 'school-hall-enter', cell: villageShift({ x: 6.9, y: 6.5 }), to: 'school-hall', label: '마법학교 본관', kind: 'portal' },
-      // 학교 북관 테라스의 기록관 건물 앞(지금 마을 좌표)
-      { id: 'village-archive-enter', cell: { x: 13.8, y: 6.8 }, to: 'village-archive', label: '울토르 기록관', kind: 'portal' },
+      // 2026-11-02 — 학교 북관 3동 · 중앙 대도서관 입구(기록관은 대도서관 안으로 옮김)
+      { id: 'annex-arcane-enter', cell: ANNEX_FRONT.arcane, to: 'annex-arcane', label: '소환·무속성 마법관', kind: 'portal' },
+      { id: 'annex-craft-enter', cell: ANNEX_FRONT.craft, to: 'annex-craft', label: '연금·제작관', kind: 'portal' },
+      { id: 'club-hall-enter', cell: ANNEX_FRONT.club, to: 'club-hall', label: '동아리관', kind: 'portal' },
+      { id: 'grand-library-enter', cell: ANNEX_FRONT.library, to: 'grand-library', label: '중앙 대도서관', kind: 'portal' },
     ],
   },
 
@@ -1104,7 +1143,7 @@ export const MAPS = {
     blockers: buildBlockers(ARCHIVE_ROOM.props, roomBlockersAc(ARCHIVE_ROOM.w, ARCHIVE_ROOM.h)),
     zones: [z('z-village-archive', 'school', '울토르 기록관', 0, 0, ARCHIVE_ROOM.w, ARCHIVE_ROOM.h, '#5b6bd6', '학교의 옛 기록을 모아 둔 곳. 책장 군데군데가 비어 있다.')],
     spawn: { x: ARCHIVE_ROOM.w / 2, y: ARCHIVE_ROOM.h - 2.2 },
-    portals: [{ id: 'village-archive-exit', cell: { x: ARCHIVE_ROOM.w / 2, y: ARCHIVE_ROOM.h - 0.8 }, to: 'village', toSpawn: { x: 13.8, y: 8.2 }, label: '밖으로', kind: 'exit' }],
+    portals: [{ id: 'village-archive-exit', cell: { x: ARCHIVE_ROOM.w / 2, y: ARCHIVE_ROOM.h - 0.8 }, to: 'grand-library', toSpawn: GRAND_LIBRARY_ARCHIVE_RETURN, label: '대도서관 열람실로', kind: 'exit' }],
   } as GameMap,
   // 아틀란티스 대성당 지하 벽화실(2026-10-10) — 왕의 마음이 넷으로 나뉜 벽화 석판이 놓인 작은 방. 소품은 lib/town-decor
   'atlantis-crypt': (() => {
@@ -1318,6 +1357,7 @@ export const MAPS = {
     portals: upperPortals(4, ACADEMY_ROOM_DEFS),
   },
   ...ACADEMY_ROOMS,
+  ...ANNEX_MAPS,
   'personal-space': {
     id: 'personal-space',
     name: '내 개인 공간',

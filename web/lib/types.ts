@@ -271,7 +271,7 @@ export interface InventorySlot {
 export type CraftStationKind = 'magic_workbench' | 'alchemy_pot' | 'cooking_pot'
 
 /** 제작 카테고리(§학사 PRD 38) — 카테고리마다 해금 시기(ActivityId)가 다르다 */
-export type RecipeCategory = 'equipment' | 'alchemy' | 'cooking' | 'magicTool' | 'furniture' | 'costume' | 'candy'
+export type RecipeCategory = 'equipment' | 'alchemy' | 'cooking' | 'magicTool' | 'furniture' | 'candy'
 
 export interface RecipeDef {
   id: string
@@ -500,6 +500,11 @@ export type MapId =
   | 'atlantis'
   | 'atlantis-crypt'
   | 'village-archive'
+  // 2026-11-02 학교 북관 3동(소환·무속성 마법관 / 연금·제작관 / 동아리관) + 중앙 대도서관 내부 — lib/annex.ts
+  | 'grand-library'
+  | 'annex-arcane' | 'arcane-summon' | 'arcane-neutral' | 'arcane-circle' | 'arcane-lab'
+  | 'annex-craft' | 'craft-alchemy' | 'craft-magitool' | 'craft-forge' | 'craft-candy'
+  | 'club-hall' | 'club-explore' | 'club-fishing' | 'club-gather' | 'club-alchemy' | 'club-art' | 'club-music' | 'club-rune' | 'club-cooking' | 'club-astro'
   | 'stormhaven'
   | 'stormhaven-2'
   | 'stormhaven-3'
@@ -899,6 +904,8 @@ export interface GameState {
   mealBuff: { itemId: string; battlesLeft: number } | null
   /** 낚시 미니게임 진행 중 상태 */
   fishing: FishingSession | null
+  /** 코스튬 옷장(lib/costumes) — 스킨 통째 갈아입기. 없으면 모두 기본 복장 */
+  wardrobe?: import('./costumes').WardrobeState
   /** 진행 중인 수업 장면(저장 안 함) */
   classScene?: ClassSceneState | null
   /** 천공 콜로세움 신분(이 저장 기록의 캐릭터 = 랭킹 한 줄) — 처음 팀을 올릴 때 만든다 */

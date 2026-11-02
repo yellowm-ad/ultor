@@ -12,9 +12,9 @@
 
 import { useMemo, useRef } from 'react'
 import { useGame } from '@/lib/game-state'
-import { schoolNpcById } from '@/lib/companions'
 import { drawHero, keyCap, rng, useCanvasLoop, useHud, useImages, useInput, VH, VW, type Key } from './px-engine'
 import { StageHud } from './stage-ui'
+import { heroSheet, npcSheet } from '@/lib/costumes'
 
 const MW = 13 // 방 칸 수(가로)
 const MH = 9
@@ -130,16 +130,16 @@ const DV: Record<Dir, [number, number]> = { up: [0, -1], down: [0, 1], left: [-1
 
 export function MazeStage({ onEnd }: { onEnd: (ok: boolean) => void }) {
   const { state } = useGame()
-  const heroSheet = `/images/sprites/protag-${state.player.appearance.gender}.png`
+  const heroSrc = `/images/sprites/${heroSheet(state)}.png`
   const mates = state.companions.party
-    .map((id) => schoolNpcById(id)?.sprite)
+    .map((id) => npcSheet(state, id))
     .filter(Boolean)
     .slice(0, 3) as string[]
   const sheets = useImages({
-    hero: heroSheet,
-    m0: mates[0] ? `/images/sprites/${mates[0]}.png` : heroSheet,
-    m1: mates[1] ? `/images/sprites/${mates[1]}.png` : heroSheet,
-    m2: mates[2] ? `/images/sprites/${mates[2]}.png` : heroSheet,
+    hero: heroSrc,
+    m0: mates[0] ? `/images/sprites/${mates[0]}.png` : heroSrc,
+    m1: mates[1] ? `/images/sprites/${mates[1]}.png` : heroSrc,
+    m2: mates[2] ? `/images/sprites/${mates[2]}.png` : heroSrc,
   })
   const seed = useMemo(() => (Math.random() * 1e9) | 0, [])
   const maze = useMemo(() => makeMaze(seed), [seed])
