@@ -7,7 +7,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { itemById } from '@/lib/mock-data'
-import { Button } from '@/components/ui/button'
 
 type Phase = 'waiting' | 'bite' | 'result'
 
@@ -21,9 +20,9 @@ export function FishingOverlay() {
   const t0 = useRef(0)
 
   const difficulty = session?.difficulty ?? 0.3
-  const zoneW = Math.max(0.1, 0.34 - difficulty * 0.24)
+  const zoneW = Math.max(0.16, 0.42 - difficulty * 0.22) // 2026-11-02 난이도 완화
   const zoneStart = 0.5 - zoneW / 2
-  const speed = 0.9 + difficulty * 1.6 // 왕복/초
+  const speed = 0.75 + difficulty * 1.2 // 왕복/초
 
   // 입질 대기 → 바늘 시작
   useEffect(() => {
@@ -45,8 +44,8 @@ export function FishingOverlay() {
       // 핑퐁 0→1→0
       const x = (s * speed) % 2
       setNeedle(x < 1 ? x : 2 - x)
-      // 4초 안에 못 당기면 놓침
-      if (s > 4) {
+      // 5초 안에 못 당기면 놓침(2026-11-02: 4 → 5초)
+      if (s > 5) {
         setResult(false)
         setPhase('result')
         return
@@ -98,7 +97,8 @@ export function FishingOverlay() {
         {/* 물가 장면 — 찌가 까딱이다가 입질이 오면 물속으로 꺼지고, 낚으면 물고기가 튀어 오른다 */}
         <div className={`fish-scene is-${phase} ${phase === 'result' ? (result ? 'is-win' : 'is-lose') : ''}`}>
           <span className="fish-line" />
-          <span className="fish-bobber" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/items/life/bobber0.png" alt="" className="fish-bobber" draggable={false} />
           <span className="fish-ripple" />
           <span className="fish-ripple is-late" />
           {phase === 'result' && result && fish && (
@@ -108,9 +108,9 @@ export function FishingOverlay() {
         </div>
         {phase === 'waiting' && <div className="py-4 text-sm text-white/80">찌를 바라보며 입질을 기다리는 중… (지금 당기면 놓친다)</div>}
         {phase !== 'waiting' && (
-          <div className="relative mx-auto my-3 h-6 w-full overflow-hidden rounded-full border border-gold/50 bg-black/50">
-            <div className="absolute inset-y-0 bg-emerald-500/60" style={{ left: `${zoneStart * 100}%`, width: `${zoneW * 100}%` }} />
-            <div className="absolute inset-y-[-2px] w-1.5 -translate-x-1/2 rounded bg-gold-soft shadow" style={{ left: `${needle * 100}%` }} />
+          <div className="fish-gauge">
+            <div className="fish-gauge-zone" style={{ left: `${zoneStart * 100}%`, width: `${zoneW * 100}%` }} />
+            <div className="fish-gauge-needle" style={{ left: `${needle * 100}%` }} />
           </div>
         )}
         {phase === 'bite' && <div className="text-sm font-bold text-gold-soft">입질이다! 초록 구간에서 당겨! (Space / E)</div>}
@@ -119,13 +119,17 @@ export function FishingOverlay() {
         )}
         <div className="mt-3 flex justify-center gap-2">
           {phase === 'result' ? (
-            <Button onClick={finish}>확인</Button>
+            <button type="button" className="gw-btn is-gold is-lg" onClick={finish}>
+              확인
+            </button>
           ) : (
             <>
-              <Button onClick={pull}>당기기</Button>
-              <Button variant="ghost" onClick={() => dispatch({ type: 'FISHING_RESULT', success: false })}>
+              <button type="button" className="gw-btn is-gold is-lg" onClick={pull}>
+                당기기 <small>Space</small>
+              </button>
+              <button type="button" className="gw-btn is-quiet" onClick={() => dispatch({ type: 'FISHING_RESULT', success: false })}>
                 그만두기
-              </Button>
+              </button>
             </>
           )}
         </div>

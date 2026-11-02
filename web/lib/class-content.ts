@@ -235,7 +235,7 @@ export function buildRhythmChart(style: RhythmStyle, year: number, rand: () => n
   }
   return notes
 }
-export const RHYTHM_WINDOWS = { perfect: 60, great: 110, good: 170 } // ms
+export const RHYTHM_WINDOWS = { perfect: 75, great: 135, good: 210 } // ms (2026-11-02 난이도 완화: 60/110/170 →)
 export const RHYTHM_KEYS = ['q', 'w', 'e', 'r']
 /** 물리 키 코드(한글 IME 상태에서도 Q/W/E/R 로 인식되게 e.code 로 판정) */
 export const RHYTHM_CODES = ['KeyQ', 'KeyW', 'KeyE', 'KeyR']

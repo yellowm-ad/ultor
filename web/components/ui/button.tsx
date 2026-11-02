@@ -7,7 +7,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-gold bg-primary text-primary-foreground shadow-[0_2px_0_0_rgba(0,0,0,0.35)] hover:bg-primary-hover',
+        // 2026-11-02 — 노란 박스 대신 나무판 + 금테(app/passage.css .px-wood)
+        default: 'px-wood is-primary',
         gilded: 'panel-gilded text-gold-soft hover:brightness-110',
         outline: 'border-border bg-transparent text-foreground hover:bg-muted',
         secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',

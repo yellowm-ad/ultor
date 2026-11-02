@@ -267,6 +267,9 @@ export function AdminPanel() {
                 </Button>
               ))}
             </div>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => dispatch({ type: 'ADMIN_FISH_TEST' })}>
+              낚시 미니게임 테스트
+            </Button>
             {/* 첫 이동 연출 미니게임 테스트(lib/passages) — 이동 없이 한 판 */}
             <div className="grid grid-cols-2 gap-1">
               {PASSAGES.map((p) => (

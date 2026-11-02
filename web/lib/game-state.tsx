@@ -122,6 +122,7 @@ export type Action =
   | { type: 'USE_PORTAL'; portalId: string }
   | { type: 'PASSAGE_DONE'; fish?: number }
   | { type: 'ADMIN_PASSAGE_TEST'; id: import('@/lib/passages').PassageId }
+  | { type: 'ADMIN_FISH_TEST' }
   | { type: 'SPOT_USE'; spotId: string }
   | { type: 'PASSAGE_CANCEL' }
   | { type: 'PORTAL_CONFIRM' }
@@ -539,6 +540,9 @@ function reducerCore(state: GameState, action: Action): GameState {
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
     }
 
+    // 낚시 미니게임 테스트 — 지금 맵의 어종으로 한 판(낚시터 규칙: 해금·낚싯대·물가 무시)
+    case 'ADMIN_FISH_TEST':
+      return state.fishing || state.passage || state.classScene || state.battle ? state : startFishing({ ...state, screen: 'world' }, true)
     case 'ADMIN_PASSAGE_TEST':
       return state.passage || state.classScene || state.battle ? state : { ...state, screen: 'world', passage: { id: action.id, portalId: '' } }
 

@@ -1,0 +1,244 @@
+/* ============================================================================
+   첫 이동 스테이지 · 미니게임 도트 UI(2026-11-02)
+   흑갈색 바탕 + 금 테두리(도트 계단 모서리) — 남색·둥근 벡터 느낌 금지
+   테두리·버튼 그림은 PixelLab 생성(public/images/ui/px/*). 그림이 없을 때도 같은 모양이 되게 box-shadow 로 받친다.
+   ============================================================================ */
+
+.pst-wrap { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+
+/* 도트 게임 화면 — 16:9, 정수배 확대 */
+.pst-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 62vh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #0a0806;
+  box-shadow: 0 0 0 2px #0a0806, 0 0 0 4px #b8862e, 0 0 0 6px #0a0806;
+  image-rendering: pixelated;
+  touch-action: none;
+  user-select: none;
+}
+.pst-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* HUD 칩 */
+.pst-hud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.pst-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 24px; padding: 2px 10px;
+  font-family: var(--font-display); font-size: 12.5px; color: #f3e6c4;
+  background: linear-gradient(180deg, #2a2219 0%, #17120d 100%);
+  box-shadow: inset 0 0 0 1px #0a0806, inset 0 0 0 2px #8a6526, 0 0 0 1px #0a0806;
+}
+.pst-chip.is-grow { flex: 1 1 180px; }
+.pst-chip em { font-style: normal; color: #c9b48a; font-size: 11.5px; }
+.pst-chip b { font-weight: 700; color: #ffe9a8; }
+
+.pst-heart { display: inline-block; width: 14px; height: 13px; clip-path: polygon(0 22%, 18% 0, 40% 0, 50% 14%, 60% 0, 82% 0, 100% 22%, 100% 46%, 50% 100%, 0 46%); background-color: #3a2620; }
+.pst-heart.is-on { background-color: #e0574e; box-shadow: inset 2px 2px 0 #ff9a8a, inset -2px -2px 0 #9a2b26; }
+
+.pst-gauge { position: relative; display: inline-block; width: 110px; height: 10px; background: #0d0a07; box-shadow: inset 0 0 0 1px #4a3a22; }
+.pst-chip.is-grow .pst-gauge { flex: 1; width: auto; }
+.pst-gauge > span { position: absolute; left: 1px; top: 1px; bottom: 1px; max-width: calc(100% - 2px); transition: width 0.15s steps(4); }
+.pst-gauge > span::after { content: ''; position: absolute; inset: 0 0 auto 0; height: 2px; background: rgba(255, 255, 255, 0.35); }
+.pst-gauge.is-gold > span { background: #e0b04a; }
+.pst-gauge.is-warm > span { background: #ff8a3c; }
+.pst-gauge.is-food > span { background: #8cc45a; }
+.pst-gauge.is-torch > span { background: #ffa94a; }
+.pst-gauge.is-sea > span { background: #4ab0d8; }
+
+/* 터치 · 마우스 버튼 */
+.pst-pad { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.pst-btn {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 92px; min-height: 40px; padding: 4px 14px;
+  font-family: var(--font-display); font-size: 13.5px; line-height: 1.1; color: #f6eedc;
+  background: linear-gradient(180deg, #3a2e20 0%, #1d160f 100%);
+  border: 0;
+  box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #c9963a, inset 0 3px 0 3px rgba(255, 230, 170, 0.12), 0 2px 0 #0a0806;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pst-btn small { margin-top: 2px; font-size: 10.5px; color: #c9b48a; font-family: var(--font-sans); }
+.pst-btn.is-big { min-width: 130px; color: #2b1d06; background: linear-gradient(180deg, #f3d98e 0%, #c38f34 100%); box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #fff0c0, 0 2px 0 #0a0806; font-weight: 700; }
+.pst-btn.is-big small { color: #5a3d10; }
+.pst-btn:active { transform: translateY(2px); box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #c9963a; }
+
+/* 휴대폰 가로 — 화면을 크게 */
+@media (max-height: 560px) {
+  .pst-stage { max-height: 58vh; }
+  .pst-btn { min-height: 34px; min-width: 76px; font-size: 12px; }
+  .pst-chip { min-height: 20px; font-size: 11px; }
+}
+
+/* 설원 — 거점 사건 기록(화면 아래 띠) */
+.pst-log {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  width: min(92%, 560px); padding: 6px 12px;
+  font-size: 12.5px; line-height: 1.45; color: #f3e6c4; text-align: center;
+  background: rgba(14, 11, 8, 0.86);
+  box-shadow: inset 0 0 0 1px #0a0806, inset 0 0 0 2px #8a6526;
+  pointer-events: none;
+}
+.pst-log.is-pop { animation: pst-pop 0.35s steps(3); }
+@keyframes pst-pop { 0% { transform: translateX(-50%) translateY(6px); opacity: 0.2; } 100% { transform: translateX(-50%); opacity: 1; } }
+.pst-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── PixelLab 도트 UI 부품(2026-11-02) ──────────────────────────────────────
+   btn-wood.png  : 호두나무 판 + 금 당초 모서리(9-slice, 18px)
+   banner.png    : 버건디 리본 제목띠
+   corner.png    : 금 당초 모서리 장식
+   gold-frame.png: 기존 흑금 당초 창 테두리                                   */
+.pst-btn, .gw-btn {
+  border: 11px solid transparent !important;
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 11px stretch !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  image-rendering: pixelated;
+  text-shadow: 0 1px 0 #000, 0 0 2px #000;
+  color: #f6eedc;
+}
+.pst-btn { min-height: 46px; padding: 0 4px; }
+.gw-btn { min-height: 36px; padding: 0 2px; }
+.gw-btn.is-sm { min-height: 30px; border-width: 9px !important; border-image-width: 9px !important; }
+.gw-btn.is-lg { min-height: 44px; padding: 0 12px; }
+/* 주 버튼 — 노란 채움 대신 나무판 그대로, 금빛 글씨 + 은은한 금빛 테로 구분(2026-11-02 사용자 요청) */
+.pst-btn.is-big, .gw-btn.is-gold, .mg-btn, .px-wood.is-primary {
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 11px stretch !important;
+  background: none !important;
+  color: #ffe08a !important;
+  font-weight: 700;
+  text-shadow: 0 1px 0 #000, 0 0 6px rgba(255, 190, 70, 0.55) !important;
+  filter: drop-shadow(0 0 3px rgba(255, 196, 90, 0.35));
+}
+.pst-btn.is-big small, .gw-btn.is-gold small { color: #e8cf98 !important; }
+/* 공용 나무판 버튼(어디든 class="px-wood") */
+.px-wood {
+  border: 11px solid transparent !important;
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 11px stretch !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  color: #f6eedc !important;
+  text-shadow: 0 1px 0 #000, 0 0 2px #000;
+  image-rendering: pixelated;
+}
+.px-wood:hover:not(:disabled) { filter: brightness(1.18); }
+.px-wood:active:not(:disabled) { transform: translateY(2px); }
+.px-wood:disabled { filter: grayscale(0.8) brightness(0.8); opacity: 0.6; }
+.mg-btn:hover:not(:disabled), .gw-btn.is-gold:hover:not(:disabled), .pst-btn.is-big:hover:not(:disabled) { filter: brightness(1.18) drop-shadow(0 0 4px rgba(255, 196, 90, 0.5)); }
+.gw-btn.is-gold:disabled, .mg-btn:disabled { color: #b9ad94 !important; text-shadow: 0 1px 0 #000 !important; filter: grayscale(0.7) brightness(0.8); }
+/* 화면 회전 안내 버튼 · 진형 선택(켜짐) · 미니게임 라운드 완료 칸 */
+.rotate-gate-btn { border: 11px solid transparent !important; border-image: url('/images/ui/px/btn-wood.png') 18 fill / 11px stretch !important; border-radius: 0 !important; background: none !important; color: #ffe08a !important; box-shadow: none !important; }
+.pos-pick button.is-on { color: #ffe08a !important; background: #3a2a18 !important; box-shadow: inset 0 0 0 2px #c9963a, 0 0 6px rgba(255, 196, 90, 0.4) !important; }
+.mg-round-pip.done { background: #3a2a18 !important; color: #ffe08a !important; box-shadow: inset 0 0 0 1px #c9963a; }
+.pst-btn:hover:not(:disabled), .gw-btn:hover:not(:disabled) { filter: brightness(1.18); }
+.pst-btn:active:not(:disabled), .gw-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none !important; }
+.gw-btn.is-quiet { opacity: 0.85; filter: saturate(0.7); }
+.gw-btn:disabled { color: #9a8f7c; filter: grayscale(0.8) brightness(0.8); }
+
+/* 첫 이동 창 — 흑금 당초 테두리 + 리본 제목 + 모서리 장식 */
+.psg-frame {
+  position: relative;
+  border-radius: 0 !important;
+  border-style: solid !important;
+  border-width: 22px !important;
+  border-color: transparent;
+  border-image: url('/images/ui/panels/gold-frame-warm.png') 90 / 22px stretch !important;
+  background: linear-gradient(165deg, #241f17 0%, #17130e 45%, #0a0806 100%) padding-box !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+}
+.psg-title {
+  align-self: center;
+  min-width: 260px;
+  margin: -34px auto 0;
+  padding: 10px 46px 18px;
+  background: url('/images/ui/px/banner.png') center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  color: #fff1cf !important;
+  text-shadow: 0 2px 0 #3a0c12, 0 0 4px #000;
+}
+.psg-card { gap: 14px; }
+.psg-howto { border-radius: 0 !important; background: rgba(0, 0, 0, 0.35) !important; box-shadow: inset 0 0 0 1px #0a0806, inset 0 0 0 2px #4a3a22; }
+
+/* ── 공용 창 도트화(2026-11-02) — 둥근 벡터 모서리 → 각진 도트 테두리 ─────────
+   바깥 틀은 흑금 당초(gold-frame), 안쪽 아이보리 패널은 금·먹 이중 실선.
+   남색 큰 배경은 쓰지 않는다(따뜻한 흑갈색 유지).                             */
+.gw-window {
+  border-radius: 0 !important;
+  border-style: solid !important;
+  border-width: 20px !important;
+  border-color: transparent !important;
+  border-image: url('/images/ui/panels/gold-frame-warm.png') 90 / 20px stretch !important;
+  background-clip: padding-box !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6) !important;
+}
+.gw-window *:not(img):not(svg):not(canvas):not(.rd) { border-radius: 0 !important; }
+.gw-head { margin: -6px -6px 0; border-bottom: 2px solid #c4a46a !important; box-shadow: 0 2px 0 #0a0806, 0 4px 0 rgba(196, 164, 106, 0.35); }
+.gw-head::after { display: none; }
+.gw-panel {
+  border: 0 !important;
+  /* 흰 띠 없이 — 바깥 먹선 + 안쪽으로 번지는 옅은 금빛 그림자만(배경과 자연스럽게) */
+  box-shadow: 0 0 0 1px #0a0806, inset 0 0 0 1px rgba(122, 95, 46, 0.85), inset 0 0 10px rgba(150, 115, 55, 0.22) !important;
+  background-image: radial-gradient(120% 80% at 0% 0%, rgba(255, 255, 255, 0.7), transparent 55%), repeating-linear-gradient(0deg, rgba(120, 90, 40, 0.025) 0 2px, transparent 2px 4px), linear-gradient(180deg, var(--gw-ivory-1), var(--gw-ivory-2)) !important;
+}
+.gw-close {
+  border: 9px solid transparent !important;
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 9px stretch !important;
+  background: none !important;
+  box-shadow: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  image-rendering: pixelated;
+}
+.gw-head-pill, .gw-pill, .gw-box, .gw-count { box-shadow: 0 0 0 1px rgba(10, 8, 6, 0.55); }
+.gw-ribbon { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%); background: linear-gradient(180deg, #6a1f2a, #3a0c14) !important; box-shadow: inset 0 2px 0 rgba(255, 200, 160, 0.18); }
+
+/* 낚시(도트) — 찌는 PixelLab 그림, 게이지는 각진 도트 */
+.fish-scene { border-radius: 0 !important; box-shadow: 0 0 0 2px #0a0806, 0 0 0 4px #8a6526; image-rendering: pixelated; background:
+  repeating-linear-gradient(180deg, transparent 0 6px, rgba(255, 255, 255, 0.08) 6px 7px) 0 34% / 100% 66% no-repeat,
+  linear-gradient(180deg, #9fd3e6 0%, #9fd3e6 34%, #2f7fa8 34%, #1d5c82 100%) !important; }
+.fish-bobber { width: 26px !important; height: auto !important; margin-left: -13px !important; top: 22px !important; border: 0 !important; border-radius: 0 !important; background: none !important; image-rendering: pixelated; }
+.fish-ripple { border-radius: 50% !important; }
+.fish-gauge { position: relative; height: 18px; margin: 12px auto; background: #0d0a07; box-shadow: inset 0 0 0 2px #4a3a22, 0 0 0 2px #0a0806, 0 0 0 4px #b8862e; overflow: hidden; }
+.fish-gauge-zone { position: absolute; top: 2px; bottom: 2px; background: repeating-linear-gradient(90deg, #5fbf6a 0 4px, #4aa457 4px 8px); box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+.fish-gauge-needle { position: absolute; top: -1px; bottom: -1px; width: 6px; margin-left: -3px; background: #ffe9a8; box-shadow: 0 0 0 1px #0a0806, 0 0 6px #ffd27a; }
+
+/* 하트 — PixelLab 금테 하트 */
+.pst-heart { width: 16px; height: 16px; clip-path: none; box-shadow: none !important; background: url('/images/ui/px/heart-empty.png') center / contain no-repeat !important; image-rendering: pixelated; }
+.pst-heart.is-on { background-image: url('/images/ui/px/heart.png') !important; }
+
+/* 필터 칩(전체·진행 중·완료 등) · 정렬 선택 — 작은 나무판. 켜진 칩은 금빛 글씨 */
+.gw-chip {
+  height: auto !important; min-height: 30px; padding: 0 6px !important;
+  border: 8px solid transparent !important;
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 8px stretch !important;
+  background: none !important;
+  color: #d9ccb0 !important;
+  text-shadow: 0 1px 0 #000;
+  filter: brightness(0.82) saturate(0.85);
+  image-rendering: pixelated;
+}
+.gw-chip:hover { filter: brightness(1.05); }
+.gw-chip.is-active { filter: drop-shadow(0 0 3px rgba(255, 196, 90, 0.45)); color: #ffe08a !important; font-weight: 700; text-shadow: 0 1px 0 #000, 0 0 6px rgba(255, 190, 70, 0.5); }
+.inv-sort select {
+  border: 8px solid transparent !important;
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 8px stretch !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  text-shadow: 0 1px 0 #000;
+}
+
+/* 사이드 메뉴·가방 분류 — 고른 칸은 노란 박스 대신 나무판 + 금빛 글씨 */
+.gw-side-item.is-active, .inv-cat.is-active {
+  color: #ffe08a !important;
+  /* 칸 크기는 그대로 — 나무판을 바깥으로 3px 겹쳐 그린다(옆 칸을 밀지 않게) */
+  border-image: url('/images/ui/px/btn-wood.png') 18 fill / 8px / 3px stretch !important;
+  background: none !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 0 #000, 0 0 6px rgba(255, 190, 70, 0.5);
+  filter: drop-shadow(0 0 3px rgba(255, 196, 90, 0.4));
+  image-rendering: pixelated;
+}

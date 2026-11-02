@@ -4,6 +4,7 @@
 @import './game-window.css';
 @import './inventory.css';
 @import './screens.css';
+@import './passage.css';
 
 @theme inline {
   --color-background: var(--background);
@@ -191,7 +192,7 @@
     background-clip: padding-box;
     border-style: solid;
     border-width: 26px;
-    border-image-source: url('/images/ui/panels/gold-frame.png');
+    border-image-source: url('/images/ui/panels/gold-frame-warm.png');
     border-image-slice: 90;
     border-image-width: 26px;
     border-image-repeat: stretch;
@@ -1796,7 +1797,7 @@
     aspect-ratio: 3 / 4;
     border-style: solid;
     border-width: 14px;
-    border-image-source: url('/images/ui/panels/gold-frame.png');
+    border-image-source: url('/images/ui/panels/gold-frame-warm.png');
     border-image-slice: 90;
     border-image-width: 14px;
     border-image-repeat: stretch;
@@ -1830,7 +1831,7 @@
     background-clip: padding-box;
     border-style: solid;
     border-width: 20px;
-    border-image-source: url('/images/ui/panels/gold-frame.png');
+    border-image-source: url('/images/ui/panels/gold-frame-warm.png');
     border-image-slice: 90;
     border-image-width: 20px;
     border-image-repeat: stretch;
@@ -2151,9 +2152,9 @@ html.touch-ui .world-location-label {
 .class-rewards { font-size: 12px; line-height: 1.7; list-style: none; padding: 8px 10px; background: rgba(0,0,0,0.3); border-radius: 6px; }
 
 /* ── 미니게임 공통 ── */
-.mg-board { background: linear-gradient(180deg, #241f17 0%, #17130e 60%, #0f0c09 100%); border: 3px solid #b8862e; border-radius: 10px; box-shadow: inset 0 0 0 2px #4a3a22, 0 10px 30px rgba(0,0,0,0.6); color: #f3e6c4; }
-.mg-btn { padding: 7px 18px; border-radius: 8px; font-family: var(--font-display); font-size: 14px; border: 2px solid #f0d999; color: #2a1d10; background: linear-gradient(180deg, #f6dc8e, #c99a3a); box-shadow: 0 3px 0 #6e4c14; transition: transform 0.08s; }
-.mg-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #6e4c14; }
+.mg-board { position: relative; color: #f3e6c4; background: linear-gradient(180deg, #241f17 0%, #17130e 60%, #0f0c09 100%); background-clip: padding-box; border-style: solid; border-width: 18px; border-image: url('/images/ui/panels/gold-frame-warm.png') 90 / 18px stretch; box-shadow: 0 10px 30px rgba(0,0,0,0.6); image-rendering: pixelated; }
+.mg-btn { padding: 2px 14px; border: 11px solid transparent; border-image: url('/images/ui/px/btn-wood.png') 18 / 11px stretch; border-radius: 0; font-family: var(--font-display); font-size: 14px; color: #2a1d10; background: linear-gradient(180deg, #f6dc8e 0 46%, #e0b252 46% 100%) padding-box; text-shadow: 0 1px 0 rgba(255,245,215,0.6); image-rendering: pixelated; transition: transform 0.08s; }
+.mg-btn:active { transform: translateY(2px); }
 .mg-btn:disabled { opacity: 0.45; }
 .mg-judge { font-size: 34px; font-family: var(--font-display); letter-spacing: 0.08em; animation: class-stamp-lite 0.45s cubic-bezier(.2,1.6,.4,1) both; text-shadow: 0 3px 0 rgba(0,0,0,0.5); }
 .mg-judge[data-j='PERFECT'] { color: #ffd65a; }
@@ -2174,8 +2175,8 @@ html.touch-ui .world-location-label {
 .mg-timer-low { color: #ff8a7a; animation: mg-blink 0.5s infinite alternate; }
 @keyframes mg-blink { to { opacity: 0.4; } }
 /* 리듬 */
-.mg-key { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 2px solid #f0d999; border-radius: 6px; font-weight: 700; }
-.mg-rhythm-field { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; overflow: hidden; border-radius: 6px; background: linear-gradient(180deg, #0f0c09, #221b13); }
+.mg-key { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; font-weight: 700; background: #1d160f; box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #c9963a, 0 2px 0 #0a0806; }
+.mg-rhythm-field { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; overflow: hidden; background: linear-gradient(180deg, #0f0c09, #221b13); box-shadow: 0 0 0 2px #0a0806, 0 0 0 3px #6a5636; }
 .mg-lane { position: relative; height: 100%; background: rgba(255,255,255,0.03); border-left: 1px solid rgba(240,217,153,0.12); border-right: 1px solid rgba(240,217,153,0.12); cursor: pointer; user-select: none; transition: background 0.08s; }
 .mg-lane-on { background: rgba(240,217,153,0.14); }
 .mg-note { position: absolute; left: 50%; width: 36px; height: 36px; transform: translateX(-50%); image-rendering: pixelated; pointer-events: none; }
@@ -2188,9 +2189,9 @@ html.touch-ui .world-location-label {
 .mg-pop[data-j='환영!'] { color: #c08aff; }
 @keyframes mg-pop { from { opacity: 1; transform: translate(-50%, 6px) scale(1.2); } to { opacity: 0; transform: translate(-50%, -14px) scale(1); } }
 /* 영창 */
-.mg-rune { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 84px; padding: 10px 8px; border-radius: 6px; background: linear-gradient(180deg, #5a5068, #3a3348); border: 2px solid #8a7aa8; font-size: 12px; box-shadow: inset 0 0 8px rgba(160,140,255,0.25); }
-.mg-rune-no { width: 20px; height: 20px; border-radius: 50%; background: #b8862e; color: #2a1d10; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-.mg-tile { padding: 8px 12px; border-radius: 6px; background: #3a3024; border: 2px solid #b8862e; font-size: 12px; }
+.mg-rune { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 84px; padding: 10px 8px; background: linear-gradient(180deg, #3a3024, #221b13); font-size: 12px; box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #b8862e, inset 0 0 12px rgba(240,200,120,0.18); }
+.mg-rune-no { width: 20px; height: 20px; background: #b8862e; box-shadow: inset 0 0 0 1px #0a0806; color: #2a1d10; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.mg-tile { padding: 8px 12px; background: #3a3024; box-shadow: inset 0 0 0 2px #0a0806, inset 0 0 0 3px #b8862e, 0 2px 0 #0a0806; border: 0; font-size: 12px; }
 .mg-shake { animation: mg-shake 0.35s; border-color: #e08a8a; }
 @keyframes mg-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 /* 뽑기 */
@@ -2199,10 +2200,10 @@ html.touch-ui .world-location-label {
 @keyframes mg-chest-shake { 0%,100% { transform: rotate(0); } 20% { transform: rotate(-6deg); } 40% { transform: rotate(6deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(4deg); } }
 .mg-reveal { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); padding: 8px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--rar) 60%, transparent), transparent 70%); animation: mg-reveal 0.8s ease-out both; }
 @keyframes mg-reveal { from { opacity: 0; transform: translate(-50%, 30px) scale(0.4); } to { opacity: 1; transform: translate(-50%, 0) scale(1.2); } }
-.mg-draw-card { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px; padding: 6px; border-radius: 6px; border: 2px solid; background: rgba(0,0,0,0.35); animation: class-frame-in 0.3s both; }
+.mg-draw-card { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 120px; padding: 6px; border-radius: 0; border: 2px solid; background: rgba(0,0,0,0.35); box-shadow: 0 0 0 2px #0a0806; animation: class-frame-in 0.3s both; }
 /* 시약 */
-.mg-scroll { background: #e8d8b0; color: #3a2a14; border-radius: 4px; padding: 8px 12px; border: 2px solid #8a6a3a; }
-.mg-reagent { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border-radius: 6px; background: #3a3024; border: 2px solid #6a5636; }
+.mg-scroll { background: #e8d8b0; color: #3a2a14; padding: 8px 12px; border: 0; box-shadow: inset 0 0 0 2px #8a6a3a, 0 0 0 2px #3a2a14; }
+.mg-reagent { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; background: #3a3024; border: 2px solid #6a5636; box-shadow: 0 0 0 1px #0a0806; }
 .mg-reagent:hover:not(:disabled) { border-color: #f0d999; }
 .mg-cauldron { width: 120px; image-rendering: pixelated; }
 .mg-bubble { animation: mg-bubble 0.6s ease-in-out 3; }
@@ -2210,20 +2211,22 @@ html.touch-ui .world-location-label {
 .mg-boom { animation: mg-shake 0.25s 4; filter: brightness(1.4) saturate(1.5); }
 .mg-smoke { position: absolute; top: -10px; left: 50%; width: 120px; height: 90px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle, rgba(90,90,90,0.85), rgba(40,40,40,0) 70%); animation: mg-smoke 1.4s ease-out both; }
 @keyframes mg-smoke { from { opacity: 0.9; transform: translateX(-50%) scale(0.4); } to { opacity: 0; transform: translate(-50%, -40px) scale(1.6); } }
-.mg-chip { padding: 2px 6px; border-radius: 4px; background: rgba(240,217,153,0.15); border: 1px solid rgba(240,217,153,0.4); }
+.mg-chip { padding: 2px 6px; background: rgba(240,217,153,0.15); border: 1px solid rgba(240,217,153,0.4); }
 .mg-slider { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .mg-slider span { width: 78px; }
 .mg-slider input { flex: 1; accent-color: #d9a441; }
 
 /* 미니게임 라운드 표시 */
 .mg-rounds { display: flex; align-items: center; gap: 6px; padding: 0 4px 8px; }
-.mg-round-pip { min-width: 26px; height: 22px; padding: 0 5px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #d8c79c; background: rgba(0,0,0,0.45); border: 1px solid rgba(240,217,153,0.3); }
+.mg-round-pip { min-width: 26px; height: 22px; padding: 0 5px; border-radius: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #d8c79c; background: rgba(0,0,0,0.45); border: 1px solid rgba(240,217,153,0.3); }
 .mg-round-pip.now { border-color: #f0d999; color: #fff4d8; box-shadow: 0 0 8px rgba(240,217,153,0.5); }
 .mg-round-pip.done { background: linear-gradient(180deg, #f6dc8e, #c99a3a); color: #2a1d10; border-color: #f0d999; }
 .mg-round-label { margin-left: auto; font-size: 11px; letter-spacing: 0.2em; color: var(--gold-soft); text-shadow: 0 1px 2px #000; }
 
 /* 룬 짝맞추기 · 분류 실습(2026-10-07) */
-.mg-card { width: 64px; height: 76px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 8px; border: 2px solid #6a5636; background: linear-gradient(180deg, #3a3024, #221b13); transition: transform 0.18s, border-color 0.18s, background 0.18s; }
+.mg-card { width: 64px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; border: 2px solid #6a5636; background: linear-gradient(180deg, #3a3024, #221b13); box-shadow: 0 0 0 1px #0a0806, 0 3px 0 #0a0806; overflow: hidden; transition: transform 0.18s, border-color 0.18s, background 0.18s; }
+.mg-card-stone { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 4px var(--rune)); }
+.mg-card-backimg { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .mg-card:hover:not(.mg-card-up) { border-color: #b8862e; transform: translateY(-2px); }
 .mg-card-up { border-color: var(--rune); background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--rune) 32%, #241f17), #17130e 75%); animation: mg-flip 0.22s ease-out; }
 .mg-card-done { opacity: 0.55; box-shadow: 0 0 10px color-mix(in srgb, var(--rune) 60%, transparent); }

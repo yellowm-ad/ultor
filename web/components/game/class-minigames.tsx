@@ -166,7 +166,7 @@ FIELD_QUIZ_CATS.combat.push('monster', 'monster')
 FIELD_QUIZ_CATS.life.push('alchemy', 'monster')
 FIELD_QUIZ_CATS.magic.push('monster')
 const QUIZ_COUNT = 4 // 라운드당(2라운드 = 8문제)
-const QUIZ_TIME = 12
+const QUIZ_TIME = 16 // 2026-11-02 난이도 완화: 12 → 16초
 
 function QuizGame({ seed, year, field, onDone }: MiniGameProps) {
   const questions = useMemo(() => {
@@ -268,7 +268,7 @@ const JUDGE_POINT: Record<Judge, number> = { PERFECT: 100, GREAT: 80, GOOD: 50, 
 const LANE_H_MAX = 360
 /** 레인 높이 — 폰 가로처럼 세로가 낮은 화면에선 줄인다(판정선이 화면 밖으로 잘렸다, 2026-10-18). 판정선은 바닥에서 60px 위 */
 const laneHeight = () => (typeof window === 'undefined' ? LANE_H_MAX : Math.max(200, Math.min(LANE_H_MAX, window.innerHeight - 150)))
-const FALL_MS = 1400
+const FALL_MS = 1650 // 노트가 조금 천천히(1400 → 1650)
 
 function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   const chart = useMemo(() => buildRhythmChart(style, year, mulberry32(seed ^ 0x7e11), round), [seed, year, style, round])
@@ -276,7 +276,9 @@ function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   const [LANE_H] = useState(laneHeight)
   const JUDGE_Y = LANE_H - 60
   const [started, setStarted] = useState(false)
-  const [now, setNow] = useState(0)
+  // 2026-11-02 최적화 — 매 프레임 React 를 다시 그리지 않는다. 시간은 ref, 노트는 캔버스(RhythmField)가 그린다
+  const nowRef = useRef(0)
+  const [ended, setEnded] = useState(false)
   const startRef = useRef(0)
   const hitRef = useRef<Map<number, Judge | 'FAKE'>>(new Map())
   const [, force] = useState(0)
@@ -285,7 +287,7 @@ function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   const [maxCombo, setMaxCombo] = useState(0)
   const [pressed, setPressed] = useState<boolean[]>([false, false, false, false])
   const endAt = (chart[chart.length - 1]?.t ?? 0) + 1200
-  const finished = started && now > endAt
+  const finished = started && ended
 
   // 시간 루프
   useEffect(() => {
@@ -294,20 +296,27 @@ function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
     const tick = () => {
       const t = performance.now() - startRef.current
       // 놓친 노트(판정창 지남) → MISS
+      let missed = false
       for (let i = 0; i < chart.length; i++) {
         const n = chart[i]
+        if (n.t - t > FALL_MS) break // 차트는 시간순 — 아직 안 내려온 노트는 볼 필요 없다
         if (hitRef.current.has(i) || n.fake) continue
         if (t - n.t > RHYTHM_WINDOWS.good) {
           hitRef.current.set(i, 'MISS')
-          setCombo(0)
+          missed = true
         }
       }
-      setNow(t)
+      if (missed) setCombo(0)
+      nowRef.current = t
+      if (t > endAt) {
+        setEnded(true)
+        return
+      }
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [started, finished, chart])
+  }, [started, finished, chart, endAt])
 
   function hit(lane: number) {
     if (!started || finished) return
@@ -422,39 +431,171 @@ function RhythmGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
         <span style={{ color: meta.color }}>{meta.label}</span>
         <span>COMBO {combo}</span>
       </div>
-      <div className="mg-rhythm-field" style={{ height: LANE_H }}>
-        {[0, 1, 2, 3].map((lane) => (
-          <div key={lane} className={`mg-lane ${pressed[lane] ? 'mg-lane-on' : ''}`} onMouseDown={() => hit(lane)} onTouchStart={() => hit(lane)}>
-            {chart.map((n: RhythmNote, i) => {
-              if (n.lane !== lane) return null
-              const res = hitRef.current.get(i)
-              if (res && res !== 'MISS') return null
-              const y = JUDGE_Y - ((n.t - now) / FALL_MS) * JUDGE_Y
-              if (y < -40 || y > LANE_H + 20) return null
-              return (
-                <img
-                  key={i}
-                  src={`${UI}note_orb.png`}
-                  alt=""
-                  className="mg-note"
-                  style={{
-                    top: y - 18,
-                    filter: n.fake ? 'grayscale(0.4) hue-rotate(220deg) opacity(0.45) blur(0.6px)' : `drop-shadow(0 0 6px ${meta.color})`,
-                    opacity: res === 'MISS' ? 0.25 : 1,
-                  }}
-                />
-              )
-            })}
-            <img src={`${UI}hit_ring.png`} alt="" className="mg-hitring" style={{ top: JUDGE_Y - 22 }} />
-            <span className="mg-lane-key">{RHYTHM_KEYS[lane].toUpperCase()}</span>
-            {pop && pop.lane === lane && now - pop.at < 450 && (
-              <span className="mg-pop" data-j={pop.j} style={{ top: JUDGE_Y - 60 }}>
-                {pop.j}
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
+      <RhythmField
+        height={LANE_H}
+        judgeY={JUDGE_Y}
+        chart={chart}
+        style={style}
+        color={meta.color}
+        nowRef={nowRef}
+        hitRef={hitRef}
+        pressed={pressed}
+        pop={pop}
+        onLane={hit}
+      />
+    </div>
+  )
+}
+
+/**
+ * 리듬 레인(캔버스) — 속성별 도트 마력 구슬(PixelLab)이 떨어지고, 판정선 마법진에서 터진다.
+ * 매 프레임 DOM 을 만들지 않으므로 휴대폰에서도 가볍다(2026-11-02).
+ */
+function RhythmField({
+  height,
+  judgeY,
+  chart,
+  style,
+  color,
+  nowRef,
+  hitRef,
+  pressed,
+  pop,
+  onLane,
+}: {
+  height: number
+  judgeY: number
+  chart: RhythmNote[]
+  style: RhythmStyle
+  color: string
+  nowRef: React.RefObject<number>
+  hitRef: React.RefObject<Map<number, Judge | 'FAKE'>>
+  pressed: boolean[]
+  pop: { j: string; lane: number; at: number } | null
+  onLane: (lane: number) => void
+}) {
+  const cv = useRef<HTMLCanvasElement | null>(null)
+  const wrap = useRef<HTMLDivElement | null>(null)
+  const live = useRef({ pressed, pop })
+  useEffect(() => {
+    live.current = { pressed, pop }
+  })
+  useEffect(() => {
+    const note = new window.Image()
+    note.src = `/images/class/notes/${style}.png`
+    const fake = new window.Image()
+    fake.src = '/images/class/notes/fake.png'
+    const ring = new window.Image()
+    ring.src = `${UI}hit_ring.png`
+    const c = cv.current!
+    const ctx = c.getContext('2d')!
+    let raf = 0
+    let w = 0
+    const bursts: { lane: number; at: number; j: string }[] = []
+    let lastPop: unknown = null
+    const loop = () => {
+      raf = requestAnimationFrame(loop)
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const cw = wrap.current?.clientWidth ?? 300
+      if (cw !== w) {
+        w = cw
+        c.width = Math.round(cw * dpr)
+        c.height = Math.round(height * dpr)
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.imageSmoothingEnabled = false
+      const now = nowRef.current ?? 0
+      const lw = w / 4
+      // 바탕 — 레인 4줄, 판정선 쪽으로 갈수록 속성 빛
+      ctx.fillStyle = '#0f0c09'
+      ctx.fillRect(0, 0, w, height)
+      for (let l = 0; l < 4; l++) {
+        const x = l * lw
+        ctx.fillStyle = live.current.pressed[l] ? 'rgba(240,217,153,0.16)' : l % 2 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.045)'
+        ctx.fillRect(x + 2, 0, lw - 4, height)
+        ctx.fillStyle = 'rgba(240,217,153,0.14)'
+        ctx.fillRect(x, 0, 1, height)
+        const g = ctx.createLinearGradient(0, judgeY - 80, 0, judgeY + 10)
+        g.addColorStop(0, 'rgba(0,0,0,0)')
+        g.addColorStop(1, color + '33')
+        ctx.fillStyle = g
+        ctx.fillRect(x + 2, judgeY - 80, lw - 4, 90)
+      }
+      // 판정선 + 마법진 고리 + 키
+      ctx.fillStyle = '#b8862e'
+      ctx.fillRect(0, judgeY, w, 2)
+      ctx.font = 'bold 13px Pretendard, sans-serif'
+      ctx.textAlign = 'center'
+      for (let l = 0; l < 4; l++) {
+        const cx = l * lw + lw / 2
+        if (ring.complete && ring.naturalWidth) {
+          const rw = 60
+          const rh = (ring.naturalHeight / ring.naturalWidth) * rw
+          ctx.drawImage(ring, Math.round(cx - rw / 2), Math.round(judgeY - rh / 2), rw, Math.round(rh))
+        }
+        ctx.fillStyle = '#f0d999'
+        ctx.fillText(RHYTHM_KEYS[l].toUpperCase(), cx, height - 8)
+      }
+      // 노트(차트는 시간순 — 아직 먼 노트에서 멈춘다)
+      const hits = hitRef.current
+      for (let i = 0; i < chart.length; i++) {
+        const n = chart[i]
+        if (n.t - now > FALL_MS + 100) break
+        const res = hits?.get(i)
+        if (res && res !== 'MISS') continue
+        const y = judgeY - ((n.t - now) / FALL_MS) * judgeY
+        if (y < -40 || y > height + 20) continue
+        const im = n.fake ? fake : note
+        const cx = n.lane * lw + lw / 2
+        ctx.globalAlpha = res === 'MISS' ? 0.25 : n.fake ? 0.5 : 1
+        if (im.complete && im.naturalWidth) ctx.drawImage(im, Math.round(cx - 20), Math.round(y - 20), 40, 40)
+        else {
+          ctx.fillStyle = color
+          ctx.fillRect(Math.round(cx - 10), Math.round(y - 10), 20, 20)
+        }
+        ctx.globalAlpha = 1
+      }
+      // 판정 — 도트 파편 + 글자
+      const p = live.current.pop
+      if (p && p !== lastPop) {
+        lastPop = p
+        bursts.push({ lane: p.lane, at: p.at, j: p.j })
+      }
+      for (let k = bursts.length - 1; k >= 0; k--) {
+        const b = bursts[k]
+        const age = now - b.at
+        if (age > 450) {
+          bursts.splice(k, 1)
+          continue
+        }
+        const cx = b.lane * lw + lw / 2
+        const a = 1 - age / 450
+        ctx.globalAlpha = a
+        ctx.fillStyle = b.j === '환영!' ? '#c08aff' : color
+        for (let q = 0; q < 8; q++) {
+          const ang = (q / 8) * Math.PI * 2
+          const r = 8 + age * 0.08
+          ctx.fillRect(Math.round(cx + Math.cos(ang) * r) - 2, Math.round(judgeY + Math.sin(ang) * r * 0.6) - 2, 4, 4)
+        }
+        ctx.font = 'bold 12px Pretendard, sans-serif'
+        ctx.fillStyle = b.j === 'PERFECT' ? '#ffd65a' : b.j === 'GREAT' ? '#8fe08a' : b.j === 'GOOD' ? '#7fc4ff' : '#c08aff'
+        ctx.fillText(b.j, cx, judgeY - 40 - age * 0.03)
+        ctx.globalAlpha = 1
+      }
+    }
+    raf = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(raf)
+  }, [chart, style, color, height, judgeY, nowRef, hitRef])
+  return (
+    <div ref={wrap} className="mg-rhythm-field" style={{ height, display: 'block' }}>
+      <canvas
+        ref={cv}
+        style={{ width: '100%', height, display: 'block', imageRendering: 'pixelated', touchAction: 'none' }}
+        onPointerDown={(e) => {
+          const r = e.currentTarget.getBoundingClientRect()
+          onLane(Math.max(0, Math.min(3, Math.floor(((e.clientX - r.left) / r.width) * 4))))
+        }}
+      />
     </div>
   )
 }
@@ -472,7 +613,7 @@ function ChantGame({ seed, year, style, courseId, onDone, round = 0 }: MiniGameP
     const answer = keep.map((i) => set[i])
     // 4학년: 유사 패턴(다른 원소의 비슷한 조각) 2개 섞기
     const decoys = year >= 4 ? shuffle(Object.values(CHANT_SETS).flat().filter((x) => !set.includes(x)), rand).slice(0, 2) : []
-    return { answer, tiles: shuffle([...answer, ...decoys], rand), showMs: 2200 + n * 700 }
+    return { answer, tiles: shuffle([...answer, ...decoys], rand), showMs: 3000 + n * 900 }
   }, [seed, year, style, courseId, round])
   const [phase, setPhase] = useState<'show' | 'input' | 'done'>('show')
   const [placed, setPlaced] = useState<string[]>([])
@@ -646,8 +787,8 @@ function AlchemyGame({ seed, onDone, onGrant }: MiniGameProps) {
     const ing = Math.max(0, (setHit / want.length) * 40 - extra * 10)
     let ord = 0
     for (let i = 0; i < want.length; i++) if (pot[i] === want[i]) ord += 20 / want.length
-    const tScore = Math.max(0, 20 * (1 - Math.abs(temp - recipe.temp) / 40))
-    const mScore = Math.max(0, 20 * (1 - Math.abs(mana - recipe.mana) / 40))
+    const tScore = Math.max(0, 20 * (1 - Math.max(0, Math.abs(temp - recipe.temp) - 6) / 44))
+    const mScore = Math.max(0, 20 * (1 - Math.max(0, Math.abs(mana - recipe.mana) - 6) / 44))
     const score = Math.round(Math.min(100, ing + ord + tScore + mScore))
     const kind = score >= 88 ? 'great' : score >= 60 ? 'ok' : score >= 35 ? 'low' : 'boom'
     const label = kind === 'great' ? '고급 시약!' : kind === 'ok' ? '기본 시약' : kind === 'low' ? '저급 시약' : '펑! 폭발'
@@ -674,7 +815,7 @@ function AlchemyGame({ seed, onDone, onGrant }: MiniGameProps) {
           ))}
         </div>
         <div className="relative flex w-36 flex-col items-center">
-          <img src="/images/map/academy/iso_cauldron.png" alt="" className={`mg-cauldron ${result?.kind === 'boom' ? 'mg-boom' : result ? 'mg-bubble' : ''}`} />
+          <img src="/images/class/ui/cauldron.png" alt="" className={`mg-cauldron ${result?.kind === 'boom' ? 'mg-boom' : result ? 'mg-bubble' : ''}`} />
           {result?.kind === 'boom' && <div className="mg-smoke" />}
         </div>
       </div>
@@ -739,7 +880,7 @@ function MatchGame({ seed, year, onDone }: MiniGameProps) {
     const t = setTimeout(() => {
       setPeek(false)
       startRef.current = performance.now()
-    }, 1600)
+    }, 2400)
     return () => clearTimeout(t)
   }, [])
   useEffect(() => {
@@ -753,7 +894,7 @@ function MatchGame({ seed, year, onDone }: MiniGameProps) {
       return
     }
     setMistakes((m) => m + 1)
-    const t = setTimeout(() => setOpen([]), 650)
+    const t = setTimeout(() => setOpen([]), 900)
     return () => clearTimeout(t)
   }, [open, cards, found, pairCount])
 
@@ -791,11 +932,12 @@ function MatchGame({ seed, year, onDone }: MiniGameProps) {
             <button key={c.key} onClick={() => flip(i)} className={`mg-card ${shown ? 'mg-card-up' : ''} ${found.has(c.pair) ? 'mg-card-done' : ''}`} style={{ ['--rune' as string]: c.color }}>
               {shown ? (
                 <>
-                  <span className="mg-card-glyph">{c.glyph}</span>
-                  <span className="text-[10px] opacity-80">{c.name}</span>
+                  {/* 룬석 도트(PixelLab) — 룬마다 다른 돌 */}
+                  <img src={`/images/class/runes/r${Math.max(0, RUNE_PAIRS.findIndex((r) => r.glyph === c.glyph))}.png`} alt={c.glyph} className="mg-card-stone" draggable={false} />
+                  <span className="text-[10px] opacity-90">{c.name}</span>
                 </>
               ) : (
-                <span className="mg-card-back">✦</span>
+                <img src="/images/class/cards/back.png" alt="" className="mg-card-backimg" draggable={false} />
               )}
             </button>
           )
@@ -808,7 +950,7 @@ function MatchGame({ seed, year, onDone }: MiniGameProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. 마법진 따라 그리기(2026-10-07) — 꼭짓점이 빛나는 순서를 보고 그대로 잇는다. 한 라운드 = 시도 3번(성공할 때마다 한 획 길어짐)
 // ─────────────────────────────────────────────────────────────────────────────
-const SIGIL_TRIES = 3
+const SIGIL_TRIES = 4
 function SigilGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
   const n = sigilNodes(year)
   const color = RHYTHM_STYLE_META[style].color
@@ -835,10 +977,10 @@ function SigilGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
     if (phase !== 'show') return
     const timers: number[] = []
     seq.forEach((v, i) => {
-      timers.push(window.setTimeout(() => setLit(v), 500 + i * 620))
-      timers.push(window.setTimeout(() => setLit(-1), 500 + i * 620 + 420))
+      timers.push(window.setTimeout(() => setLit(v), 500 + i * 760))
+      timers.push(window.setTimeout(() => setLit(-1), 500 + i * 760 + 540))
     })
-    timers.push(window.setTimeout(() => setPhase('input'), 500 + seq.length * 620))
+    timers.push(window.setTimeout(() => setPhase('input'), 500 + seq.length * 760))
     return () => timers.forEach((t) => clearTimeout(t))
   }, [phase, seq])
 
@@ -935,7 +1077,7 @@ function SigilGame({ seed, year, style, onDone, round = 0 }: MiniGameProps) {
 // 8. 분류 실습(2026-10-07) — 카드가 한 장씩 나온다. ←/A 왼쪽 · →/D 오른쪽(또는 바구니 클릭). 카드당 4.5초
 // ─────────────────────────────────────────────────────────────────────────────
 const SORT_CARDS = 8
-const SORT_TIME = 4500
+const SORT_TIME = 6000
 function SortGame({ seed, year, field, onDone }: MiniGameProps) {
   const { set, cards } = useMemo(() => {
     const rand = mulberry32(seed ^ 0x5047)
