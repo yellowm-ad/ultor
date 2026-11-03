@@ -97,7 +97,7 @@ for (const [id, m] of Object.entries(MAPS)) {
     if (!reach(n.cell, 1.4)) flags.push(`말 못 거는 NPC ${n.id}@${n.cell.x},${n.cell.y}`)
   }
   for (const g of gatherNodesForMap(m)) if (!reach(g.cell, 1.2)) flags.push(`못 가는 채집 ${g.key}`)
-  for (const sp of spotsOnMap(id)) if (!reach(sp.cell, 1.4)) flags.push(`못 가는 놀이 지점 ${sp.id}`)
+  for (const sp of spotsOnMap(id)) if (!reach(sp.cell, (sp.reach ?? 1.6) - 0.2)) flags.push(`못 가는 놀이 지점 ${sp.id}`)
   for (const p of m.props ?? []) if (p.label && p.solid && !reach(p.cell, Math.max(p.size?.w ?? 0, p.size?.d ?? 0) / 2 + 1.4)) flags.push(`못 가는 이름표 소품 ${p.id}`)
   if (flags.length) {
     problems += flags.length

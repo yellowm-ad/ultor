@@ -470,7 +470,7 @@ const CLUB_ROOMS: RoomSpec[] = [
     isoProp('ch-caul', R.cauldron, w / 2, 4.6, 0.8),
     isoProp('ch-shelf', W.shelfPotion, 1.4, 3.8, 0.6),
     isoProp('ch-case', W.casePotion, w - 1.6, 3.8, 0.5),
-    isoProp('ch-lab', R.labTable, w / 2, 8.0, 0.9),
+    isoProp('ch-lab', R.labTable, w / 2, 7.0, 0.9),
     isoProp('ch-candel', W.candelabra, 1.4, h - 2.0, 0.3),
   ]),
   club('club-art', '미술 동아리', '이젤과 물감 냄새. 학교 풍경을 그린 그림이 벽마다 걸려 있다.', 'light', 'dorm-plank', DOOR.cls, (w, h) => [
@@ -479,12 +479,12 @@ const CLUB_ROOMS: RoomSpec[] = [
     isoProp('ca2-easel2', W.easelSmall, w - 2.6, 6.4, 0.3, { scale: 1.4 }),
     isoProp('ca2-bust', W.bust, 1.4, 3.0, 0.3),
     isoProp('ca2-urn', W.urn, w - 1.4, 3.0, 0.3),
-    flat('ca2-rug', W.rugRound, w / 2, 8.6),
+    flat('ca2-rug', W.rugRound, w / 2, 7.2),
   ]),
   club('club-music', '음악 동아리', '마법 리듬을 연습하는 합주실. 피아노와 현악기, 북이 놓여 있다.', 'office', 'academy-carpet', DOOR.meet, (w, h) => [
     { ...isoProp('cm2-inst', CLUB_SPR.instruments, w / 2 + 2.4, 4.4, 0.8, { scale: 1.5 }), label: '악기 거치대' },
     isoProp('cm2-piano', W.piano, w / 2 - 2.6, 4.2, 0.9),
-    isoProp('cm2-bench', W.benchDouble, w / 2, 8.4, 0.7),
+    isoProp('cm2-bench', W.benchDouble, w / 2, 7.2, 0.7),
     isoProp('cm2-lamp', H.lamp, 1.4, h - 2.0, 0.3),
   ]),
   club('club-rune', '룬 연구회', '룬 카드와 마법진 도안을 연구하는 모임. 짝맞추기 대회 상장이 걸려 있다.', 'dark', 'academy-dark', DOOR.dark, (w, h) => [

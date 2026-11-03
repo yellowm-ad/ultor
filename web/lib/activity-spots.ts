@@ -14,7 +14,11 @@ export interface ActivitySpot {
   id: string
   mapId: MapId
   cell: { x: number; y: number }
-  kind: 'fishing' | 'arcade'
+  kind: 'fishing' | 'arcade' | 'fountain'
+  /** fountain — 평판 거점 id(lib/story REPUTATION_HUBS) */
+  hubId?: string
+  /** 상호작용 거리(기본 1.6) — 분수대처럼 큰 소품은 테두리에서 닿게 넓힌다 */
+  reach?: number
   /** arcade — 어떤 미니게임인가 */
   game?: PassageId
   /** 머리표 이름 */
@@ -26,10 +30,10 @@ export interface ActivitySpot {
 export const ACTIVITY_SPOTS: ActivitySpot[] = [
   // ── 낚시터(변두리) ──
   { id: 'fish-village', mapId: 'village', cell: { x: 33.6, y: 49.4 }, kind: 'fishing', label: '농가 연못 낚시터', prompt: '낚시하기 — 농가 연못' },
-  { id: 'fish-aurora', mapId: 'aurora-village', cell: { x: 20.5, y: 50.8 }, kind: 'fishing', label: '얼음 낚시 구멍', prompt: '낚시하기 — 얼음 구멍' },
+  { id: 'fish-aurora', mapId: 'aurora-village', cell: { x: 55.2, y: 31.5 }, kind: 'fishing', label: '얼음 절벽 낚시터', prompt: '낚시하기 — 얼음 절벽 끝' },
   { id: 'fish-demon', mapId: 'demon-village', cell: { x: 20.5, y: 50.8 }, kind: 'fishing', label: '용암 낚시터', prompt: '낚시하기 — 용암 웅덩이' },
-  { id: 'fish-sky', mapId: 'sky-temple', cell: { x: 20.5, y: 50.8 }, kind: 'fishing', label: '구름 낚시터', prompt: '낚시하기 — 구름 가장자리' },
-  { id: 'fish-ruin', mapId: 'temple-ruin', cell: { x: 9.8, y: 39 }, kind: 'fishing', label: '안개 연못', prompt: '낚시하기 — 안개 연못' },
+  { id: 'fish-sky', mapId: 'sky-temple', cell: { x: 36.6, y: 53.2 }, kind: 'fishing', label: '구름 부두', prompt: '낚시하기 — 구름 부두' },
+  { id: 'fish-ruin', mapId: 'temple-ruin', cell: { x: 37.0, y: 53.2 }, kind: 'fishing', label: '안개 연못', prompt: '낚시하기 — 안개 연못' },
   { id: 'fish-atlantis', mapId: 'atlantis', cell: { x: 50, y: 46 }, kind: 'fishing', label: '방파제 낚시터', prompt: '낚시하기 — 방파제' },
   // ── 미니게임 ──
   { id: 'arc-village', mapId: 'village', cell: { x: 40.4, y: 47.4 }, kind: 'arcade', game: 'spiral', label: '경비대 훈련장', prompt: '함정 계단 훈련 해 보기' },
@@ -38,6 +42,13 @@ export const ACTIVITY_SPOTS: ActivitySpot[] = [
   { id: 'arc-aurora', mapId: 'aurora-village', cell: { x: 15.4, y: 42.6 }, kind: 'arcade', game: 'survival', label: '사냥꾼 캠프', prompt: '설원 생존 훈련 받기' },
   { id: 'arc-sky', mapId: 'sky-temple', cell: { x: 48.6, y: 19.6 }, kind: 'arcade', game: 'spiral', label: '바람 계단 시험', prompt: '바람 계단 시험 치르기' },
   { id: 'arc-demon', mapId: 'demon-village', cell: { x: 33.2, y: 30.4 }, kind: 'arcade', game: 'maze', label: '용암 동굴 담력 시험', prompt: '용암 동굴 미로 들어가기' },
+  // ── 분수대(평판 허브 · lib/reputation) — 분수 소품 중심, 테두리 어디서든 닿는다 ──
+  { id: 'rep-village', mapId: 'village', cell: { x: 26.5, y: 20.5 }, kind: 'fountain', hubId: 'SAFE_VILLAGE', reach: 2.9, label: '중앙광장 분수대', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-atlantis', mapId: 'atlantis', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'ATLANTIS', reach: 2.2, label: '중앙 분수', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-sky', mapId: 'sky-temple', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'SKY_SANCTUARY', reach: 2.2, label: '수정 분수', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-ruin', mapId: 'temple-ruin', cell: { x: 32, y: 42 }, kind: 'fountain', hubId: 'RUIN_VILLAGE', reach: 2.2, label: '메마른 분수', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-aurora', mapId: 'aurora-village', cell: { x: 32, y: 42 }, kind: 'fountain', hubId: 'AURORA', reach: 2.2, label: '얼어붙은 분수', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-demon', mapId: 'demon-village', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'MONSTER_VILLAGE', reach: 2.2, label: '용암 분수', prompt: '분수대 의뢰판 보기' },
 ]
 
 const BY_ID = new Map(ACTIVITY_SPOTS.map((s) => [s.id, s]))
@@ -47,11 +58,12 @@ export const spotsOnMap = (mapId: MapId) => ACTIVITY_SPOTS.filter((s) => s.mapId
 /** 플레이어 가까이(1.6칸)의 놀이 지점 */
 export function nearestSpot(mapId: MapId, pos: { x: number; y: number }): ActivitySpot | null {
   let best: ActivitySpot | null = null
-  let bd = 1.6
+  let bd = Infinity
   for (const s of ACTIVITY_SPOTS) {
     if (s.mapId !== mapId) continue
-    const d = Math.hypot(s.cell.x - pos.x, s.cell.y - pos.y)
-    if (d < bd) {
+    // 거리에서 닿는 범위를 빼서 비교 — 큰 분수대와 작은 지점이 겹쳐도 더 가까운 쪽
+    const d = Math.hypot(s.cell.x - pos.x, s.cell.y - pos.y) - (s.reach ?? 1.6)
+    if (d < 0 && d < bd) {
       bd = d
       best = s
     }

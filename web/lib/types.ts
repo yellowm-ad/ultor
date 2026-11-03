@@ -829,6 +829,7 @@ export type ScreenId =
   | 'worldmap'
   | 'arena' // 천공 콜로세움 — 팀 등록·대전·랭킹·광장(lib/arena)
   | 'journal' // 학사 수첩 — 주간 미션·학사·도감·관계
+  | 'fountain' // 거점 분수대 — 평판 의뢰판(lib/reputation)
 
 export interface GameSettings {
   testMode: boolean
@@ -846,6 +847,8 @@ export type Facing = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' |
 
 export interface GameState {
   screen: ScreenId
+  /** 열려 있는 분수대(평판 거점 id) — screen 'fountain' */
+  fountainHubId?: string | null
   previousScreen: ScreenId
   player: PlayerCharacter
   /** 옛 펫 시스템(폐지) — 옛 세이브에만 있다. 불러올 때 소환 마법으로 바뀐다(lib/save) */

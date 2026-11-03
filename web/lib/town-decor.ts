@@ -166,6 +166,10 @@ const VILLAGE: DecorItem[] = [
 
 /** 오로라 마을 — scripts/scatter-decor.mjs 초안(길가 빈자리)에서 손본 것 */
 const AURORA: DecorItem[] = [
+  // 얼음 절벽 낚시 데크(lib/activity-spots fish-aurora) — 동쪽 길이 끊기는 절벽 끝. 데크 + 생선 건조대 + 모닥불(3점 한 장면)
+  ['atlantis/atl4_fishpier', 56.6, 31.4],
+  ['aurora/aur_fish_rack_f', 54.4, 29.6],
+  ['aurora/aur_firepit', 54.4, 33.4],
   ['aurora/aur_house_a', 44.2, 39.2],
   ['aurora/aur_house_b_f', 45.2, 25.8],
   ['aurora/aur_house_c', 19.2, 47.4],
@@ -256,6 +260,10 @@ const DEMON: DecorItem[] = [
 
 /** 천공 신전 — scripts/scatter-decor.mjs 초안(길가 빈자리)에서 손본 것 */
 const SKY: DecorItem[] = [
+  // 구름 부두(fish-sky) — 마을 입구 바로 동쪽, 남쪽 구름 바다로 뻗은 잔교 + 구름 벤치 + 가로등
+  ['atlantis/atl4_pier', 36.6, 55.4, { mirror: true }],
+  ['skytemple/sky_cloud_bench', 38.2, 52.8],
+  ['skytemple/sky_lamp', 35.0, 53.0],
   ['skytemple/sky_house_c', 36, 36],
   ['skytemple/sky_house_d_f', 30.6, 28.4],
   ['skytemple/sky_house_e', 28, 36],
@@ -300,6 +308,10 @@ const SKY: DecorItem[] = [
 
 /** 버려진 신전 — scripts/scatter-decor.mjs 초안(길가 빈자리)에서 손본 것 */
 const RUIN: DecorItem[] = [
+  // 안개 연못(fish-ruin) — 마을 입구 바로 동쪽. 보랏빛 연못 + 등불 + 벤치
+  ['templeruin/rui_mist_pond', 38.8, 52.6],
+  ['templeruin/ruin_lamp', 36.4, 51.6],
+  ['templeruin/ruin_bench', 40.8, 51.0],
   ['templeruin/rui_house_a', 49.6, 41.6],
   ['templeruin/rui_house_c', 27.6, 34.8],
   ['templeruin/rui_relic_shop', 26.6, 23.2],

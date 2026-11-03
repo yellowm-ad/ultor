@@ -583,6 +583,29 @@ export function IsoWorld({
   const spotEntities = spotsOnMap(map.id).map((sp) => {
     const s = isoToScreen(sp.cell.x, sp.cell.y)
     const hot = interactId === sp.id
+    // 분수대(평판 허브) — 바닥 고리 대신 분수 위에 떠 있는 물방울 표식(분수 그림 앞에 그린다)
+    if (sp.kind === 'fountain') {
+      const fc = '#ffd65a'
+      return {
+        sortY: sp.cell.x + sp.cell.y + 3,
+        node: (
+          <g key={sp.id} transform={`translate(${s.sx},${s.sy})`} style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'SPOT_USE', spotId: sp.id })}>
+            <g transform="translate(0,-118)" style={{ pointerEvents: 'none' }}>
+              <g style={{ animation: 'guide-bob 1.3s ease-in-out infinite' }}>
+                <rect x={-9} y={-9} width={18} height={18} fill="#1b1510" stroke={fc} strokeWidth={2} transform="rotate(45)" />
+                <path d="M0 -6 C3 -1 5 1 5 3 A5 5 0 0 1 -5 3 C-5 1 -3 -1 0 -6 Z" fill="#8fd8ff" stroke="#fff6d0" strokeWidth={0.8} />
+              </g>
+            </g>
+            <g transform="translate(0,-142)" style={{ pointerEvents: 'none' }}>
+              <rect x={-sp.label.length * 5 - 6} y={-9} width={sp.label.length * 10 + 12} height={14} rx={3} fill={hot ? fc : 'rgba(10,8,6,0.72)'} />
+              <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={hot ? '#000' : '#f3e6c4'}>
+                {sp.label}
+              </text>
+            </g>
+          </g>
+        ),
+      }
+    }
     const color = sp.kind === 'fishing' ? '#7fd0e8' : '#ffb84a'
     return {
       sortY: sp.cell.x + sp.cell.y - 0.3,

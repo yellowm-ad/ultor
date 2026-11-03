@@ -93,6 +93,24 @@ export interface SkillVfx {
   screens?: VfxScreen[]
   /** 최상급 — 기를 모으는 동안 전장이 별이 흐르는 우주로 바뀌고(a = 성운 색, b = 별빛), invertAt 에 한 번 색이 뒤집힌다 */
   cosmic?: { a: string; b: string; invertAt: number }
+  /** 운석 낙하 — 화면 밖 하늘에서 그림의 꼬리 방향 그대로 대각선으로 가속하며 내리꽂힌다(skill-fx MeteorDrop) */
+  meteors?: VfxMeteor[]
+}
+
+export interface VfxMeteor {
+  sheet: string
+  /** 한 프레임 화면 크기(px) */
+  size: number
+  /** 'center' 대상들 가운데 발밑 · 'target' 대상마다 발밑 */
+  at: 'center' | 'target'
+  /** 낙하 시작 · 걸리는 시간(ms) — startMs + fallMs 에 땅에 닿는다 */
+  startMs: number
+  fallMs: number
+  /** 수직에서 기운 각도(°) — 시트가 45° 로 그려져 있어 이 각도에 맞춰 돌린다 */
+  angle?: number
+  dx?: number
+  dy?: number
+  z?: number
 }
 
 export const vfxSheet = (name: string) => `/images/battle/vfx/skills/${name}.png`
@@ -412,21 +430,26 @@ export const SKILL_VFX: Record<string, SkillVfx> = {
     ],
     shakes: [{ at: 1900, px: 7 }, { at: 2300, px: 15 }, ...Array.from({ length: 8 }, (_, i) => ({ at: 2450 + i * 130, px: 4 + (i % 2) * 2 }))],
   },
-  // 대지의 장막 — 하늘에 불의 소용돌이가 열리고 운석이 쏟아진 뒤 거대한 충돌 폭발
+  // 대지의 장막 — 하늘에 불의 소용돌이가 열리고, 작은 운석들이 먼저 대각선으로 꽂힌 뒤
+  //   거대한 운석 하나가 그림자를 드리우며 같은 궤적으로 가속해 내리꽂혀 거대한 충돌 폭발
   'earth-master-2': {
     castMs: 1700,
     impactMs: 2350,
     totalMs: 5000,
     cosmic: { a: '#ff7a2c', b: '#ffe2a6', invertAt: 2330 },
+    meteors: [
+      { sheet: 'earth-master-2-meteor', size: 150, at: 'target', startMs: 1250, fallMs: 520, angle: 40, dx: -50, z: 4 },
+      { sheet: 'earth-master-2-meteor', size: 130, at: 'target', startMs: 1500, fallMs: 480, angle: 40, dx: 45, dy: 10, z: 4 },
+      { sheet: 'earth-master-2-meteor', size: 420, at: 'center', startMs: 1250, fallMs: 1100, angle: 38, z: 6 },
+    ],
     layers: [
       L('earth-master-2-vortex', 'center', 560, 300, 900, { dy: -230, repeat: 3, blend: 'screen', z: 2 }),
-      L('earth-master-2-meteor', 'fall', 230, 1400, 600, { z: 4, scatter: { count: 2, spreadX: 90, spreadY: 20, jitterMs: 500 } }),
-      L('earth-master-2-meteor', 'fall', 200, 1800, 550, { z: 4, scatter: { count: 1, spreadX: 70, spreadY: 20, jitterMs: 300 } }),
+      L('earth-high-1-rocks', 'targetGround', 170, 1770, 900, { dx: -50, dy: -40, z: 3 }),
       L('earth-master-2-crater', 'center', 700, 2350, 1300, { dy: 10, z: 5 }),
       L('fire-master-2-flash', 'screen', 460, 2300, 800, { blend: 'screen', z: 6, opacity: 0.8 }),
       L('earth-master-1-cracks', 'targetGround', 280, 2550, 1300, { dy: -10, z: 1 }),
     ],
-    shakes: [{ at: 2000, px: 6 }, { at: 2200, px: 6 }, { at: 2350, px: 16 }, { at: 2650, px: 9 }, { at: 3000, px: 6 }],
+    shakes: [{ at: 1770, px: 6 }, { at: 1980, px: 6 }, { at: 2350, px: 17 }, { at: 2650, px: 9 }, { at: 3000, px: 6 }],
   },
 
   // ══ 어둠 ═══════════════════════════════════════════════════════════════════

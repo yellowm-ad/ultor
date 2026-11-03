@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { BattleFx, Element } from '@/lib/types'
 import { fxTier, skillMotion, type MotionTier } from '@/lib/skill-motion'
-import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxBeam, type VfxLayer, type VfxScreen } from '@/lib/skill-vfx'
+import { skillVfx, vfxSheet, VFX_FRAMES, type SkillVfx, type VfxBeam, type VfxLayer, type VfxMeteor, type VfxScreen } from '@/lib/skill-vfx'
 
 /** 연출 색 키 — 속성 없음(null)은 'none' */
 type FxKey = Element | 'none'
@@ -254,6 +254,7 @@ function FxScene({
       )}
 
       {custom?.beam && beamMouth && center && <FlameBeam beam={custom.beam} from={beamMouth} to={center} box={box} color={col} k={k} sizeScale={vfxScale} />}
+      {custom?.meteors?.map((mt, i) => <MeteorDrop key={`mt${i}`} meteor={mt} k={k} box={box} sizeScale={vfxScale} targets={targets} />)}
       {custom && <PixelVfx vfx={custom} k={k} box={box} sizeScale={vfxScale} sourcePos={sourcePos} sourceGround={sourceGround} targets={targets} center={center} />}
 
       {/* ── 공격 마법 ── */}
@@ -470,6 +471,94 @@ function PixelVfx({
     })
   })
   return <>{out}</>
+}
+
+/**
+ * 운석 낙하 — 시트는 운석이 왼쪽 위에서 오른쪽 아래로 45° 날아오는 그림(바위가 칸 오른쪽 아래, 꼬리가 왼쪽 위).
+ *   ① 꼬리 방향과 정확히 같은 궤적으로, 화면 밖 하늘에서 땅(발밑)까지 가속하며 내리꽂는다 — 그림과 궤적이 어긋나면 미끄러지듯 보인다.
+ *   ② 떨어지는 동안 땅에 그림자가 짙어지며 커지고, 궤적을 따라 옅은 불꼬리 잔상이 남는다.
+ *   ③ 닿는 순간 바위 자리에서 사라진다(충돌은 crater 레이어·흔들림이 맡는다).
+ */
+function MeteorDrop({ meteor, k, box, sizeScale, targets }: { meteor: VfxMeteor; k: number; box: FxBox; sizeScale: number; targets: { pos: FxPos; ground: FxPos }[] }) {
+  if (!box.w || !box.h || !targets.length) return null
+  const grounds =
+    meteor.at === 'center'
+      ? [{ left: targets.reduce((s, t) => s + t.ground.left, 0) / targets.length, top: targets.reduce((s, t) => s + t.ground.top, 0) / targets.length }]
+      : targets.map((t) => t.ground)
+  const px = Math.round(meteor.size * sizeScale)
+  const angle = meteor.angle ?? 45
+  const rot = 45 - angle // 시트는 수직에서 45° — 더 가파르게 하려면 시계 방향으로 돌린다
+  const rad = (angle * Math.PI) / 180
+  // 바위 중심은 칸 가운데에서 (+0.21, +0.21) — 돌린 뒤에도 바위가 착지점에 오도록 칸을 비켜 둔다
+  const rr = (rot * Math.PI) / 180
+  const ox = 0.21 * px * Math.cos(rr) - 0.21 * px * Math.sin(rr)
+  const oy = 0.21 * px * Math.sin(rr) + 0.21 * px * Math.cos(rr)
+  const fall = meteor.fallMs * k
+  const start = meteor.startMs * k
+  const cycle = Math.max(240, Math.min(fall, 600))
+  const repeat = Math.max(1, Math.ceil(fall / cycle))
+  return (
+    <>
+      {grounds.map((g, i) => {
+        const gx = (g.left / 100) * box.w + (meteor.dx ?? 0) * sizeScale
+        const gy = (g.top / 100) * box.h + (meteor.dy ?? 0) * sizeScale
+        // 화면 위 가장자리 바로 밖에서 출발(너무 멀면 착지 직전에만 보인다) — 궤적을 따라 거꾸로 거슬러 올라간 지점
+        const dist = (gy + px * 0.45) / Math.cos(rad)
+        const sx = -dist * Math.sin(rad)
+        const sy = -dist * Math.cos(rad)
+        const delay = start + i * 90 * k
+        const zi = 10 + (meteor.z ?? 4)
+        return (
+          <div key={i}>
+            {/* 땅 그림자 — 떨어지는 동안 짙어지며 커진다 */}
+            <div
+              className="vfx-meteor-shadow absolute"
+              style={{
+                left: gx,
+                top: gy,
+                width: px * 0.9,
+                height: px * 0.28,
+                zIndex: zi - 1,
+                animation: `vfx-meteor-shadow ${fall}ms cubic-bezier(.45,0,.9,.6) ${delay}ms both`,
+              }}
+            />
+            {/* 운석 + 불꼬리 잔상 — 착지점 기준 wrapper 를 궤적을 따라 옮긴다 */}
+            <div
+              className="vfx-meteor absolute"
+              style={{
+                left: gx,
+                top: gy,
+                width: 0,
+                height: 0,
+                zIndex: zi,
+                ['--mx' as string]: `${sx}px`,
+                ['--my' as string]: `${sy}px`,
+                animation: `vfx-meteor-fall ${fall}ms cubic-bezier(.32,0,.85,.6) ${delay}ms both, vfx-life ${fall}ms linear ${delay}ms forwards`,
+              }}
+            >
+              <div
+                className="absolute"
+                style={{
+                  left: -px / 2 - ox,
+                  top: -px / 2 - oy,
+                  width: px,
+                  height: px,
+                  backgroundImage: `url(${vfxSheet(meteor.sheet)})`,
+                  backgroundSize: `${px * VFX_FRAMES}px ${px}px`,
+                  backgroundRepeat: 'no-repeat',
+                  imageRendering: 'pixelated',
+                  transform: rot ? `rotate(${rot}deg)` : undefined,
+                  ['--vfx-x0' as string]: '0px',
+                  ['--vfx-x1' as string]: `${-VFX_FRAMES * px}px`,
+                  animation: `vfx-strip ${cycle}ms steps(${VFX_FRAMES}) ${delay}ms ${repeat} both`,
+                }}
+              />
+            </div>
+          </div>
+        )
+      })}
+    </>
+  )
 }
 
 /**

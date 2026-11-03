@@ -6,6 +6,8 @@ import { useEffect } from 'react'
 import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
+import { LevelUpFx } from '@/components/game/result-fx'
+import { FountainScreen } from '@/components/game/fountain-screen'
 import type { ScreenId } from '@/lib/types'
 import { TitleScreen } from '@/components/game/title-screen'
 import { CreateScreen } from '@/components/game/create-screen'
@@ -129,6 +131,7 @@ function GameShell() {
       {state.screen === 'worldmap' && <WorldMapScreen />}
       {state.screen === 'journal' && <JournalScreen />}
       {state.screen === 'arena' && <ArenaScreen />}
+      {state.screen === 'fountain' && <FountainScreen />}
       </ScreenGuard>
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}
@@ -150,6 +153,7 @@ export function GameRoot() {
       <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
         <GameShell />
       </div>
+      <LevelUpFx />
       <RotateGate />
     </GameProvider>
   )

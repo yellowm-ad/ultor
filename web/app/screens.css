@@ -325,3 +325,130 @@
   to { transform: translate(var(--vfx-tx), var(--vfx-ty)); }
 }
 :root.no-flash .vfx-sprite[style*="mix-blend-mode: screen"] { opacity: 0.6 !important; }
+
+/* 운석 낙하(skill-fx MeteorDrop) — 꼬리 방향 그대로 대각선 가속 낙하 + 땅 그림자 */
+.vfx-meteor { visibility: hidden; pointer-events: none; }
+@keyframes vfx-meteor-fall {
+  from { transform: translate(var(--mx), var(--my)) scale(0.72); }
+  to { transform: translate(0, 0) scale(1); }
+}
+.vfx-meteor-shadow {
+  pointer-events: none;
+  margin-left: 0;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(10, 4, 2, 0.75), rgba(10, 4, 2, 0.45) 60%, transparent 100%);
+  transform: translate(-50%, -50%) scale(0.15);
+}
+@keyframes vfx-meteor-shadow {
+  0% { transform: translate(-50%, -50%) scale(0.15); opacity: 0; }
+  85% { opacity: 0.85; }
+  99% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+
+/* ── 성장 연출(components/game/result-fx) — 레벨 업 · 강화 결과 ───────────────── */
+.lvup-fx { position: fixed; inset: 0; z-index: 70; pointer-events: none; overflow: hidden; }
+.lvup-beam {
+  position: absolute; left: 50%; top: 0; bottom: 30%; width: 120px; margin-left: -60px;
+  /* 계단식 빛기둥 — 가운데가 가장 밝다 */
+  background: linear-gradient(to right, transparent 0 14%, rgba(255, 190, 80, 0.16) 14% 28%, rgba(255, 214, 110, 0.32) 28% 40%, rgba(255, 244, 200, 0.55) 40% 60%, rgba(255, 214, 110, 0.32) 60% 72%, rgba(255, 190, 80, 0.16) 72% 86%, transparent 86%);
+  -webkit-mask-image: linear-gradient(to top, transparent, #000 30%, #000 70%, transparent);
+  mask-image: linear-gradient(to top, transparent, #000 30%, #000 70%, transparent);
+  transform-origin: 50% 100%;
+  animation: lvup-beam 2.4s steps(24) both;
+}
+@keyframes lvup-beam { 0% { transform: scaleX(0); opacity: 0; } 12% { transform: scaleX(1.25); opacity: 1; } 25% { transform: scaleX(1); } 70% { opacity: 0.9; } 100% { transform: scaleX(0.2); opacity: 0; } }
+/* 마름모 고리 — 아이소 바닥에 맞춘 납작한 마름모가 퍼진다 */
+.lvup-ring {
+  position: absolute; left: 50%; top: 70%; width: 120px; height: 120px; margin: -60px 0 0 -60px;
+  border: 4px solid #ffd65a; box-shadow: 0 0 0 2px #8a5a17 inset, 0 0 0 2px #8a5a17;
+  transform: scaleY(0.5) rotate(45deg) scale(0.2); opacity: 0;
+  animation: lvup-ring 1.1s steps(11) 0.1s both;
+}
+.lvup-ring.is-late { animation-delay: 0.35s; border-color: #fff3c4; }
+@keyframes lvup-ring { 0% { transform: scaleY(0.5) rotate(45deg) scale(0.2); opacity: 1; } 100% { transform: scaleY(0.5) rotate(45deg) scale(3.4); opacity: 0; } }
+.lvup-spark {
+  position: absolute; top: 70%; width: var(--sz); height: var(--sz); opacity: 0;
+  box-shadow: 0 0 0 1px rgba(138, 90, 23, 0.6);
+  animation: lvup-spark 1.3s steps(10) both;
+}
+@keyframes lvup-spark { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translateY(var(--rise)); opacity: 0; } }
+.lvup-title {
+  position: absolute; left: 0; right: 0; top: 24%; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  animation: lvup-title 2.5s cubic-bezier(.2, 1.4, .4, 1) both;
+}
+.lvup-word {
+  font-family: var(--font-display, serif); font-size: clamp(30px, 6vw, 54px); font-weight: 900; letter-spacing: 0.12em;
+  color: #ffe08a;
+  /* 도트 외곽선 — 번지지 않는 1px 계단 그림자 */
+  text-shadow: 2px 0 #6b3d0e, -2px 0 #6b3d0e, 0 2px #6b3d0e, 0 -2px #6b3d0e, 2px 2px #6b3d0e, -2px 2px #6b3d0e, 2px -2px #6b3d0e, -2px -2px #6b3d0e, 0 5px 0 #3a1f05;
+}
+.lvup-sub {
+  padding: 2px 14px; font-size: 15px; font-weight: 800; color: #fff6dc; letter-spacing: 0.06em;
+  background: rgba(26, 18, 10, 0.78); border: 2px solid #c9973a; box-shadow: 0 0 0 2px #3a2610;
+}
+.lvup-sub b { color: #ffd65a; margin: 0 4px; }
+@keyframes lvup-title { 0% { transform: translateY(18px) scale(0.6); opacity: 0; } 14% { transform: translateY(0) scale(1.08); opacity: 1; } 22% { transform: scale(1); } 82% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-14px); } }
+:root.no-flash .lvup-beam { opacity: 0.45 !important; }
+
+/* 강화 결과 — 메달 위에 겹친다 */
+.enh-medal { overflow: visible; }
+.enh-medal.is-forging { animation: enh-forge 0.16s steps(2) infinite; }
+.enh-medal.is-forging::before { box-shadow: 0 0 0 3px rgba(255, 214, 110, 0.75), 0 0 18px 4px rgba(255, 180, 70, 0.55); }
+@keyframes enh-forge { 0% { transform: translate(-2px, 0); } 50% { transform: translate(2px, -1px); } 100% { transform: translate(-1px, 1px); } }
+.enh-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; z-index: 3; }
+.enh-burst-ring { position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border: 3px solid #ffd65a; box-shadow: 0 0 0 2px #8a5a17; transform: rotate(45deg) scale(0.3); opacity: 0; animation: enh-ring 0.7s steps(8) both; }
+.enh-burst-ring.is-late { animation-delay: 0.18s; border-color: #fff3c4; }
+@keyframes enh-ring { 0% { transform: rotate(45deg) scale(0.3); opacity: 1; } 100% { transform: rotate(45deg) scale(2.1); opacity: 0; } }
+.enh-burst-rays {
+  position: absolute; left: -70px; top: -70px; width: 140px; height: 140px; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 230, 150, 0.55) 0 8deg, transparent 8deg 30deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 30%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 30%, transparent 100%);
+  animation: enh-rays 1s steps(10) both;
+}
+@keyframes enh-rays { 0% { opacity: 0; transform: rotate(0) scale(0.5); } 20% { opacity: 1; } 100% { opacity: 0; transform: rotate(40deg) scale(1.2); } }
+.enh-burst-bit { position: absolute; left: calc(var(--sz) / -2); top: calc(var(--sz) / -2); width: var(--sz); height: var(--sz); opacity: 0; animation: enh-bit 0.8s steps(8) both; }
+.enh-burst.is-up .enh-burst-bit { background: #ffd65a; box-shadow: 0 0 0 1px #8a5a17; }
+.enh-burst.is-up .enh-burst-bit:nth-child(3n) { background: #fff; }
+.enh-burst.is-down .enh-burst-bit { background: #b8423f; box-shadow: 0 0 0 1px #4a1414; animation-name: enh-shard; animation-duration: 0.9s; }
+.enh-burst.is-keep .enh-burst-bit { background: rgba(150, 140, 125, 0.75); animation-name: enh-smoke; animation-duration: 1s; }
+@keyframes enh-bit { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(var(--bx), var(--by)); opacity: 0; } }
+@keyframes enh-shard { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 60% { opacity: 1; } 100% { transform: translate(var(--bx), calc(var(--by) + 40px)) rotate(90deg); opacity: 0; } }
+@keyframes enh-smoke { 0% { transform: translate(0, 0) scale(0.6); opacity: 0.9; } 100% { transform: translate(var(--bx), var(--by)) scale(1.6); opacity: 0; } }
+.enh-burst-label {
+  position: absolute; left: 50%; top: 40px; transform: translateX(-50%); white-space: nowrap;
+  padding: 1px 10px; font-size: 13px; font-weight: 900; letter-spacing: 0.04em;
+  border: 2px solid currentColor; background: rgba(26, 18, 10, 0.88);
+  animation: enh-label 1.6s ease-out both;
+}
+.enh-burst.is-up .enh-burst-label { color: #ffd65a; }
+.enh-burst.is-down .enh-burst-label { color: #ff8a80; }
+.enh-burst.is-keep .enh-burst-label { color: #d8ccb4; }
+@keyframes enh-label { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); } 15% { opacity: 1; transform: translate(-50%, 0) scale(1.1); } 25% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .lvup-beam, .lvup-ring, .lvup-spark, .enh-burst-ring, .enh-burst-rays, .enh-burst-bit, .enh-medal.is-forging { animation: none !important; opacity: 0 !important; }
+  .lvup-title, .enh-burst-label { animation-timing-function: linear !important; }
+}
+
+/* ── 분수대 평판 의뢰판(components/game/fountain-screen) ───────────────── */
+.rep-level { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 8px; }
+.rep-level-num { font-family: var(--font-display, serif); font-size: 26px; font-weight: 900; color: #8a5a17; }
+.rep-level-name { font-size: 13px; font-weight: 800; color: var(--gw-ink); }
+.rep-bar { position: relative; height: 16px; margin-bottom: 10px; background: #e8e0cf; border: 1px solid #c4a46a; }
+.rep-bar i { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(90deg, #e0a945 0 6px, #c98d2c 6px 8px); }
+.rep-bar span { position: relative; display: block; text-align: center; font-size: 10.5px; line-height: 14px; font-weight: 800; color: #3a2610; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.rep-note { margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--gw-sub); }
+.rep-note.is-gold { color: #8a5a17; font-weight: 700; }
+.rep-hubs { display: grid; gap: 2px; font-size: 12px; }
+.rep-hubs li { display: flex; justify-content: space-between; padding: 2px 6px; color: var(--gw-sub); }
+.rep-hubs li.is-here { color: var(--gw-ink); font-weight: 800; background: rgba(224, 169, 69, 0.18); }
+.rep-hubs b { color: #74509a; }
+.rep-hubs b.is-emblem { color: #8a5a17; }
+.rep-req { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(196, 164, 106, 0.55); }
+.rep-req.is-done { opacity: 0.55; }
+.rep-req.is-final { border-color: #c9973a; background: rgba(244, 227, 181, 0.55); }
+.rep-req.is-locked { opacity: 0.7; }
+.rep-req-who { font-size: 12.5px; font-weight: 800; color: var(--gw-ink); }
+.rep-req-text { font-size: 12px; line-height: 1.45; color: var(--gw-sub); }

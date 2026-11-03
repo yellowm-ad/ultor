@@ -23,6 +23,7 @@ import {
 } from '@/lib/gear-enhance'
 import type { ItemDef, ItemRarity, StatKey } from '@/lib/types'
 import { Divider, Ribbon, Sparkle } from '@/components/game/game-window'
+import { EnhanceBurst } from '@/components/game/result-fx'
 
 const RARITY_PILL: Record<ItemRarity, string> = { common: 'is-soft', uncommon: 'is-green', rare: 'is-blue', mythic: 'is-purple', unique: 'is-gold' }
 const STAT_LABEL: Record<StatKey, string> = { maxHp: '최대 HP', maxMp: '최대 MP', atk: '공격력', def: '방어력', matk: '마법공격력', mdef: '마법방어력', spd: '속도', luck: '행운' }
@@ -93,16 +94,27 @@ export function EnhanceDetail({ itemId }: { itemId: string | null }) {
   const prev = useRef<{ id?: string; enh: number }>({ enh: 0 })
   const [flash, setFlash] = useState<{ k: number; kind: 'up' | 'down' | 'keep' } | null>(null)
   const gold = state.player.gold
+  // 두드리기 — 누르면 메달이 잠깐 떨리며 달아오른 뒤 결과가 나온다(결과 직전의 긴장감)
+  const [forging, setForging] = useState(false)
+  const forgeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(forgeTimer.current), [])
+  const forge = (id: string) => {
+    if (forging) return
+    setFlash(null)
+    setForging(true)
+    forgeTimer.current = window.setTimeout(() => {
+      setForging(false)
+      dispatch({ type: 'ENHANCE_GEAR', itemId: id })
+    }, 620)
+  }
+  // 결과 판정 — 같은 장비에서 골드가 줄었을 때 한 번만: 단계 ↑ 성공 · ↓ 하락 · 그대로 실패(유지)
+  //   (예전엔 단계 효과와 골드 효과가 따로 돌아 성공 직후 '유지'로 덮어쓰였다)
+  const lastGold = useRef(gold)
   useEffect(() => {
     if (!item || !mods) return
     const p = prev.current
-    if (p.id === item.id && p.enh !== mods.enh) setFlash({ k: Date.now(), kind: mods.enh > p.enh ? 'up' : 'down' })
+    if (p.id === item.id && gold < lastGold.current) setFlash({ k: Date.now(), kind: mods.enh > p.enh ? 'up' : mods.enh < p.enh ? 'down' : 'keep' })
     prev.current = { id: item.id, enh: mods.enh }
-  }, [item, mods])
-  const lastGold = useRef(gold)
-  useEffect(() => {
-    // 골드만 줄고 단계가 그대로면 실패(유지)
-    if (gold < lastGold.current && item && mods && prev.current.id === item.id && prev.current.enh === mods.enh) setFlash({ k: Date.now(), kind: 'keep' })
     lastGold.current = gold
   }, [gold, item, mods])
 
@@ -128,9 +140,10 @@ export function EnhanceDetail({ itemId }: { itemId: string | null }) {
     <aside className="gw-panel is-flex is-pad">
       <div className="gw-scroll is-fill">
         <div className="flex gap-4">
-          <div key={flash?.k} className={`craft-medal enh-medal ${flash ? `is-${flash.kind}` : ''}`}>
+          <div key={flash?.k} className={`craft-medal enh-medal ${forging ? 'is-forging' : flash ? `is-${flash.kind}` : ''}`}>
             <Image src={item.icon} alt={item.name} width={64} height={64} unoptimized />
             {mods.enh > 0 && <span className="enh-medal-tag">+{mods.enh}</span>}
+            {flash && !forging && <EnhanceBurst kind={flash.kind} enh={mods.enh} />}
           </div>
           <div className="min-w-0 pt-1">
             <h3 className="font-display text-[16px] font-bold text-[#2c2a33]">{item.name}</h3>
@@ -203,8 +216,8 @@ export function EnhanceDetail({ itemId }: { itemId: string | null }) {
         {maxed ? (
           <div className="text-center text-[13px] font-bold text-[#8a6a2c]">최대 강화 +{ENHANCE_MAX} 달성!</div>
         ) : (
-          <button type="button" className="gw-btn is-gold is-lg w-full" disabled={gold < cost} onClick={() => dispatch({ type: 'ENHANCE_GEAR', itemId: item.id })}>
-            강화하기 · {cost.toLocaleString()} G
+          <button type="button" className="gw-btn is-gold is-lg w-full" disabled={gold < cost || forging} onClick={() => forge(item.id)}>
+            {forging ? '두드리는 중…' : `강화하기 · ${cost.toLocaleString()} G`}
           </button>
         )}
         {!maxed && gold < cost && <p className="mt-1.5 text-center text-[12px] text-[#a04c4a]">골드가 부족합니다.</p>}

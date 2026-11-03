@@ -39,6 +39,7 @@ import {
   tickAtb,
 } from '@/lib/battle-engine'
 import { addToInventory, consumeIngredients, removeFromInventory } from '@/lib/inventory'
+import { finalOpen, hubById, repFinal, repLevel, repLevelName, repPoints, reqDoneKey, requestBlocker, weeklyRequests } from '@/lib/reputation'
 import { ACTIVITY_META, activityUnlockLabel, gatherNodesForMap, isActivityUnlocked, isNearWater, isNodeReady, RECIPE_CATEGORY_ACTIVITY } from '@/lib/life'
 import { fieldSpellById, isInvisible, PULL_RANGE, type FieldSpellId } from '@/lib/field-spells'
 import { CACHE_NEAR, cacheFlag, cacheReward, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
@@ -124,6 +125,8 @@ export type Action =
   | { type: 'PASSAGE_DONE'; fish?: number }
   | { type: 'ADMIN_PASSAGE_TEST'; id: import('@/lib/passages').PassageId }
   | { type: 'ADMIN_FISH_TEST' }
+  | { type: 'REP_FULFILL'; hubId: string; slot: number }
+  | { type: 'REP_FINAL'; hubId: string }
   /** 코스튬(스킨) 갈아입기 — owner 'hero' 또는 동료 NPC id. costumeId 가 없으면 기본 복장으로 */
   | { type: 'COSTUME_WEAR'; owner: string; costumeId?: string }
   | { type: 'ADMIN_GIVE_ALL_COSTUMES' }
@@ -539,9 +542,52 @@ function reducerCore(state: GameState, action: Action): GameState {
     case 'SPOT_USE': {
       const spot = activitySpotById(action.spotId)
       if (!spot || spot.mapId !== state.currentMapId || state.screen !== 'world' || state.fishing || state.passage || state.classScene) return state
-      if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > 2.4) return { ...state, toast: `${spot.label} — 조금 더 가까이 가야 한다.` }
+      if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > (spot.reach ?? 1.6) + 0.8) return { ...state, toast: `${spot.label} — 조금 더 가까이 가야 한다.` }
       if (spot.kind === 'fishing') return startFishing(state, true)
+      if (spot.kind === 'fountain') return spot.hubId ? { ...state, fountainHubId: spot.hubId, previousScreen: state.screen, screen: 'fountain' } : state
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
+    }
+
+    // 분수대 의뢰(lib/reputation) — 이번 주 slot 번째 의뢰를 들어준다
+    case 'REP_FULFILL': {
+      const hub = hubById(action.hubId)
+      if (!hub) return state
+      const week = state.calendar.globalWeek
+      const req = weeklyRequests(hub.id, week)[action.slot]
+      const doneKey = reqDoneKey(hub.id, week, action.slot)
+      if (!req || state.storyFlags[doneKey]) return state
+      const block = requestBlocker(state, req)
+      if (block) return { ...state, toast: block }
+      let inventory = state.inventory
+      let gold = state.player.gold
+      if (req.kind === 'donate') gold -= req.gold
+      else {
+        const inv = consumeIngredients(inventory, [{ itemId: req.itemId, quantity: req.qty }])
+        if (!inv) return { ...state, toast: '납품할 물건이 부족합니다.' }
+        inventory = inv
+        gold += req.gold
+      }
+      const prevLv = repLevel(state, hub)
+      const storyFlags = { ...state.storyFlags, [doneKey]: true, [`repPts:${hub.id}`]: repPoints(state, hub.id) + req.pts }
+      const lv = repLevel({ storyFlags }, hub)
+      storyFlags[hub.repFlag] = lv
+      const msg = `${req.who}의 부탁을 들어주었다 — 평판 +${req.pts}${req.kind === 'deliver' ? ` · 사례 ${req.gold}G` : ''}`
+      return { ...state, inventory, player: { ...state.player, gold }, storyFlags, toast: lv > prevLv ? `${hub.name} 평판 Lv.${lv} 「${repLevelName(lv)}」!` : msg }
+    }
+    // 최종 평판 의뢰(Lv.4 → 5) — 상징
+    case 'REP_FINAL': {
+      const hub = hubById(action.hubId)
+      const fin = hub && repFinal(hub.id)
+      if (!hub || !fin || !finalOpen(state, hub)) return state
+      const inv = consumeIngredients(state.inventory, fin.items.map((i) => ({ itemId: i.itemId, quantity: i.qty })))
+      if (!inv) return { ...state, toast: '납품할 물건이 부족합니다.' }
+      return {
+        ...state,
+        inventory: inv,
+        player: { ...state.player, gold: state.player.gold + fin.gold },
+        storyFlags: { ...state.storyFlags, [hub.emblemFlag]: true, [hub.repFlag]: 5 },
+        toast: `${hub.name}의 상징 「${fin.emblem}」을(를) 받았다! 평판 Lv.5 「${repLevelName(5)}」`,
+      }
     }
 
     case 'COSTUME_WEAR': {
