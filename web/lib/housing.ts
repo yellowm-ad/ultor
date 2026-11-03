@@ -97,3 +97,40 @@ for (const c of CRAFT_FURNITURE) {
 }
 
 export const FURNITURE_BY_ID: Record<string, FurnitureDef> = Object.fromEntries(FURNITURE_CATALOG.map((f) => [f.id, f]))
+
+/** 놓인 가구의 발밑 반폭 — 좌우 반전하면 아이소에서 가로·세로가 바뀐다 */
+export function furnitureHalf(def: FurnitureDef, flip?: boolean): { hw: number; hd: number } {
+  return flip ? { hw: def.sprite.fd / 2, hd: def.sprite.fw / 2 } : { hw: def.sprite.fw / 2, hd: def.sprite.fd / 2 }
+}
+
+type Box = { x0: number; y0: number; x1: number; y1: number }
+/**
+ * 이 자리에 가구를 놓을 수 있는가 — 못 놓으면 이유(문장), 놓을 수 있으면 null.
+ * 방 밖 · 벽(정적 충돌) · 다른 가구(러그 제외) · 서 있는 자리를 본다. 러그(flat)는 방 안이면 어디든.
+ */
+export function furnitureFitReason(args: {
+  def: FurnitureDef
+  cell: { x: number; y: number }
+  flip?: boolean
+  grid: { w: number; h: number }
+  walls: Box[] | undefined
+  others: { defId: string; cell: { x: number; y: number }; flip?: boolean }[]
+  player: { x: number; y: number }
+  bodyR: number
+}): string | null {
+  const { def, cell, flip, grid, walls, others, player, bodyR } = args
+  const { hw, hd } = furnitureHalf(def, flip)
+  if (cell.x - hw < 0.15 || cell.y - hd < 0.15 || cell.x + hw > grid.w - 0.15 || cell.y + hd > grid.h - 0.15) return '방 밖에는 놓을 수 없습니다.'
+  if (def.flat) return null
+  const me = { x0: cell.x - hw, y0: cell.y - hd, x1: cell.x + hw, y1: cell.y + hd }
+  const over = (b: Box) => me.x0 < b.x1 - 0.02 && me.x1 > b.x0 + 0.02 && me.y0 < b.y1 - 0.02 && me.y1 > b.y0 + 0.02
+  if ((walls ?? []).some(over)) return '벽에 걸려서 놓을 수 없습니다.'
+  for (const o of others) {
+    const od = FURNITURE_BY_ID[o.defId]
+    if (!od || od.flat) continue
+    const h = furnitureHalf(od, o.flip)
+    if (over({ x0: o.cell.x - h.hw, y0: o.cell.y - h.hd, x1: o.cell.x + h.hw, y1: o.cell.y + h.hd })) return `${od.label}와(과) 겹칩니다.`
+  }
+  if (Math.abs(player.x - cell.x) < hw + bodyR && Math.abs(player.y - cell.y) < hd + bodyR) return '서 있는 자리에는 놓을 수 없습니다.'
+  return null
+}

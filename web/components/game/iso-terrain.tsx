@@ -22,7 +22,7 @@ import type { GameMap } from '@/lib/types'
 import { POOL_DEPTH, type PoolKind } from '@/lib/terrain'
 
 const TEX_DIR = '/images/map/terrain/'
-const TEX_FILE: Partial<Record<TileKind, string>> = {
+export const TEX_FILE: Partial<Record<TileKind, string>> = {
   grass: 'grass',
   'grass-dark': 'grass-dark',
   dirt: 'dirt',
@@ -88,7 +88,16 @@ export interface TerrainArt {
 const CACHE = new Map<string, Promise<TerrainArt>>()
 const CACHE_MAX = 6
 
-const keyOf = (map: GameMap, rect: TerrainRect) => `${map.id}:${rect.x},${rect.y},${rect.w},${rect.h}`
+// 관리자 바닥 칠하기로 terrain.at 이 바뀌면 다른 그림 — 함수마다 번호를 붙여 열쇠에 넣는다
+const FN_ID = new WeakMap<object, number>()
+let fnSeq = 0
+const fnId = (f: object | undefined) => {
+  if (!f) return 0
+  let n = FN_ID.get(f)
+  if (!n) FN_ID.set(f, (n = ++fnSeq))
+  return n
+}
+const keyOf = (map: GameMap, rect: TerrainRect) => `${map.id}#${fnId(map.terrain?.at)}:${rect.x},${rect.y},${rect.w},${rect.h}`
 /** 지금 화면에 필요한 맵 — 이 맵은 서둘러 그리고, 나머지(미리 그려 두는 이웃 맵)는 게임이 끊기지 않게 틈틈이 그린다 */
 let URGENT: string | null = null
 

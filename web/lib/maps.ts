@@ -373,7 +373,7 @@ function villageProps(): PropDef[] {
   // ════════ 중앙 대광장 (x20–33, y2–13) ════════
   P.push({
     id: 'b-fountain', kind: 'fountain', cell: { x: FOUNTAIN.x, y: FOUNTAIN.y },
-    size: { w: 2.8, d: 2.8 }, collide: { w: 4.2, d: 4.2 },
+    size: { w: 2.8, d: 2.8 }, collide: { w: 2.0, d: 2.0 }, // 그림(115px ≈ 1.8칸) 크기 — 예전 4.2 는 분수 둘레 한 칸이 보이지 않는 벽이었다
   })
   P.push({ id: 'b-statue', kind: 'statue', cell: { x: 21.5, y: 4.6 }, size: { w: 1.0, d: 1.0 }, label: '창립자 상' })
   P.push({ id: 'b-gazebo', kind: 'gazebo', cell: { x: 32.3, y: 11.7 }, size: { w: 1.8, d: 1.8 } })

@@ -16,7 +16,7 @@ import { MAPS, zoneAt } from '@/lib/maps'
 import { ARENA_MAP_ID, initArenaBattle, type ArenaIdentity, type ArenaMatch, type ArenaTeam } from '@/lib/arena'
 import { beatById } from '@/lib/story'
 import { teleportBlockReason } from '@/lib/teleport'
-import { FURNITURE_BY_ID } from '@/lib/housing'
+import { FURNITURE_BY_ID, furnitureFitReason, furnitureHalf } from '@/lib/housing'
 import { baseCostumeOf, costumeById, COSTUMES, emptyWardrobe, ownsCostume } from '@/lib/costumes'
 import { mapLockReason, passageFlag, passageFor } from '@/lib/passages'
 import { activitySpotById, ARCADE_REWARD_GOLD } from '@/lib/activity-spots'
@@ -139,7 +139,7 @@ export type Action =
   | { type: 'INVISIBLE_END' }
   | { type: 'OPEN_CACHE'; key: string }
   | { type: 'HOUSING_TOGGLE_EDIT' }
-  | { type: 'HOUSING_PLACE'; defId: string }
+  | { type: 'HOUSING_PLACE'; defId: string; cell?: { x: number; y: number } }
   | { type: 'HOUSING_REMOVE'; id: string }
   | { type: 'HOUSING_SELECT'; id: string | null }
   | { type: 'HOUSING_MOVE'; cell: { x: number; y: number } }
@@ -219,8 +219,7 @@ function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number
       const def = FURNITURE_BY_ID[f.defId]
       if (!def) continue
       if (def.flat) continue
-      const hw = def.sprite.fw / 2
-      const hd = def.sprite.fd / 2
+      const { hw, hd } = furnitureHalf(def, f.flip)
       if (hits({ x0: f.cell.x - hw, y0: f.cell.y - hd, x1: f.cell.x + hw, y1: f.cell.y + hd })) return true
     }
   }
@@ -427,22 +426,22 @@ function reducerCore(state: GameState, action: Action): GameState {
       const clampY = (v: number) => Math.max(0.2, Math.min(map.grid.h - 0.2, v))
       const ox = state.position.x
       const oy = state.position.y
-      // 건물 충돌: 대각선이 막히면 x/y 축으로 슬라이드
-      let nx = clampX(ox + action.dx)
-      let ny = clampY(oy + action.dy)
-      if (blockedAt(state, state.currentMapId, nx, ny)) {
-        const slideX = clampX(ox + action.dx)
-        const slideY = clampY(oy + action.dy)
-        if (!blockedAt(state, state.currentMapId, slideX, oy)) {
-          nx = slideX
-          ny = oy
-        } else if (!blockedAt(state, state.currentMapId, ox, slideY)) {
-          nx = ox
-          ny = slideY
-        } else {
-          nx = ox
-          ny = oy
-        }
+      // 건물 충돌: 대각선이 막히면 x/y 축으로 슬라이드.
+      // 한 번에 0.2칸 이하로 나눠 움직인다 — 프레임이 떨어진 채 질주하면 한 번에 0.7칸 넘게 가서 얇은 벽(난간·울타리)을 뚫던 문제(2026-11-03)
+      const steps = Math.max(1, Math.ceil(Math.hypot(action.dx, action.dy) / 0.2))
+      const sx = action.dx / steps
+      const sy = action.dy / steps
+      let nx = ox
+      let ny = oy
+      for (let i = 0; i < steps; i++) {
+        const tx = clampX(nx + sx)
+        const ty = clampY(ny + sy)
+        if (!blockedAt(state, state.currentMapId, tx, ty)) {
+          nx = tx
+          ny = ty
+        } else if (sx !== 0 && !blockedAt(state, state.currentMapId, tx, ny)) nx = tx
+        else if (sy !== 0 && !blockedAt(state, state.currentMapId, nx, ty)) ny = ty
+        else break
       }
       const zone = zoneAt(map, nx, ny)
       // 쿼터뷰: 셀 축 이동이 화면에선 대각으로 보이므로 '화면 방향'으로 8방향 판정(S키 = 화면 왼쪽 아래 → down-left)
@@ -690,14 +689,33 @@ function reducerCore(state: GameState, action: Action): GameState {
           const v = FACING_CELL_VEC[state.facing] ?? FACING_CELL_VEC['down-left']
           return { x: v.x * 0.9, y: v.y * 0.9 }
         })()
-      const cell = { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
+      // 끌어다 놓으면 그 자리(1/4칸), 아니면 바라보는 방향 앞(1/2칸)
+      const cell = action.cell
+        ? { x: Math.round(action.cell.x * 4) / 4, y: Math.round(action.cell.y * 4) / 4 }
+        : { x: Math.round((state.position.x + off.x) * 2) / 2, y: Math.round((state.position.y + off.y) * 2) / 2 }
       // 제작 가구는 가방에 가진 개수만큼만(놓아도 가방에서 빠지지 않는다 — 치우면 다시 놓을 수 있다)
       if (def.itemId) {
         const own = state.inventory.find((s) => s.itemId === def.itemId)?.qty ?? 0
         const used = state.housing.placed.filter((p) => p.defId === def.id).length
         if (used >= own) return { ...state, toast: `${def.label}을(를) 더 가지고 있지 않습니다. 마도구 작업대에서 만들 수 있어요.` }
       }
-      if (!def.flat && blockedAt(state, 'personal-space', cell.x, cell.y)) return state
+      const fit = (c: { x: number; y: number }) =>
+        furnitureFitReason({ def, cell: c, grid: MAPS['personal-space'].grid, walls: MAPS['personal-space'].blockers, others: state.housing.placed, player: state.position, bodyR: BODY_R })
+      let why = fit(cell)
+      // 버튼으로 놓을 때 큰 가구가 발에 걸리면 조금 더 앞에 놓아 본다
+      if (why && !action.cell) {
+        const v = FACING_CELL_VEC[state.facing] ?? FACING_CELL_VEC['down-left']
+        for (const k of [1.4, 1.9, 2.4]) {
+          const c = { x: Math.round((state.position.x + v.x * k) * 2) / 2, y: Math.round((state.position.y + v.y * k) * 2) / 2 }
+          if (!fit(c)) {
+            cell.x = c.x
+            cell.y = c.y
+            why = null
+            break
+          }
+        }
+      }
+      if (why) return { ...state, toast: why }
       const placed = { id: `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, defId: action.defId, cell }
       return withQuestEvents({ ...state, housing: { ...state.housing, placed: [...state.housing.placed, placed], selectedId: placed.id } }, [{ type: 'PLACE_FURNITURE' }])
     }
@@ -718,22 +736,25 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (state.currentMapId !== 'personal-space' || !state.housing.editMode || !sel) return state
       const map = MAPS['personal-space']
       const cell = { x: Math.round(action.cell.x * 4) / 4, y: Math.round(action.cell.y * 4) / 4 }
-      if (cell.x < 0.4 || cell.y < 0.4 || cell.x > map.grid.w - 0.4 || cell.y > map.grid.h - 0.4) return state
-      const def = FURNITURE_BY_ID[state.housing.placed.find((p) => p.id === sel)?.defId ?? '']
-      if (!def) return state
-      if (!def.flat) {
-        const hw = def.sprite.fw / 2
-        const hd = def.sprite.fd / 2
-        const wall = (map.blockers ?? []).some((b) => cell.x + hw > b.x0 && cell.x - hw < b.x1 && cell.y + hd > b.y0 && cell.y - hd < b.y1)
-        const onMe = Math.abs(state.position.x - cell.x) < hw + BODY_R && Math.abs(state.position.y - cell.y) < hd + BODY_R
-        if (wall || onMe) return { ...state, toast: wall ? '벽에 걸려서 놓을 수 없습니다.' : '서 있는 자리에는 놓을 수 없습니다.' }
-      }
+      const me = state.housing.placed.find((p) => p.id === sel)
+      const def = FURNITURE_BY_ID[me?.defId ?? '']
+      if (!def || !me) return state
+      if (me.cell.x === cell.x && me.cell.y === cell.y) return state
+      const why = furnitureFitReason({ def, cell, flip: me.flip, grid: map.grid, walls: map.blockers, others: state.housing.placed.filter((p) => p.id !== sel), player: state.position, bodyR: BODY_R })
+      if (why) return { ...state, toast: why }
       return { ...state, housing: { ...state.housing, placed: state.housing.placed.map((p) => (p.id === sel ? { ...p, cell } : p)) } }
     }
 
     case 'HOUSING_FLIP': {
       const sel = state.housing.selectedId
       if (state.currentMapId !== 'personal-space' || !state.housing.editMode || !sel) return state
+      const me = state.housing.placed.find((p) => p.id === sel)
+      const def = FURNITURE_BY_ID[me?.defId ?? '']
+      if (!me || !def) return state
+      // 돌리면 발밑 가로·세로가 바뀐다 — 벽·다른 가구에 걸리면 돌리지 않는다
+      const map = MAPS['personal-space']
+      const why = furnitureFitReason({ def, cell: me.cell, flip: !me.flip, grid: map.grid, walls: map.blockers, others: state.housing.placed.filter((p) => p.id !== sel), player: state.position, bodyR: BODY_R })
+      if (why) return { ...state, toast: `돌릴 수 없습니다 — ${why}` }
       return { ...state, housing: { ...state.housing, placed: state.housing.placed.map((p) => (p.id === sel ? { ...p, flip: !p.flip } : p)) } }
     }
 

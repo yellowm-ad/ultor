@@ -43,7 +43,7 @@ export const ACTIVITY_SPOTS: ActivitySpot[] = [
   { id: 'arc-sky', mapId: 'sky-temple', cell: { x: 48.6, y: 19.6 }, kind: 'arcade', game: 'spiral', label: '바람 계단 시험', prompt: '바람 계단 시험 치르기' },
   { id: 'arc-demon', mapId: 'demon-village', cell: { x: 33.2, y: 30.4 }, kind: 'arcade', game: 'maze', label: '용암 동굴 담력 시험', prompt: '용암 동굴 미로 들어가기' },
   // ── 분수대(평판 허브 · lib/reputation) — 분수 소품 중심, 테두리 어디서든 닿는다 ──
-  { id: 'rep-village', mapId: 'village', cell: { x: 26.5, y: 20.5 }, kind: 'fountain', hubId: 'SAFE_VILLAGE', reach: 2.9, label: '중앙광장 분수대', prompt: '분수대 의뢰판 보기' },
+  { id: 'rep-village', mapId: 'village', cell: { x: 26.5, y: 20.5 }, kind: 'fountain', hubId: 'SAFE_VILLAGE', reach: 1.9, label: '중앙광장 분수대', prompt: '분수대 의뢰판 보기' },
   { id: 'rep-atlantis', mapId: 'atlantis', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'ATLANTIS', reach: 2.2, label: '중앙 분수', prompt: '분수대 의뢰판 보기' },
   { id: 'rep-sky', mapId: 'sky-temple', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'SKY_SANCTUARY', reach: 2.2, label: '수정 분수', prompt: '분수대 의뢰판 보기' },
   { id: 'rep-ruin', mapId: 'temple-ruin', cell: { x: 32, y: 42 }, kind: 'fountain', hubId: 'RUIN_VILLAGE', reach: 2.2, label: '메마른 분수', prompt: '분수대 의뢰판 보기' },

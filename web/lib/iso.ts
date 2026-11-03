@@ -275,6 +275,9 @@ export interface PropDef {
  * radial → cell 중심 ±half, 아니면 cell 에서 +x/+y 방향으로 확장.
  * wall(facing:'left') 은 footprint 축이 뒤바뀌므로 보정.
  */
+/** 그림이 좌우 반전되어 있는가(RasterProp 와 같은 판정 — facing 'left' 또는 mirrorX) */
+export const isMirrored = (p: PropDef) => (p.facing === 'left' && p.kind !== 'wall') || !!p.mirrorX
+
 export function propAABB(
   p: PropDef,
 ): { x0: number; y0: number; x1: number; y1: number } | null {
@@ -282,7 +285,10 @@ export function propAABB(
   if (!fp) return null
   let w = fp.w
   let d = fp.d
-  if (p.kind === 'wall' && p.facing === 'left') {
+  // 좌우 반전 = 아이소에서 x·y 축이 서로 바뀐다 → 발밑 사각형의 가로·세로도 바꾼다(벽은 facing 'left' 로 따로 표시).
+  // RasterProp 는 발밑(앵커)을 축으로 뒤집으므로 cell 기준 사각형을 그대로 바꾸면 그림과 맞는다.
+  const mirrored = p.kind === 'wall' ? p.facing === 'left' : isMirrored(p)
+  if (mirrored) {
     w = fp.d
     d = fp.w
   }

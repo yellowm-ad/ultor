@@ -16,14 +16,22 @@ import { BgmManager } from '@/components/game/bgm-manager'
 import { DialogueEditor } from '@/components/game/dialogue-editor'
 import { MAPS } from '@/lib/maps'
 import { PROP_CATALOG } from '@/lib/prop-catalog'
-import { setMapEditor, useMapEditor } from '@/lib/map-editor'
+import { beginDrag, getMapEditor, placeCatalogItem, setMapEditor, useMapEditor, type EditorTool } from '@/lib/map-editor'
+import { TILE_SPRITES, type TileKind } from '@/lib/iso'
+import { TEX_FILE } from '@/components/game/iso-terrain'
 import {
   exportMapOverrides,
   importMapOverrides,
   localChangeCount,
+  canUndoMapEdit,
+  flipProp,
   moveProp,
   removeProp,
   resetLocalMap,
+  setWallTex,
+  undoMapEdit,
+  wallKey,
+  wallTextures,
   resetMapToOriginal,
   useMapOverridesVersion,
 } from '@/lib/map-overrides'
@@ -36,6 +44,14 @@ function downloadText(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 const CATALOG_GROUPS = [...new Set(PROP_CATALOG.map((c) => c.group))]
+/** 바닥 붓 팔레트 — 칸 타일 맵은 그림이 있는 칸 타일 전부(빈 아트리움 칸 제외), 자연 지형 맵은 그 맵이 그릴 수 있는 지면 종류 */
+const FLOOR_TILES = (Object.entries(TILE_SPRITES) as [TileKind, string][]).filter(([k]) => k !== 'academy-void')
+function floorPalette(map: { terrain?: { tex?: Partial<Record<TileKind, string>> } }): [TileKind, string][] {
+  const T = map.terrain
+  if (!T) return FLOOR_TILES
+  const kinds = new Set<TileKind>([...(Object.keys(TEX_FILE) as TileKind[]), ...(Object.keys(T.tex ?? {}) as TileKind[])])
+  return [...kinds].map((k) => [k, `/images/map/terrain/${T.tex?.[k] ?? TEX_FILE[k] ?? 'grass'}.png`])
+}
 
 const SKILL_GROUPS: { key: string; label: string; filter: (s: (typeof SKILLS)[number]) => boolean }[] = [
   { key: 'fire', label: '불꽃', filter: (s) => s.element === 'fire' && !s.owner },
@@ -443,7 +459,7 @@ export function AdminPanel() {
 }
 
 
-/** 관리자 '오브젝트' 탭 — 편집 모드 켜기, 선택한 오브젝트 이동·제거, PixelLab 오브젝트 추가, 파일 저장/불러오기 */
+/** 관리자 '오브젝트' 탭 — 편집 모드 · 도구(오브젝트/바닥/벽) · 선택한 오브젝트 회전·이동·제거 · 끌어다 놓기 · 파일 저장/불러오기 */
 function ObjectEditorSection({
   mapId,
   catGroup,
@@ -463,86 +479,221 @@ function ObjectEditorSection({
   const sel = editor.selected ? map.props?.find((p) => p.id === editor.selected) : undefined
   const nudge = (dx: number, dy: number) => sel && moveProp(map.id, sel.id, { x: sel.cell.x + dx, y: sel.cell.y + dy })
   const items = PROP_CATALOG.filter((c) => (catQuery ? c.name.includes(catQuery) : c.group === catGroup))
+  const tools: [EditorTool, string][] = [
+    ['object', '오브젝트'],
+    ['floor', '바닥'],
+    ['wall', '벽면'],
+  ]
+  // 벽 도구 — 고른 면(또는 같은 무늬 전부)의 키
+  const wallKeys = (): string[] => {
+    const w = editor.wall
+    if (!w) return []
+    if (!editor.wallAll) return [w.key]
+    const keys: string[] = []
+    for (const g of map.structures ?? []) g.parts.forEach((p, i) => p.kind === 'face' && p.tex?.src === w.src && !p.img && keys.push(wallKey(g.id, i)))
+    return keys
+  }
   return (
     <div className="space-y-3">
-      <Button size="sm" className="w-full" variant={editor.on ? 'default' : 'outline'} onClick={() => setMapEditor({ on: !editor.on, selected: null, placing: null })}>
+      <Button size="sm" className="w-full" variant={editor.on ? 'default' : 'outline'} onClick={() => setMapEditor({ on: !editor.on, selected: null, placing: null, wall: null })}>
         오브젝트 편집 모드 {editor.on ? 'ON' : 'OFF'}
       </Button>
       <div className="text-white/55">
         {map.name} · 오브젝트 {map.props?.length ?? 0}개 · 이 브라우저 수정 {localChangeCount(map.id)}건
-        <br />
-        편집 모드: 오브젝트를 누르면 선택 → 땅을 누르면 그 자리로 이동. 아래 목록에서 고른 뒤 땅을 누르면 새로 놓는다.
       </div>
 
       {editor.on && (
-        <div className="rounded border border-gold/30 p-2">
-          {sel ? (
-            <>
-              <div className="mb-1 truncate text-gold-soft">선택: {sel.id}</div>
-              <div className="mb-1 text-white/55">
-                {sel.kind} · 위치 ({sel.cell.x}, {sel.cell.y}) {sel.solid ? '· 길막' : ''}
+        <>
+          <div className="grid grid-cols-3 gap-1">
+            {tools.map(([t, label]) => (
+              <Button key={t} size="sm" variant={editor.tool === t ? 'default' : 'outline'} onClick={() => setMapEditor({ tool: t, selected: null, placing: null, wall: null })}>
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" className="flex-1" disabled={!canUndoMapEdit(map.id)} onClick={() => undoMapEdit(map.id)}>
+              되돌리기 (Ctrl+Z)
+            </Button>
+            <Button size="sm" variant={editor.showBlockers ? 'default' : 'outline'} className="flex-1" onClick={() => setMapEditor({ showBlockers: !editor.showBlockers })}>
+              길막 보기
+            </Button>
+          </div>
+        </>
+      )}
+
+      {editor.on && editor.tool === 'object' && (
+        <>
+          <div className="text-white/55">오브젝트를 잡고 끌면 옮겨집니다(초록 = 빈 자리, 빨강 = 길막과 겹침). 목록에서 맵으로 끌어다 놓거나, 고른 뒤 땅을 눌러 놓습니다. R 회전 · Del 제거 · Esc 해제</div>
+          <div className="rounded border border-gold/30 p-2">
+            {sel ? (
+              <>
+                <div className="mb-1 truncate text-gold-soft">선택: {sel.id}</div>
+                <div className="mb-1 text-white/55">
+                  {sel.kind} · 위치 ({sel.cell.x}, {sel.cell.y}) {sel.solid ? '· 길막' : ''} {sel.mirrorX || sel.facing === 'left' ? '· 반전' : ''}
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  <Button size="sm" variant="outline" onClick={() => nudge(0, -0.25)}>↗</Button>
+                  <Button size="sm" variant="outline" onClick={() => nudge(0.25, 0)}>↘</Button>
+                  <Button size="sm" variant="outline" onClick={() => nudge(-0.25, 0)}>↖</Button>
+                  <Button size="sm" variant="outline" onClick={() => nudge(0, 0.25)}>↙</Button>
+                </div>
+                <div className="mt-1 flex gap-1">
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => flipProp(map.id, sel.id)}>
+                    회전 (R)
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 text-red-200" onClick={() => { removeProp(map.id, sel.id); setMapEditor({ selected: null }) }}>
+                    제거
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setMapEditor({ selected: null })}>
+                    해제
+                  </Button>
+                </div>
+              </>
+            ) : editor.placing ? (
+              <div className="text-gold-soft">놓을 오브젝트: {editor.placing.name} — 맵에서 놓을 자리를 누르세요</div>
+            ) : (
+              <div className="text-white/55">맵에서 오브젝트를 눌러 선택하세요</div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-1 flex items-center justify-between text-white/60">
+              <span>오브젝트 추가 ({PROP_CATALOG.length}종)</span>
+              <label className="flex items-center gap-1">
+                <input type="checkbox" checked={editor.solid} onChange={(e) => setMapEditor({ solid: e.target.checked })} />
+                길막
+              </label>
+            </div>
+            <input
+              value={catQuery}
+              onChange={(e) => setCatQuery(e.target.value)}
+              placeholder="이름 검색"
+              className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1.5 py-1 text-white"
+            />
+            {!catQuery && (
+              <select value={catGroup} onChange={(e) => setCatGroup(e.target.value)} className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1 py-1 text-white">
+                {CATALOG_GROUPS.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="grid max-h-64 grid-cols-4 gap-1 overflow-y-auto scrollbar-thin">
+              {items.map((c) => (
+                <button
+                  key={c.src}
+                  type="button"
+                  title={`${c.name} — 맵으로 끌어다 놓기`}
+                  style={{ touchAction: 'none' }}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return
+                    e.preventDefault()
+                    setMapEditor({ placing: c, selected: null })
+                    // 목록에서 맵으로 끌어다 놓기 — 놓는 순간 포인터 아래가 맵이면 거기에 놓는다(끌지 않고 떼면 '고른 상태'로 남음)
+                    beginDrag(e, { kind: 'new-prop', id: null, grab: { x: 0, y: 0 } }, {
+                      onEnd: (d) => {
+                        if (!d.moved || !d.cell) return
+                        const id = placeCatalogItem(map.id, c, d.cell, getMapEditor().solid)
+                        setMapEditor({ selected: id, placing: null })
+                      },
+                    })
+                  }}
+                  className={`flex aspect-square items-center justify-center rounded border bg-black/30 p-0.5 ${editor.placing?.src === c.src ? 'border-gold' : 'border-white/10'}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.src} alt={c.name} draggable={false} className="pointer-events-none max-h-full max-w-full" style={{ imageRendering: 'pixelated' }} />
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {editor.on && editor.tool === 'floor' && (
+        <div className="space-y-2">
+              <div className="text-white/55">
+                타일을 고르고 맵을 누르거나 끌어서 칠합니다. 「원래대로」는 칠한 칸을 원래 바닥으로 되돌립니다.
+                {map.terrain ? ' 자연 지형 맵은 놓는 순간 지면을 다시 그립니다(넓은 맵은 1~2초). 물웅덩이 위를 칠하면 땅으로 메워집니다.' : ''}
               </div>
-              <div className="grid grid-cols-4 gap-1">
-                <Button size="sm" variant="outline" onClick={() => nudge(0, -0.25)}>↗</Button>
-                <Button size="sm" variant="outline" onClick={() => nudge(0.25, 0)}>↘</Button>
-                <Button size="sm" variant="outline" onClick={() => nudge(-0.25, 0)}>↖</Button>
-                <Button size="sm" variant="outline" onClick={() => nudge(0, 0.25)}>↙</Button>
+              <div className="flex items-center gap-1">
+                <span className="text-white/60">붓</span>
+                {([1, 2, 3] as const).map((n) => (
+                  <Button key={n} size="sm" variant={editor.brush === n ? 'default' : 'outline'} onClick={() => setMapEditor({ brush: n })}>
+                    {n}×{n}
+                  </Button>
+                ))}
               </div>
-              <div className="mt-1 flex gap-1">
-                <Button size="sm" variant="outline" className="flex-1 text-red-200" onClick={() => { removeProp(map.id, sel.id); setMapEditor({ selected: null }) }}>
-                  제거
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => setMapEditor({ selected: null })}>
-                  선택 해제
-                </Button>
+              <div className="grid max-h-72 grid-cols-4 gap-1 overflow-y-auto scrollbar-thin">
+                <button
+                  type="button"
+                  onClick={() => setMapEditor({ tile: null })}
+                  className={`flex aspect-square items-center justify-center rounded border bg-black/30 text-[10px] text-white/70 ${editor.tile === null ? 'border-gold' : 'border-white/10'}`}
+                >
+                  원래대로
+                </button>
+                {floorPalette(map).map(([k, src]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    title={k}
+                    onClick={() => setMapEditor({ tile: k })}
+                    className={`flex aspect-square flex-col items-center justify-center rounded border bg-black/30 p-0.5 ${editor.tile === k ? 'border-gold' : 'border-white/10'}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={k} className="max-h-[70%] max-w-full" style={{ imageRendering: 'pixelated' }} />
+                    <span className="w-full truncate text-center text-[8px] text-white/55">{k}</span>
+                  </button>
+                ))}
               </div>
-            </>
-          ) : editor.placing ? (
-            <div className="text-gold-soft">놓을 오브젝트: {editor.placing.name} — 맵에서 놓을 자리를 누르세요</div>
-          ) : (
-            <div className="text-white/55">맵에서 오브젝트를 눌러 선택하세요</div>
-          )}
         </div>
       )}
 
-      {editor.on && (
-        <div>
-          <div className="mb-1 flex items-center justify-between text-white/60">
-            <span>오브젝트 추가 ({PROP_CATALOG.length}종)</span>
-            <label className="flex items-center gap-1">
-              <input type="checkbox" checked={editor.solid} onChange={(e) => setMapEditor({ solid: e.target.checked })} />
-              길막
-            </label>
-          </div>
-          <input
-            value={catQuery}
-            onChange={(e) => setCatQuery(e.target.value)}
-            placeholder="이름 검색"
-            className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1.5 py-1 text-white"
-          />
-          {!catQuery && (
-            <select value={catGroup} onChange={(e) => setCatGroup(e.target.value)} className="mb-1 w-full rounded border border-gold/40 bg-black/40 px-1 py-1 text-white">
-              {CATALOG_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
+      {editor.on && editor.tool === 'wall' && (
+        <div className="space-y-2">
+          {!(map.structures ?? []).some((g) => g.parts.some((p) => p.kind === 'face' && p.tex)) ? (
+            <div className="text-white/55">이 맵에는 무늬를 바꿀 수 있는 벽면이 없습니다(실내·신전 맵에서 쓰세요).</div>
+          ) : (
+            <>
+              <div className="text-white/55">맵의 벽면(점선 테두리)을 눌러 고른 뒤 아래 무늬를 누르면 바뀝니다.</div>
+              <label className="flex items-center gap-1 text-white/70">
+                <input type="checkbox" checked={editor.wallAll} onChange={(e) => setMapEditor({ wallAll: e.target.checked })} />
+                같은 무늬 벽면 한꺼번에
+              </label>
+              <div className="truncate text-gold-soft">{editor.wall ? `고른 면: ${editor.wall.key} (${wallKeys().length}면)` : '고른 벽면 없음'}</div>
+              <div className="grid max-h-72 grid-cols-3 gap-1 overflow-y-auto scrollbar-thin">
+                <button
+                  type="button"
+                  disabled={!editor.wall}
+                  onClick={() => {
+                    setWallTex(map.id, wallKeys(), null)
+                    setMapEditor({ wall: null })
+                  }}
+                  className="flex aspect-square items-center justify-center rounded border border-white/10 bg-black/30 text-[10px] text-white/70 disabled:opacity-40"
+                >
+                  원래대로
+                </button>
+                {wallTextures().map((t) => (
+                  <button
+                    key={t.src}
+                    type="button"
+                    title={t.src.split('/').pop()}
+                    disabled={!editor.wall}
+                    onClick={() => {
+                      setWallTex(map.id, wallKeys(), t)
+                      if (editor.wall) setMapEditor({ wall: { ...editor.wall, src: t.src } })
+                    }}
+                    className="flex aspect-square flex-col items-center justify-center rounded border border-white/10 bg-black/30 p-0.5 disabled:opacity-40"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={t.src} alt="" className="max-h-[75%] max-w-full" style={{ imageRendering: 'pixelated' }} />
+                    <span className="w-full truncate text-center text-[8px] text-white/55">{t.src.split('/').pop()?.replace('.png', '')}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
-          <div className="grid max-h-64 grid-cols-4 gap-1 overflow-y-auto scrollbar-thin">
-            {items.map((c) => (
-              <button
-                key={c.src}
-                type="button"
-                title={c.name}
-                onClick={() => setMapEditor({ placing: c, selected: null })}
-                className={`flex aspect-square items-center justify-center rounded border bg-black/30 p-0.5 ${editor.placing?.src === c.src ? 'border-gold' : 'border-white/10'}`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.src} alt={c.name} className="max-h-full max-w-full" style={{ imageRendering: 'pixelated' }} />
-              </button>
-            ))}
-          </div>
         </div>
       )}
 

@@ -18,7 +18,12 @@ interface Rect {
   h: number
 }
 
-const cache = new Map<string, HTMLCanvasElement>()
+// 맵 id → (그린 바닥 함수, 캔버스). 관리자 바닥 칠하기로 tileAt 이 바뀌면 다시 그린다
+const cache = new Map<string, { fn: GameMap['tileAt']; canvas: HTMLCanvasElement }>()
+const cached = (map: GameMap) => {
+  const c = cache.get(map.id)
+  return c && c.fn === map.tileAt ? c.canvas : undefined
+}
 const imgCache = new Map<string, Promise<HTMLImageElement | null>>()
 
 function loadImg(src: string): Promise<HTMLImageElement | null> {
@@ -101,26 +106,26 @@ async function paintGround(map: GameMap, R: Rect): Promise<HTMLCanvasElement> {
 /** 칸 타일 지면 캔버스. 자연 지면 맵이면 null. 그려지기 전에도 null(그동안은 groundFallbackColor 로 채운다) */
 export function useGroundArt(map: GameMap, rect: Rect): HTMLCanvasElement | null {
   const [art, setArt] = useState<{ id: string; canvas: HTMLCanvasElement } | null>(() => {
-    const c = cache.get(map.id)
+    const c = cached(map)
     return c ? { id: map.id, canvas: c } : null
   })
   useEffect(() => {
     if (map.terrain) return
-    const hit = cache.get(map.id)
+    const hit = cached(map)
     if (hit) {
       setArt({ id: map.id, canvas: hit })
       return
     }
     let alive = true
     paintGround(map, rect).then((canvas) => {
-      cache.set(map.id, canvas)
+      cache.set(map.id, { fn: map.tileAt, canvas })
       if (alive) setArt({ id: map.id, canvas })
     })
     return () => {
       alive = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map.id, rect.x, rect.y, rect.w, rect.h])
+  }, [map.id, map.tileAt, rect.x, rect.y, rect.w, rect.h])
   return !map.terrain && art?.id === map.id ? art.canvas : null
 }
 

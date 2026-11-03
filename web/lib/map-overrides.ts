@@ -1,15 +1,18 @@
 // ============================================================================
-// 관리자 오브젝트 편집 — 맵 프롭(오브젝트)을 옮기고/지우고/새로 놓은 기록.
+// 관리자 오브젝트 편집 — 맵 프롭(오브젝트)을 옮기고/돌리고/지우고/새로 놓은 기록 + 바닥 타일 · 벽면 무늬.
 //   · 배포본 기록: public/map-overrides.json (모든 사람에게 적용)
 //   · 이 브라우저 기록: localStorage 'ultor-map-overrides' (배포본 위에 덮어씀 — 맵 단위)
 //   · 적용: MAPS[id] 를 원본(ORIGINAL) 기준으로 다시 만들어 교체한다 — props 와 blockers(충돌)를 함께 갱신.
 //   · 관리자 창 「파일로 저장」 → map-overrides.json 을 web/public/ 에 넣고 배포하면 모두에게 반영.
+//   · 2026-11-03: 회전(좌우 반전 — 발밑 사각형의 가로·세로도 바뀐다), 바닥 칠하기, 벽면 무늬 바꾸기, 되돌리기(Ctrl+Z).
+//     편집 한 번에 그 맵만 다시 만든다(예전엔 모든 맵을 다시 만들었다).
 // ============================================================================
 
 import { useSyncExternalStore } from 'react'
 import type { GameMap } from '@/lib/types'
-import type { PropDef } from '@/lib/iso'
+import type { IsoPart, IsoTex, PropDef, TileKind } from '@/lib/iso'
 import { MAPS, propBlocker } from '@/lib/maps'
+import { isMirrored } from '@/lib/iso'
 import { VILLAGE_LAYOUT, villageShift } from '@/lib/village-layout'
 
 export interface MapOverride {
@@ -19,8 +22,15 @@ export interface MapOverride {
   removed?: string[]
   /** 새로 놓은 프롭 */
   added?: PropDef[]
+  /** 원래 프롭 id → 좌우 반전(원래 방향의 반대로) */
+  flip?: Record<string, boolean>
+  /** 바닥 타일 'x,y'(정수 칸) → 타일 종류 */
+  tiles?: Record<string, TileKind>
+  /** 벽면 '구조물id#면번호' → 새 무늬 */
+  walls?: Record<string, IsoTex>
 }
 export type MapOverrides = Record<string, MapOverride>
+type FullOverride = Required<MapOverride>
 
 const LS_KEY = 'ultor-map-overrides'
 /** 이 브라우저 기록이 어느 마을 배치 판 좌표로 적혔는지 */
@@ -33,6 +43,9 @@ let published: MapOverrides = {}
 let local: MapOverrides = {}
 let version = 0
 let started = false
+/** 되돌리기 — 맵마다 편집 전 기록(이 브라우저 기록)을 쌓는다 */
+const undoStack = new Map<string, (MapOverride | undefined)[]>()
+const UNDO_MAX = 60
 
 /** 마을 북쪽 확장 전 기록(옛 좌표)이면 마을 프롭 자리를 확장만큼 민다 */
 function shiftVillage(all: MapOverrides): MapOverrides {
@@ -60,12 +73,19 @@ function readLocal(): MapOverrides {
     return {}
   }
 }
+let writeTimer: ReturnType<typeof setTimeout> | null = null
+/** 저장은 잠깐 모았다가 한 번에(연속 편집 중 매번 JSON 전체를 쓰지 않게) */
 function writeLocal() {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(local))
-  } catch {
-    /* 저장소를 못 쓰면 이번 세션에만 적용 */
-  }
+  if (writeTimer) clearTimeout(writeTimer)
+  writeTimer = setTimeout(() => {
+    writeTimer = null
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(local))
+      localStorage.setItem(LS_LAYOUT_KEY, String(VILLAGE_LAYOUT))
+    } catch {
+      /* 저장소를 못 쓰면 이번 세션에만 적용 */
+    }
+  }, 250)
 }
 
 /** 이 브라우저 기록이 있으면 그 맵은 그것을, 없으면 배포본 기록을 쓴다 */
@@ -75,6 +95,10 @@ export function effectiveOverrides(): MapOverrides {
 
 const sameBox = (a: { x0: number; y0: number; x1: number; y1: number }, b: { x0: number; y0: number; x1: number; y1: number }) =>
   Math.abs(a.x0 - b.x0) < 1e-6 && Math.abs(a.y0 - b.y0) < 1e-6 && Math.abs(a.x1 - b.x1) < 1e-6 && Math.abs(a.y1 - b.y1) < 1e-6
+
+const tileFnCache = new Map<string, { sig: string; tileAt?: (x: number, y: number) => TileKind; terrain?: GameMap['terrain'] }>()
+const tileKey = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`
+export const wallKey = (groupId: string, partIndex: number) => `${groupId}#${partIndex}`
 
 function applyMap(id: string) {
   const current = MAP_TABLE[id]
@@ -88,33 +112,88 @@ function applyMap(id: string) {
   }
   const removed = new Set(ov.removed ?? [])
   const moved = ov.moved ?? {}
+  const flip = ov.flip ?? {}
+  const changed = (pid: string) => !!moved[pid] || !!flip[pid]
   const oldBoxes: ReturnType<typeof propBlocker>[] = []
   const props: PropDef[] = []
   for (const p of orig.props ?? []) {
-    if (removed.has(p.id) || moved[p.id]) oldBoxes.push(propBlocker(p))
+    if (removed.has(p.id) || changed(p.id)) oldBoxes.push(propBlocker(p))
     if (removed.has(p.id)) continue
-    props.push(moved[p.id] ? { ...p, cell: { ...moved[p.id] } } : p)
+    if (!changed(p.id)) {
+      props.push(p)
+      continue
+    }
+    const q: PropDef = { ...p, cell: moved[p.id] ? { ...moved[p.id] } : p.cell }
+    if (flip[p.id]) {
+      // 지금 뒤집혀 있으면 바로 세우고(facing·mirrorX 둘 다 끔), 아니면 뒤집는다
+      if (isMirrored(p)) {
+        q.mirrorX = false
+        if (q.facing === 'left') q.facing = undefined
+      } else q.mirrorX = true
+    }
+    props.push(q)
   }
   props.push(...(ov.added ?? []))
-  // 충돌: 옮기거나 지운 프롭의 원래 사각형을 빼고, 새 위치·새 프롭의 사각형을 더한다
+  // 충돌: 옮기거나 돌리거나 지운 프롭의 원래 사각형을 빼고, 새 자리·새 프롭의 사각형을 더한다
   const blockers = [...(orig.blockers ?? [])]
   for (const box of oldBoxes) {
     if (!box) continue
     const i = blockers.findIndex((b) => sameBox(b, box))
     if (i >= 0) blockers.splice(i, 1)
   }
-  for (const p of props) if (moved[p.id] || (ov.added ?? []).includes(p)) {
-    const box = propBlocker(p)
-    if (box) blockers.push(box)
+  const added = new Set(ov.added ?? [])
+  for (const p of props)
+    if (changed(p.id) || added.has(p)) {
+      const box = propBlocker(p)
+      if (box) blockers.push(box)
+    }
+  const next: GameMap = { ...orig, props, blockers }
+  // 바닥 타일 — 칠한 칸만 바꾸고 나머지는 원래 함수(낚시·채집·물/용암 판정도 같이 따라간다)
+  const tiles = ov.tiles
+  if (tiles && Object.keys(tiles).length) {
+    // 칠한 칸이 그대로면 같은 함수를 다시 쓴다 — 바닥 캔버스는 함수가 바뀔 때만 다시 그린다(오브젝트만 옮길 땐 그대로)
+    const sig = JSON.stringify(tiles)
+    let hit = tileFnCache.get(id)
+    if (!hit || hit.sig !== sig) {
+      const pick = (x: number, y: number) => tiles[tileKey(x, y)]
+      const baseTile = orig.tileAt
+      const T = orig.terrain
+      hit = {
+        sig,
+        tileAt: baseTile ? (x: number, y: number) => pick(x, y) ?? baseTile(x, y) : undefined,
+        // 자연 지형(야생맵·마을): 칠한 칸은 그 바닥으로, 물웅덩이도 메운다
+        terrain: T ? { ...T, at: (x: number, y: number) => pick(x, y) ?? T.at(x, y), pool: (x: number, y: number) => (pick(x, y) ? null : T.pool(x, y)) } : undefined,
+      }
+      tileFnCache.set(id, hit)
+    }
+    if (hit.tileAt) next.tileAt = hit.tileAt
+    if (hit.terrain) next.terrain = hit.terrain
   }
-  MAP_TABLE[id] = { ...orig, props, blockers }
+  // 벽면 무늬
+  const walls = ov.walls
+  if (walls && Object.keys(walls).length && orig.structures) {
+    next.structures = orig.structures.map((g) => {
+      let hit = false
+      const parts = g.parts.map((part, i): IsoPart => {
+        const t = walls[wallKey(g.id, i)]
+        if (!t || part.kind !== 'face') return part
+        hit = true
+        return { ...part, tex: t }
+      })
+      return hit ? { ...g, parts } : g
+    })
+  }
+  MAP_TABLE[id] = next
 }
 
+function bump() {
+  version++
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
+}
 function applyAll() {
   const ids = new Set([...ORIGINAL.keys(), ...Object.keys(effectiveOverrides())])
   for (const id of ids) applyMap(id)
-  version++
-  if (typeof window !== 'undefined') window.dispatchEvent(new Event(EVENT))
+  bump()
 }
 
 /** 앱 시작 시 한 번 — 이 브라우저 기록을 바로 적용하고, 배포본 기록(public/map-overrides.json)을 받아 다시 적용 */
@@ -144,28 +223,77 @@ export function useMapOverridesVersion(): number {
   )
 }
 
-/** 이 맵의 편집 기록을 고친다(배포본 기록을 바탕으로 복사해서 시작) */
-function edit(mapId: string, fn: (o: Required<MapOverride>) => void) {
-  const base = local[mapId] ?? published[mapId] ?? {}
-  const o: Required<MapOverride> = {
+/** 원래 맵(편집 전) — 벽 무늬 목록·원래 바닥 확인용 */
+export const originalMap = (id: string): GameMap | undefined => ORIGINAL.get(id) ?? MAP_TABLE[id]
+
+function full(base: MapOverride): FullOverride {
+  return {
     moved: { ...(base.moved ?? {}) },
     removed: [...(base.removed ?? [])],
     added: (base.added ?? []).map((p) => ({ ...p, cell: { ...p.cell } })),
+    flip: { ...(base.flip ?? {}) },
+    tiles: { ...(base.tiles ?? {}) },
+    walls: { ...(base.walls ?? {}) },
   }
+}
+
+/** 이 맵의 편집 기록을 고친다(배포본 기록을 바탕으로 복사해서 시작). 그 맵만 다시 만든다 */
+function edit(mapId: string, fn: (o: FullOverride) => void) {
+  const stack = undoStack.get(mapId) ?? []
+  stack.push(local[mapId])
+  if (stack.length > UNDO_MAX) stack.shift()
+  undoStack.set(mapId, stack)
+  const o = full(local[mapId] ?? published[mapId] ?? {})
   fn(o)
   local = { ...local, [mapId]: o }
   writeLocal()
-  applyAll()
+  applyMap(mapId)
+  bump()
 }
+
+/** 마지막 편집 되돌리기 — 되돌릴 게 없으면 false */
+export function undoMapEdit(mapId: string): boolean {
+  const stack = undoStack.get(mapId)
+  if (!stack?.length) return false
+  const prev = stack.pop()
+  if (prev) local = { ...local, [mapId]: prev }
+  else {
+    const { [mapId]: _drop, ...rest } = local
+    void _drop
+    local = rest
+  }
+  writeLocal()
+  applyMap(mapId)
+  bump()
+  return true
+}
+export const canUndoMapEdit = (mapId: string) => (undoStack.get(mapId)?.length ?? 0) > 0
 
 const isAdded = (mapId: string, propId: string) => propId.startsWith('adm-') && !!MAP_TABLE[mapId]?.props?.some((p) => p.id === propId)
 
 export function moveProp(mapId: string, propId: string, cell: { x: number; y: number }) {
   const c = { x: Math.round(cell.x * 4) / 4, y: Math.round(cell.y * 4) / 4 }
+  const cur = MAP_TABLE[mapId]?.props?.find((p) => p.id === propId)
+  if (cur && cur.cell.x === c.x && cur.cell.y === c.y) return
   edit(mapId, (o) => {
     const added = o.added.find((p) => p.id === propId)
     if (added) added.cell = c
     else o.moved[propId] = c
+  })
+}
+
+/** 좌우 반전(회전) — 그림이 뒤집히고, 발밑 사각형의 가로·세로가 서로 바뀐다(lib/iso propAABB) */
+export function flipProp(mapId: string, propId: string) {
+  edit(mapId, (o) => {
+    const added = o.added.find((p) => p.id === propId)
+    if (added) {
+      if (isMirrored(added)) {
+        added.mirrorX = false
+        if (added.facing === 'left') added.facing = undefined
+      } else added.mirrorX = true
+    }
+    else if (o.flip[propId]) delete o.flip[propId]
+    else o.flip[propId] = true
   })
 }
 
@@ -174,6 +302,7 @@ export function removeProp(mapId: string, propId: string) {
     if (isAdded(mapId, propId)) o.added = o.added.filter((p) => p.id !== propId)
     else {
       delete o.moved[propId]
+      delete o.flip[propId]
       if (!o.removed.includes(propId)) o.removed.push(propId)
     }
   })
@@ -187,28 +316,81 @@ export function addProp(mapId: string, prop: Omit<PropDef, 'id'>): string {
   return id
 }
 
+/** 바닥 칠하기 — kind null 이면 원래 바닥으로 */
+export function paintTiles(mapId: string, cells: Iterable<string>, kind: TileKind | null) {
+  const map = MAP_TABLE[mapId]
+  if (!map) return
+  const list = [...cells].filter((k) => {
+    const [x, y] = k.split(',').map(Number)
+    return x >= 0 && y >= 0 && x < map.grid.w && y < map.grid.h
+  })
+  if (!list.length) return
+  edit(mapId, (o) => {
+    for (const k of list) {
+      if (kind) o.tiles[k] = kind
+      else delete o.tiles[k]
+    }
+  })
+}
+
+/** 벽면 무늬 바꾸기 — tex null 이면 원래 무늬로 */
+export function setWallTex(mapId: string, keys: string[], tex: IsoTex | null) {
+  if (!keys.length) return
+  edit(mapId, (o) => {
+    for (const k of keys) {
+      if (tex) o.walls[k] = tex
+      else delete o.walls[k]
+    }
+  })
+}
+
 /** 이 맵의 이 브라우저 기록을 지운다(배포본 기록으로 되돌림) */
 export function resetLocalMap(mapId: string) {
   const { [mapId]: _drop, ...rest } = local
   void _drop
   local = rest
+  undoStack.delete(mapId)
   writeLocal()
-  applyAll()
+  applyMap(mapId)
+  bump()
 }
 
 /** 이 맵을 원래 게임 상태로(배포본 기록도 무시하고 빈 기록으로 덮음) */
 export function resetMapToOriginal(mapId: string) {
-  local = { ...local, [mapId]: { moved: {}, removed: [], added: [] } }
-  writeLocal()
-  applyAll()
+  edit(mapId, (o) => {
+    o.moved = {}
+    o.removed = []
+    o.added = []
+    o.flip = {}
+    o.tiles = {}
+    o.walls = {}
+  })
 }
 
-/** 배포용 파일 내용 — 배포본 + 이 브라우저 기록을 합친 것(빈 맵은 뺀다) */
+const countOf = (o: MapOverride | undefined) =>
+  o
+    ? Object.keys(o.moved ?? {}).length +
+      (o.removed ?? []).length +
+      (o.added ?? []).length +
+      Object.keys(o.flip ?? {}).length +
+      Object.keys(o.tiles ?? {}).length +
+      Object.keys(o.walls ?? {}).length
+    : 0
+
+/** 배포용 파일 내용 — 배포본 + 이 브라우저 기록을 합친 것(빈 맵·빈 칸은 뺀다) */
 export function exportMapOverrides(): string {
   const all = effectiveOverrides()
   const clean: MapOverrides = {}
   for (const [id, o] of Object.entries(all)) {
-    if (Object.keys(o.moved ?? {}).length || (o.removed ?? []).length || (o.added ?? []).length) clean[id] = o
+    if (!countOf(o)) continue
+    const c: MapOverride = {}
+    if (Object.keys(o.moved ?? {}).length) c.moved = o.moved
+    if ((o.removed ?? []).length) c.removed = o.removed
+    if ((o.added ?? []).length) c.added = o.added
+    if (Object.keys(o.flip ?? {}).length) c.flip = o.flip
+    if (Object.keys(o.tiles ?? {}).length) c.tiles = o.tiles
+    if (Object.keys(o.walls ?? {}).length) c.walls = o.walls
+    clean[id] = c
   }
   return JSON.stringify(clean, null, 2)
 }
@@ -216,12 +398,30 @@ export function exportMapOverrides(): string {
 export function importMapOverrides(text: string) {
   const j = JSON.parse(text) as MapOverrides
   local = { ...local, ...j }
+  undoStack.clear()
   writeLocal()
   applyAll()
 }
 
 /** 이 맵에서 이 브라우저로 바꾼 것 수(표시용) */
 export function localChangeCount(mapId: string): number {
-  const o = local[mapId]
-  return o ? Object.keys(o.moved ?? {}).length + (o.removed ?? []).length + (o.added ?? []).length : 0
+  return countOf(local[mapId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 팔레트 — 바닥 타일 · 벽 무늬(게임에 이미 있는 것 중에서 고른다)
+// ─────────────────────────────────────────────────────────────────────────────
+/** 벽 무늬 후보 — 모든 맵의 수직면 텍스처 가운데 '벽' 그림(난간·기둥·계단 단 제외) */
+let wallPalette: IsoTex[] | null = null
+export function wallTextures(): IsoTex[] {
+  if (wallPalette) return wallPalette
+  const seen = new Map<string, IsoTex>()
+  for (const m of Object.values(MAP_TABLE)) {
+    const om = ORIGINAL.get(m.id) ?? m
+    for (const g of om.structures ?? [])
+      for (const p of g.parts)
+        if (p.kind === 'face' && p.tex && /wall/i.test(p.tex.src) && !seen.has(p.tex.src)) seen.set(p.tex.src, { src: p.tex.src, w: p.tex.w, h: p.tex.h, scale: p.tex.scale })
+  }
+  wallPalette = [...seen.values()]
+  return wallPalette
 }

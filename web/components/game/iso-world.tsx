@@ -27,9 +27,11 @@ import { rosterDuoTogether, rosterOnMap, rosterWanderNpc } from '@/lib/school-ro
 import { schoolNpcById } from '@/lib/companions'
 import { ARENA_MAP_ID, newArenaIdentity } from '@/lib/arena'
 import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
-import { addProp, moveProp, useMapOverridesVersion } from '@/lib/map-overrides'
-import { setMapEditor, useMapEditor } from '@/lib/map-editor'
+import { moveProp, paintTiles, useMapOverridesVersion } from '@/lib/map-overrides'
+import { beginDrag, brushCells, clientToCell, getDrag, getMapEditor, placeCatalogItem, setDrag, setMapEditor, useDraggingId, useMapEditor } from '@/lib/map-editor'
+import { AdminEditOverlay, HousingOverlay } from '@/components/game/editor-overlay'
 import { heroSheet, npcSheet } from '@/lib/costumes'
+import { RasterProp } from '@/components/game/raster-prop'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -42,38 +44,6 @@ export function worldRectOf(m: GameMap) {
   const b = isoBounds(m.grid.w, m.grid.h)
   const pt = Math.max(PAD_TOP, m.padTop ?? 0)
   return { x: b.minSx, y: -pt, w: b.width, h: b.height + pt + Math.max(PAD_BOTTOM, m.padBottom ?? 0) }
-}
-
-/** 라스터(PNG) 프롭 — 발밑 앵커를 원점(0,0)에 맞춰 배치. 모든 소품은 PixelLab 도트(스프라이트 없는 소품은 그리지 않음) */
-function RasterProp({ p }: { p: PropDef }) {
-  const w = p.px?.w
-  const h = p.px?.h
-  // 앵커 미지정 시 이미지 하단-중앙을 발밑으로 가정
-  const ax = p.anchor?.x ?? (w ? w / 2 : 0)
-  const ay = p.anchor?.y ?? (h ?? 0)
-  // facing:'left' — 좌우 반전(벤치 등, 배치 방향을 통로 쪽으로 맞출 때 사용). wall은 이미 별도 처리하므로 제외.
-  const mirror = p.facing === 'left' && p.kind !== 'wall'
-  // 벽면 기울이기 — 발밑 앵커(ax,ay)를 축으로 skewY, 쿼터뷰 바닥선 각도에 맞춰 벽이 뜨지 않게 함
-  const skew = p.skewYDeg ? `skewY(${p.skewYDeg}deg)` : ''
-  const flip = mirror || p.mirrorX ? 'scaleX(-1)' : ''
-  const rotate = p.rotateDeg ? `rotate(${p.rotateDeg}deg)` : ''
-  const transform = [rotate, flip, skew].filter(Boolean).join(' ') || undefined
-  return (
-    <image
-      href={p.sprite}
-      x={-ax}
-      y={-ay}
-      width={w}
-      height={h}
-      style={{
-        imageRendering: 'pixelated',
-        transform,
-        // 앵커(ax,ay)만큼 x=-ax,y=-ay 로 이미 옮겨놨으므로, 발밑 앵커는 항상 로컬 원점(0,0)에 위치한다.
-        // 여기를 (ax,ay)로 잘못 잡으면 스프라이트마다 ax/ay 값이 달라 skew/flip 축이 제각각 어긋난다.
-        transformOrigin: transform ? '0px 0px' : undefined,
-      }}
-    />
-  )
 }
 
 /**
@@ -135,6 +105,8 @@ export function IsoWorld({
   // 관리자 오브젝트 편집 — 기록이 바뀌면 MAPS[id] 가 새 객체로 교체되므로 다시 그리기만 하면 된다
   useMapOverridesVersion()
   const editor = useMapEditor()
+  // 끌고 있는 오브젝트·가구 id — 끌기 시작·끝에만 바뀐다(원래 자리는 흐리게)
+  const draggingId = useDraggingId()
   const map = MAPS[state.currentMapId]
   const waterArt = useWaterOverlays(map)
   const [heroFrame, setHeroFrame] = useState(0)
@@ -202,26 +174,31 @@ export function IsoWorld({
           <g
             key={p.id}
             transform={`translate(${s.sx},${s.sy - (p.elev ?? 0)})`}
-            style={editor.on ? { cursor: 'pointer' } : undefined}
-            onClick={
-              editor.on
+            opacity={draggingId === p.id ? 0.3 : undefined}
+            style={editor.on ? (editor.tool === 'object' ? { cursor: 'grab', touchAction: 'none' } : { pointerEvents: 'none' }) : undefined}
+            onPointerDown={
+              editor.on && editor.tool === 'object'
                 ? (e) => {
+                    // 누르면 선택, 그대로 끌면 옮긴다(놓을 때 한 번만 기록) — 잡은 자리가 그대로 따라온다
+                    if (e.button !== 0) return
                     e.stopPropagation()
+                    e.preventDefault()
+                    const svg = e.currentTarget.ownerSVGElement
+                    const c = clientToCell(e.clientX, e.clientY, svg)
+                    if (!c) return
                     setMapEditor({ selected: p.id, placing: null })
+                    beginDrag(e, { kind: 'prop', id: p.id, grab: { x: c.x - p.cell.x, y: c.y - p.cell.y } }, {
+                      svg,
+                      onEnd: (d) => {
+                        if (d.moved && d.cell) moveProp(map.id, p.id, d.cell)
+                      },
+                    })
                   }
                 : undefined
             }
           >
             {p.sprite ? <RasterProp p={p} /> : null}
             {p.glow ? <PropGlow {...p.glow} seed={p.cell.x * 7 + p.cell.y * 3} /> : null}
-            {editor.on && editor.selected === p.id && (
-              <g pointerEvents="none">
-                <ellipse cx={0} cy={0} rx={26} ry={12} fill="rgba(255,215,90,0.18)" stroke="#ffd75a" strokeWidth={2} strokeDasharray="5 3" />
-                <text x={0} y={22} textAnchor="middle" fontSize={11} fontWeight={700} fill="#ffd75a" stroke="#000" strokeWidth={3} paintOrder="stroke">
-                  {p.id}
-                </text>
-              </g>
-            )}
           </g>
         ),
       })
@@ -238,7 +215,7 @@ export function IsoWorld({
     list.sort((a, b) => a.sortY - b.sortY)
     return list
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, editor.on, editor.selected])
+  }, [map, editor.on, editor.tool, draggingId])
 
   // NPC — 홈 셀(npc.cell) 주변을 배회(npcWanderPosition, 몬스터와 동일한 시간기반 리사주 곡선).
   // wanderT 마다 위치 재계산되므로 static 메모 밖(몬스터와 동일 패턴)에 둔다.
@@ -521,12 +498,26 @@ export function IsoWorld({
                 <g
                   key={f.id}
                   transform={`translate(${s.sx},${s.sy})`}
-                  style={state.housing.editMode ? { cursor: 'pointer' } : undefined}
-                  onClick={
+                  opacity={draggingId === f.id ? 0.3 : undefined}
+                  style={state.housing.editMode ? { cursor: 'grab', touchAction: 'none' } : undefined}
+                  onPointerDown={
                     state.housing.editMode
                       ? (e) => {
+                          // 누르면 고르고, 끌면 옮긴다(놓을 때 한 번 HOUSING_MOVE). 끌지 않고 떼면 고르기/풀기
+                          if (e.button !== 0) return
                           e.stopPropagation()
-                          dispatch({ type: 'HOUSING_SELECT', id: picked ? null : f.id })
+                          e.preventDefault()
+                          const svg = e.currentTarget.ownerSVGElement
+                          const c = clientToCell(e.clientX, e.clientY, svg)
+                          if (!c) return
+                          if (!picked) dispatch({ type: 'HOUSING_SELECT', id: f.id })
+                          beginDrag(e, { kind: 'furn', id: f.id, grab: { x: c.x - f.cell.x, y: c.y - f.cell.y } }, {
+                            svg,
+                            onEnd: (d) => {
+                              if (d.moved && d.cell) dispatch({ type: 'HOUSING_MOVE', cell: d.cell })
+                              else if (picked) dispatch({ type: 'HOUSING_SELECT', id: null })
+                            },
+                          })
                         }
                       : undefined
                   }
@@ -652,8 +643,8 @@ export function IsoWorld({
   const viewHw = viewportSize.w / 2 / SCALE + 96
   const viewHh = viewportSize.h / 2 / SCALE + 96
   const visibleStatic = useMemo(
-    () => (editor.on ? staticEntities : staticEntities.filter((e) => !e.at || (Math.abs(e.at.sx - viewCx) < viewHw + e.at.reach && Math.abs(e.at.sy - viewCy) < viewHh + e.at.reach * 1.5))),
-    [staticEntities, viewCx, viewCy, viewHw, viewHh, editor.on],
+    () => (staticEntities.filter((e) => !e.at || (Math.abs(e.at.sx - viewCx) < viewHw + e.at.reach && Math.abs(e.at.sy - viewCy) < viewHh + e.at.reach * 1.5))),
+    [staticEntities, viewCx, viewCy, viewHw, viewHh],
   )
 
   const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
@@ -692,6 +683,7 @@ export function IsoWorld({
         viewBox={`${bounds.minSx} ${-padTop} ${worldW} ${worldH}`}
         style={{ display: 'block', overflow: 'visible', position: 'relative' }}
         shapeRendering="crispEdges"
+        data-iso-world=""
       >
         <defs>
           <linearGradient id="cacheBeam" x1="0" y1="1" x2="0" y2="0">
@@ -717,31 +709,44 @@ export function IsoWorld({
             width={worldW}
             height={worldH}
             fill="transparent"
-            style={{ cursor: editor.placing ? 'copy' : editor.selected ? 'move' : 'crosshair' }}
-            onClick={(e) => {
+            style={{ cursor: editor.tool === 'floor' ? 'cell' : editor.placing ? 'copy' : editor.selected ? 'move' : 'crosshair', touchAction: 'none' }}
+            onPointerMove={(e) => {
+              // 놓을 오브젝트·바닥 붓 미리보기(끌고 있지 않을 때) — 오버레이만 다시 그린다
+              const d = getDrag()
+              if (d && d.kind !== 'hover') return
+              if (!editor.placing && editor.tool !== 'floor') return
+              const c = clientToCell(e.clientX, e.clientY, e.currentTarget.ownerSVGElement)
+              const cell = c && { x: Math.round(c.x * 4) / 4, y: Math.round(c.y * 4) / 4 }
+              if (!cell || (d?.cell && d.cell.x === cell.x && d.cell.y === cell.y)) return
+              setDrag({ kind: 'hover', id: null, cell, grab: { x: 0, y: 0 }, moved: false })
+            }}
+            onPointerLeave={() => {
+              if (getDrag()?.kind === 'hover') setDrag(null)
+            }}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return
               e.stopPropagation()
               const svg = e.currentTarget.ownerSVGElement
-              const ctm = svg?.getScreenCTM()
-              if (!svg || !ctm) return
-              const pt = svg.createSVGPoint()
-              pt.x = e.clientX
-              pt.y = e.clientY
-              const loc = pt.matrixTransform(ctm.inverse())
-              const cell = { x: (loc.y / (ISO_TILE_H / 2) + loc.x / (ISO_TILE_W / 2)) / 2, y: (loc.y / (ISO_TILE_H / 2) - loc.x / (ISO_TILE_W / 2)) / 2 }
-              if (editor.placing) {
-                const it = editor.placing
-                const fp = Math.max(0.5, Math.round((it.w / ISO_TILE_W) * 0.8 * 2) / 2)
-                const id = addProp(map.id, {
-                  kind: editor.solid ? 'statue' : 'bicycle',
-                  cell,
-                  sprite: it.src,
-                  px: { w: it.w, h: it.h },
-                  radial: true,
-                  size: { w: fp, d: fp },
-                  solid: editor.solid,
-                  label: undefined,
+              const cell = clientToCell(e.clientX, e.clientY, svg)
+              if (!cell) return
+              if (editor.tool === 'floor') {
+                // 바닥 칠하기 — 누른 채 끌면 지나간 칸을 모아 두었다가 떼는 순간 한 번에 칠한다
+                const n = editor.brush
+                const cells = new Set(brushCells(cell, n))
+                beginDrag(e, { kind: 'paint', id: null, grab: { x: 0, y: 0 }, cells }, {
+                  svg,
+                  onMove: (d) => {
+                    if (d.cell) for (const k of brushCells(d.cell, n)) cells.add(k)
+                  },
+                  onEnd: () => paintTiles(map.id, cells, getMapEditor().tile),
                 })
+                return
+              }
+              if (editor.tool !== 'object') return
+              if (editor.placing) {
+                const id = placeCatalogItem(map.id, editor.placing, cell, editor.solid)
                 setMapEditor({ selected: id, placing: null })
+                setDrag(null)
               } else if (editor.selected) {
                 moveProp(map.id, editor.selected, cell)
               }
@@ -800,6 +805,9 @@ export function IsoWorld({
         {state.pullFx && Date.now() - state.pullFx.at < 1500 && (
           <PullFx key={state.pullFx.at} cells={state.pullFx.cells} to={{ sx: ps0.sx, sy: ps0.sy - 30 }} />
         )}
+        {/* 편집 미리보기 — 끌기·새로 놓기·바닥 붓·벽면 고르기·길막 보기 */}
+        {editor.on && <AdminEditOverlay map={map} editor={editor} />}
+        {state.currentMapId === 'personal-space' && state.housing.editMode && <HousingOverlay state={state} dispatch={dispatch} map={map} bodyR={0.24} />}
       </svg>
     </div>
   )
