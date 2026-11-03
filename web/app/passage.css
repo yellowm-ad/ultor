@@ -216,9 +216,9 @@
   border: 8px solid transparent !important;
   border-image: url('/images/ui/px/btn-wood.png') 18 fill / 8px stretch !important;
   background: none !important;
-  color: #d9ccb0 !important;
-  text-shadow: 0 1px 0 #000;
-  filter: brightness(0.82) saturate(0.85);
+  color: #e6eaef !important; /* 꺼진 칩 — 회색 글씨가 안 보여서 은색(2026-11-03) */
+  text-shadow: 0 1px 0 #000, 0 0 2px #000;
+  filter: brightness(0.9) saturate(0.85);
   image-rendering: pixelated;
 }
 .gw-chip:hover { filter: brightness(1.05); }
@@ -257,3 +257,20 @@
 .wd-sub { font-size: 11px; color: #c9b48a; }
 .wd-item.is-on .wd-sub { color: #ffe08a; }
 .wd-note { margin-top: 10px; font-size: 12px; line-height: 1.5; color: #c9b48a; }
+
+/* ── 은색 글씨(2026-11-03 사용자 요청) ─────────────────────────────────────
+   회색 글씨 버튼(보조·비활성)이 어두운 나무판 위에서 안 보여서 글자색만 은색으로. 바탕(나무판)은 그대로.
+   비활성은 회색조 필터가 글씨까지 어둡게 눌러서, 필터를 약하게 하고 글씨는 은색 유지. */
+.gw-btn.is-quiet,
+.gw-btn:disabled,
+.gw-btn.is-gold:disabled,
+.pst-btn:disabled,
+.px-wood:disabled,
+.mg-btn:disabled {
+  color: #dfe4ea !important;
+  text-shadow: 0 1px 0 #000, 0 0 2px #000 !important;
+}
+.gw-btn.is-quiet small, .gw-btn:disabled small, .pst-btn:disabled small, .gw-btn.is-gold:disabled small { color: #c3cad3 !important; }
+.gw-btn.is-quiet { opacity: 1; }
+.gw-btn:disabled, .px-wood:disabled, .mg-btn:disabled, .gw-btn.is-gold:disabled { filter: grayscale(0.6) brightness(0.92) !important; opacity: 1 !important; }
+.pst-btn:disabled { opacity: 0.7; }

@@ -10,8 +10,9 @@ const buttonVariants = cva(
         // 2026-11-02 — 노란 박스 대신 나무판 + 금테(app/passage.css .px-wood)
         default: 'px-wood is-primary',
         gilded: 'panel-gilded text-gold-soft hover:brightness-110',
-        outline: 'border-border bg-transparent text-foreground hover:bg-muted',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        // 2026-11-03 — 회색 글씨가 안 보여서 글자색만 은색으로
+        outline: 'border-border bg-transparent text-[#dfe4ea] hover:bg-muted',
+        secondary: 'border-transparent bg-secondary text-[#dfe4ea] hover:bg-secondary/80',
         ghost: 'border-transparent hover:bg-muted hover:text-foreground',
         destructive: 'border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20',
         parchment: 'panel-parchment hover:brightness-105',

@@ -5,20 +5,9 @@ import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect, useState } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
-import { WorldScreen } from '@/components/game/world-screen'
-import { BattleScreen } from '@/components/game/battle-screen'
-import { Hud } from '@/components/game/hud'
-import { Minimap } from '@/components/game/minimap'
-import { DialogueScreen } from '@/components/game/dialogue-screen'
-import { ShopScreen } from '@/components/game/shop-screen'
-import { InventoryScreen } from '@/components/game/inventory-screen'
-import { CharacterScreen } from '@/components/game/character-screen'
-import { PartyScreen } from '@/components/game/party-screen'
-import { MagicScreen } from '@/components/game/magic-screen'
-import { SettingsScreen } from '@/components/game/settings-screen'
-import { Toast } from '@/components/game/toast'
+import { GameShell } from '@/components/game/game-root'
+import { LevelUpFx } from '@/components/game/result-fx'
 import { AdminPanel } from '@/components/game/admin-panel'
-import { StoryOverlay } from '@/components/game/story-overlay'
 
 // 실제 인증이 아니라 우연히 /admin 으로 들어오는 걸 막는 정도의 가벼운 문지기.
 // 저장 데이터가 전혀 없는 순수 클라이언트 샌드박스라 뚫려도 실질적 피해는 없음.
@@ -80,6 +69,7 @@ function AdminGate({ children }: { children: React.ReactNode }) {
 function AdminShell() {
   const { state, dispatch } = useGame()
   const [booted, setBooted] = useState(false)
+  const [warped, setWarped] = useState(false)
 
   // 1) 타이틀이면 즉시 기본 캐릭터로 START_GAME
   useEffect(() => {
@@ -91,40 +81,16 @@ function AdminShell() {
 
   // 2) 부팅 직후 한 번만 테스트룸으로 자동 이동(이후 사용자가 다른 맵으로 나가는 건 막지 않음)
   useEffect(() => {
-    if (booted && state.screen === 'world' && state.currentMapId !== 'testroom') {
-      dispatch({ type: 'ADMIN_ENTER_TESTROOM' })
-    }
+    if (!booted || warped || state.screen !== 'world') return
+    setWarped(true)
+    if (state.currentMapId !== 'testroom') dispatch({ type: 'ADMIN_ENTER_TESTROOM' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted, state.screen])
 
   if (state.screen === 'title' || state.screen === 'create') {
     return <div className="flex h-full w-full items-center justify-center text-sm text-white/60">관리자 캐릭터 준비 중…</div>
   }
-  if (state.screen === 'battle') return (
-    <>
-      <BattleScreen />
-      <AdminPanel />
-    </>
-  )
-
-  return (
-    <div className="relative h-full w-full">
-      <WorldScreen />
-      <Hud />
-      <Minimap />
-      <Toast />
-      <DialogueScreen />
-      <ShopScreen />
-      <InventoryScreen />
-      <CharacterScreen />
-      <PartyScreen />
-      <MagicScreen />
-      <SettingsScreen />
-      {/* 관리자 '컷신' 탭의 장면 재생용 */}
-      {state.storyQueue.length > 0 && <StoryOverlay />}
-      <AdminPanel />
-    </div>
-  )
+  return <GameShell extra={<AdminPanel />} />
 }
 
 export function AdminRoot() {
@@ -140,6 +106,7 @@ export function AdminRoot() {
         <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
           <AdminShell />
         </div>
+        <LevelUpFx />
       </GameProvider>
     </AdminGate>
   )

@@ -2240,3 +2240,7 @@ html.touch-ui .world-location-label {
 .mg-sort-card { min-width: 132px; padding: 18px 14px; text-align: center; border-radius: 8px; background: #e8d8b0; color: #3a2a14; border: 2px solid #8a6a3a; font-family: var(--font-display); font-size: 15px; box-shadow: 0 6px 14px rgba(0,0,0,0.45); animation: class-frame-in 0.22s both; }
 .mg-sort-ok { box-shadow: 0 0 0 3px #8fe08a, 0 6px 14px rgba(0,0,0,0.45); }
 .mg-sort-bad { box-shadow: 0 0 0 3px #e08a8a, 0 6px 14px rgba(0,0,0,0.45); animation: mg-shake 0.35s; }
+
+/* 관리자(/admin) 패널이 열려 있으면 HUD 오른쪽 아이콘 열·미니맵을 패널(폭 min(94vw,340px)) 왼쪽으로 비킨다 */
+[data-admin-panel='open'] .hud-safe { right: min(94vw, 340px); }
+[data-admin-panel='open'] .minimap-safe { right: calc(min(94vw, 340px) + 0.75rem); }

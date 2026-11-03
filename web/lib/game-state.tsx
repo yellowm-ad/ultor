@@ -918,6 +918,8 @@ function reducerCore(state: GameState, action: Action): GameState {
         ...state,
         currentMapId: 'testroom',
         currentZoneId: 'z-testroom',
+        // 관리자 부팅 직후의 입학식 프롤로그 등 자동 장면은 건너뛴다(봤음 플래그는 큐에 넣을 때 이미 켜짐) — 장면은 '컷신' 탭에서 재생
+        storyQueue: [],
         position: { ...map.spawn },
         facing: 'down',
         fieldMonsters: generateFieldMonsters(map, state.settings.testMode, state.monsterDefeats),

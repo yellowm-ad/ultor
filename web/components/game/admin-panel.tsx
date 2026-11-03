@@ -1,7 +1,7 @@
 'use client'
 
 import { PASSAGES } from '@/lib/passages'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Button } from '@/components/ui/button'
 import { SKILLS, MONSTERS, NPCS, itemById } from '@/lib/mock-data'
@@ -90,7 +90,38 @@ export function AdminPanel() {
   )
   const testroomNpcs = useMemo(() => NPCS.filter((n) => n.zoneId === 'z-testroom'), [])
 
+  // 게임 창(가방·제작·수첩…)·수업·미니게임·낚시·컷신이 열리면 패널이 그 위(z-70)를 덮어 오른쪽 버튼을 못 누르므로
+  // 그동안 자동으로 접었다가, 창이 닫히면 다시 펼친다(전투는 패널을 쓰며 테스트하므로 제외)
+  const busy =
+    (state.screen !== 'world' && state.screen !== 'battle') ||
+    !!state.classScene ||
+    !!state.fishing ||
+    !!state.passage ||
+    state.storyQueue.length > 0
+  const autoClosed = useRef(false)
+  useEffect(() => {
+    if (busy && open) {
+      autoClosed.current = true
+      setOpen(false)
+    } else if (!busy && autoClosed.current) {
+      autoClosed.current = false
+      setOpen(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy])
+
+  // 패널이 오른쪽 위 HUD 아이콘(가방·제작·수첩…)·미니맵을 덮지 않도록, 열려 있는 동안 그쪽을 패널 왼쪽으로 비켜 둔다(app/globals.css)
+  useEffect(() => {
+    const root = document.documentElement
+    if (open) root.dataset.adminPanel = 'open'
+    else delete root.dataset.adminPanel
+    return () => {
+      delete root.dataset.adminPanel
+    }
+  }, [open])
+
   if (!open) {
+    if (busy) return null // 창·미니게임 중엔 열기 버튼도 숨겨 창 상단 버튼과 겹치지 않게
     // 테스트룸에서는 에버테일풍 HUD 아이콘 열에 가려 우상단 버튼이 잘 안 보이므로, 테스트룸 한정으로 상단 가운데에 띄운다.
     const inTestroom = state.currentMapId === 'testroom'
     return (

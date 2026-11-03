@@ -2,7 +2,7 @@
 
 import { initMapOverrides } from '@/lib/map-overrides'
 import { initDialogueOverrides } from '@/lib/dialogue-overrides'
-import { useEffect } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
@@ -54,7 +54,8 @@ const CLOSABLE_WITH_ESC = new Set<ScreenId>([
   'arena',
 ])
 
-function GameShell() {
+/** 일반 게임과 관리자(/admin)가 같은 화면 구성을 쓴다 — 관리자 전용 UI는 `extra`로 얹는다(따로 두면 새 창이 관리자 쪽에서 빠져 동작 안 함) */
+export function GameShell({ extra }: { extra?: ReactNode } = {}) {
   const { state, dispatch } = useGame()
 
   // 단축키: ESC로 오버레이 닫기, I/C/P/M으로 가방·정보·파티·전체지도 토글(월드 화면에서만 동작).
@@ -106,7 +107,12 @@ function GameShell() {
 
   if (state.screen === 'title') return <TitleScreen />
   if (state.screen === 'create') return <CreateScreen />
-  if (state.screen === 'battle') return <BattleScreen />
+  if (state.screen === 'battle') return (
+    <>
+      <BattleScreen />
+      {extra}
+    </>
+  )
 
   return (
     <div className="relative h-full w-full">
@@ -137,6 +143,7 @@ function GameShell() {
       {state.fishing && <FishingOverlay />}
       {state.passage && <PassageOverlay />}
       {state.classScene && <ClassSceneOverlay />}
+      {extra}
     </div>
   )
 }
