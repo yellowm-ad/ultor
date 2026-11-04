@@ -19,7 +19,6 @@ import {
   masteryPowerMult,
   skillGrade,
   summonTurnsFor,
-  type SkillGrade,
 } from '@/lib/skill-mastery'
 import type { BattleFx, Skill } from '@/lib/types'
 import { HeroSprite } from '@/components/game/pixel-hero'
@@ -27,6 +26,9 @@ import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sp
 import { SkillFxLayer } from '@/components/game/skill-fx'
 import { Bar, Divider, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Sparkle } from '@/components/game/game-window'
 import { heroSheet, npcSheet } from '@/lib/costumes'
+import { GradeBadge, GradeRibbon } from '@/components/game/grade-badge'
+import { SKILL_GRADE_INFO } from '@/lib/grades'
+import { TRIAL_OF_SKILL } from '@/lib/guild-trials'
 
 type Tab = 'all' | 'fire' | 'ice' | 'earth' | 'dark' | 'light' | 'none' | 'summon'
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -40,7 +42,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'summon', label: '소환', icon: menuIcon('magic-summon') },
 ]
 
-const GRADE_PILL: Record<SkillGrade, string> = { 1: 'is-soft', 2: 'is-blue', 3: 'is-purple', 4: 'is-gold' }
 
 /** 학생이 가질 수 있는 마법(소환수 기술·모르스 전용 제외) */
 const STUDENT_SKILLS = SKILLS.filter((s) => !s.owner)
@@ -244,15 +245,17 @@ export function MagicScreen() {
               const m = masteryOf(player, s.id)
               const g = skillGrade(s)
               const on = player.equippedSkills.includes(s.id) || summons.includes(s.id)
+              // 최상급(히든) — 배우기 전에는 이름을 가린다
+              const hidden = !has && g === 4
               return (
-                <button key={s.id} type="button" className={`magic-row ${selected?.id === s.id ? 'is-active' : ''} ${has ? '' : 'is-dim'}`} onClick={() => setSelectedId(s.id)}>
+                <button key={s.id} type="button" className={`magic-row ${selected?.id === s.id ? 'is-active' : ''} ${has ? '' : 'is-dim'} ${hidden ? 'is-hidden-skill' : ''}`} onClick={() => setSelectedId(s.id)}>
                   <span className="magic-row-icon" style={{ ['--el' as string]: elementColor(s.element) }}>
                     <Image src={s.icon} alt="" width={30} height={30} unoptimized />
                   </span>
                   <span className="magic-row-main">
                     <span className="magic-row-title">
-                      {s.name}
-                      <span className={`gw-pill ${GRADE_PILL[g]}`}>{GRADE_LABEL[g]}</span>
+                      {hidden ? '？？？' : s.name}
+                      <GradeBadge info={SKILL_GRADE_INFO[g]} />
                       {on && <span className="gw-pill is-green">{s.kind === 'summon' ? '소환 칸' : '장착'}</span>}
                     </span>
                     {has ? (
@@ -265,7 +268,7 @@ export function MagicScreen() {
                         <b>Lv.{m.lv}</b>
                       </span>
                     ) : (
-                      <span className="magic-row-sub">{COURSE_OF.get(s.id) ? `수업 「${COURSE_OF.get(s.id)}」에서 배움` : '아직 배우지 않음'}</span>
+                      <span className="magic-row-sub">{hidden ? `히든 마법 — ${TRIAL_OF_SKILL.get(s.id)?.where ?? '어느 마을'} 길드에서 전수된다는 소문` : COURSE_OF.get(s.id) ? `수업 「${COURSE_OF.get(s.id)}」에서 배움` : '아직 배우지 않음'}</span>
                     )}
                   </span>
                   <span className="magic-row-mp">MP {masteredMpCost(s, m.lv)}</span>
@@ -311,6 +314,23 @@ function MagicDetail({ skill, has, scrolls }: { skill: Skill; has: boolean; scro
     return !!it && (!it.scrollElement || it.scrollElement === (skill.element ?? 'none'))
   })
 
+  // 최상급(히든) — 배우기 전엔 정체를 감추고 전수 장소 소문만
+  if (!has && g === 4) {
+    const t = TRIAL_OF_SKILL.get(skill.id)
+    return (
+      <div className="gw-scroll is-fill">
+        <div className="magic-hidden-card">
+          <span className="magic-hidden-q">？</span>
+          <GradeRibbon info={SKILL_GRADE_INFO[4]} suffix="· 히든" />
+          <p className="mt-3 text-[12.5px] leading-relaxed text-[#4d4856]">학교에서는 가르치지 않는 마법. 이름도, 모습도 기록에 남아 있지 않다.</p>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-[#6a4d1c]">
+            소문 — <b>{t?.where ?? '어느 마을'}</b>의 길드 전수자가 「{t?.title ?? '시험'}」을 통과한 자에게만 전한다고 한다.
+          </p>
+          <p className="mt-1 text-[11.5px] text-[#8a7c62]">Lv.{t ? Math.max(40, skill.levelRequired ?? 40) : 40} 이상부터 시험을 받을 수 있다.</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <>
       <div className="gw-scroll is-fill">
@@ -326,12 +346,13 @@ function MagicDetail({ skill, has, scrolls }: { skill: Skill; has: boolean; scro
               <span className="gw-pill is-soft">
                 <span style={{ color: elementColor(skill.element) }}>●</span> {elementLabel(skill.element)}
               </span>
-              <span className={`gw-pill ${GRADE_PILL[g]}`}>{GRADE_LABEL[g]}</span>
+              <GradeBadge info={SKILL_GRADE_INFO[g]} />
               {isSummon && <span className="gw-pill is-purple">소환</span>}
               {skill.levelRequired && <span className="gw-pill is-soft">Lv.{skill.levelRequired}부터</span>}
             </div>
           </div>
         </div>
+        <GradeRibbon info={SKILL_GRADE_INFO[g]} />
         <p className="mt-2 text-[12.5px] leading-relaxed text-[#4d4856]">{skill.description}</p>
 
         {has ? (

@@ -115,7 +115,7 @@ const REGION_TREES: { root: MapId; nodes: Node[] }[] = [
       { id: 'frozen-lake', name: '얼어붙은 호수', bg: 'snow', theme: 'frozenLake', special: true, entryLabel: '서리 침엽수림으로', exits: [], monsterPool: ['mon-frost-revenant', 'mon-dark-mage'], recommendedLevel: 45, seed: 15005 },
     ],
   },
-  // ── 화산지대 · 마물 마을 (+ 모르스의 성) ──────────────────────────────────
+  // ── 화산지대 · 마물 마을 (+ 버려진 성곽) — 모르스의 성은 마물 마을의 화산 성채(demon-temple) ──────────────────────────────────
   {
     root: 'volcano',
     nodes: [
@@ -127,13 +127,13 @@ const REGION_TREES: { root: MapId; nodes: Node[] }[] = [
           { to: 'demon-village', side: 'N', t: 0.3, label: '마물 마을' },
           { to: 'mine', side: 'S', t: 0.35, label: '폐광산', requiredLevel: 51 },
           { to: 'lava-cave', side: 'W', t: 0.5, label: '용암 동굴', requiredLevel: 55 },
-          { to: 'demon-castle', side: 'N', t: 0.82, label: '모르스의 성', requiredLevel: 63 },
+          { to: 'demon-castle', side: 'N', t: 0.82, label: '버려진 성곽', requiredLevel: 63 },
         ],
         monsterPool: ['mon-dark-mage', 'mon-flame-warden', 'mon-frost-revenant'], recommendedLevel: 49, seed: 16003,
       },
       { id: 'mine', name: '폐광산', bg: 'mine', theme: 'mine', special: true, entryLabel: '용암 평원으로', exits: [], monsterPool: ['mon-cursed-armor', 'mon-flame-warden', 'mon-dark-mage'], recommendedLevel: 51, seed: 16004 },
       { id: 'lava-cave', name: '용암 동굴', bg: 'volcano', theme: 'lavaCave', special: true, entryLabel: '용암 평원으로', exits: [], monsterPool: ['mon-flame-warden', 'mon-dark-mage', 'mon-ember-imp'], recommendedLevel: 55, seed: 16005 },
-      { id: 'demon-castle', name: '모르스의 성', bg: 'demon', theme: 'demonCastle', special: true, entryLabel: '용암 평원으로', exits: [], monsterPool: ['mon-azka-herald'], recommendedLevel: 63, seed: 16006 },
+      { id: 'demon-castle', name: '버려진 성곽', bg: 'demon', theme: 'demonCastle', special: true, entryLabel: '용암 평원으로', exits: [], monsterPool: ['mon-azka-herald'], recommendedLevel: 63, seed: 16006 },
     ],
   },
 ]

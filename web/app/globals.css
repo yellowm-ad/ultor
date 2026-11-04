@@ -2244,3 +2244,149 @@ html.touch-ui .world-location-label {
 /* 관리자(/admin) 패널이 열려 있으면 HUD 오른쪽 아이콘 열·미니맵을 패널(폭 min(94vw,340px)) 왼쪽으로 비킨다 */
 [data-admin-panel='open'] .hud-safe { right: min(94vw, 340px); }
 [data-admin-panel='open'] .minimap-safe { right: calc(min(94vw, 340px) + 0.75rem); }
+
+/* ── 흑룡 강림(components/game/colossus-field · battle colossus) ── */
+.colossus-frames { animation-name: colossus-frames; animation-iteration-count: infinite; }
+@keyframes colossus-frames { from { transform: translateX(0); } to { transform: translateX(var(--colossus-end)); } }
+.colossus-eyes { mix-blend-mode: screen; filter: blur(6px); animation: colossus-eyes 2.6s ease-in-out infinite; }
+@keyframes colossus-eyes { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.6; } }
+.colossus-wind { fill: none; stroke: #cfefff; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 60 900; opacity: 0; animation: colossus-wind 2.8s linear infinite; }
+@keyframes colossus-wind { 0% { stroke-dashoffset: 960; opacity: 0; } 15% { opacity: 0.55; } 70% { opacity: 0.35; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.dragon-dread { position: absolute; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at 50% 30%, rgba(10, 14, 24, 0) 30%, rgba(6, 8, 14, 0.55) 100%); animation: dragon-dread 5s ease-in-out infinite; }
+@keyframes dragon-dread { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } }
+
+/* 거대 보스 전투 구도(battle-screen ColossusBattle) — 보스가 무대를 덮고 일행은 작게 */
+.battle-stage.is-colossus { --battle-sprite-k: 0.7; background-image: radial-gradient(ellipse at 78% 40%, rgba(120, 170, 210, 0.14), transparent 60%), linear-gradient(180deg, rgba(4, 6, 12, 0.55), rgba(4, 6, 12, 0.1) 55%, rgba(0, 0, 0, 0.35)); }
+.colossus-battle { position: absolute; right: 1%; bottom: -16%; height: 126%; aspect-ratio: 375 / 398; z-index: 4; padding: 0; border: 0; background: none; transform-origin: 60% 100%; transition: transform 0.45s cubic-bezier(.2,.8,.2,1), filter 0.15s; }
+.colossus-battle.is-targetable { cursor: crosshair; }
+.colossus-battle.is-targetable:hover { filter: drop-shadow(0 0 10px rgba(255, 90, 90, 0.55)); }
+.colossus-battle.is-active { transform: translate(-7%, 5%) scale(1.07); }
+.colossus-battle.is-hit .colossus-battle-body img { animation: colossus-hit 0.32s steps(2) 2; }
+@keyframes colossus-hit { 0% { filter: brightness(2.2) saturate(0.4); } 100% { filter: none; } }
+.colossus-battle-body { position: absolute; inset: 0; transform-origin: 50% 100%; animation: colossus-breathe 3.4s ease-in-out infinite; }
+.colossus-battle-body img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 0 24px rgba(0, 0, 0, 0.75)); pointer-events: none; }
+@keyframes colossus-breathe { 0%, 100% { transform: scale(1, 1) translateY(0); } 45% { transform: scale(1.012, 1.03) translateY(-0.6%); } }
+.colossus-battle-eyes { position: absolute; left: 30%; top: 52%; width: 26%; height: 7%; border-radius: 50%; background: radial-gradient(ellipse, rgba(170, 245, 255, 0.85), rgba(170, 245, 255, 0) 70%); mix-blend-mode: screen; animation: colossus-eyes 2.4s ease-in-out infinite; }
+.colossus-battle-wind { position: absolute; inset: 0 -10% 0 -30%; pointer-events: none; overflow: visible; }
+.colossus-battle-wind i { position: absolute; left: 0; width: 70%; height: 3px; border-radius: 3px; background: linear-gradient(90deg, transparent, rgba(215, 240, 255, 0.55), transparent); opacity: 0; animation: colossus-gust 2.75s linear infinite; }
+@keyframes colossus-gust { 0% { transform: translateX(60%) scaleX(0.4); opacity: 0; } 20% { opacity: 0.7; } 100% { transform: translateX(-40%) scaleX(1.2); opacity: 0; } }
+.colossus-bossbar { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); width: min(560px, 62%); z-index: 30; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.colossus-bossbar-name { font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.2em; color: #e6f4ff; text-shadow: 0 0 8px rgba(140, 210, 255, 0.7), 0 2px 0 #000; white-space: nowrap; }
+.colossus-bossbar-track { flex: 1; height: 12px; border: 1.5px solid #9fb8c8; border-radius: 3px; background: rgba(0, 0, 0, 0.7); box-shadow: 0 0 0 1px #000, 0 0 14px rgba(120, 200, 255, 0.25); overflow: hidden; }
+.colossus-bossbar-fill { height: 100%; background: linear-gradient(180deg, #d9e8f3, #6f8ea6 55%, #3c5568); transition: width 0.4s; }
+
+/* ── 미르엘 vs 흑룡 — 최상급 마법 충돌(components/game/dragon-clash) ── */
+.dragon-clash { position: fixed; inset: 0; z-index: 40; overflow: hidden; pointer-events: none; background: #05070c; animation: clash-in 0.6s ease-out; }
+@keyframes clash-in { from { opacity: 0; } to { opacity: 1; } }
+.clash-sky { position: absolute; inset: 0; background: radial-gradient(ellipse at 72% 30%, rgba(120, 160, 200, 0.22), transparent 55%), radial-gradient(ellipse at 20% 80%, rgba(255, 120, 40, 0.10), transparent 50%), linear-gradient(180deg, #0b1220 0%, #121a26 55%, #1b1712 100%); }
+.clash-sky::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 26%; background: linear-gradient(180deg, transparent, rgba(22, 30, 20, 0.95)); }
+.clash-rain { position: absolute; inset: -20% 0 0; background-image: repeating-linear-gradient(105deg, rgba(200, 225, 255, 0.07) 0 1px, transparent 1px 22px); animation: clash-rain 0.5s linear infinite; }
+@keyframes clash-rain { from { transform: translate(0, 0); } to { transform: translate(-22px, 60px); } }
+.clash-strip { position: absolute; display: block; background-repeat: no-repeat; image-rendering: pixelated; animation-name: clash-strip; }
+@keyframes clash-strip { from { background-position-x: 0; } to { background-position-x: var(--strip-end); } }
+.clash-dragon { position: absolute; right: -4vw; bottom: 14vh; height: 96vh; aspect-ratio: 375 / 398; transform-origin: 60% 100%; animation: colossus-breathe 3.2s ease-in-out infinite; transition: transform 1.6s cubic-bezier(.5,0,.3,1), opacity 1.6s; }
+.clash-dragon img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 0 40px rgba(0, 0, 0, 0.9)); }
+.dragon-clash.is-charge .clash-dragon, .dragon-clash.is-collide .clash-dragon { transform: translate(-3vw, 2vh) scale(1.04); }
+.dragon-clash.is-retreat .clash-dragon { animation: clash-retreat 2.6s cubic-bezier(.55,0,.35,1) forwards; }
+@keyframes clash-retreat { 0% { transform: none; opacity: 1; } 25% { transform: translate(1vw, 3vh) scale(1.03); opacity: 1; } 100% { transform: translate(10vw, -75vh) scale(0.55); opacity: 0; } }
+.clash-dragon-maw { left: 18%; top: 52%; transform: translate(-50%, -50%); mix-blend-mode: screen; filter: brightness(1.4) saturate(0.4); }
+.clash-dragon-gale { left: 50%; top: 55%; transform: translate(-50%, -50%); mix-blend-mode: screen; filter: saturate(0.3); }
+.clash-mirel { position: absolute; left: 13vw; bottom: 36vh; width: 250px; height: 250px; animation: clash-mirel-in 0.7s cubic-bezier(.2,.8,.2,1); }
+@keyframes clash-mirel-in { from { transform: translateY(-60vh); opacity: 0; } to { transform: none; opacity: 1; } }
+.clash-mirel > .clash-strip:first-child { left: 0; top: 0; filter: drop-shadow(0 0 14px rgba(255, 170, 90, 0.55)); }
+.clash-mirel-charge { left: 120px; top: 30px; mix-blend-mode: screen; }
+.clash-mirel-land { left: -35px; top: 0; mix-blend-mode: screen; }
+.clash-beam { position: absolute; top: 30vh; height: 200px; overflow: hidden; }
+.clash-beam.is-fire { left: 22vw; width: 27vw; }
+.clash-beam.is-fire .clash-strip { top: 0; mix-blend-mode: screen; }
+.clash-beam.is-wind { left: 49vw; width: 24vw; }
+.clash-beam.is-wind .clash-strip { top: 0; transform: scaleX(-1); mix-blend-mode: screen; filter: saturate(0.2) brightness(1.5); }
+.clash-core { left: 49vw; top: 40vh; transform: translate(-50%, -50%); mix-blend-mode: screen; z-index: 3; }
+.clash-core.is-back { z-index: 2; filter: hue-rotate(160deg) saturate(0.5) brightness(1.3); }
+.dragon-clash.is-collide { animation: clash-shake 0.12s steps(2) infinite; }
+@keyframes clash-shake { 0% { transform: translate(-6px, 3px); } 50% { transform: translate(5px, -4px); } 100% { transform: translate(-3px, -2px); } }
+.clash-flash { position: absolute; inset: 0; background: #fff; mix-blend-mode: screen; animation: clash-flash 1.4s ease-out infinite; }
+@keyframes clash-flash { 0% { opacity: 0.55; } 18% { opacity: 0; } 100% { opacity: 0; } }
+html.no-flash .clash-flash { display: none; }
+html.no-flash .dragon-clash.is-collide { animation: none; }
+.clash-vignette { position: absolute; inset: 0; box-shadow: inset 0 0 22vh rgba(0, 0, 0, 0.85); }
+.clash-title { position: absolute; left: 50%; top: 12vh; transform: translateX(-50%); font-family: var(--font-display); font-size: clamp(16px, 2.4vw, 30px); letter-spacing: 0.18em; white-space: nowrap; color: #fff6e0; text-shadow: 0 0 18px rgba(255, 170, 80, 0.9), 0 0 36px rgba(150, 210, 255, 0.6), 0 3px 0 #000; animation: clash-title 1.2s cubic-bezier(.2,.8,.2,1); }
+@keyframes clash-title { from { opacity: 0; letter-spacing: 0.6em; } to { opacity: 1; letter-spacing: 0.18em; } }
+
+/* ── 등급 배지 · 리본 · 아이템 액자(components/game/grade-badge, lib/grades) ── */
+.grade-badge { --g1: #efe7d6; --g2: #d9cbb0; --gb: #b7a27c; --gt: #5f4e33; display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; font-size: 11px; line-height: 1.5; border-radius: 999px; border: 1px solid var(--gb); color: var(--gt); background: linear-gradient(180deg, var(--g1), var(--g2)); white-space: nowrap; position: relative; overflow: hidden; }
+.grade-badge b { font-weight: 800; letter-spacing: 0.04em; }
+.grade-badge i { font-style: normal; font-size: 9px; opacity: 0.85; }
+.tone-2 { --g1: #f4f8fa; --g2: #c3d0d8; --gb: #8fa2ae; --gt: #33434f; }
+.tone-3 { --g1: #e2f1ff; --g2: #7fb2e6; --gb: #3f74ad; --gt: #0f2f52; }
+.tone-4 { --g1: #f4e8ff; --g2: #a77ad9; --gb: #6a3fa3; --gt: #2e0f55; }
+.tone-5 { --g1: #fff7d2; --g2: #e7b24a; --gb: #a8701c; --gt: #4a2800; }
+.grade-badge.tone-4 { box-shadow: 0 0 6px rgba(150, 90, 220, 0.45); }
+.grade-badge.tone-5 { box-shadow: 0 0 8px rgba(240, 180, 60, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
+.grade-badge.tone-4::after, .grade-badge.tone-5::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%); background-size: 250% 100%; animation: grade-shimmer 2.6s linear infinite; mix-blend-mode: soft-light; pointer-events: none; }
+@keyframes grade-shimmer { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.grade-badge.tone-5 i { color: #c0730a; animation: grade-twinkle 1.6s ease-in-out infinite; }
+@keyframes grade-twinkle { 0%, 100% { opacity: 0.5; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+
+.grade-ribbon { flex-shrink: 0; --g1: #efe7d6; --g2: #d9cbb0; --gb: #b7a27c; --gt: #5f4e33; position: relative; margin-top: 8px; padding: 5px 22px 6px; text-align: center; color: var(--gt); background: linear-gradient(180deg, var(--g1), var(--g2)); clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%); overflow: hidden; }
+.grade-ribbon::before { content: ''; position: absolute; inset: 2px 14px; border-top: 1px solid rgba(255, 255, 255, 0.6); border-bottom: 1px solid rgba(0, 0, 0, 0.15); pointer-events: none; }
+.grade-ribbon-name { display: block; font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.22em; }
+.grade-ribbon-name i { font-style: normal; margin: 0 6px; font-size: 11px; }
+.grade-ribbon-epithet { display: block; font-size: 11px; letter-spacing: 0.08em; opacity: 0.85; }
+.grade-ribbon.tone-3 .grade-ribbon-name, .grade-ribbon.tone-4 .grade-ribbon-name { text-shadow: 0 0 8px rgba(255, 255, 255, 0.7); }
+.grade-ribbon.tone-5 { color: #4a2400; background: linear-gradient(180deg, #fff6cf, #f0c45a 45%, #c9861f); }
+.grade-ribbon.tone-5 .grade-ribbon-name { background: linear-gradient(90deg, #3d1d00, #6e3600 42%, #fff1b8 50%, #6e3600 58%, #3d1d00); background-size: 320% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: grade-shimmer 3s linear infinite; filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.6)); }
+.grade-ribbon.tone-4::after, .grade-ribbon.tone-5::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.6) 50%, transparent 65%); background-size: 250% 100%; animation: grade-shimmer 3.2s linear infinite; pointer-events: none; }
+
+.grade-frame { --g1: #f1e9d8; --g2: #ddd0b3; --gb: #c4a46a; position: relative; flex: none; display: grid; place-items: center; border-radius: 12px; border: 2px solid var(--gb); background: radial-gradient(circle at 50% 42%, var(--g1), var(--g2) 78%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55), 0 3px 8px rgba(80, 60, 30, 0.22); overflow: hidden; }
+.grade-frame-inner { position: relative; z-index: 2; display: grid; place-items: center; width: 100%; height: 100%; }
+.grade-frame-inner img { width: 64%; height: 64%; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 3px 3px rgba(40, 25, 10, 0.35)); }
+.grade-frame.tone-2 { --g1: #ffffff; --g2: #c7d3da; --gb: #8fa2ae; }
+.grade-frame.tone-3 { --g1: #eef7ff; --g2: #6e9fd3; --gb: #2f5f96; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.45), 0 0 12px rgba(80, 150, 230, 0.45); }
+.grade-frame.tone-4 { --g1: #fbf2ff; --g2: #8a59c4; --gb: #55288c; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.4), 0 0 16px rgba(150, 90, 220, 0.6); }
+.grade-frame.tone-5 { --g1: #fffbe6; --g2: #e7a93a; --gb: #9a5c0c; box-shadow: inset 0 0 0 3px rgba(255, 245, 210, 0.7), 0 0 20px rgba(245, 180, 50, 0.75); }
+.grade-frame-rays { position: absolute; inset: -40%; z-index: 1; background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.28) 0 8deg, transparent 8deg 24deg); animation: grade-rays 9s linear infinite; mix-blend-mode: soft-light; }
+@keyframes grade-rays { to { transform: rotate(360deg); } }
+.grade-frame-corner { position: absolute; z-index: 3; width: 26px; height: 26px; background: url(/images/ui/px/corner.png) no-repeat center / contain; image-rendering: pixelated; }
+.grade-frame-corner.is-tl { left: -1px; top: -1px; }
+.grade-frame-corner.is-tr { right: -1px; top: -1px; transform: scaleX(-1); }
+.grade-frame-corner.is-bl { left: -1px; bottom: -1px; transform: scaleY(-1); }
+.grade-frame-corner.is-br { right: -1px; bottom: -1px; transform: scale(-1, -1); }
+.grade-frame-shine { position: absolute; inset: 0; z-index: 4; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%); background-size: 260% 100%; animation: grade-shimmer 2.4s linear infinite; pointer-events: none; }
+/* 슬롯 격자 — 등급 색 밑줄 */
+.inv-slot[data-tone]::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--slot-tone, transparent); }
+.inv-slot[data-tone='2'] { --slot-tone: #9fb0bb; }
+.inv-slot[data-tone='3'] { --slot-tone: #4f8ad0; }
+.inv-slot[data-tone='4'] { --slot-tone: #9a62d8; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.55), 0 0 8px rgba(150, 90, 220, 0.35); }
+.inv-slot[data-tone='5'] { --slot-tone: linear-gradient(90deg, #c9861f, #fff1b8, #c9861f); box-shadow: inset 0 0 0 3px rgba(255, 245, 210, 0.7), 0 0 10px rgba(240, 180, 60, 0.5); }
+.magic-row.is-hidden-skill .magic-row-title { letter-spacing: 0.3em; color: #8a7c62; }
+.magic-hidden-card { margin-top: 18px; padding: 18px 14px; text-align: center; border-radius: 12px; background: radial-gradient(circle at 50% 30%, #2b2236, #120d18 75%); border: 1px solid #a8701c; box-shadow: inset 0 0 24px rgba(240, 180, 60, 0.18); }
+.magic-hidden-card p { color: #e9dcc2 !important; }
+.magic-hidden-card b { color: #f4c86a; }
+.magic-hidden-q { display: block; font-family: var(--font-display); font-size: 54px; line-height: 1; color: #f4c86a; text-shadow: 0 0 18px rgba(245, 180, 60, 0.8); animation: grade-twinkle 2.4s ease-in-out infinite; }
+
+/* ── 전투 데미지 숫자(components/game/damage-pops) ── */
+.dmg-layer { position: absolute; inset: 0; z-index: 60; pointer-events: none; }
+.dmg-pop { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1; color: #fff; letter-spacing: 0.02em; white-space: nowrap; opacity: 0;
+  text-shadow: 2px 0 0 #6b0f0f, -2px 0 0 #6b0f0f, 0 2px 0 #6b0f0f, 0 -2px 0 #6b0f0f, 2px 2px 0 #3a0606, 0 4px 6px rgba(0, 0, 0, 0.6);
+  animation: dmg-pop 1.25s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes dmg-pop {
+  0% { opacity: 0; transform: translate(-50%, -20%) scale(0.4); }
+  12% { opacity: 1; transform: translate(-50%, -60%) scale(1.35); }
+  26% { transform: translate(-50%, -55%) scale(1); }
+  70% { opacity: 1; transform: translate(-50%, -110%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -150%) scale(0.92); }
+}
+.dmg-pop.is-crit { font-size: 38px; color: #ffe27a; text-shadow: 2px 0 0 #7a3a00, -2px 0 0 #7a3a00, 0 2px 0 #7a3a00, 0 -2px 0 #7a3a00, 0 0 14px rgba(255, 190, 60, 0.95), 0 5px 8px rgba(0, 0, 0, 0.6); animation: dmg-crit 1.45s cubic-bezier(.2,.9,.3,1) forwards; }
+.dmg-pop.is-crit small { font-size: 11px; letter-spacing: 0.3em; color: #fff4c9; margin-bottom: 2px; text-shadow: 0 0 6px rgba(255, 150, 40, 1), 0 1px 0 #000; }
+@keyframes dmg-crit {
+  0% { opacity: 0; transform: translate(-50%, -20%) scale(0.3) rotate(-8deg); }
+  10% { opacity: 1; transform: translate(-50%, -60%) scale(1.7) rotate(4deg); }
+  16% { transform: translate(-48%, -58%) scale(1.15) rotate(-3deg); }
+  22% { transform: translate(-52%, -58%) scale(1.2) rotate(2deg); }
+  30% { transform: translate(-50%, -60%) scale(1.1) rotate(0); }
+  72% { opacity: 1; transform: translate(-50%, -115%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -155%) scale(1); }
+}
+.dmg-pop.is-heal { color: #b9ffcf; text-shadow: 2px 0 0 #0d4a24, -2px 0 0 #0d4a24, 0 2px 0 #0d4a24, 0 -2px 0 #0d4a24, 0 0 10px rgba(80, 255, 150, 0.7); }
+.dmg-pop.is-miss { font-size: 20px; font-style: italic; color: #d6dbe2; text-shadow: 2px 0 0 #333a44, -2px 0 0 #333a44, 0 2px 0 #333a44, 0 -2px 0 #333a44; }

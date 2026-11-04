@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
+import { DamagePopLayer } from '@/components/game/damage-pops'
 import { Button } from '@/components/ui/button'
 import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
@@ -306,6 +307,15 @@ export function BattleScreen() {
   // 천공 콜로세움 — 상대 팀은 아군 진형을 거울처럼(전위·보조·후위 줄, 펫은 주인공 앞)
   if (battle.pvp) Object.assign(posMap, rivalFormation(enemies))
   Object.assign(posMap, playerFormation(players))
+  // 거대 보스(흑룡) — 세븐나이츠식 구도: 보스가 오른쪽에서 무대를 덮고, 일행은 왼쪽 아래에 작게 모인다
+  const colossus = enemies.find((c) => monsterById(c.refId)?.colossal)
+  if (colossus) {
+    posMap[colossus.uid] = { left: 70, top: 70 }
+    for (const c of players) {
+      const p = posMap[c.uid]
+      if (p) posMap[c.uid] = { left: 8 + p.left * 0.72, top: 66 + (p.top - 50) * 0.55 }
+    }
+  }
   const fxPosOf = (uid: string) => {
     const p = posMap[uid]
     return p && { left: p.left, top: p.top - FX_BODY_LIFT }
@@ -485,7 +495,17 @@ export function BattleScreen() {
       </div>
 
       {/* ── 전장 ── */}
-      <div className={`battle-stage relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : rageBoss ? 'battle-rumble' : ''}`}>
+      <div className={`battle-stage relative z-10 flex-1 overflow-hidden ${isForestBattle ? 'battle-field-forest-bg' : ''} ${shake ? 'battle-shake' : rageBoss ? 'battle-rumble' : ''} ${colossus ? 'is-colossus' : ''}`}>
+        {/* 거대 보스 — 무대를 덮는 흑룡(일반 CombatantSprite 대신) */}
+        {colossus && (
+          <ColossusBattle
+            c={colossus}
+            active={actor?.uid === colossus.uid || fxRoleOf(colossus.uid) === 'cast'}
+            hit={fxRoleOf(colossus.uid) === 'hit'}
+            targetable={targetableSide === 'enemy' && colossus.alive}
+            onClick={() => handleTargetClick(colossus)}
+          />
+        )}
         {/* 폭주 보스 — 보랏빛 그늘 + 떠오르는 불티(전장 전체) */}
         {rageBoss && (
           <div className="rage-stage" aria-hidden>
@@ -528,7 +548,7 @@ export function BattleScreen() {
           </div>
         )}
         {/* 적: 뒤(우상) */}
-        {enemies.map((c) => (
+        {enemies.filter((c) => c !== colossus).map((c) => (
           <CombatantSprite
             key={c.uid}
             c={c}
@@ -556,6 +576,14 @@ export function BattleScreen() {
           />
         ))}
         <SkillFxLayer fx={testFx ?? battle.lastFx} posOf={fxPosOf} groundOf={fxGroundOf} speed={speed} />
+        {/* 데미지 숫자 — 보이는 HP 변화(타격 시점)에 맞춰 머리 위로 */}
+        <DamagePopLayer
+          combatants={view.combatants}
+          log={view.log}
+          posOf={(uid) => posMap[uid]}
+          missTargets={battle.lastFx?.targetUids ?? []}
+          liftOf={(uid) => (uid === colossus?.uid ? 34 : players.some((c) => c.uid === uid) ? (colossus ? 17 : 24) : 26)}
+        />
       </div>
 
       {/* ── 로그 스트립 — 상단 가운데(하늘 쪽). 바닥에 두면 앞줄 전투원 발밑을 가려서 위로 올림 ── */}
@@ -718,6 +746,41 @@ function enemyMonsterPx(side: 'player' | 'enemy', refId: string): number {
   if (rank === 'fieldBoss' || rank === 'storyBoss') return 182 // 260 × 0.7
   if (rank === 'miniBoss') return 133 // 190 × 0.7
   return 116
+}
+
+/** 거대 보스(MonsterDef.colossal) — 전투용 그림을 무대 높이보다 크게, 오른쪽에서 일행 쪽으로 몸을 들이민 구도.
+ *  코드 연출: 숨쉬기(아래 기준 들썩임) · 행동할 때 앞으로 덮쳐 오기 · 맞을 때 번쩍 · 눈빛 · 바람 기류 */
+function ColossusBattle({ c, active, hit, targetable, onClick }: { c: Combatant; active: boolean; hit: boolean; targetable: boolean; onClick: () => void }) {
+  const col = monsterById(c.refId)?.colossal
+  if (!col) return null
+  const hpPct = (c.hp / Math.max(1, c.stats.maxHp)) * 100
+  return (
+    <>
+      <div className="colossus-bossbar" aria-label={`${c.name} 체력`}>
+        <span className="colossus-bossbar-name">{c.name}</span>
+        <div className="colossus-bossbar-track">
+          <div className="colossus-bossbar-fill" style={{ width: `${hpPct}%` }} />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={targetable ? onClick : undefined}
+        className={`colossus-battle ${active ? 'is-active' : ''} ${hit ? 'is-hit' : ''} ${targetable ? 'is-targetable' : ''}`}
+        aria-label={c.name}
+      >
+        <span className="colossus-battle-body">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={col.battle} alt="" draggable={false} />
+          <span className="colossus-battle-eyes" />
+        </span>
+        <span className="colossus-battle-wind" aria-hidden>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <i key={i} style={{ top: `${18 + i * 14}%`, animationDelay: `${i * 0.55}s` }} />
+          ))}
+        </span>
+      </button>
+    </>
+  )
 }
 
 function CombatantSprite({
@@ -952,6 +1015,8 @@ function BattleResult() {
           ? (battle.rewardExpShare ?? 0) < (battle.rewardExp ?? 0)
             ? `승리! EXP +${battle.rewardExpShare}/인 (총 ${battle.rewardExp}) · Gold +${battle.rewardGold}`
             : `승리! EXP +${battle.rewardExp} (단독) · Gold +${battle.rewardGold}`
+          : battle.interrupted
+          ? '전투 중단 — 누군가 흑룡 앞을 막아섰다!'
           : '전투 패배...'}
       </span>
       {battle.victory && drops.length > 0 && (

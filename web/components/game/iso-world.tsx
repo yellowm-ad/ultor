@@ -7,7 +7,7 @@ import { Fragment, useMemo, useState, useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
-import { NPCS, MONSTERS } from '@/lib/mock-data'
+import { NPCS, MONSTERS, npcShown } from '@/lib/mock-data'
 import { npcWanderState } from '@/lib/field'
 import { monsterView } from '@/lib/monster-charge'
 import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation } from '@/lib/iso'
@@ -32,6 +32,8 @@ import { beginDrag, brushCells, clientToCell, getDrag, getMapEditor, placeCatalo
 import { AdminEditOverlay, HousingOverlay } from '@/components/game/editor-overlay'
 import { heroSheet, npcSheet } from '@/lib/costumes'
 import { RasterProp } from '@/components/game/raster-prop'
+import { ColossusField } from '@/components/game/colossus-field'
+import { DRAGON_ANCHOR, DRAGON_FIELD_SCALE, dragonOnMap } from '@/lib/black-dragon'
 
 const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
@@ -220,7 +222,7 @@ export function IsoWorld({
   // NPC — 홈 셀(npc.cell) 주변을 배회(npcWanderPosition, 몬스터와 동일한 시간기반 리사주 곡선).
   // wanderT 마다 위치 재계산되므로 static 메모 밖(몬스터와 동일 패턴)에 둔다.
   const mapNpcsForRoam = useMemo(
-    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag])),
+    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && npcShown(n, state.storyFlags)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [map, state.storyFlags],
   )
@@ -632,7 +634,9 @@ export function IsoWorld({
   // 수업 중엔 카메라를 플레이어와 교수 사이(조금 위)로 — 강의 말풍선·느낌표가 레터박스에 가리지 않게
   const inClass = !!state.classScene && state.classScene.room === map.id
   const profFocus = inClass ? isoToScreen(professorSpot(map).x, professorSpot(map).y) : null
-  const focus = profFocus ? { sx: (ps.sx + profFocus.sx) / 2, sy: (ps.sy + profFocus.sy) / 2 - 40 } : ps
+  // 흑룡 강림 — 카메라를 주인공과 흑룡 머리 사이로(거대한 상반신이 화면 위쪽을 덮게)
+  const dragonHead = dragonOnMap(state) ? (() => { const a = isoToScreen(DRAGON_ANCHOR.x, DRAGON_ANCHOR.y); return { sx: a.sx, sy: a.sy - 256 * DRAGON_FIELD_SCALE * 0.55 } })() : null
+  const focus = profFocus ? { sx: (ps.sx + profFocus.sx) / 2, sy: (ps.sy + profFocus.sy) / 2 - 40 } : dragonHead ? { sx: ps.sx * 0.65 + dragonHead.sx * 0.35, sy: (ps.sy + dragonHead.sy) / 2 } : ps
   const camX = clamp(viewportSize.w / 2 - (originX + focus.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
   const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
 
@@ -647,7 +651,9 @@ export function IsoWorld({
     [staticEntities, viewCx, viewCy, viewHw, viewHh],
   )
 
-  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities].sort((a, b) => a.sortY - b.sortY)
+  // 흑룡 강림(lib/black-dragon) — 앞발 자리 기준으로 깊이 정렬
+  const dragonEntities = dragonOnMap(state) ? [{ sortY: DRAGON_ANCHOR.x + DRAGON_ANCHOR.y, node: <ColossusField key="black-dragon" /> }] : []
+  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities, ...dragonEntities].sort((a, b) => a.sortY - b.sortY)
   // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
   const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
   // 플레이어 앞뒤를 한 목록으로 — 따로 두면 플레이어가 소품을 지나칠 때마다 그 소품이 통째로 새로 만들어진다

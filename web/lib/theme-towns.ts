@@ -127,7 +127,7 @@ const demon = createTown({
   blockOutside: true,
   temple: spr(D + 'demon_temple.png', 298, 301, 4.2),
   templeCy: 6.6,
-  templeLabel: '화산 성채',
+  templeLabel: '모르스의 성',
   hall: spr(D + 'demon_hall_new.png', 183, 196, 2.5),
   hallLabel: '마물 회의관',
   houses: [

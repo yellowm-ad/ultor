@@ -79,12 +79,12 @@ export const COURSES: CourseDef[] = [
   { id: 'ALCHEMY_302', name: '고급 연금술', department: 'life', year: 3, term: 'semester2', required: true, credit: C, description: '촉매와 재료 변환.' },
   { id: 'COSTUME_302', name: '마법 의복학', department: 'craft', year: 3, term: 'semester2', required: false, credit: C, description: '마법 의복과 학교 예복의 역사 — 직접 만들지는 않는다(코스튬은 옷장에서 갈아입는다).' },
   // ── 4학년 1학기 — 최상위 3원소 + 암광 심화 ───────────────────────────────
-  { id: 'ANCIENT_MAGIC_401', name: '고대 마법', department: 'magic', year: 4, term: 'semester1', required: true, credit: C, description: '잊힌 고대 마법 체계 — 3원소의 정점.', teachesSkills: ['fire-master-1', 'ice-master-1', 'earth-master-1'] },
+  { id: 'ANCIENT_MAGIC_401', name: '고대 마법', department: 'magic', year: 4, term: 'semester1', required: true, credit: C, description: '잊힌 고대 마법 체계 — 3원소의 정점. 학교는 이론까지만 가르친다: 최상급의 실제 전수는 각 마을 길드의 전수자에게서.' },
   { id: 'DUSKDAWN_401', name: '암광 심화', department: 'magic', year: 4, term: 'semester1', required: true, credit: C, description: '어둠과 빛의 고급 운용 — 광역 약화·광역 회복·축복.', teachesSkills: ['dark-seal', 'light-sanctuary', 'dark-miasma', 'light-wisdom', 'light-bulwark', 'dark-gaze', 'light-ward', 'light-haste'] },
   { id: 'SEAL_401', name: '봉인학', department: 'history', year: 4, term: 'semester1', required: true, credit: C, description: '인마대전의 봉인 방식.' },
   { id: 'WARHISTORY_401', name: '인마대전사', department: 'history', year: 4, term: 'semester1', required: false, credit: C, description: '인마대전의 전말.' },
   // ── 4학년 2학기 — 졸업 실습·최종전 대비 ──────────────────────────────────
-  { id: 'ARCHMAGE_402', name: '대마도사 실습', department: 'magic', year: 4, term: 'semester2', required: true, credit: C, description: '졸업 실습 — 각 속성의 마지막 장.', teachesSkills: ['fire-master-2', 'ice-master-2', 'earth-master-2', 'light-rebirth', 'dark-sentence'] },
+  { id: 'ARCHMAGE_402', name: '대마도사 실습', department: 'magic', year: 4, term: 'semester2', required: true, credit: C, description: '졸업 실습 — 각 속성의 마지막 장. 길드에서 전수받은 최상급 마법을 다듬는 실습.' },
   { id: 'TACTICS_402', name: '고급 전투학', department: 'magic', year: 4, term: 'semester2', required: true, credit: C, description: '대규모 방어전 전술.' },
   { id: 'LOSTWIND_402', name: '유실 속성 연구', department: 'history', year: 4, term: 'semester2', required: false, credit: C, description: '기록으로만 남은 "바람" 속성과 모르스. 바람 마법 자체는 가르치지 않는다.' },
   { id: 'THESIS_402', name: '졸업 논문', department: 'history', year: 4, term: 'semester2', required: false, credit: C, description: '4년간의 연구 정리.' },

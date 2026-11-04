@@ -155,7 +155,7 @@ export const LORE: LoreEntry[] = [
     summary: '인간 사회에서 밀려난 마물과 인외종이 모여 사는 땅.',
     body: ['용암과 재의 땅. 지도에는 "위험 지역"이라고만 적혀 있다.', '그러나 화산 기슭에는 마물들이 일군 마을이 있고, 그곳 사람들은 손님에게 먼저 차를 내온다.'],
     unlock: { visit: 'volcano' },
-    links: { regions: ['VOLCANO'], maps: ['volcano', 'demon-village', 'demon-temple', 'mine'] },
+    links: { regions: ['VOLCANO'], maps: ['volcano', 'demon-village', 'demon-temple', 'demon-castle', 'mine'] },
   }),
 
   // ── 나라 · 도시 ────────────────────────────────────────────────────────────

@@ -261,6 +261,8 @@ export interface PropDef {
   solid?: boolean
   /** 충돌 footprint(셀) 오버라이드. 없으면 size 사용 (그림보다 살짝 작게 주고 싶을 때) */
   collide?: { w: number; d: number }
+  /** 충돌 사각형 중심을 cell 에서 이만큼(셀) 옮긴다 — 반전 전 그림 기준. 위에서 내려다본 분수처럼 그림 밑단 ≠ 바닥 중심일 때(lib/fountain-feet) */
+  collideOffset?: { x: number; y: number }
   // ── 라스터(PNG) 에셋 모드 (GameMap.assets === 'raster') ──
   /** 투명배경 PNG 경로 (public/ 기준). 있으면 SVG 스프라이트 대신 사용 */
   sprite?: string
@@ -292,15 +294,19 @@ export function propAABB(
     w = fp.d
     d = fp.w
   }
+  // 반전하면 화면 좌우가 바뀜 = 셀 x·y 가 서로 바뀐다
+  const off = p.collideOffset ? (mirrored ? { x: p.collideOffset.y, y: p.collideOffset.x } : p.collideOffset) : { x: 0, y: 0 }
+  const cx = p.cell.x + off.x
+  const cy = p.cell.y + off.y
   if (p.radial) {
     return {
-      x0: p.cell.x - w / 2,
-      y0: p.cell.y - d / 2,
-      x1: p.cell.x + w / 2,
-      y1: p.cell.y + d / 2,
+      x0: cx - w / 2,
+      y0: cy - d / 2,
+      x1: cx + w / 2,
+      y1: cy + d / 2,
     }
   }
-  return { x0: p.cell.x, y0: p.cell.y, x1: p.cell.x + w, y1: p.cell.y + d }
+  return { x0: cx, y0: cy, x1: cx + w, y1: cy + d }
 }
 
 

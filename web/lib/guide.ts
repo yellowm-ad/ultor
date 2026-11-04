@@ -10,7 +10,7 @@
 import type { GameMap, GameState, MapId, NpcDef, Portal, QuestObjective } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { groundBlocked } from '@/lib/collision'
-import { NPCS, npcById } from '@/lib/mock-data'
+import { NPCS, npcById, npcShown } from '@/lib/mock-data'
 import { questTemplateById } from '@/lib/quests'
 import { classForWeek, classMetaFor } from '@/lib/curriculum'
 import { REGIONS, regionOfMap } from '@/lib/regions'
@@ -39,7 +39,7 @@ for (const m of Object.values(MAPS)) for (const z of m.zones) if (!ZONE_MAP.has(
 
 /** NPC 가 지금 서 있는 맵·칸(학교 동료는 이번 주 배치) */
 export function npcSpot(state: S, npcId: string): { mapId: MapId; cell: { x: number; y: number } } | null {
-  const fixed = NPCS.find((n) => n.id === npcId && ZONE_MAP.has(n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag]))
+  const fixed = NPCS.find((n) => n.id === npcId && ZONE_MAP.has(n.zoneId) && npcShown(n, state.storyFlags))
   if (fixed) return { mapId: ZONE_MAP.get(fixed.zoneId)!, cell: fixed.cell }
   const r = schoolRoster(state).find((s) => s.npcId === npcId)
   return r ? { mapId: r.mapId, cell: { x: r.x, y: r.y } } : null
@@ -48,7 +48,7 @@ export function npcSpot(state: S, npcId: string): { mapId: MapId; cell: { x: num
 /** 지금 맵에서 가장 가까운 사람(‘아무에게나 말 걸기’ 목표용) */
 function nearestNpc(state: S): NpcDef | undefined {
   const map = MAPS[state.currentMapId]
-  const here = NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag]))
+  const here = NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && npcShown(n, state.storyFlags))
   const d = (n: NpcDef) => Math.hypot(n.cell.x - state.position.x, n.cell.y - state.position.y)
   return here.sort((a, b) => d(a) - d(b))[0]
 }

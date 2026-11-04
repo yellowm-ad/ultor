@@ -28,7 +28,7 @@ import type {
   SkillElement,
   Stats,
 } from '@/lib/types'
-import { ATB, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
+import { ATB, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, WIND_USERS, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
 import { MONSTERS, itemById, skillById } from '@/lib/mock-data'
 import { rollHuntDrops } from '@/lib/life'
 import { testMonsterExpReward } from '@/lib/exp-table'
@@ -375,16 +375,16 @@ function damageTarget(
   }
 }
 
-/** 바람 속성 사용 가능 여부 — 모르스만(§8, §45) */
+/** 바람 속성 사용 가능 여부 — 모르스와 그 오른팔 흑룡만(§8, §45) */
 export function canUseSkill(actor: Combatant, skill: Skill): boolean {
-  if (skill.element === 'wind' || skill.owner === 'mors') return actor.kind === 'monster' && actor.refId === MORS_MONSTER_ID
+  if (skill.element === 'wind' || skill.owner === 'mors') return actor.kind === 'monster' && WIND_USERS.has(actor.refId)
   return true
 }
 
 /** 즉사 가능한 대상인가 — 일반 몬스터만(엘리트·보스류·모르스 면역) */
 export function isExecutable(target: Combatant): boolean {
   if (target.kind !== 'monster') return false
-  if (target.refId === MORS_MONSTER_ID) return false
+  if (WIND_USERS.has(target.refId)) return false
   return (target.rank ?? 'normal') === 'normal'
 }
 
@@ -809,6 +809,14 @@ export function checkBattleEnd(battle: BattleState): BattleState {
   const enemiesAlive = aliveEnemies(battle.combatants).length > 0
   // 펫·임시 NPC 만 남으면 패배 — 주인공 + 파티 동료 기준
   const playersAlive = alivePlayers(battle.combatants).some(isPlayerControlled)
+  // 연출 전투 — 버티면(적 행동 endAfter 번) 또는 아군이 다 쓰러지면 패배 없이 '중단'
+  if (battle.scripted) {
+    const s = battle.scripted
+    if (enemiesAlive && playersAlive && s.enemyTurns < s.endAfter) return battle
+    const entries = [...battle.log]
+    log(entries, s.endLine, 'system')
+    return { ...battle, isOver: true, victory: false, interrupted: true, log: entries }
+  }
   if (enemiesAlive && playersAlive) return battle
 
   const entries = [...battle.log]

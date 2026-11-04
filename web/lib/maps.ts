@@ -33,6 +33,7 @@ import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
 import { landmarkInterior, cryptRoom, CRYPT_W, CRYPT_H, CRYPT_SPAWN, CRYPT_EXIT, CRYPT_PAD_TOP, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
+import { FOUNTAIN_FEET, footOffset } from '@/lib/fountain-feet'
 import { GUILD_KEYS, GUILD_W, GUILD_H, GUILD_PAD_TOP, GUILD_SPAWN, GUILD_EXIT, guildSpace } from '@/lib/guild-halls'
 import type { GuildKey } from '@/lib/guild-halls'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
@@ -882,7 +883,11 @@ function testroomTileAt(x: number, y: number): TileKind {
 // 야생 전투맵(지역별 기본 3 + 특수 2) — 충돌은 여기서 소품 footprint 로 붙인다
 const FIELD = assembleFieldMaps()
 const FIELD_MAPS = Object.fromEntries(
-  Object.entries(FIELD.built).map(([id, b]) => [id, { ...b.map, blockers: buildBlockers(b.props, b.blockers) } as GameMap]),
+  Object.entries(FIELD.built).map(([id, b]) => [
+    id,
+    // 안개 늪지 — 흑룡 강림(lib/black-dragon) 때 거대한 상반신이 맵 위쪽 밖까지 그려지도록 위 여백을 넉넉히
+    { ...b.map, blockers: buildBlockers(b.props, b.blockers), ...(id === 'swamp' ? { padTop: Math.max(b.map.padTop ?? 0, 420) } : {}) } as GameMap,
+  ]),
 ) as Partial<Record<MapId, GameMap>>
 /** 안전 마을 출구 → 갈림길(3단계) 맵의 해당 포탈 앞 */
 const townReturn = (town: string) => FIELD.townReturns[town]
@@ -1147,7 +1152,7 @@ export const MAPS = {
     spawn: { x: DEMON_CX, y: DEMON_ENTRANCE_CY - 0.2 },
     portals: [
       { id: 'demon-village-exit', cell: { x: DEMON_CX, y: DEMON_ENTRANCE_CY + 0.5 }, to: townReturn('demon-village').to, toSpawn: townReturn('demon-village').spawn, label: '화산지대로', kind: 'exit' },
-      { id: 'demon-temple-enter', cell: { x: 32, y: 10 }, to: 'demon-temple', label: '화산 성채 내부', kind: 'portal' },
+      { id: 'demon-temple-enter', cell: { x: 32, y: 10 }, to: 'demon-temple', label: '모르스의 성', kind: 'portal' },
       guildEnter('demon', '마물 회의관'),
     ],
   },
@@ -1221,7 +1226,7 @@ export const MAPS = {
     const L = landmarkInterior('demon')
     return {
       id: 'demon-temple',
-      name: '화산 성채 내부',
+      name: '모르스의 성',
       kind: 'town',
       grid: { w: LM_W, h: LM_H },
       bg: 'demon',
@@ -1232,9 +1237,9 @@ export const MAPS = {
       structures: L.structures,
       padTop: LANDMARK_PAD_TOP,
       blockers: buildBlockers(L.props, L.blockers),
-      zones: NO_ZONES,
+      zones: [z('z-mors-castle', 'temple', '모르스의 성', 0, 0, LM_W, LM_H, '#8a3a2a', '마물 마을이 지키는 화산 성채. 비어 있는 옥좌 아래에 모르스가 머문다.')],
       spawn: { ...LM_SPAWN },
-      portals: [{ id: 'demon-temple-exit', cell: { ...LM_EXIT }, to: 'demon-village', toSpawn: { x: 32, y: 11.4 }, label: '화산 성채 밖으로', kind: 'exit' }],
+      portals: [{ id: 'demon-temple-exit', cell: { ...LM_EXIT }, to: 'demon-village', toSpawn: { x: 32, y: 11.4 }, label: '성 밖으로', kind: 'exit' }],
     } as GameMap
   })(),
   'sky-sanctum': (() => {
@@ -1469,6 +1474,28 @@ for (const [id, items] of Object.entries(TOWN_DECOR)) {
   const extra = decorProps(items)
   m.props = [...(m.props ?? []), ...extra]
   m.blockers = [...(m.blockers ?? []), ...extra.map(propBlocker).filter((b): b is Blocker => !!b)]
+}
+// 분수·연못 길막 보정(lib/fountain-feet, 2026-11-04) — 위에서 내려다본 분수 그림의 수반 바닥 중심에 길막을 다시 놓고,
+// 길막을 프롭 자신(collide + collideOffset)에 붙인다(관리자 편집기로 옮기면 길막도 같이 간다).
+const sameBox = (a: Blocker, b: Blocker) => Math.abs(a.x0 - b.x0) < 1e-6 && Math.abs(a.y0 - b.y0) < 1e-6 && Math.abs(a.x1 - b.x1) < 1e-6 && Math.abs(a.y1 - b.y1) < 1e-6
+for (const m of Object.values(MAPS)) {
+  for (const p of m.props ?? []) {
+    const f = p.sprite ? FOUNTAIN_FEET[p.sprite.split('/').pop() ?? ''] : undefined
+    if (!f || !p.px || p.solid === false || Math.abs(p.px.w - f.pw) > 1 || Math.abs(p.px.h - f.ph) > 1) continue
+    const old = propBlocker(p)
+    m.blockers = (m.blockers ?? []).filter((b) => {
+      if (old && sameBox(b, old)) return false
+      // 마을 빌더 put() 이 따로 넣은 바닥 상자 — 앞꼭짓점(x1,y1)이 프롭 cell 에 붙어 있다
+      const bw = b.x1 - b.x0
+      const bd = b.y1 - b.y0
+      return !(Math.abs(b.x1 - p.cell.x) < 0.35 && Math.abs(b.y1 - p.cell.y) < 0.35 && bw > 0.5 && bw < 4 && bd > 0.5 && bd < 4)
+    })
+    p.collide = { w: f.w, d: f.d }
+    p.collideOffset = footOffset(f, p.anchor ?? { x: p.px.w / 2, y: p.px.h })
+    p.solid = true
+    const nb = propBlocker(p)
+    if (nb) m.blockers.push(nb)
+  }
 }
 // 학교 북관 테라스 위의 프롭(건물·동상·나무·꾸미기 소품)은 단 높이만큼 올려 그린다
 MAPS.village.props = (MAPS.village.props ?? []).map((p) => (onNorthTerrace(p.cell.x, p.cell.y) ? { ...p, elev: (p.elev ?? 0) + NORTH_TERRACE.z } : p))

@@ -4,6 +4,8 @@
 // 검은 머리띠·사이드바(공용 GameWindow) + 아이보리 슬롯 격자 + 오른쪽 상세 패널. 카테고리는 아이콘 + 이름 3열 격자로 세로 길이를 줄였다.
 // 문장·카테고리 아이콘은 PixelLab 로 HUD 아이콘과 같은 화풍으로 생성(scripts/_pixellab/gen-ui-icons.mjs).
 
+import { GradeBadge, GradeFrame, GradeRibbon } from '@/components/game/grade-badge'
+import { ITEM_GRADE_INFO, itemRarity } from '@/lib/grades'
 import Image from 'next/image'
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
@@ -48,7 +50,7 @@ const TYPE_LABEL: Record<ItemType, string> = {
   costume: '의상',
 }
 
-const RARITY_LABEL: Record<ItemRarity, string> = { common: '일반', uncommon: '고급', rare: '희귀', mythic: '신화', unique: '고유' }
+// 아이템 등급 표기 — lib/grades(rarity 없으면 tier·가격으로 가늠)
 
 const STAT_LABEL: Record<StatKey, string> = {
   maxHp: '최대 HP',
@@ -186,7 +188,8 @@ export function InventoryScreen() {
                     type="button"
                     onClick={() => setSelected(cell.item.id)}
                     className={`inv-slot ${selected === cell.item.id ? 'is-selected' : ''}`}
-                    title={cell.item.name}
+                    data-tone={ITEM_GRADE_INFO[itemRarity(cell.item)].tone}
+                    title={`${cell.item.name} · ${ITEM_GRADE_INFO[itemRarity(cell.item)].label}`}
                   >
                     <Image src={cell.item.icon} alt={cell.item.name} width={44} height={44} className="inv-slot-icon" />
                     {cell.slot.qty > 1 && <span className="inv-qty">{cell.slot.qty}</span>}
@@ -210,20 +213,23 @@ export function InventoryScreen() {
             {selectedItem ? (
               <>
                 <div className="inv-detail-top">
-                  <div className="inv-detail-frame">
+                  <GradeFrame tone={ITEM_GRADE_INFO[itemRarity(selectedItem)].tone}>
                     <Image src={selectedItem.icon} alt={selectedItem.name} width={64} height={64} />
-                  </div>
+                  </GradeFrame>
                   <div className="min-w-0">
                     <h3 className="inv-detail-name">
                       {selectedItem.name}
                       {gearOf(state.player.gear, selectedItem.id).enh > 0 && <span className="gear-enh-tag">+{gearOf(state.player.gear, selectedItem.id).enh}</span>}
                     </h3>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span className="gw-pill">{selectedItem.rarity ? `${RARITY_LABEL[selectedItem.rarity]} ${TYPE_LABEL[selectedItem.type]}` : TYPE_LABEL[selectedItem.type]}</span>
+                      <GradeBadge info={ITEM_GRADE_INFO[itemRarity(selectedItem)]} />
+                      <span className="gw-pill">{TYPE_LABEL[selectedItem.type]}</span>
                       <span className="gw-pill is-soft">보유 {selectedSlot?.qty ?? 0}개</span>
                     </div>
                   </div>
                 </div>
+
+                <GradeRibbon info={ITEM_GRADE_INFO[itemRarity(selectedItem)]} />
 
                 {detailLines(selectedItem, gearOf(state.player.gear, selectedItem.id)).length > 0 && (
                   <dl className="inv-detail-lines">

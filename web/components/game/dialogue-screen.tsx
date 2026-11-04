@@ -12,6 +12,7 @@ import { canRecruit, favorState, schoolNpcById } from '@/lib/companions'
 import { banterAdvance, banterScene, duoOf } from '@/lib/npc-banter'
 import { rosterDuoTogether } from '@/lib/school-roster'
 import { newArenaIdentity } from '@/lib/arena'
+import { trialByNpc, trialHave, trialReady, trialState } from '@/lib/guild-trials'
 
 const ROLE_LABEL: Record<string, string> = {
   professor: '교수',
@@ -30,6 +31,7 @@ const ROLE_LABEL: Record<string, string> = {
   companion: '동료',
   royal: '국왕',
   royalGuard: '왕실 근위병',
+  guildMentor: '길드 전수자',
 }
 
 export function DialogueScreen() {
@@ -82,9 +84,23 @@ export function DialogueScreen() {
         return nx ? [`「${c.name}」 점수 ${nx.needScore} → ${skillById(nx.skillId)?.name ?? nx.skillId}`] : []
       })
     : []
+  // 길드 전수자 — 최상급 마법 전수 시험(lib/guild-trials)
+  const trial = npc.role === 'guildMentor' ? trialByNpc(npc.id) : undefined
+  const tst = trial ? trialState(state, trial) : null
+  const tHave = trial ? trialHave(state, trial) : []
+  const tReady = trial ? trialReady(state, trial) : false
+  const trialLine = !trial
+    ? null
+    : tst === 'early'
+      ? trial.early
+      : tst === 'offer'
+        ? trial.offer
+        : tst === 'asked'
+          ? `${tReady ? '……가져왔구나. 바쳐라.' : trial.remind} (${tHave.map((r) => `${itemById(r.itemId)?.name ?? r.itemId} ${Math.min(r.have, r.qty)}/${r.qty}`).join(' · ')})`
+          : '전수는 끝났다. 받은 것을 어떻게 쓰는지 — 그건 이제 네 몫이다.'
   // 이번 주 대사(주간 풀)를 첫 줄로, 이어서 기본 인사
   const weekly = npcWeeklyLine(npc.id, state)
-  const baseLines = banter ? banter.map((l) => l.text) : weekly ? [weekly, ...npc.greeting] : npc.greeting
+  const baseLines = banter ? banter.map((l) => l.text) : trialLine ? [...npc.greeting, trialLine] : weekly ? [weekly, ...npc.greeting] : npc.greeting
   // 친해지면 대화 끝에 부탁을 꺼낸다 / 부탁 중이면 떠올리게 한다
   const lines =
     favor?.st === 'ready' && !banter
@@ -99,7 +115,8 @@ export function DialogueScreen() {
   const lastLine = lineIdx >= lines.length - 1
 
   const favorAct = !!favor && !banter && (favor.st === 'ready' || (favor.st === 'asked' && favorHave >= favor.rule.qty))
-  const hasActions = isShopkeeper || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct
+  const trialAct = !!trial && (tst === 'offer' || (tst === 'asked' && tReady))
+  const hasActions = isShopkeeper || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct || trialAct
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -157,6 +174,16 @@ export function DialogueScreen() {
             {favorAct && favor?.st === 'asked' && (
               <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'FAVOR_COMPLETE', companionId: mate!.id })}>
                 부탁한 {favorItem} 건네기 ({favorHave}/{favor.rule.qty})
+              </button>
+            )}
+            {trialAct && tst === 'offer' && (
+              <button type="button" className="dlg-btn" onClick={() => { dispatch({ type: 'TRIAL_ACCEPT', el: trial!.el }); close() }}>
+                ✦ 「{trial!.title}」 받기
+              </button>
+            )}
+            {trialAct && tst === 'asked' && (
+              <button type="button" className="dlg-btn" onClick={() => { dispatch({ type: 'TRIAL_COMPLETE', el: trial!.el }); close() }}>
+                ✦ 재료를 바치고 전수받기
               </button>
             )}
             {canJoin && (

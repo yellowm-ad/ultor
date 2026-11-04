@@ -75,7 +75,7 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'VOLCANO',
     name: '화산지대',
-    maps: ['volcano', 'volcano-2', 'volcano-3', 'mine', 'lava-cave', 'demon-village', 'demon-temple', 'demon-guild'],
+    maps: ['volcano', 'volcano-2', 'volcano-3', 'mine', 'lava-cave', 'demon-village', 'demon-guild'],
     recommendedLevel: 20,
     contentProfile: { gather: 5, hunt: 5, fish: 1, craft: 5, alchemy: 5, explore: 3, story: 4 },
     description: "CH6 무대. 인간 사회에서 밀려난 마물들의 땅. 모르스가 '애(哀)'의 인격으로 살아가는 곳.",
@@ -83,10 +83,11 @@ export const REGIONS: RegionDef[] = [
   {
     id: 'MORS',
     name: '모르스의 성',
-    maps: ['demon-castle'],
+    // 화산 성채(모르스의 성) + 그 앞 버려진 성곽(B·C 루트 '성 앞의 최종전' 전장)
+    maps: ['demon-temple', 'demon-castle'],
     recommendedLevel: 32,
     contentProfile: { gather: 1, hunt: 2, fish: 1, craft: 1, alchemy: 1, explore: 2, story: 5 },
-    description: '최종장. 모르스는 필드에서 싸울 수 없다 — 4학년 2학기 엔딩 조건에 따른 최종전에서만 만난다.',
+    description: '최종장. 마물 마을의 화산 성채 — 모르스가 머무는 성. 모르스와 싸우는 일은 4학년 2학기 엔딩 조건(A루트)의 최종전뿐이다.',
   },
 ]
 

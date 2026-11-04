@@ -19,6 +19,10 @@ export const PLAYER_ELEMENTS: PlayerElement[] = ['fire', 'ice', 'earth', 'dark',
 export const TRIAD_ELEMENTS: PlayerElement[] = ['fire', 'ice', 'earth']
 /** 모르스 전용 속성 보유자(몬스터 id) */
 export const MORS_MONSTER_ID = 'mon-mors'
+/** 모르스의 오른팔 — 흑룡(바람 속성 사용자). 초반 EP07 에 미르엘과 맞붙는다 */
+export const BLACK_DRAGON_ID = 'mon-black-dragon'
+/** 바람(유실된 속성)을 쓸 수 있는 몬스터 — 모르스와 흑룡뿐 */
+export const WIND_USERS = new Set([MORS_MONSTER_ID, BLACK_DRAGON_ID])
 
 export interface ElementMeta {
   name: string

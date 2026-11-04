@@ -8,7 +8,7 @@ import { FIELD_SPELLS, HASTE_MULT, isHasted, isInvisible, isLit } from '@/lib/fi
 import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
 import { FieldSpellBar } from '@/components/game/field-spell-bar'
 import { MAPS, zoneAt } from '@/lib/maps'
-import { MONSTERS, NPCS, npcById } from '@/lib/mock-data'
+import { MONSTERS, NPCS, npcById, npcShown } from '@/lib/mock-data'
 import { rosterOnMap, rosterWanderNpc } from '@/lib/school-roster'
 import { FURNITURE_CATALOG } from '@/lib/housing'
 import { npcWanderPosition } from '@/lib/field'
@@ -21,6 +21,7 @@ import { useGuide } from '@/components/game/guide-trail'
 import { mapLockReason } from '@/lib/passages'
 import { nearestSpot } from '@/lib/activity-spots'
 import { WeatherLayer } from '@/components/game/weather-layer'
+import { dragonOnMap } from '@/lib/black-dragon'
 import { ARENA_MAP_ID, newArenaIdentity } from '@/lib/arena'
 import { rivalGhosts, setArenaFocus, useArenaLobby } from '@/lib/arena-client'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Hammer, MessageCircle, ShieldAlert, X } from 'lucide-react'
@@ -171,7 +172,7 @@ export function WorldScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.invisibleUntil, state.hasteUntil, state.lightUntil])
   const mapNpcs = useMemo(
-    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && (!n.visibleFlag || !!state.storyFlags[n.visibleFlag])),
+    () => NPCS.filter((n) => map.zones.some((z) => z.id === n.zoneId) && npcShown(n, state.storyFlags)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [map, state.storyFlags],
   )
@@ -371,6 +372,8 @@ export function WorldScreen() {
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}
     {/* 눈은 화면에 붙어서 걸을 때마다 따라오는 느낌이라 돌아다닐 때는 뺀다 — WeatherLayer 'snow' 는 컷신용으로 남겨 둔다 */}
     {map.terrain?.weather && map.terrain.weather !== 'snow' && <WeatherLayer kind={map.terrain.weather} />}
+    {/* 흑룡이 내려앉은 동안 — 화면 가장자리가 어둡게 숨 쉰다 */}
+    {dragonOnMap(state) && <div className="dragon-dread" aria-hidden />}
     {/* 골든아워 따뜻한 앰비언트 — 밝은 지역(map.terrain.tone > 1)은 햇살을 더 세게 */}
     <div
       className="pointer-events-none absolute inset-0 z-10"

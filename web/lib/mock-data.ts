@@ -2,6 +2,7 @@ import type { ItemDef, ItemRarity, MonsterDef, NpcDef, RecipeDef, Skill, Stats }
 import { computeStatsForLevel, toLevel100 } from '@/lib/constants'
 import { legacyMonsterBaseExp, monsterBaseExp } from '@/lib/exp-table'
 import { COURSES } from '@/lib/academics'
+import { TRIAL_MIN_LEVEL, TRIAL_OF_SKILL } from '@/lib/guild-trials'
 import { LIFE_ITEMS, LIFE_RECIPES } from '@/lib/life'
 import { SCHOOL_NPCS } from '@/lib/companions'
 import { VILLAGE_BASE_ZONE_IDS, villageShift } from '@/lib/village-layout'
@@ -92,6 +93,7 @@ const SKILL_DEFS: Skill[] = [
   // ── 바람 — 모르스 전용(유실된 속성) ───────────────────────────────────
   { id: 'wind-lost-gale', name: '잊힌 돌풍', element: 'wind', owner: 'mors', mpCost: 10, power: 1.6, kind: 'attack', targeting: 'allEnemies', icon: WIND, description: '인간이 잊은 바람이 전장을 휩쓴다.' },
   { id: 'wind-vacuum-blade', name: '진공의 칼날', element: 'wind', owner: 'mors', mpCost: 14, power: 2.4, kind: 'attack', targeting: 'singleEnemy', status: { id: 'bleed', chance: 0.45 }, icon: WIND, description: '공기를 찢어 만든 진공의 칼날이 적 하나를 베어낸다.' },
+  { id: 'wind-dragon-breath', name: '흑풍의 숨결', element: 'wind', owner: 'mors', mpCost: 18, power: 2.0, kind: 'attack', targeting: 'allEnemies', debuff: { id: 'defDown', magnitude: 0.25, turns: 2 }, icon: WIND, description: '흑룡이 폐 깊숙이 삼킨 폭풍을 한꺼번에 토해 낸다. 검은 바람이 전열을 통째로 쓸어 간다.' },
   { id: 'wind-tempest', name: '종언의 폭풍', element: 'wind', owner: 'mors', mpCost: 30, atbCost: 35, power: 2.8, kind: 'attack', targeting: 'allEnemies', debuff: { id: 'accDown', magnitude: 0.3, turns: 3 }, icon: WIND, description: '모든 것을 끝내는 폭풍. 적 전체를 강타하고 눈을 가린다.' },
 
   // ── 소환 마법(옛 펫, 2026-10-31) — 소환수가 2~3턴 함께 싸운다(lib/pets summonCombatant) ─────────
@@ -137,6 +139,9 @@ const COURSE_OF_SKILL = new Map<string, string>()
 for (const c of COURSES) for (const id of c.teachesSkills ?? []) COURSE_OF_SKILL.set(id, c.id)
 
 export const SKILLS: Skill[] = SKILL_DEFS.map((s) => {
+  // 최상급(히든) 마법 — 학교가 아니라 마을 길드 전수 시험(lib/guild-trials)을 통과해야 배운다
+  const trial = TRIAL_OF_SKILL.get(s.id)
+  if (trial) return { ...s, grade: 4 as const, learnRequirements: [{ type: 'storyFlag' as const, id: trial.flag }, { type: 'level' as const, level: s.levelRequired ?? TRIAL_MIN_LEVEL }] }
   const courseId = COURSE_OF_SKILL.get(s.id)
   return courseId ? { ...s, learnRequirements: [{ type: 'course' as const, id: courseId }, ...(s.learnRequirements ?? [])] } : s
 })
@@ -829,6 +834,29 @@ const MONSTERS_LEGACY: MonsterDef[] = [
     aiProfile: 'finisher',
     heroSheet: 'npc-mors',
   },
+  // 흑룡(2026-11-04) — 모르스의 오른팔이자 애완동물 같은 존재. 바람 속성 사용자.
+  //   EP07 고대목 골렘이 쓰러진 뒤 새어 나온 힘에 반응해 늪지로 날아온다 — 일행이 이길 수 없는 상대(3라운드 뒤 미르엘 난입으로 중단).
+  //   그림: PixelLab(필드 숨쉬기 9프레임 · 전투용 3/4) public/images/monsters/black-dragon/
+  {
+    id: 'mon-black-dragon',
+    name: '흑룡',
+    level: 14,
+    icon: '/images/monsters/black-dragon/icon.png',
+    element: 'wind',
+    family: 'dragon',
+    stats: mstat(14, { maxHp: 80, atk: 1.5, def: 6, matk: 1.3, mdef: 6, maxMp: 8, spd: 0.75, luck: 1 }),
+    traits: ['aggressive'],
+    skills: ['wind-dragon-breath', 'wind-vacuum-blade', 'wind-lost-gale'],
+    expReward: 0,
+    goldReward: 0,
+    zoneKinds: [],
+    rank: 'storyBoss',
+    aiProfile: 'finisher',
+    colossal: {
+      battle: '/images/monsters/black-dragon/battle.png', battlePx: { w: 375, h: 398 },
+      field: '/images/monsters/black-dragon/field-idle.png', fieldFrame: { w: 248, h: 256 }, fieldFrames: 9,
+    },
+  },
   // 테스트몹
   { id: 'mon-training-dummy', name: '훈련용 허수아비', level: 1, icon: '/images/monsters/dummy.svg', element: null, family: 'test', stats: { maxHp: 30, maxMp: 0, atk: 1, def: 1, matk: 0, mdef: 1, spd: 1, luck: 0 }, skills: [], expReward: 0, goldReward: 0, zoneKinds: ['forest', 'sea', 'ruins'], isTestMonster: true },
 ]
@@ -964,7 +992,27 @@ function testRoomNpcs(base: NpcDef[]): NpcDef[] {
 
 // 마을 NPC 자리는 위 목록에 옛 마을 좌표로 적혀 있다 → 북쪽 확장만큼 민다(lib/village-layout.ts)
 const NPCS_PLACED: NpcDef[] = NPCS_BASE.map((n) => (VILLAGE_BASE_ZONE_IDS.has(n.zoneId) ? { ...n, cell: villageShift(n.cell), ...(n.patrol ? { patrol: [villageShift(n.patrol[0]), villageShift(n.patrol[1])] as NpcDef['patrol'] } : {}) } : n))
-export const NPCS: NpcDef[] = [...NPCS_PLACED, ...TOWN_DUO_NPCS, ...testRoomNpcs(NPCS_BASE)]
+/**
+ * 모르스의 성(마물 마을 화산 성채 demon-temple) — 비어 있는 옥좌 아래의 모르스(2026-11-04).
+ * 고대어로만 말한다(자막 없음). A루트 최종전에서 쓰러지면(MORS_DEFEATED) 사라진다.
+ */
+const CASTLE_NPCS: NpcDef[] = [
+  { id: 'npc-mors', name: '모르스', role: 'flavor', icon: '/images/npc/npc-mors.png', portraitId: 'story-mors', zoneId: 'z-mors-castle', cell: { x: 14, y: 8.6 }, roam: 0, hideFlag: 'MORS_DEFEATED', greeting: ['「……………………」', '(알아들을 수 없는 말이다. 그래도 칼을 겨누는 목소리는 아니다.)', '「……」 (옥좌를 한 번 올려다보고, 다시 계단에 앉는다.)'] },
+]
+/**
+ * 마을 길드 전수자(2026-11-04, lib/guild-trials) — 길드관 동쪽 전수 제단 앞(lib/guild-halls GUILD_SPOTS.mentor).
+ * 레벨이 차면 최상급 마법 전수 시험을 꺼낸다. 전용 도트 전이라 다른 NPC 시트를 빌려 색만 돌린다.
+ */
+const GUILD_NPCS: NpcDef[] = [
+  { id: 'npc-guild-light', name: '성광의 수호자 아우렐', role: 'guildMentor', icon: '/images/npc/npc-sky-priest.png', spriteId: 'npc-sky-priest', hue: 30, zoneId: 'z-village-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['성역은 오래전부터 빛의 마지막 장을 지켜 왔다.'] },
+  { id: 'npc-guild-dark', name: '그림자 수도자 녹스', role: 'guildMentor', icon: '/images/npc/npc-priest.png', spriteId: 'npc-priest', hue: -70, zoneId: 'z-ruin-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['여기는 금지된 장을 지키는 자리다. 구경꾼이라면 돌아가라.'] },
+  { id: 'npc-guild-earth', name: '반석의 사제 그란', role: 'guildMentor', icon: '/images/npc/npc-sky-keeper.png', spriteId: 'npc-sky-keeper', hue: -40, zoneId: 'z-sky-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['바람의 교단이 바람만 다룬다고 생각했나? 바람에 날아가지 않게 붙드는 쪽이 진짜 일이다.'] },
+  { id: 'npc-guild-ice', name: '설원의 현자 이르마', role: 'guildMentor', icon: '/images/npc/npc-aurora-hunter.png', spriteId: 'npc-aurora-hunter', hue: 160, zoneId: 'z-aurora-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['어서 오렴. 손 시리지? 얼음 노래를 들으러 왔다면 잘 찾아왔단다.'] },
+  { id: 'npc-guild-fire', name: '용암 수호자 바르칸', role: 'guildMentor', icon: '/images/npc/npc-demon-smith.png', spriteId: 'npc-demon-smith', hue: 15, zoneId: 'z-demon-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['인간이 회의관까지 들어오다니. 그롯이 또 문을 열어 뒀군.'] },
+]
+export const NPCS: NpcDef[] = [...NPCS_PLACED, ...TOWN_DUO_NPCS, ...CASTLE_NPCS, ...GUILD_NPCS, ...testRoomNpcs(NPCS_BASE)]
+/** 지금 맵에 보이는 NPC 인가 — visibleFlag(나타남) · hideFlag(사라짐) */
+export const npcShown = (n: NpcDef, flags: Record<string, unknown>) => (!n.visibleFlag || !!flags[n.visibleFlag]) && (!n.hideFlag || !flags[n.hideFlag])
 /**
  * 학교 동료(lib/companions SCHOOL_NPCS)의 대화용 NPC 정의 — 맵 구역에 묶이지 않고(lib/school-roster 가 매주 배치)
  * npcById 로만 찾는다. 인사말 = 평소 대사 + 합류 권유 대사.

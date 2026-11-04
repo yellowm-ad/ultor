@@ -12,6 +12,8 @@ import { HeroPortrait, Portrait } from '@/components/game/portrait'
 import { DialogueBox } from '@/components/game/dialogue-box'
 import { HeroSprite } from '@/components/game/pixel-hero'
 import { cutsceneById, cutsceneSrc } from '@/lib/cutscenes'
+import type { StoryLine } from '@/lib/story'
+import { DragonClash, type ClashPhase } from '@/components/game/dragon-clash'
 import { STORY_ANIM_CELL, STORY_ANIM_FRAMES, storyAnimSrc } from '@/lib/story-anims'
 import { applyLineOverride, useDialogueOverridesVersion } from '@/lib/dialogue-overrides'
 import { cutsceneOverrideUrl, isAdminPage, onCutsceneStoreChange } from '@/lib/cutscene-store'
@@ -53,12 +55,16 @@ export function StoryOverlay() {
   // 컷신 — 이 줄까지 가장 마지막으로 지정된 컷(null 이면 내림)
   let cutId: string | null = null
   for (let i = 0; i <= line && i < lines.length; i++) if (lines[i].cut !== undefined) cutId = lines[i].cut ?? null
+  // 전체 무대 연출(흑룡 vs 미르엘) — 컷과 같은 유지 규칙
+  let fxId: StoryLine['fx'] = null
+  for (let i = 0; i <= line && i < lines.length; i++) if (lines[i].fx !== undefined) fxId = lines[i].fx ?? null
 
   // ▶▶ — 선택지가 있으면 선택지 줄로, 없으면 비트를 끝낸다
   const skip = () => (beat.choices?.length ? setLine(lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
 
   return (
     <>
+    {fxId && <DragonClash key={fxId} phase={fxId.slice(6) as ClashPhase} />}
     {cutId && <CutsceneLayer key={cutId} id={cutId} />}
     {cur?.anim && !(cutId && cutsceneById(cutId)?.full) && <StoryAnimStage key={line} ids={([] as string[]).concat(cur.anim)} side={!!cutId} />}
     <DialogueBox

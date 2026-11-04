@@ -70,7 +70,7 @@ const DAIS = { x0: 15.2, y0: 5.0, x1: 20.6, y1: 11.0, z: 34 }
 /** 앞으로 NPC 를 세울 자리(접수원 · 속성 전수자) — 가구가 이 자리를 막지 않게 비워 둔다 */
 export const GUILD_SPOTS = {
   clerk: { x: GUILD_W / 2, y: 1.9 },
-  mentor: { x: DAIS.x0 - 0.9, y: (DAIS.y0 + DAIS.y1) / 2 },
+  mentor: { x: 13.6, y: 7.2 },
   board: { x: 2.6, y: 7.6 },
 }
 
@@ -120,10 +120,10 @@ const GUILDS: Record<GuildKey, GuildTheme> = {
   },
   sky: {
     key: 'sky', id: 'sky-guild', name: '바람의 교단 회관',
-    desc: '바람을 읽는 사제들이 순례자의 부탁을 받아 주는 회관. 하프 소리 속에서 바람의 마법을 전한다.',
+    desc: '바람을 읽는 사제들이 순례자의 부탁을 받아 주는 회관. 떠 있는 섬을 땅에 붙들어 온 대지의 마법을 전한다.',
     bg: 'temple', tile: 'sky-marble', wall: LM.sky.wall, window: LM.sky.window,
     runner: LM.sky.runner, accent: LM.sky.accent, channel: LM.sky.channel,
-    altar: { sp: LM.sky.centerpiece.sp, scale: 0.95, r: 0.9 }, altarLabel: '바람 전수 제단',
+    altar: { sp: LM.sky.centerpiece.sp, scale: 0.95, r: 0.9 }, altarLabel: '대지 전수 제단',
     lamp: LM.sky.lamp, statue: LM.sky.statue, corner: LM.sky.corner, plant: W.pottedTree,
   },
   ruin: {

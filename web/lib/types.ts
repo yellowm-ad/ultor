@@ -395,6 +395,7 @@ export type MonsterFamily =
   | 'undead'
   | 'darkmage'
   | 'construct'
+  | 'dragon'
   | 'test'
 
 export type MonsterTrait = 'aggressive' | 'caster' | 'tank' | 'swift' | 'splitOnDeath'
@@ -437,6 +438,11 @@ export interface MonsterDef {
   heroSheet?: SpriteSheet
   /** 전투 화면 연출 */
   aura?: 'rage-violet'
+  /**
+   * 거대 보스(흑룡) — 전투 화면에서 무대를 압도하는 크기로 그리고 일행을 작게 줄인다(세븐나이츠식 보스전 구도).
+   * battle = 전투용 정지 그림(코드 연출로 숨쉬기), field = 필드 애니메이션 시트(가로 프레임)
+   */
+  colossal?: { battle: string; battlePx: { w: number; h: number }; field: string; fieldFrame: { w: number; h: number }; fieldFrames: number }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -693,6 +699,7 @@ export type NpcRole =
   | 'companion' // 학교 동료(lib/companions SCHOOL_NPCS) — 학교 안 방·로비에 매주 무작위 배치(lib/school-roster)
   | 'royal' // 국왕
   | 'royalGuard' // 왕실 근위병
+  | 'guildMentor' // 마을 길드 전수자 — 최상급 마법 전수 시험(lib/guild-trials)
 
 export interface NpcDef {
   id: string
@@ -713,6 +720,8 @@ export interface NpcDef {
   spriteId?: string
   /** 이 스토리 플래그가 켜진 뒤에만 맵에 나타난다(국왕 일행 등) */
   visibleFlag?: string
+  /** 이 스토리 플래그가 켜지면 맵에서 사라진다(A루트에서 쓰러진 모르스 등) */
+  hideFlag?: string
   /** 빌려 쓴 시트의 색을 돌려 다른 사람처럼 보이게(색상 회전 각도) — 전용 도트가 생기면 지운다 */
   hue?: number
   /** 순찰 — 두 점 사이를 걸어서 오간다(양 끝에서 잠깐 선다). 있으면 배회 대신 이 길을 따른다 */
@@ -811,6 +820,12 @@ export interface BattleState {
   huntDrops?: string[]
   /** 스토리 장면이 연 전투 — 지거나 도망치면 그 장면을 다시 볼 수 있게 되돌린다 */
   storyBeatId?: string
+  /**
+   * 연출 전투(흑룡전 등) — 이길 수 없는 상대. 적이 endAfter 번 행동하면(또는 아군이 다 쓰러지면) 패배 없이 중단되고 flag 가 켜진다
+   */
+  scripted?: { endAfter: number; enemyTurns: number; flag: string; endLine: string }
+  /** 연출 전투가 중단으로 끝났다 */
+  interrupted?: boolean
   /** 천공 콜로세움 대전(lib/arena) — 보상·기절 대신 점수, 끝나면 그 자리로 */
   pvp?: import('./arena-core').ArenaMatch
 }

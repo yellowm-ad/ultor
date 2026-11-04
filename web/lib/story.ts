@@ -157,6 +157,8 @@ export interface StoryLine {
    * 시트가 아직 없으면 건너뛴다.
    */
   anim?: string | string[]
+  /** 전체 무대 연출(components/game/dragon-clash) — 이 줄부터 다음 fx(또는 null)까지 유지 */
+  fx?: 'clash-arrive' | 'clash-charge' | 'clash-collide' | 'clash-retreat' | null
   /** 루트 전용 줄(EP45~) — 없으면 공통. 'B_OR_C' = 루스벨을 찾은 루트 */
   route?: 'A' | 'B' | 'C' | 'B_OR_C'
   text: string

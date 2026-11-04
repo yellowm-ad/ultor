@@ -12,6 +12,8 @@ import type {
   ScreenId,
 } from '@/lib/types'
 import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
+import { BLACK_DRAGON_ID, DRAGON_FLAGS, DRAGON_ROUNDS, dragonInReach } from '@/lib/black-dragon'
+import { TRIAL_MIN_LEVEL, trialByEl, trialKey, trialReady, trialState } from '@/lib/guild-trials'
 import { MAPS, zoneAt } from '@/lib/maps'
 import { ARENA_MAP_ID, initArenaBattle, type ArenaIdentity, type ArenaMatch, type ArenaTeam } from '@/lib/arena'
 import { beatById } from '@/lib/story'
@@ -21,7 +23,7 @@ import { baseCostumeOf, costumeById, COSTUMES, emptyWardrobe, ownsCostume } from
 import { mapLockReason, passageFlag, passageFor } from '@/lib/passages'
 import { activitySpotById, ARCADE_REWARD_GOLD } from '@/lib/activity-spots'
 import { FACING_CELL_VEC, facingFromCellDelta } from '@/lib/iso'
-import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById } from '@/lib/mock-data'
+import { ITEMS, MONSTERS, NPCS, SKILLS, isBossRank, isStudentSkill, itemById, monsterById, npcById, recipeById, skillById } from '@/lib/mock-data'
 import { MAX_LEVEL } from '@/lib/exp-table'
 import { createInitialGameState, createPlayer } from '@/lib/player-factory'
 import { defeatKey, generateFieldMonsters, pruneDefeats, wanderState } from '@/lib/field'
@@ -127,6 +129,9 @@ export type Action =
   | { type: 'ADMIN_FISH_TEST' }
   | { type: 'REP_FULFILL'; hubId: string; slot: number }
   | { type: 'REP_FINAL'; hubId: string }
+  /** 길드 전수 시험(lib/guild-trials) — 받기 / 재료 바치고 완료 */
+  | { type: 'TRIAL_ACCEPT'; el: string }
+  | { type: 'TRIAL_COMPLETE'; el: string }
   /** 코스튬(스킨) 갈아입기 — owner 'hero' 또는 동료 NPC id. costumeId 가 없으면 기본 복장으로 */
   | { type: 'COSTUME_WEAR'; owner: string; costumeId?: string }
   | { type: 'ADMIN_GIVE_ALL_COSTUMES' }
@@ -462,6 +467,8 @@ function reducerCore(state: GameState, action: Action): GameState {
           break
         }
       }
+      // 흑룡 강림(lib/black-dragon) — 앞발 가까이 다가가면 바로 흑룡전(투명해도 흑룡은 알아챈다)
+      if (dragonInReach(state, nx, ny) && !isContactSafe(state)) return startDragonBattle({ ...state, position: { x: nx, y: ny }, facing })
       // 투명한 동안은 닿아도 그냥 지나간다
       if (touched && (isInvisible(state) || isContactSafe(state))) touched = null
       // 접촉 — 묻지 않고 바로 전투로(world-screen 이 화면 전환 연출을 보여 준 뒤 ENCOUNTER_FIGHT). 이동은 정지.
@@ -545,6 +552,26 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (spot.kind === 'fishing') return startFishing(state, true)
       if (spot.kind === 'fountain') return spot.hubId ? { ...state, fountainHubId: spot.hubId, previousScreen: state.screen, screen: 'fountain' } : state
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
+    }
+
+    // 길드 전수 시험 — 받기: trial:<el> = 1
+    case 'TRIAL_ACCEPT': {
+      const t = trialByEl(action.el)
+      if (!t || trialState(state, t) !== 'offer') return state
+      return { ...state, storyFlags: { ...state.storyFlags, [trialKey(t.el)]: 1 }, toast: `「${t.title}」을(를) 받았다 — ${t.items.map((r) => `${itemById(r.itemId)?.name ?? r.itemId} ×${r.qty}`).join(', ')}` }
+    }
+    // 길드 전수 시험 — 완료: 재료를 바치고 GUILD_MASTER_<EL> → 최상급 마법 습득(레벨 조건에 맞춰 refreshSkills)
+    case 'TRIAL_COMPLETE': {
+      const t = trialByEl(action.el)
+      if (!t || trialState(state, t) !== 'asked') return state
+      if (!trialReady(state, t)) return { ...state, toast: `${t.title} — 재료가 모자라다.` }
+      let inventory = state.inventory
+      for (const r of t.items) inventory = removeFromInventory(inventory, r.itemId, r.qty)
+      const before = new Set(state.player.learnedSkills)
+      const done = setStoryFlag({ ...state, inventory, storyFlags: { ...state.storyFlags, [trialKey(t.el)]: 2 } }, t.flag)
+      const got = done.player.learnedSkills.filter((id) => !before.has(id)).map((id) => skillById(id)?.name ?? id)
+      const later = t.skills.filter((id) => !done.player.learnedSkills.includes(id)).map((id) => `${skillById(id)?.name} (Lv.${skillById(id)?.levelRequired ?? TRIAL_MIN_LEVEL})`)
+      return { ...done, toast: `✦ 최상급 마법 전수 ✦ ${got.length ? got.join(' · ') : ''}${later.length ? `${got.length ? ' — ' : ''}레벨이 차면: ${later.join(' · ')}` : ''}` }
     }
 
     // 분수대 의뢰(lib/reputation) — 이번 주 slot 번째 의뢰를 들어준다
@@ -1054,7 +1081,9 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (!actor) return { ...state, battle: { ...state.battle, activeUid: null } }
       // 주인공·파티 동료 턴은 사용자 입력 대기(자동 전투/동료 자동 설정이면 AI 가 대신 행동)
       if (awaitsPlayerInput(state.battle, actor, state.settings.companionAuto)) return state
-      const resolved = resolveEnemyTurn(state.battle, actor.uid)
+      const acted = resolveEnemyTurn(state.battle, actor.uid)
+      // 연출 전투 — 적이 행동한 횟수를 센다(DRAGON_ROUNDS 번이면 중단)
+      const resolved = acted.scripted && actor.side === 'enemy' ? { ...acted, scripted: { ...acted.scripted, enemyTurns: acted.scripted.enemyTurns + 1 } } : acted
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
       return { ...state, battle: next }
@@ -1063,6 +1092,13 @@ function reducerCore(state: GameState, action: Action): GameState {
     case 'BATTLE_END_CONTINUE': {
       if (!state.battle) return state
       if (state.battle.pvp) return endArenaBattle(state, state.battle.victory)
+      // 연출 전투 중단(흑룡전) — 패배·후송 없이 그 자리로, 다음 장면 플래그
+      if (state.battle.interrupted && state.battle.scripted) {
+        const flag = state.battle.scripted.flag
+        const left = leaveBattle(state, state.battle, state.inventory, '')
+        const next = { ...left, player: { ...left.player, hp: Math.max(left.player.hp, Math.round(left.player.stats.maxHp * 0.3)) }, contactSafeUntil: Date.now() + 3000 }
+        return setStoryFlag(next, flag)
+      }
       const heroC = state.battle.combatants.find((c) => c.uid === 'hero')
 
       if (state.battle.victory) {
@@ -1309,6 +1345,20 @@ function startStoryBattle(state: GameState, beatId: string, monsterIds: string[]
   const ready = ensureParty(state)
   const battle = initBattle(battleParty(ready), defs, state.position, undefined, { huntEnabled: isActivityUnlocked(state, 'hunting') })
   return { ...ready, previousScreen: state.screen, screen: 'battle', battle: { ...battle, storyBeatId: beatId } }
+}
+
+/** 흑룡전(lib/black-dragon) — 이길 수 없는 연출 전투. DRAGON_ROUNDS 번 버티면 중단 → DRAGON_FOUGHT */
+function startDragonBattle(state: GameState): GameState {
+  const def = MONSTERS.find((m) => m.id === BLACK_DRAGON_ID)
+  if (!def) return state
+  const ready = ensureParty(state)
+  const battle = initBattle(battleParty(ready), [def], state.position, undefined, { huntEnabled: false })
+  return {
+    ...ready,
+    previousScreen: state.screen,
+    screen: 'battle',
+    battle: { ...battle, scripted: { endAfter: DRAGON_ROUNDS, enemyTurns: 0, flag: DRAGON_FLAGS.fought, endLine: '하늘이 갈라지는 굉음 — 누군가 흑룡과 일행 사이에 내려섰다!' } },
+  }
 }
 
 /** 스토리 보스전에서 지거나 도망치면 그 장면을 다시 볼 수 있게(같은 곳에 다시 가면 재도전) */
