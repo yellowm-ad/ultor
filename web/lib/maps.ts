@@ -33,6 +33,8 @@ import type { AcademyRoomKey } from '@/lib/academy-rooms'
 import { dormStructures, dormBlockers, DORM_PAD_TOP } from '@/lib/dorm-room'
 import { buildSecretPassage, secretTileAt, SECRET_W, SECRET_H, SECRET_PAD_TOP, SECRET_SPAWN, SECRET_EXIT, SECRET_DOOR_2F, SECRET_RETURN_2F } from '@/lib/academy-secret'
 import { landmarkInterior, cryptRoom, CRYPT_W, CRYPT_H, CRYPT_SPAWN, CRYPT_EXIT, CRYPT_PAD_TOP, LM_W, LM_H, LM_SPAWN, LM_EXIT, LANDMARK_PAD_TOP } from '@/lib/landmark-interiors'
+import { GUILD_KEYS, GUILD_W, GUILD_H, GUILD_PAD_TOP, GUILD_SPAWN, GUILD_EXIT, guildSpace } from '@/lib/guild-halls'
+import type { GuildKey } from '@/lib/guild-halls'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
 import { ARENA_CENTER, COL_ENTRANCE, COL_H, COL_W, COLOSSEUM_BLOCKERS, COLOSSEUM_PROPS, COLOSSEUM_STRUCTURES, colosseumTileAt } from '@/lib/colosseum-map'
 
@@ -918,6 +920,48 @@ const ANNEX_MAPS: Partial<Record<MapId, GameMap>> = Object.fromEntries(
   ]),
 )
 
+// ── 마을 길드관 실내(lib/guild-halls.ts, 2026-11-04) — 마을 회관(서브 랜드마크) 문 앞 셀 ↔ 실내 ──
+/** 마을 쪽 문 앞 셀(포탈 자리) · 나올 때 도착점 */
+const GUILD_DOOR: Record<GuildKey, { town: MapId; door: { x: number; y: number }; out: { x: number; y: number } }> = {
+  // 성역 대성당(돔) — 문이 오른쪽(+x) 면, 계단이 오른쪽 아래로
+  village: { town: 'village', door: villageShift({ x: 8.2, y: 28.3 }), out: villageShift({ x: 9.0, y: 28.4 }) },
+  // 마을 회관 4채 — 문이 왼쪽 앞(+y) 면
+  atlantis: { town: 'atlantis', door: { x: 46.0, y: 22.3 }, out: { x: 46.0, y: 23.2 } },
+  sky: { town: 'sky-temple', door: { x: 46.0, y: 22.0 }, out: { x: 46.0, y: 22.9 } },
+  ruin: { town: 'temple-ruin', door: { x: 46.0, y: 22.1 }, out: { x: 46.0, y: 23.0 } },
+  // 설인족 회관 — 문이 오른쪽(+x) 면
+  aurora: { town: 'aurora-village', door: { x: 47.9, y: 21.0 }, out: { x: 48.0, y: 22.0 } },
+  demon: { town: 'demon-village', door: { x: 45.6, y: 22.0 }, out: { x: 45.6, y: 22.9 } },
+}
+const GUILD_MAPS: Partial<Record<MapId, GameMap>> = Object.fromEntries(
+  GUILD_KEYS.map((key) => {
+    const g = guildSpace(key)
+    const d = GUILD_DOOR[key]
+    return [
+      g.id,
+      {
+        id: g.id,
+        name: g.name,
+        kind: 'town',
+        grid: { w: GUILD_W, h: GUILD_H },
+        bg: g.bg,
+        render: 'iso',
+        assets: 'raster',
+        tileAt: g.tileAt,
+        props: g.props,
+        structures: g.structures,
+        padTop: GUILD_PAD_TOP,
+        ambientTone: g.ambientTone,
+        blockers: buildBlockers(g.props, g.blockers),
+        zones: [z(`z-${g.id}`, g.bg === 'school' ? 'school' : 'temple', g.name, 0, 0, GUILD_W, GUILD_H, '#d8c98a', g.desc)],
+        spawn: { ...GUILD_SPAWN },
+        portals: [{ id: `${g.id}-exit`, cell: { ...GUILD_EXIT }, to: d.town, toSpawn: d.out, label: '밖으로', kind: 'exit' }],
+      } as GameMap,
+    ]
+  }),
+)
+const guildEnter = (key: GuildKey, label: string) => ({ id: `${guildSpace(key).id}-enter`, cell: GUILD_DOOR[key].door, to: guildSpace(key).id, label, kind: 'portal' as const })
+
 export const MAPS = {
   ...FIELD_MAPS,
   village: {
@@ -957,6 +1001,7 @@ export const MAPS = {
       { id: 'annex-craft-enter', cell: ANNEX_FRONT.craft, to: 'annex-craft', label: '연금·제작관', kind: 'portal' },
       { id: 'club-hall-enter', cell: ANNEX_FRONT.club, to: 'club-hall', label: '동아리관', kind: 'portal' },
       { id: 'grand-library-enter', cell: ANNEX_FRONT.library, to: 'grand-library', label: '중앙 대도서관', kind: 'portal' },
+      guildEnter('village', '성역 대성당 · 마을 길드'),
     ],
   },
 
@@ -984,6 +1029,7 @@ export const MAPS = {
     portals: [
       { id: 'atlantis-exit', cell: { x: ACX, y: ENTRANCE_CY + 0.5 }, to: townReturn('atlantis').to, toSpawn: townReturn('atlantis').spawn, label: '해안으로', kind: 'exit' },
       { id: 'atlantis-temple-enter', cell: { x: 26, y: 9 }, to: 'atlantis-temple', label: '대성당 내부', kind: 'portal' },
+      guildEnter('atlantis', '마을 회관'),
     ],
   },
 
@@ -1006,6 +1052,7 @@ export const MAPS = {
     portals: [
       { id: 'sky-temple-exit', cell: { x: SKY_CX, y: SKY_ENTRANCE_CY + 0.5 }, to: townReturn('sky-temple').to, toSpawn: townReturn('sky-temple').spawn, label: '스톰헤이븐으로', kind: 'exit' },
       { id: 'sky-sanctum-enter', cell: { x: 32, y: 10 }, to: 'sky-sanctum', label: '천공 대신전 내부', kind: 'portal' },
+      guildEnter('sky', '바람의 교단 회관'),
       // 신전 앞마당 동쪽 구석 — 사제들만 아는 계단(천공 콜로세움은 비밀리에 열린다)
       { id: 'sky-colosseum-enter', cell: { x: 38.8, y: 10.4 }, to: 'sky-colosseum', toSpawn: { x: COL_ENTRANCE.x, y: COL_ENTRANCE.y - 1.6 }, label: '비밀 계단 — 천공 콜로세움', kind: 'portal' },
     ],
@@ -1053,6 +1100,7 @@ export const MAPS = {
     portals: [
       { id: 'temple-ruin-exit', cell: { x: RUIN_CX, y: RUIN_ENTRANCE_CY + 0.5 }, to: townReturn('temple-ruin').to, toSpawn: townReturn('temple-ruin').spawn, label: '폐허로', kind: 'exit' },
       { id: 'ruin-sanctum-enter', cell: { x: 32, y: 10 }, to: 'ruin-sanctum', label: '신전 내부', kind: 'portal' },
+      guildEnter('ruin', '수도자의 관리 건물'),
     ],
   },
 
@@ -1075,6 +1123,7 @@ export const MAPS = {
     portals: [
       { id: 'aurora-exit', cell: { x: AUR_CX, y: AUR_ENTRANCE_CY + 0.5 }, to: townReturn('aurora-village').to, toSpawn: townReturn('aurora-village').spawn, label: '설원으로', kind: 'exit' },
       { id: 'aurora-sanctum-enter', cell: { x: 32, y: 10 }, to: 'aurora-sanctum', label: '설원 성소 내부', kind: 'portal' },
+      guildEnter('aurora', '설인족 마을 회관'),
     ],
   },
 
@@ -1099,6 +1148,7 @@ export const MAPS = {
     portals: [
       { id: 'demon-village-exit', cell: { x: DEMON_CX, y: DEMON_ENTRANCE_CY + 0.5 }, to: townReturn('demon-village').to, toSpawn: townReturn('demon-village').spawn, label: '화산지대로', kind: 'exit' },
       { id: 'demon-temple-enter', cell: { x: 32, y: 10 }, to: 'demon-temple', label: '화산 성채 내부', kind: 'portal' },
+      guildEnter('demon', '마물 회의관'),
     ],
   },
 
@@ -1358,6 +1408,7 @@ export const MAPS = {
   },
   ...ACADEMY_ROOMS,
   ...ANNEX_MAPS,
+  ...GUILD_MAPS,
   'personal-space': {
     id: 'personal-space',
     name: '내 개인 공간',

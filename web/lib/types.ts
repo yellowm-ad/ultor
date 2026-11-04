@@ -534,6 +534,8 @@ export type MapId =
   | 'demon-temple'
   | 'sky-sanctum'
   | 'ruin-sanctum'
+  // 2026-11-04 마을 길드관 실내(lib/guild-halls.ts)
+  | 'village-guild' | 'atlantis-guild' | 'sky-guild' | 'ruin-guild' | 'aurora-guild' | 'demon-guild'
   | 'aurora-sanctum'
   | 'school-hall'
   | 'class-fire' // 마법학교 화염 수업관
