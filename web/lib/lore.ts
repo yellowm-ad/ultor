@@ -16,6 +16,7 @@
 
 import type { RegionId } from '@/lib/regions'
 import type { GameState, MapId } from '@/lib/types'
+import { storyWeekOf } from '@/lib/story'
 
 export type LoreCategory =
   | 'world' // 세계·지리
@@ -939,7 +940,8 @@ export function loreUnlocked(e: LoreEntry, s: LoreState): boolean {
   if (!u || s.storyFlags.DEBUG_UNLOCK_ALL) return true
   if (u.flag && !on(s, u.flag)) return false
   if (u.visit && !(s.visitedMaps ?? []).includes(u.visit)) return false
-  if (u.week && s.calendar.globalWeek < u.week) return false
+  // 이야기 위치(레벨 관문으로 진행 · lib/story-progress) 또는 달력 중 앞선 쪽
+  if (u.week && Math.max(s.calendar.globalWeek, storyWeekOf(s)) < u.week) return false
   return true
 }
 

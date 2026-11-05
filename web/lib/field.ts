@@ -16,17 +16,17 @@ function seedForMap(mapId: string): number {
  * 흩뿌리지 않고, 접근성 테스트용으로 스폰 지점(입구) 바로 근처에 딱 1마리만 남긴다.
  * town 맵(마을·아틀란티스)은 항상 빈 배열.
  */
-/** 잡은 몬스터가 같은 자리에 다시 나타나기까지(실제 시간) — 30분 */
-export const MONSTER_RESPAWN_MS = 30 * 60 * 1000
+/** 잡은 몬스터가 같은 자리에 다시 나타나기까지(실제 시간) — 15분 */
+export const MONSTER_RESPAWN_MS = 15 * 60 * 1000
 export const defeatKey = (mapId: string, uid: string) => `${mapId}:${uid}`
-/** 30분이 지난 기록은 버린다(저장 크기 관리) */
+/** 리젠 시간이 지난 기록은 버린다(저장 크기 관리) */
 export function pruneDefeats(defeats: Record<string, number> | undefined, now = Date.now()): Record<string, number> {
   const out: Record<string, number> = {}
   for (const [k, t] of Object.entries(defeats ?? {})) if (now - t < MONSTER_RESPAWN_MS) out[k] = t
   return out
 }
 
-/** 맵의 몬스터 — 배치는 맵마다 고정(같은 시드 → 같은 uid)이고, 30분 안에 잡은 개체는 빼고 돌려준다 */
+/** 맵의 몬스터 — 배치는 맵마다 고정(같은 시드 → 같은 uid)이고, 리젠 시간(15분) 안에 잡은 개체는 빼고 돌려준다 */
 export function generateFieldMonsters(map: GameMap, testMode: boolean, defeats?: Record<string, number>): FieldMonster[] {
   const all = placeFieldMonsters(map, testMode)
   if (!defeats) return all
@@ -63,7 +63,6 @@ function placeFieldMonsters(map: GameMap, testMode: boolean): FieldMonster[] {
   const density = (map.monsterDensity ?? 0.28) * 0.5
   // 몬스터끼리 이 거리보다 가까우면 재배치 시도 — 배치가 뭉치지 않고 퍼지게 한다. 2026-10-14: 더 넓게(×1.45)
   const spacing = (map.monsterSpacing ?? 1.2) * 1.45
-  const testMonster = MONSTERS.find((m) => m.isTestMonster)
 
   const rollCount = (d: number) => Math.floor(d) + (rand() < d % 1 ? 1 : 0)
 
@@ -112,10 +111,8 @@ function placeFieldMonsters(map: GameMap, testMode: boolean): FieldMonster[] {
     }
   }
 
-  if (testMode && testMonster) {
-    // 입구(스폰 지점) 바로 근처에 테스트용 허수아비 1마리만 배치
-    place(testMonster.id, Math.floor(map.spawn.x) - 1, Math.floor(map.spawn.y) - 1, 'fm-test', true)
-  }
+  // 테스트용 허수아비는 필드에서 치웠다(2026-11-05) — 개인 공간 무기 거치대의 샌드백 전투로 대신한다(START_SANDBAG)
+  void testMode
 
   return result
 }

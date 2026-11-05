@@ -39,6 +39,7 @@ import type { GuildKey } from '@/lib/guild-halls'
 import { SKY_AW, SKY_AH, SKY_CX, SKY_ENTRANCE_CY, skyTownTileAt, SKY_TOWN_PROPS, SKY_TOWN_BLOCKERS } from '@/lib/skytown-map'
 import { ARENA_CENTER, COL_ENTRANCE, COL_H, COL_W, COLOSSEUM_BLOCKERS, COLOSSEUM_PROPS, COLOSSEUM_STRUCTURES, colosseumTileAt } from '@/lib/colosseum-map'
 
+import { fitBlocker } from '@/lib/collide-fit'
 type Blocker = { x0: number; y0: number; x1: number; y1: number }
 
 /**
@@ -54,7 +55,10 @@ const DEFAULT_COLLIDE_SIZE: Partial<Record<PropDef['kind'], { w: number; d: numb
 export function propBlocker(p: PropDef): Blocker | null {
   const solid = p.solid || SOLID_KINDS.has(p.kind)
   if (!solid) return null
-  if (p.collide || p.size) return propAABB(p)
+  if (p.collide || p.size) {
+    const a = propAABB(p)
+    return a ? fitBlocker(p, a) : null
+  }
   const fb = DEFAULT_COLLIDE_SIZE[p.kind]
   return fb ? propAABB({ ...p, collide: fb, radial: true }) : null
 }
@@ -66,7 +70,8 @@ function buildBlockers(props: PropDef[], extra: Blocker[] = []): Blocker[] {
     if (!solid) continue
     if (p.collide || p.size) {
       const a = propAABB(p)
-      if (a) out.push(a)
+      // 그림 밖으로 튀어나온 길막은 그림 바닥에 맞춰 줄인다(lib/collide-fit)
+      if (a) out.push(fitBlocker(p, a))
       continue
     }
     // size/collide 미지정 프롭(야생 필드 fprop 점배치) — kind 기본 반경으로 중심 기준 박스 생성
@@ -249,7 +254,7 @@ function villageBaseTileAt(x: number, y: number): TileKind {
 }
 
 // 충돌·정렬을 그림에서 그대로 뽑는 구조물 종류
-const SOLID_KINDS = new Set<PropDef['kind']>([
+export const SOLID_KINDS = new Set<PropDef['kind']>([
   'hall', 'cottage', 'shop', 'dome', 'barn', 'windmill', 'colosseum', 'fountain', 'tower', 'wall',
   'statue', 'gazebo', 'cloister',
   // 야생 필드/던전 나무류(fprop 의 'tree' kind — 실제 나무·기둥·첨탑·맹그로브·켈프·현수막대 등

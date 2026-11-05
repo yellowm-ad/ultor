@@ -225,8 +225,8 @@ export const GATHER_TABLES: Partial<Record<RegionId, Partial<Record<GatherNodeKi
   },
 }
 
-/** 채집 노드 리스폰 — 실시간 3분 */
-export const GATHER_RESPAWN_MS = 3 * 60 * 1000
+/** 채집·드랍 노드 리스폰 — 실시간 15분 (숨은 룬 상자는 리젠 없음 · lib/hidden-caches) */
+export const GATHER_RESPAWN_MS = 15 * 60 * 1000
 const NODE_TOUCH_R = 1.3
 
 export interface GatherNode {

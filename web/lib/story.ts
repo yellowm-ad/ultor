@@ -39,6 +39,18 @@ const CHAPTERS: ChapterDef[] = [
 ]
 export const STORY_ARCS: StoryArc[] = CHAPTERS.map(([id, chapter, name, startWeek, endWeek, mainRegion, description]) => ({ id, chapter, name, startWeek, endWeek, mainRegion, description }))
 
+/**
+ * 이야기 위치 — 시작한 막 중 가장 뒤의 원래 주차(1~192). 메인 스토리가 레벨로 진행되므로(lib/story-progress)
+ * '이야기상 어디까지 왔나'는 달력이 아니라 이 값으로 본다(장면의 minWeek · 도달 지역 · 수첩 장 이름).
+ */
+export function storyWeekOf(state: Pick<GameState, 'storyFlags'>): number {
+  let w = 1
+  for (const ep of STORY_EPISODES) if (flagOn(state, `beat:EP_${ep.week}_OPEN`) && ep.week > w) w = ep.week
+  return w
+}
+/** 지금 이야기의 장 */
+export const arcForStory = (state: Pick<GameState, 'storyFlags'>) => arcForWeek(storyWeekOf(state))
+
 export function arcForWeek(globalWeek: number): StoryArc {
   return STORY_ARCS.find((a) => globalWeek >= a.startWeek && globalWeek <= a.endWeek) ?? STORY_ARCS[0]
 }
@@ -127,6 +139,7 @@ export const lineOnRoute = (l: StoryLine, r: 'A' | 'B' | 'C') => !l.route || l.r
 // ── 스토리 비트 ─────────────────────────────────────────────────────────────────
 export type StoryTrigger =
   | { type: 'WEEK_START'; week: number } // 해당 globalWeek 가 시작될 때
+  | { type: 'EPISODE_START'; week: number } // 메인 스토리 막(lib/story-progress)을 시작할 때 — week = 그 막의 원래 주차(id 용)
   | { type: 'WEEK_END'; week: number } // 해당 주를 마감할 때
   | { type: 'QUEST_CLAIMED'; templateId: string } // 특정 퀘스트 보상 수령 시
   | { type: 'VISIT'; mapId: string } // 특정 맵 첫 진입
@@ -299,18 +312,17 @@ export const STORY_CYCLE: Record<number, string> = {}
 function episodeBeats(): StoryBeat[] {
   return STORY_EPISODES.flatMap((ep) => {
     const arc = arcForWeek(ep.week)
-    const info = calendarInfo(ep.week)
     return [
       {
         id: `EP_${ep.week}_OPEN`,
         arcId: arc.id,
         title: `${ep.id} — ${ep.title}`,
-        trigger: { type: 'WEEK_START', week: ep.week },
+        trigger: { type: 'EPISODE_START', week: ep.week },
         ...(ep.requiredFlags.length ? { requiredFlags: ep.requiredFlags } : {}),
         lines: [
-          { speaker: '', text: `${info.year}학년 ${info.isVacation ? '방학' : '학기'} ${info.week}주차 · 메인 스토리 ${ep.id} 「${ep.title}」` },
+          { speaker: '', text: `메인 스토리 ${ep.id} 「${ep.title}」` },
           ...ep.brief,
-          { speaker: '', text: `이번 주 필수 미션: ${ep.objectives.map((o) => o.label).join(' · ')}  (학사 수첩 J)` },
+          { speaker: '', text: `메인 미션: ${ep.objectives.map((o) => o.label).join(' · ')}  (학사 수첩 J)` },
         ],
       },
       {
@@ -352,7 +364,7 @@ export function beatsFor(state: Pick<GameState, 'storyFlags' | 'calendar'>, matc
       !flagOn(state, `beat:${b.id}`) &&
       flagsAllOn(state, b.requiredFlags) &&
       (!b.route || lineOnRoute({ speaker: '', text: '', route: b.route }, storyLineRoute(state))) &&
-      (b.minWeek === undefined || state.calendar.globalWeek >= b.minWeek),
+      (b.minWeek === undefined || storyWeekOf(state) >= b.minWeek),
   )
 }
 

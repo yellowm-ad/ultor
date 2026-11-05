@@ -74,6 +74,7 @@ function objectiveGoal(state: S, ob: QuestObjective, quest: string, regionId?: s
     return region?.maps.find((m) => MAPS[m]?.kind === 'field' && m !== 'testroom') ?? 'forest'
   }
   switch (ob.type) {
+    case 'DELIVER':
     case 'TALK': {
       if (ob.targetId === 'any') {
         const n = nearestNpc(state) ?? npcById('npc-elder')

@@ -18,43 +18,14 @@ function wallDecal(plane: 'x' | 'y', at: number, hPx: number, z0: number, sp: Sp
 }
 const decalHalfWidth = (hPx: number, sp: Spr) => (hPx * (sp.w / sp.h)) / 64
 
-/** 북벽을 향해 오르는 직선 계단(난간 포함). zBase = 계단 아래 바닥 높이(맵 기준) */
-function straightStair(id: string, s: IsoStair, zBase: number, steps: number): IsoStructGroup[] {
-  const out: IsoStructGroup[] = []
-  const depth = (s.yBottom - s.yTop) / steps
-  const rise = s.zTop / steps
-  for (let i = 0; i < steps; i++) {
-    const y1 = s.yBottom - depth * i
-    const y0 = y1 - depth
-    const z1 = zBase + rise * (i + 1)
-    const parts: IsoPart[] = [
-      { kind: 'face', plane: 'y', at: y1, from: s.x0, to: s.x1, z0: zBase, z1, tex: T.riser },
-      { kind: 'face', plane: 'x', at: s.x1, from: y0, to: y1, z0: zBase, z1, tex: T.wall, shade: 0.32 },
-      { kind: 'top', x0: s.x0, y0, x1: s.x1, y1, z: z1, tex: T.marble },
-      { kind: 'top', x0: s.x0 + 0.9, y0, x1: s.x1 - 0.9, y1, z: z1, tex: T.carpet },
-      { kind: 'face', plane: 'x', at: s.x0, from: y0, to: y1, z0: z1, z1: z1 + 34, tex: T.rail },
-      { kind: 'face', plane: 'x', at: s.x1, from: y0, to: y1, z0: z1, z1: z1 + 34, tex: T.rail },
-    ]
-    out.push({ id: `${id}${i}`, sortY: s.x0 + y0, parts })
-  }
-  return out
-}
-/** 계단 옆면 충돌 — 정면(아래)에서만 오른다. 맨 아래 한 줄은 비워 옆으로 지나다닐 수 있게 */
-function stairBlockers(s: IsoStair): Blocker[] {
-  const yb = s.yBottom - 0.55
-  return [
-    { x0: s.x0 - 0.25, y0: s.yTop - 0.4, x1: s.x0 + 0.05, y1: yb },
-    { x0: s.x1 - 0.05, y0: s.yTop - 0.4, x1: s.x1 + 0.25, y1: yb },
-  ]
-}
-
 // ════════ 2층 회랑 확장 ════════
 /** 2층 북벽 2학년 교실 문 위치(x) */
 export const YEAR2_DOOR_X = 10
-const ARCH_H = 200
 /** 3층 계단 입구(계단실 아치) — 대강당 대문(x=HALL_CX, 높이 240) 오른쪽, 회랑 바닥에 대문과 같은 기준선으로 */
 export const FLOOR3_ENTRY_X = HALL_CX + 6.6
-const ENTRY_H = 224
+// 2026-11-05: 계단 모양 아치(arch_stair) 대신 문짝 — 2층에 없는 회의실 문(붉은 문 + 문장)
+const ENTRY_DOOR = HALL_SPR.doorMeeting
+const ENTRY_H = 200
 
 // ── 세 기숙사 휴게실(2026-10-18) — 서쪽 회랑, 1층 속성 수업관 문 바로 위층 벽 ──
 //    헬라(불)=화염 수업관 위 · 요르문간드(얼음)=빙결 수업관 위(비밀 통로 '수상한 벽' y=17.5 와 겹치지 않게 조금 아래) · 펜리르(대지)=대지 수업관 위
@@ -82,7 +53,7 @@ export function galleryWallDecals(zBase: number): IsoPart[] {
   const z2 = zBase + FLOOR2
   return [
     wallDecal('y', YEAR2_DOOR_X, 184, z2, HALL_SPR.doorClass),
-    wallDecal('y', FLOOR3_ENTRY_X, ENTRY_H, z2, HALL_SPR.archStair),
+    wallDecal('y', FLOOR3_ENTRY_X, ENTRY_H, z2, ENTRY_DOOR),
     wallDecal('y', FLOOR3_ENTRY_X, 96, z2 + ENTRY_H + 24, HALL_SPR.banner),
     // 기숙사 휴게실 문 + 양옆 기숙사 깃발
     ...HOUSE_LOUNGE_DOORS.flatMap((d) => [
@@ -103,7 +74,7 @@ export const GALLERY_SHELF_SKIP_W: [number, number][] = HOUSE_LOUNGE_DOORS.map((
 /** 2층 벽 창·배너를 비워야 하는 구간(x) — 문·아치와 겹치지 않게 */
 export const GALLERY_WALL_SKIP: [number, number][] = [
   [YEAR2_DOOR_X - 2.2, YEAR2_DOOR_X + 2.2],
-  [FLOOR3_ENTRY_X - decalHalfWidth(ENTRY_H, HALL_SPR.archStair) - 0.4, FLOOR3_ENTRY_X + decalHalfWidth(ENTRY_H, HALL_SPR.archStair) + 0.4],
+  [FLOOR3_ENTRY_X - decalHalfWidth(ENTRY_H, ENTRY_DOOR) - 0.4, FLOOR3_ENTRY_X + decalHalfWidth(ENTRY_H, ENTRY_DOOR) + 0.4],
 ]
 /** 회랑 책장이 계단·문을 막지 않게 — 이 x 의 북쪽 책장은 뺀다 */
 export const GALLERY_SHELF_SKIP = (x: number) => GALLERY_WALL_SKIP.some(([a, b]) => x > a - 0.4 && x < b + 0.4)
@@ -116,8 +87,11 @@ const UF_WALL_H = 440
 export const UF_PAD_TOP = UF_WALL_H + 80
 /** 서벽 계단실 아치(아래층으로) — y 중심 */
 const DOWN_ARCH_Y = 5
-/** 동쪽 끝 오르는 계단(3층 → 4층) */
-const UP_STAIR: IsoStair = { x0: UF_W - 5, x1: UF_W - 0.8, yTop: 0.55, yBottom: 4.4, zTop: 130 }
+/** 동쪽 끝 4층으로 가는 문(2026-11-05: 계단 구조물 대신 북벽 문짝 — 3층에 없는 도서관식 문) */
+const UP_DOOR_X = UF_W - 3.4
+const UP_DOOR = HALL_SPR.doorLibrary
+/** 서벽 아래층 문 — 3층(→2층) = 회의실 문 · 4층(→3층) = 도서관식 문(3층의 4층 문과 짝) */
+const downDoor = (floor: 3 | 4) => (floor === 3 ? HALL_SPR.doorMeeting : HALL_SPR.doorLibrary)
 
 export interface UpperDoor {
   key: AcademyRoomKey
@@ -149,7 +123,7 @@ export function buildUpperFloor(floor: 3 | 4): { props: PropDef[]; structures: I
   const doors = floor === 3 ? FLOOR3_DOORS : FLOOR4_DOORS
   const hasUp = floor === 3
   const busy: [number, number][] = doors.map((d) => [d.at - decalHalfWidth(DOOR_H, d.door) - 0.5, d.at + decalHalfWidth(DOOR_H, d.door) + 0.5])
-  if (hasUp) busy.push([UP_STAIR.x0 - 0.5, UF_W])
+  if (hasUp) busy.push([UP_DOOR_X - decalHalfWidth(DOOR_H, UP_DOOR) - 0.5, UF_W])
   const free = (x: number, half: number) => !busy.some(([a, b]) => x + half > a && x - half < b)
 
   const parts: IsoPart[] = [
@@ -166,16 +140,16 @@ export function buildUpperFloor(floor: 3 | 4): { props: PropDef[]; structures: I
     parts.push(wallDecal('y', d.at, DOOR_H, 0, d.door))
     parts.push(wallDecal('y', d.at, 110, DOOR_H + 40, HALL_SPR.banner))
   }
-  // 서벽 — 아래층 계단실 아치 + 창
-  parts.push(wallDecal('x', DOWN_ARCH_Y, 230, 0, HALL_SPR.archStair))
+  // 서벽 — 아래층 문 + 창
+  parts.push(wallDecal('x', DOWN_ARCH_Y, DOOR_H, 0, downDoor(floor)))
+  parts.push(wallDecal('x', DOWN_ARCH_Y, 96, DOOR_H + 30, HALL_SPR.banner))
   parts.push(wallDecal('x', 1.6, 200, 190, HALL_SPR.window))
   parts.push(wallDecal('x', 8.6, 200, 190, HALL_SPR.window))
   const structures: IsoStructGroup[] = [{ id: `uf${floor}-walls`, back: 0, parts }]
   const stairs: IsoStair[] = []
   if (hasUp) {
-    structures.push(...straightStair(`uf${floor}-up`, UP_STAIR, 0, 7))
-    structures[0].parts.push(wallDecal('y', (UP_STAIR.x0 + UP_STAIR.x1) / 2, ARCH_H, UP_STAIR.zTop, HALL_SPR.archStair))
-    stairs.push(UP_STAIR)
+    structures[0].parts.push(wallDecal('y', UP_DOOR_X, DOOR_H, 0, UP_DOOR))
+    structures[0].parts.push(wallDecal('y', UP_DOOR_X, 110, DOOR_H + 40, HALL_SPR.banner))
   }
 
   // 소품 — 문 사이 가로등, 남쪽 벤치·화분·전시대(통로는 비움)
@@ -198,7 +172,6 @@ export function buildUpperFloor(floor: 3 | 4): { props: PropDef[]; structures: I
     { x0: 0, y0: 0, x1: 0.5, y1: UF_H },
     { x0: UF_W - 0.3, y0: 0, x1: UF_W, y1: UF_H },
     { x0: 0, y0: UF_H - 0.3, x1: UF_W, y1: UF_H },
-    ...(hasUp ? stairBlockers(UP_STAIR) : []),
   ]
   return { props, structures, blockers, stairs }
 }
@@ -214,9 +187,9 @@ export function upperPortals(floor: 3 | 4, roomIds: Record<AcademyRoomKey, { id:
   out.push(
     floor === 3
       ? { id: '3f-to-2f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-2f', toSpawn: { x: FLOOR3_ENTRY_X, y: 2.7 }, label: '2층으로', kind: 'exit' as const }
-      : { id: '4f-to-3f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-3f', toSpawn: { x: (UP_STAIR.x0 + UP_STAIR.x1) / 2, y: UP_STAIR.yBottom - 0.15 }, label: '3층으로', kind: 'exit' as const },
+      : { id: '4f-to-3f', cell: { x: 1.2, y: DOWN_ARCH_Y }, to: 'academy-3f', toSpawn: { x: UP_DOOR_X, y: 2.8 }, label: '3층으로', kind: 'exit' as const },
   )
-  if (floor === 3) out.push({ id: '3f-to-4f', cell: { x: (UP_STAIR.x0 + UP_STAIR.x1) / 2, y: UP_STAIR.yTop + 0.6 }, to: 'academy-4f', toSpawn: { x: 2.6, y: DOWN_ARCH_Y }, label: '4층으로', kind: 'portal' as const })
+  if (floor === 3) out.push({ id: '3f-to-4f', cell: { x: UP_DOOR_X, y: 1.3 }, to: 'academy-4f', toSpawn: { x: 2.6, y: DOWN_ARCH_Y }, label: '4층으로', kind: 'portal' as const })
   return out
 }
 /** 위층 복도에 처음 도착하는 자리(서벽 계단실 앞) */

@@ -10,15 +10,19 @@ import { skillById } from '@/lib/mock-data'
 import { expProgressPercent, MAX_LEVEL } from '@/lib/exp-table'
 import { Sparkles } from 'lucide-react'
 import { calendarShortLabel } from '@/lib/calendar'
-import { questTemplateById, REQUIRED_OPTIONAL, weekCompletion } from '@/lib/quests'
+import { activeGuildQuests, questTemplateById, weekCompletion } from '@/lib/quests'
+import { episodeGate } from '@/lib/story-progress'
 import { itemById } from '@/lib/mock-data'
 import { heroSheet, npcSheet } from '@/lib/costumes'
 
 // 걷는 동안 게임 상태는 매 프레임 바뀌지만(위치) HUD 에 보이는 값은 그대로다 — 보이는 값만 넘겨 memo 로 다시 그리기를 건너뛴다
 export function Hud() {
   const { state, dispatch } = useGame()
+  const gate = state.screen === 'world' ? episodeGate(state) : null
   return (
     <HudView
+      nextStory={gate ? `${gate.ep.id} 「${gate.ep.title}」${gate.ready ? '' : gate.why?.startsWith('Lv.') ? ` · Lv.${gate.minLevel}` : ''}` : null}
+      nextStoryReady={!!gate?.ready}
       player={state.player}
       sheet={heroSheet(state)}
       summons={state.player.summonSkills ?? []}
@@ -43,9 +47,12 @@ type HudProps = {
   calendar: GameState['calendar']
   mealBuff: GameState['mealBuff']
   dispatch: ReturnType<typeof useGame>['dispatch']
+  /** 다음 메인 스토리 막(레벨 관문) — 진행 중인 막이 있으면 null */
+  nextStory: string | null
+  nextStoryReady: boolean
 }
 
-const HudView = memo(function HudView({ player, sheet, summons, heroPos, testMode, weekly, calendar, mealBuff, dispatch }: HudProps) {
+const HudView = memo(function HudView({ player, sheet, summons, heroPos, testMode, weekly, calendar, mealBuff, dispatch, nextStory, nextStoryReady }: HudProps) {
 
   return (
     <div className="hud-safe pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-3 p-3 sm:p-4">
@@ -81,6 +88,19 @@ const HudView = memo(function HudView({ player, sheet, summons, heroPos, testMod
 
         {/* 학사 달력 + 이번 주 필수 미션 + 식사 버프 */}
         <WeekTracker weekly={weekly} calendar={calendar} mealBuff={mealBuff} dispatch={dispatch} />
+        {/* 다음 메인 스토리 — 레벨이 닿으면 바로 시작(lib/story-progress) */}
+        {nextStory && (
+          <button
+            type="button"
+            className={`title-enter-2 hud-clean-text w-56 truncate pl-1 text-left text-[10.5px] ${nextStoryReady ? 'font-bold text-gold-soft animate-pulse' : 'text-white/55'}`}
+            disabled={!nextStoryReady}
+            onClick={() => dispatch({ type: 'START_EPISODE' })}
+            title={nextStoryReady ? '눌러서 다음 메인 스토리 시작' : '레벨이 오르면 시작할 수 있습니다'}
+          >
+            {nextStoryReady ? '▶ 다음 이야기 시작 — ' : '◇ 다음 이야기 '}
+            {nextStory}
+          </button>
+        )}
 
         {/* 소환 마법 칸(옛 펫 자리) — 작게 */}
         {summons.length > 0 && (
@@ -122,7 +142,8 @@ function WeekTracker({ weekly, calendar, mealBuff, dispatch }: Pick<HudProps, 'w
   const state = { weekly, calendar, mealBuff }
   const main = state.weekly.quests.find((q) => q.slot === 'MAIN')
   const mainT = main ? questTemplateById(main.templateId) : undefined
-  const { canEnd, optionalDone, requiredOptional } = weekCompletion(state.weekly)
+  const { canEnd } = weekCompletion(state.weekly)
+  const guildN = activeGuildQuests(state.weekly).length
   // 필수 미션 진행도 — 목표가 여러 개면 합산
   const mainP = mainT && main ? mainT.objectives.reduce((a, ob, i) => a + Math.min(main.progress[i] ?? 0, ob.count), 0) : 0
   const mainTotal = mainT ? mainT.objectives.reduce((a, ob) => a + ob.count, 0) : 1
@@ -140,7 +161,7 @@ function WeekTracker({ weekly, calendar, mealBuff, dispatch }: Pick<HudProps, 'w
         <span className="hud-clean-text truncate text-[10px] text-white/80">
           ★ {mainT.title}{' '}
           {main.status === 'claimed' ? '✔' : main.status === 'complete' ? '(보상 대기)' : `${mainP}/${mainTotal}`}
-          <span className="ml-1 text-white/50">· 보조 {optionalDone}/{requiredOptional}</span>
+          {guildN > 0 && <span className="ml-1 text-white/50">· 의뢰 {guildN}</span>}
         </span>
       )}
       {(ready || canEnd) && (

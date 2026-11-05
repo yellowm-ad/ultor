@@ -2,7 +2,7 @@
 
 import { beginDrag } from '@/lib/map-editor'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useGame } from '@/lib/game-state'
+import { nearSandbag, useGame } from '@/lib/game-state'
 import type { MapId } from '@/lib/types'
 import { FIELD_SPELLS, HASTE_MULT, isHasted, isInvisible, isLit } from '@/lib/field-spells'
 import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
@@ -216,6 +216,10 @@ export function WorldScreen() {
       dispatch({ type: 'SPOT_USE', spotId: spot.id })
       return
     }
+    if (!state.housing.editMode && nearSandbag(state)) {
+      dispatch({ type: 'START_SANDBAG' })
+      return
+    }
     const node = nearestGatherNode(map, state.life, state.position)
     if (node) {
       dispatch({ type: 'GATHER', nodeKey: node.key })
@@ -325,7 +329,8 @@ export function WorldScreen() {
   const nearSecret = interactTarget ? null : nearestSecret()
   const nearDoor = interactTarget || nearSecret ? null : nearestDoor()
   const nearSpot = interactTarget || nearSecret || nearDoor ? null : nearestSpot(map.id, state.position)
-  const nearNode = interactTarget || nearSecret || nearDoor || nearSpot ? null : nearestGatherNode(map, state.life, state.position)
+  const nearBag = !interactTarget && !nearSecret && !nearDoor && !nearSpot && !state.housing.editMode && nearSandbag(state)
+  const nearNode = interactTarget || nearSecret || nearDoor || nearSpot || nearBag ? null : nearestGatherNode(map, state.life, state.position)
   const lifePrompt = interactTarget
     ? null
     : nearSecret
@@ -334,6 +339,8 @@ export function WorldScreen() {
       ? doorPrompt(nearDoor)
       : nearSpot
       ? nearSpot.prompt
+      : nearBag
+      ? '샌드백 연습 — 죽지 않는 허수아비에게 마법 시험'
       : nearNode
       ? `${GATHER_NODE_META[nearNode.kind].verb} — ${GATHER_NODE_META[nearNode.kind].name}`
       : isActivityUnlocked(state, 'fishing') && isNearWater(map, state.position)

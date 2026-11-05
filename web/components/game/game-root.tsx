@@ -7,6 +7,7 @@ import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
 import { LevelUpFx } from '@/components/game/result-fx'
+import { GuildBoardScreen } from '@/components/game/guild-board-screen'
 import { FountainScreen } from '@/components/game/fountain-screen'
 import type { ScreenId } from '@/lib/types'
 import { TitleScreen } from '@/components/game/title-screen'
@@ -52,6 +53,7 @@ const CLOSABLE_WITH_ESC = new Set<ScreenId>([
   'worldmap',
   'dialogue',
   'arena',
+  'guildBoard',
 ])
 
 /** 일반 게임과 관리자(/admin)가 같은 화면 구성을 쓴다 — 관리자 전용 UI는 `extra`로 얹는다(따로 두면 새 창이 관리자 쪽에서 빠져 동작 안 함) */
@@ -100,6 +102,13 @@ export function GameShell({ extra }: { extra?: ReactNode } = {}) {
     }
   }, [state.screen])
 
+  // 필드 몬스터 리젠 — 맵에 머무는 동안에도 15분이 지난 개체를 되살린다(lib/game-state FIELD_RESPAWN_TICK)
+  useEffect(() => {
+    if (state.screen !== 'world') return
+    const id = window.setInterval(() => dispatch({ type: 'FIELD_RESPAWN_TICK' }), 20_000)
+    return () => window.clearInterval(id)
+  }, [state.screen, dispatch])
+
   // 설정 「번쩍임 끄기」 — 전투 화면까지 함께 적용되도록 문서 루트에 붙인다(app/globals.css .no-flash)
   useEffect(() => {
     document.documentElement.classList.toggle('no-flash', !!state.settings.noFlash)
@@ -138,6 +147,7 @@ export function GameShell({ extra }: { extra?: ReactNode } = {}) {
       {state.screen === 'journal' && <JournalScreen />}
       {state.screen === 'arena' && <ArenaScreen />}
       {state.screen === 'fountain' && <FountainScreen />}
+      {state.screen === 'guildBoard' && <GuildBoardScreen />}
       </ScreenGuard>
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}

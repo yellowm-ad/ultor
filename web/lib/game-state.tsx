@@ -36,6 +36,7 @@ import {
   checkBattleEnd,
   currentActor,
   initBattle,
+  SANDBAG_HP,
   resolveAction,
   resolveEnemyTurn,
   tickAtb,
@@ -51,6 +52,10 @@ import {
   afterBattleFled,
   afterBattleVictory,
   acceptQuest,
+  acceptGuildQuest,
+  dropGuildQuest,
+  openGuildBoard,
+  startEpisode,
   addGuest,
   classBeginGames,
   classGameDone,
@@ -88,6 +93,7 @@ import {
   visitMap,
   withQuestEvents,
 } from '@/lib/progression'
+import type { GuildKey } from '@/lib/guild-quest-data'
 import { COMBAT_NPCS } from '@/lib/companions'
 import { mergeSave, migrateLoadedState, writeSave } from '@/lib/save'
 import { VILLAGE_LAYOUT, villageShift } from '@/lib/village-layout'
@@ -169,9 +175,15 @@ export type Action =
   | { type: 'ADMIN_SET_GOLD'; gold: number }
   | { type: 'ADMIN_HEAL_FULL' }
   | { type: 'ADMIN_RESPAWN_MONSTERS' }
+  | { type: 'FIELD_RESPAWN_TICK' }
+  | { type: 'START_SANDBAG' }
   // ── 4년제 학사·생활·동료 ────────────────────────────────────────────────────
   | { type: 'LOAD_GAME'; saved: Partial<GameState> }
   | { type: 'CLAIM_QUEST'; instanceId: string }
+  | { type: 'START_EPISODE' }
+  | { type: 'OPEN_GUILD_BOARD'; guild: GuildKey }
+  | { type: 'GUILD_ACCEPT'; guild: GuildKey; templateId: string }
+  | { type: 'GUILD_DROP'; instanceId: string }
   | { type: 'END_WEEK' }
   | { type: 'DISMISS_STORY' }
   | { type: 'STORY_CHOICE'; setFlags: string[] }
@@ -236,7 +248,11 @@ export const CONTACT_SAFE_MS = 3000
 export const isContactSafe = (s: Pick<GameState, 'contactSafeUntil'>, now = Date.now()) => (s.contactSafeUntil ?? 0) > now
 
 function reducer(state: GameState, action: Action): GameState {
-  const next = reducerCore(state, action)
+  let next = reducerCore(state, action)
+  // 새 전투 시작 — 설정의 「전투 시작 시 자동」을 기본값으로(전투 중 버튼으로 언제든 전환)
+  if (next.battle && !state.battle && next.battle.auto === undefined) {
+    next = { ...next, battle: { ...next.battle, auto: !!next.settings.battleAutoStart } }
+  }
   // 전투 → 필드로 돌아오는 모든 길(승리·도망·패배·스토리 전투)과 「슬쩍 피해 지나갔다」에서 잠깐 접촉 무시
   if ((state.battle && !next.battle) || (state.pendingEncounterUid && !next.pendingEncounterUid && !next.battle)) {
     return { ...next, contactSafeUntil: Date.now() + CONTACT_SAFE_MS }
@@ -295,6 +311,19 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'ACCEPT_QUEST':
       return acceptQuest(state, action.instanceId)
+
+    // 메인 스토리 다음 막(레벨 관문 · lib/story-progress)
+    case 'START_EPISODE':
+      if (state.screen !== 'world' && state.screen !== 'journal') return state
+      return { ...startEpisode(state), screen: 'world' }
+
+    // 길드 서브 퀘스트 게시판
+    case 'OPEN_GUILD_BOARD':
+      return openGuildBoard({ ...state, activeNpcId: null }, action.guild)
+    case 'GUILD_ACCEPT':
+      return acceptGuildQuest(state, action.guild, action.templateId)
+    case 'GUILD_DROP':
+      return dropGuildQuest(state, action.instanceId)
 
     case 'DROP_QUEST':
       return dropQuest(state, action.instanceId)
@@ -551,6 +580,7 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (Math.hypot(spot.cell.x - state.position.x, spot.cell.y - state.position.y) > (spot.reach ?? 1.6) + 0.8) return { ...state, toast: `${spot.label} — 조금 더 가까이 가야 한다.` }
       if (spot.kind === 'fishing') return startFishing(state, true)
       if (spot.kind === 'fountain') return spot.hubId ? { ...state, fountainHubId: spot.hubId, previousScreen: state.screen, screen: 'fountain' } : state
+      if (spot.kind === 'guildBoard') return spot.guild ? openGuildBoard(state, spot.guild) : state
       return spot.game ? { ...state, passage: { id: spot.game, portalId: '' } } : state
     }
 
@@ -1004,6 +1034,36 @@ function reducerCore(state: GameState, action: Action): GameState {
       }
     }
 
+    // 개인 공간 무기 거치대 = 샌드백 — 죽지 않는 허수아비에게 마법 시험(lib/battle-engine sandbag)
+    case 'START_SANDBAG': {
+      if (state.currentMapId !== 'personal-space' || state.screen !== 'world' || state.battle) return state
+      if (!nearSandbag(state)) return { ...state, toast: '무기 거치대 가까이 가야 한다.' }
+      const def = MONSTERS.find((m) => m.isTestMonster)
+      if (!def) return state
+      const ready = ensureParty(state)
+      const base = initBattle(battleParty(ready), [def], state.position, undefined, { huntEnabled: false })
+      const combatants = base.combatants.map((c) =>
+        c.isTestMonster ? { ...c, name: '샌드백 허수아비', hp: SANDBAG_HP, stats: { ...c.stats, maxHp: SANDBAG_HP, def: 0, mdef: 0, spd: 1 } } : c,
+      )
+      const log = [{ ...base.log[0], text: '샌드백 허수아비 — 마음껏 시험해 보자! (끝낼 때는 「그만두기」)' }]
+      return { ...ready, previousScreen: state.screen, screen: 'battle', battle: { ...base, combatants, log, sandbag: true } }
+    }
+
+    // 맵에 머무는 동안에도 리젠 시간(15분)이 지난 몬스터를 제자리에 되살린다 — 플레이어 바로 옆은 다음 틱으로 미룬다
+    case 'FIELD_RESPAWN_TICK': {
+      if (state.screen !== 'world' || state.battle) return state
+      const map = MAPS[state.currentMapId]
+      if (!map || map.kind !== 'field') return state
+      const now = Date.now()
+      const monsterDefeats = pruneDefeats(state.monsterDefeats, now)
+      const have = new Set(state.fieldMonsters.map((m) => m.uid))
+      const back = generateFieldMonsters(map, state.settings.testMode, monsterDefeats).filter(
+        (m) => !have.has(m.uid) && Math.hypot(m.cell.x - state.position.x, m.cell.y - state.position.y) > 4,
+      )
+      if (!back.length) return state
+      return { ...state, monsterDefeats, fieldMonsters: [...state.fieldMonsters, ...back] }
+    }
+
     case 'ADMIN_RESPAWN_MONSTERS': {
       // 관리자 — 이 맵에서 잡은 기록을 지우고 전부 다시 배치
       const monsterDefeats = Object.fromEntries(Object.entries(state.monsterDefeats ?? {}).filter(([k]) => !k.startsWith(state.currentMapId + ':')))
@@ -1068,6 +1128,8 @@ function reducerCore(state: GameState, action: Action): GameState {
       if (itemConsumed) inventory = removeFromInventory(inventory, itemConsumed, 1)
       // 콜로세움에서 도망 = 기권패
       if (fled && state.battle.pvp) return endArenaBattle({ ...state, inventory }, false)
+      // 샌드백 연습 끝 — 전투 전 상태 그대로(HP·MP·아이템 소모 없음)
+      if (fled && state.battle.sandbag) return { ...state, battle: null, screen: 'world', toast: '샌드백 연습을 마쳤다.', contactSafeUntil: Date.now() + 1500 }
       if (fled) return reopenStoryBattle(afterBattleFled(leaveBattle(state, resolved, inventory, '전투에서 벗어났습니다.'), resolved), resolved)
       const ended = checkBattleEnd(resolved)
       const next = ended.isOver ? ended : advanceTurn(ended)
@@ -1109,7 +1171,7 @@ function reducerCore(state: GameState, action: Action): GameState {
         const fieldMonsters = state.battle.fieldMonsterUid
           ? updateFieldMonstersAfterVictory(state.fieldMonsters, state.battle.fieldMonsterUid)
           : state.fieldMonsters
-        // 잡은 개체는 30분 동안 이 맵에 다시 나타나지 않는다(테스트 허수아비는 제외 — updateFieldMonstersAfterVictory 가 남겨 둔다)
+        // 잡은 개체는 15분 동안 이 맵에 다시 나타나지 않는다(테스트 허수아비는 제외 — updateFieldMonstersAfterVictory 가 남겨 둔다)
         const beaten = state.battle.fieldMonsterUid
         const monsterDefeats =
           beaten && fieldMonsters.length < state.fieldMonsters.length
@@ -1306,6 +1368,12 @@ function endArenaBattle(state: GameState, won: boolean): GameState {
   const match = state.battle?.pvp
   if (!match) return state
   return { ...state, battle: null, activeNpcId: 'npc-arena', screen: 'arena', arenaResult: { match, won } }
+}
+
+/** 개인 공간에 놓인 무기 거치대(샌드백) 근처인가 */
+export function nearSandbag(state: Pick<GameState, 'currentMapId' | 'housing' | 'position'>): boolean {
+  if (state.currentMapId !== 'personal-space') return false
+  return state.housing.placed.some((p) => p.defId === 'weaponrack' && Math.hypot(p.cell.x - state.position.x, p.cell.y - state.position.y) < 1.7)
 }
 
 function startBattleFromField(state: GameState, fieldMonsterUid: string): GameState {

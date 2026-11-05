@@ -1,6 +1,7 @@
 'use client'
 
 import type { PropDef } from '@/lib/iso'
+import { FOUNTAIN_FX } from '@/lib/fountain-fx-data'
 
 /** 라스터(PNG) 프롭 — 발밑 앵커를 원점(0,0)에 맞춰 배치. 모든 소품은 PixelLab 도트(스프라이트 없는 소품은 그리지 않음) */
 export function RasterProp({ p }: { p: PropDef }) {
@@ -16,21 +17,27 @@ export function RasterProp({ p }: { p: PropDef }) {
   const flip = mirror || p.mirrorX ? 'scaleX(-1)' : ''
   const rotate = p.rotateDeg ? `rotate(${p.rotateDeg}deg)` : ''
   const transform = [rotate, flip, skew].filter(Boolean).join(' ') || undefined
-  return (
-    <image
-      href={p.sprite}
-      x={-ax}
-      y={-ay}
-      width={w}
-      height={h}
-      style={{
-        imageRendering: 'pixelated',
-        transform,
-        // 앵커(ax,ay)만큼 x=-ax,y=-ay 로 이미 옮겨놨으므로, 발밑 앵커는 항상 로컬 원점(0,0)에 위치한다.
-        // 여기를 (ax,ay)로 잘못 잡으면 스프라이트마다 ax/ay 값이 달라 skew/flip 축이 제각각 어긋난다.
-        transformOrigin: transform ? '0px 0px' : undefined,
-      }}
-    />
-  )
+  const style = {
+    imageRendering: 'pixelated' as const,
+    transform,
+    // 앵커(ax,ay)만큼 x=-ax,y=-ay 로 이미 옮겨놨으므로, 발밑 앵커는 항상 로컬 원점(0,0)에 위치한다.
+    // 여기를 (ax,ay)로 잘못 잡으면 스프라이트마다 ax/ay 값이 달라 skew/flip 축이 제각각 어긋난다.
+    transformOrigin: transform ? '0px 0px' : undefined,
+  }
+  // 분수 물결(lib/fountain-fx-data · scripts/gen-fountain-fx) — 물 픽셀만 칠한 프레임을 같은 자리에 겹쳐 넘긴다
+  const fx = p.sprite ? FOUNTAIN_FX[p.sprite.split('?')[0]] : undefined
+  if (fx && w && h) {
+    const n = fx.frames
+    return (
+      <g style={style}>
+        <image href={p.sprite} x={-ax} y={-ay} width={w} height={h} style={{ imageRendering: 'pixelated' }} />
+        <svg x={-ax} y={-ay} width={w} height={h} viewBox={`0 0 ${fx.w} ${fx.h}`} preserveAspectRatio="none" overflow="hidden" pointerEvents="none">
+          <image href={fx.fx} x={0} y={0} width={fx.w * n} height={fx.h} style={{ imageRendering: 'pixelated' }}>
+            <animate attributeName="x" values={Array.from({ length: n }, (_, i) => -i * fx.w).join(';')} dur={`${n * 0.14}s`} calcMode="discrete" repeatCount="indefinite" />
+          </image>
+        </svg>
+      </g>
+    )
+  }
+  return <image href={p.sprite} x={-ax} y={-ay} width={w} height={h} style={style} />
 }
-

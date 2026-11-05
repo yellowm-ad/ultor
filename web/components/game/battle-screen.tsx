@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { DamagePopLayer } from '@/components/game/damage-pops'
+import { skillHitCount } from '@/lib/skill-hits'
 import { Button } from '@/components/ui/button'
 import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
@@ -111,15 +112,45 @@ function combatantPos(side: 'player' | 'enemy', index: number): FxPos {
 /** 스킬 연출은 몸 중심을 기준으로 — 발밑에서 위로 올린 좌표 */
 const FX_BODY_LIFT = 11
 
-// 지역별 전투 배경 삽화 — 구도는 숲(forest_bg.png)과 동일한 PixelLab Pro 생성물,
-// 기후/부산물/원경만 지역에 맞게 다름. 아직 그리지 않은 bg 키(cave/mine/swamp/deepsea/demon 등)는
-// undefined로 남아 기존 CSS 그라디언트 전장으로 자연스럽게 폴백된다.
-const CUSTOM_BATTLE_BG: Partial<Record<string, string>> = {
-  sky: '/images/battle/sky_bg.png',
-  sea: '/images/battle/sea_bg.png',
-  snow: '/images/battle/snow_bg.png',
-  ruins: '/images/battle/ruins_bg.png',
-  volcano: '/images/battle/volcano_bg.png',
+// 지역별 전투 배경 — 맵 bg 키 → 전투 삽화(PixelLab Pro, 숲과 같은 구도) + 분위기 덧칠 + 파티클.
+// 전용 삽화가 없는 지역(동굴·늪·심해·묘지·폐광·마물령·신전·오로라·학교 등)도 가장 가까운 삽화에
+// 색 덧칠을 얹어 테마를 맞춘다 — 예전처럼 CSS 초원 그라디언트(테스트 화면)로 떨어지는 맵이 없게.
+type ParticleKind = 'droplet' | 'light' | 'spirit' | 'snow' | 'ember'
+type BattleBackdrop = { img: string; tint?: string; particle?: ParticleKind; forest?: boolean; pixel?: boolean; /** background-position — 전투원 발밑이 바닥(러그)에 오게 */ pos?: string }
+const FOREST_IMG = '/images/battle/forest_bg.png?v=2'
+const BATTLE_BACKDROPS: Record<string, BattleBackdrop> = {
+  forest: { img: FOREST_IMG, forest: true, pixel: true },
+  sky: { img: '/images/battle/sky_bg.png', particle: 'light' },
+  sea: { img: '/images/battle/sea_bg.png', particle: 'droplet' },
+  snow: { img: '/images/battle/snow_bg.png', particle: 'snow' },
+  ruins: { img: '/images/battle/ruins_bg.png', particle: 'spirit' },
+  volcano: { img: '/images/battle/volcano_bg.png', particle: 'ember' },
+  // ── 전용 삽화 없는 지역: 가까운 삽화 + 덧칠 ──
+  cave: { img: FOREST_IMG, pixel: true, particle: 'light', tint: 'radial-gradient(120% 90% at 50% 70%, rgba(20,48,36,0.35), rgba(4,12,10,0.82) 75%), linear-gradient(180deg, rgba(4,10,8,0.85) 0%, rgba(6,18,14,0.5) 45%, rgba(8,20,14,0.4) 100%)' },
+  swamp: { img: FOREST_IMG, pixel: true, particle: 'spirit', tint: 'linear-gradient(180deg, rgba(150,168,150,0.5) 0%, rgba(96,118,92,0.38) 45%, rgba(34,52,30,0.45) 100%)' },
+  deepsea: { img: '/images/battle/sea_bg.png', particle: 'droplet', tint: 'linear-gradient(180deg, rgba(2,10,34,0.82) 0%, rgba(6,26,60,0.6) 50%, rgba(2,14,36,0.7) 100%)' },
+  atlantis: { img: '/images/battle/sea_bg.png', particle: 'droplet', tint: 'linear-gradient(180deg, rgba(20,70,110,0.35) 0%, rgba(40,110,140,0.2) 60%, rgba(10,40,70,0.3) 100%)' },
+  graveyard: { img: '/images/battle/ruins_bg.png', particle: 'spirit', tint: 'linear-gradient(180deg, rgba(18,10,34,0.72) 0%, rgba(30,20,48,0.45) 50%, rgba(12,8,20,0.55) 100%)' },
+  mine: { img: '/images/battle/ruins_bg.png', particle: 'ember', tint: 'radial-gradient(90% 70% at 50% 75%, rgba(120,70,20,0.2), rgba(14,8,4,0.8) 80%), linear-gradient(180deg, rgba(10,6,2,0.8) 0%, rgba(30,18,8,0.45) 100%)' },
+  demon: { img: '/images/battle/volcano_bg.png', particle: 'ember', tint: 'linear-gradient(180deg, rgba(30,0,24,0.6) 0%, rgba(60,8,30,0.35) 55%, rgba(16,0,10,0.55) 100%)' },
+  temple: { img: '/images/battle/sky_bg.png', particle: 'light', tint: 'linear-gradient(180deg, rgba(255,236,190,0.18) 0%, rgba(255,250,230,0.08) 60%, rgba(60,50,30,0.2) 100%)' },
+  aurora: { img: '/images/battle/snow_bg.png', particle: 'snow', tint: 'linear-gradient(180deg, rgba(40,160,140,0.35) 0%, rgba(110,80,180,0.22) 25%, rgba(10,20,50,0.25) 55%, transparent 100%)' },
+  // 개인 공간 샌드백(무기 거치대) — 방 안 연습장(PixelLab, 개인 공간 그림 참고)
+  personal: { img: '/images/battle/personal_bg.png?v=1', pixel: true, pos: 'center 74%' },
+  // 학교·광장·마을 등 — 학교 앞 숲길 훈련장
+  school: { img: FOREST_IMG, forest: true, pixel: true },
+}
+/** 맵 id 로 고르는 예외 — 같은 bg 키라도 성격이 다른 곳(버려진 신전 = 폐허) */
+const BATTLE_BACKDROP_BY_MAP: Record<string, string> = {
+  'temple-ruin': 'ruins',
+  'ruin-sanctum': 'ruins',
+  'ruin-guild': 'ruins',
+  'demon-temple': 'demon',
+  'personal-space': 'personal',
+}
+function battleBackdropFor(mapId: string, bg: string | undefined): BattleBackdrop {
+  const key = BATTLE_BACKDROP_BY_MAP[mapId] ?? bg ?? 'school'
+  return BATTLE_BACKDROPS[key] ?? BATTLE_BACKDROPS.school
 }
 
 // 숲 전투 배경 위에 뿌릴 반딧불 — variant(방황 경로)·위치·속도를 미리 고정해 자연스럽게 흩뿌린다
@@ -132,15 +163,6 @@ const FOREST_FIREFLIES: { variant: 'a' | 'b' | 'c'; left: string; top: string; d
   { variant: 'c', left: '55%', top: '30%', delay: '1.8s' },
 ]
 
-// 나머지 지역 전투 배경 위에 뿌릴 파티클 — 반딧불과 동일한 6개 스팟을 재사용하고
-// zoneBg별로 종류(물방울/빛/영혼/눈/불씨)와 궤적(상승/낙하)만 갈아끼운다
-const ZONE_PARTICLE_KIND: Partial<Record<string, 'droplet' | 'light' | 'spirit' | 'snow' | 'ember'>> = {
-  sea: 'droplet',
-  sky: 'light',
-  ruins: 'spirit',
-  snow: 'snow',
-  volcano: 'ember',
-}
 
 // ============================================================================
 // 전투 화면 — 저장된 예시(클래식 JRPG 배틀 구도) 참고:
@@ -242,11 +264,17 @@ export function BattleScreen() {
   const fxCasting = !!motion && motion.castMs > 0 && fxElapsed < motion.castMs
   /** 맞는 순간 — 대상이 번쩍이며 밀린다 */
   const fxHitting = !!motion && !fxHolding && fxElapsed < motion.impactMs + 450
+  // 다단 히트(lib/skill-hits) — 총 피해를 타수로 나눠 impactMs 부터 hitSpan 동안 한 대씩 보여 준다
+  const hits = fx ? skillHitCount(fx.skillId) : 1
+  const hitSpan = motion && hits > 1 ? Math.max(0, Math.min(((hits - 1) * 170) / speed, motion.totalMs - motion.impactMs - 250)) : 0
+  const hitGap = hits > 1 && hitSpan > 0 ? hitSpan / (hits - 1) : 0
+  const hitsShown = !motion || fxHolding ? 0 : hitGap > 0 ? Math.min(hits, 1 + Math.floor((fxElapsed - motion.impactMs) / hitGap)) : hits
   useEffect(() => {
     if (!fx || !motion) return
     const timers: ReturnType<typeof setTimeout>[] = []
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, Math.max(0, ms)))
     for (const ms of [motion.castMs, motion.impactMs, motion.impactMs + 450, motion.totalMs]) at(ms + 15, bumpFx)
+    for (let k = 1; k < hits; k++) at(motion.impactMs + hitGap * k + 15, bumpFx)
     // 강한 기술은 맞는 순간, 궁극기는 마무리 폭발에서 전장을 흔든다
     const shakeAt = motion.ultimate ? motion.finaleMs : motion.tier >= 3 ? motion.impactMs : -1
     if (shakeAt >= 0) {
@@ -291,13 +319,26 @@ export function BattleScreen() {
 
   if (!battle) return null
   // 화면에 보이는 전투원·로그 — 타격 전까지는 직전 상태
-  const view = fxHolding && fxClockRef.current?.prev ? fxClockRef.current.prev : { combatants: battle.combatants, log: battle.log }
+  const prevView = fxClockRef.current?.prev
+  const view =
+    fxHolding && prevView
+      ? prevView
+      : hitsShown < hits && prevView
+        ? {
+            // 다단 히트 도중 — HP 를 타수 비율만큼만 깎아 보여 주고, 쓰러지는 건 마지막 타에서
+            combatants: battle.combatants.map((c) => {
+              const p = prevView.combatants.find((x) => x.uid === c.uid)
+              if (!p || p.hp === c.hp) return c
+              return { ...c, hp: p.hp + Math.round(((c.hp - p.hp) * hitsShown) / hits), alive: p.alive || c.alive }
+            }),
+            log: battle.log,
+          }
+        : { combatants: battle.combatants, log: battle.log }
   const showResult = battle.isOver && !fxBusy
 
-  const zoneBg = MAPS[state.currentMapId]?.bg
-  const isForestBattle = zoneBg === 'forest'
-  const customBattleBg = zoneBg ? CUSTOM_BATTLE_BG[zoneBg] : undefined
-  const particleKind = zoneBg ? ZONE_PARTICLE_KIND[zoneBg] : undefined
+  const backdrop = battleBackdropFor(state.currentMapId, MAPS[state.currentMapId]?.bg)
+  const isForestBattle = !!backdrop.forest
+  const particleKind = backdrop.particle
   const enemies = view.combatants.filter((c) => c.side === 'enemy')
   const players = view.combatants.filter((c) => c.side === 'player')
   const hero = players.find((c) => c.kind === 'hero')
@@ -439,8 +480,8 @@ export function BattleScreen() {
 
   return (
     <div
-      className={`battle-field relative flex h-full w-full flex-col overflow-hidden ${isForestBattle ? 'battle-field-forest-edge' : customBattleBg ? 'battle-field-custom-bg' : ''}`}
-      style={customBattleBg ? { backgroundImage: `url(${customBattleBg})` } : undefined}
+      className={`battle-field relative flex h-full w-full flex-col overflow-hidden battle-field-custom-bg ${backdrop.pixel ? 'is-pixel' : ''}`}
+      style={{ backgroundImage: backdrop.tint ? `${backdrop.tint}, url(${backdrop.img})` : `url(${backdrop.img})`, ...(backdrop.pos ? { backgroundPosition: backdrop.pos } : {}) }}
     >
       {/* ── 상단 바: 좌측 보스 배너 + 가운데 컨트롤(자동/속도/도망) ── */}
       <div className="relative z-20 flex items-start px-3 pt-2">
@@ -489,7 +530,7 @@ export function BattleScreen() {
             disabled={!isHeroTurn}
             className="rounded-full border border-[#c79a3e]/55 bg-[#14100c]/85 px-3 py-1 text-xs font-display text-[#f3e6c4] disabled:opacity-40"
           >
-            도망
+            {battle.sandbag ? "그만두기" : "도망"}
           </button>
         </div>
       </div>
@@ -910,6 +951,10 @@ function CombatantSprite({
               px={spritePx}
               className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]"
             />
+          ) : c.isTestMonster ? (
+            // 샌드백 허수아비 — 개인 공간의 무기 거치대 그림 그대로
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/images/map/dorm/weaponrack.png" alt="" draggable={false} style={{ height: spritePx * 1.45, width: 'auto', imageRendering: 'pixelated' }} className="drop-shadow-[0_3px_4px_rgba(0,0,0,0.55)]" />
           ) : (
             <CreatureSprite
               spriteId={spriteIdFromRefId(c.refId)}

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { MAPS } from '@/lib/maps'
 import { calendarLabel } from '@/lib/calendar'
 import { getActiveSlot, listSaves, type SaveFile } from '@/lib/save'
-import { arcForWeek } from '@/lib/story'
+import { arcForStory } from '@/lib/story'
 import { HeroSprite, playerSheet } from '@/components/game/pixel-hero'
 
 /** 세이브 슬롯의 진행도 요약 — 학사 캘린더(학년·학기·주차) · 레벨 · 위치 */
@@ -17,7 +17,7 @@ function progressOf(file: SaveFile) {
     where: (st.currentMapId && MAPS[st.currentMapId]?.name) || '',
     gender: st.player?.appearance?.gender ?? 'male',
     gw: st.calendar?.globalWeek ?? 1,
-    chapter: arcForWeek(st.calendar?.globalWeek ?? 1).name,
+    chapter: arcForStory({ storyFlags: st.storyFlags ?? {} }).name,
     savedAt: new Date(file.savedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
   }
 }

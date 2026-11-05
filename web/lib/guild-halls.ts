@@ -72,6 +72,19 @@ export const GUILD_SPOTS = {
   clerk: { x: GUILD_W / 2, y: 1.9 },
   mentor: { x: 13.6, y: 7.2 },
   board: { x: 2.6, y: 7.6 },
+  /** 의뢰 안내원(접수대 앞 왼쪽) — 말을 걸면 의뢰 게시판을 연다 */
+  guide: { x: GUILD_W / 2 - 2.2, y: 5.0 },
+  /** 입구 옆 의뢰 표지판 — E 로 서브 퀘스트 목록(lib/guild-quests) */
+  sign: { x: GUILD_W / 2 - 3.0, y: GUILD_H - 4.2 },
+}
+/** 마을 테마 표지판 스프라이트 */
+const SIGNPOST: Record<GuildKey, Spr> = {
+  village: sp('vil_signpost.png', 46, 59, '/images/map/props/village/'),
+  atlantis: sp('atx_signpost.png', 42, 56, '/images/map/props/atlantis/'),
+  sky: sp('sky_signpost.png', 29, 61, '/images/map/props/skytemple/'),
+  ruin: sp('rui_signpost.png', 38, 62, '/images/map/props/templeruin/'),
+  aurora: sp('aur_signpost.png', 48, 61, '/images/map/props/aurora/'),
+  demon: sp('dem_signpost.png', 44, 59, '/images/map/props/demon/'),
 }
 
 interface GuildTheme {
@@ -228,6 +241,9 @@ function build(t: GuildTheme) {
     isoProp(`${k}-g-case0`, W.caseRelic, 17.8, 14.0, 0.6),
     isoProp(`${k}-g-case1`, W.caseCrystal, 15.6, 17.6, 0.6),
     isoProp(`${k}-g-plantSE`, t.plant, w - 3.0, h - 1.6, 0.4),
+
+    // ⑥ 의뢰 표지판(입구 왼쪽) — 서브 퀘스트 고르기
+    { ...isoProp(`${k}-g-sign`, SIGNPOST[k], GUILD_SPOTS.sign.x, GUILD_SPOTS.sign.y, 0.35, { scale: 1.5 }), label: '의뢰 표지판' },
 
     // 입구 양옆 등불
     isoProp(`${k}-g-lampS0`, t.lamp, cx - 2.6, h - 2.2, 0.3),

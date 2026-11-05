@@ -29,6 +29,9 @@ function resolveHero(role: HeroRole): { name: string; element: HeroRole; gender:
   return { name: c?.name ?? role, element: role, gender: c?.gender ?? 'male' }
 }
 
+/** 연출 동작이 지정된 줄 다음으로 몇 줄 더 무대에 남을지 */
+const ANIM_HOLD = 3
+
 export function StoryOverlay() {
   const { state, dispatch } = useGame()
   const beatId = state.storyQueue[0]
@@ -59,6 +62,10 @@ export function StoryOverlay() {
   let fxId: StoryLine['fx'] = null
   for (let i = 0; i <= line && i < lines.length; i++) if (lines[i].fx !== undefined) fxId = lines[i].fx ?? null
 
+  // 연출 동작 — 한 번 재생 후 마지막 자세로, 새 동작이 나오기 전까지 다음 대사 ANIM_HOLD 줄 동안 무대에 남긴다
+  let animLine = -1
+  for (let i = Math.min(line, lines.length - 1); i >= 0 && i >= line - ANIM_HOLD; i--) if (lines[i].anim) { animLine = i; break }
+
   // ▶▶ — 선택지가 있으면 선택지 줄로, 없으면 비트를 끝낸다
   const skip = () => (beat.choices?.length ? setLine(lines.length - 1) : dispatch({ type: 'DISMISS_STORY' }))
 
@@ -66,7 +73,9 @@ export function StoryOverlay() {
     <>
     {fxId && <DragonClash key={fxId} phase={fxId.slice(6) as ClashPhase} />}
     {cutId && <CutsceneLayer key={cutId} id={cutId} />}
-    {cur?.anim && !(cutId && cutsceneById(cutId)?.full) && <StoryAnimStage key={line} ids={([] as string[]).concat(cur.anim)} side={!!cutId} />}
+    {animLine >= 0 && !(cutId && cutsceneById(cutId)?.full) && (
+      <StoryAnimStage key={`${beat.id}-${animLine}`} ids={([] as string[]).concat(lines[animLine].anim!)} side={!!cutId} />
+    )}
     <DialogueBox
       zClass="z-[45]"
       title={cur?.place ? `${beat.title} · ${cur.place}` : beat.title}
@@ -141,7 +150,7 @@ function CutsceneLayer({ id }: { id: string }) {
 
 /**
  * 연출 동작 무대 — 풀컷신 중엔 숨김, 만화 컷 패널 중엔 왼쪽 앞(is-side), 컷이 없으면 가운데. 대화창 바로 위.
- * 동작은 두 번 재생하고 마지막 프레임에서 멈춘다 — 캐릭터를 누르면 다시 재생(대사는 넘어가지 않는다).
+ * 동작은 한 번 재생하고 마지막 프레임에서 멈춘다(다음 대사 몇 줄 동안 유지) — 캐릭터를 누르면 다시 재생(대사는 넘어가지 않는다).
  * 시트가 없으면 그 동작만 빠진다.
  */
 function StoryAnimStage({ ids, side }: { ids: string[]; side?: boolean }) {

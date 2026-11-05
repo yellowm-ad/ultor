@@ -6,7 +6,10 @@
 import type { BattleState, GameState, MapId, Position, Stats } from '@/lib/types'
 import { calendarInfo, calendarLabel, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
 import { beatById, beatsFor, STORY_CYCLE, type StoryTrigger } from '@/lib/story'
-import { acceptSideQuest, applyQuestEvents, dropSideQuest, generateWeeklyQuests, migrateWeekly, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
+import { acceptSideQuest, activeGuildQuests, applyQuestEvents, dropSideQuest, generateWeeklyQuests, guildBoard, migrateWeekly, questTemplateById, weekCompletion, yearRewardMult, type QuestEvent } from '@/lib/quests'
+import { episodeGate, episodeOpenFlag } from '@/lib/story-progress'
+import { episodeQuestId } from '@/lib/story-episodes'
+import { GUILD_ACTIVE_MAX, GUILD_LABEL, type GuildKey } from '@/lib/guild-quest-data'
 import { addCourseScore, courseById, courseName, settleTerm, skillsFromCourses } from '@/lib/academics'
 import { classForWeek, classGrade, classMetaFor, examGames, GRADE_REWARD, MASTERY_LABEL, masteryLevel, professorById, type MiniGameType } from '@/lib/curriculum'
 import { mulberry32 } from '@/lib/rng'
@@ -40,7 +43,7 @@ import {
   isCompanionAway,
   schoolNpcById,
 } from '@/lib/companions'
-import { addToInventory, hasItem, removeFromInventory } from '@/lib/inventory'
+import { addToInventory, hasItem, ownedFor, removeFromInventory } from '@/lib/inventory'
 import { applyExp, questExpMult } from '@/lib/exp-table'
 import { getEffectiveStats } from '@/lib/derived'
 import { itemById, monsterById, SKILLS } from '@/lib/mock-data'
@@ -124,7 +127,7 @@ export function ensureWeek(state: GameState): GameState {
   const gw = state.calendar.globalWeek
   // 예전 형식(후보 중 고르기)의 이번 주 — 진행은 살리고 새 형식으로, 이미 달성한 보조 미션은 바로 보상
   if (state.weekly.week === gw && state.weekly.format === 2) return autoClaimSide({ ...state, weekly: migrateWeekly(state.weekly) })
-  if (state.weekly.week === gw && state.weekly.format === 3) return state
+  if (state.weekly.week === gw && (state.weekly.format === 3 || state.weekly.format === 4)) return state
   const weekly = generateWeeklyQuests(state)
   return queueBeats({ ...state, weekly }, (t) => t.type === 'WEEK_START' && t.week === gw)
 }
@@ -160,7 +163,12 @@ export function claimQuest(state: GameState, instanceId: string): GameState {
   const mult = yearRewardMult(state.calendar.globalWeek)
   let next: GameState = {
     ...state,
-    weekly: { ...state.weekly, quests: state.weekly.quests.map((x) => (x.instanceId === instanceId ? { ...x, status: 'claimed' as const } : x)) },
+    weekly: {
+      ...state.weekly,
+      // 길드 의뢰는 끝나면 목록에서 빼고 다시 걸릴 때까지의 쿨다운을 남긴다
+      quests: q.guild ? state.weekly.quests.filter((x) => x.instanceId !== instanceId) : state.weekly.quests.map((x) => (x.instanceId === instanceId ? { ...x, status: 'claimed' as const } : x)),
+      lastSeen: q.guild ? { ...state.weekly.lastSeen, [`guild:${t.id}`]: state.calendar.globalWeek } : state.weekly.lastSeen,
+    },
   }
   const parts: string[] = []
   for (const r of t.rewards) {
@@ -200,6 +208,74 @@ export function claimQuest(state: GameState, instanceId: string): GameState {
   const learned = next.player.learnedSkills.slice(before)
   if (learned.length) parts.push(`새 마법: ${skillNames(learned)}`)
   return { ...next, toast: `「${t.title}」 보상 — ${parts.join(', ')}` }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 메인 스토리 — 레벨 관문(lib/story-progress)
+// ─────────────────────────────────────────────────────────────────────────────
+/** 다음 막 시작 — 오프닝 장면을 띄우고 그 막의 미션을 수첩 MAIN 칸에 넣는다(주가 바뀌어도 남는다) */
+export function startEpisode(state: GameState): GameState {
+  const gate = episodeGate(state)
+  if (!gate) return { ...state, toast: '지금 이어 갈 메인 스토리가 없습니다.' }
+  if (gate.why) return { ...state, toast: `${gate.ep.id} 「${gate.ep.title}」 — ${gate.why}` }
+  if (state.storyQueue.length) return state
+  const ep = gate.ep
+  const templateId = episodeQuestId(ep.week)
+  const t = questTemplateById(templateId)
+  const quests = state.weekly.quests.filter((q) => q.templateId !== templateId)
+  if (t) quests.push({ instanceId: `ep-${ep.week}`, templateId, slot: 'MAIN', progress: t.objectives.map(() => 0), status: 'active' })
+  let next: GameState = { ...state, weekly: { ...state.weekly, quests } }
+  next = queueBeats(next, (tr) => tr.type === 'EPISODE_START' && tr.week === ep.week)
+  next = { ...next, storyFlags: { ...next.storyFlags, [episodeOpenFlag(ep)]: true } }
+  return { ...next, toast: `메인 스토리 ${ep.id} 「${ep.title}」 시작` }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 길드 서브 퀘스트(lib/guild-quest-data) — 길드관 안내원·의뢰 표지판에서 골라 받는다
+// ─────────────────────────────────────────────────────────────────────────────
+export function openGuildBoard(state: GameState, guild: GuildKey): GameState {
+  return { ...state, guildBoardKey: guild, previousScreen: state.screen === 'dialogue' ? 'world' : state.screen, screen: 'guildBoard' }
+}
+
+export function acceptGuildQuest(state: GameState, guild: GuildKey, templateId: string): GameState {
+  const entry = guildBoard(state, guild).find((e) => e.t.id === templateId)
+  if (!entry) return state
+  if (entry.locked) return { ...state, toast: `「${entry.t.title}」 — ${entry.locked}` }
+  if (activeGuildQuests(state.weekly).length >= GUILD_ACTIVE_MAX) return { ...state, toast: `길드 의뢰는 한 번에 ${GUILD_ACTIVE_MAX}개까지 받을 수 있습니다.` }
+  const t = entry.t
+  const slot = t.category === 'COMBAT' ? 'COMBAT' : ['GATHER', 'HUNT', 'FISH', 'ALCHEMY', 'COOK', 'CRAFT'].includes(t.category) ? 'LIFE' : 'FREE'
+  const inst = { instanceId: `g-${t.id}-${state.calendar.globalWeek}-${state.weekly.quests.length}`, templateId: t.id, slot, progress: t.objectives.map(() => 0), status: 'active', guild } as const
+  return { ...state, weekly: { ...state.weekly, quests: [...state.weekly.quests, { ...inst }] }, toast: `${GUILD_LABEL[guild]} 의뢰 「${t.title}」을(를) 받았다` }
+}
+
+export function dropGuildQuest(state: GameState, instanceId: string): GameState {
+  const q = state.weekly.quests.find((x) => x.instanceId === instanceId)
+  if (!q?.guild || q.status !== 'active') return state
+  return { ...state, weekly: { ...state.weekly, quests: state.weekly.quests.filter((x) => x.instanceId !== instanceId) }, toast: `「${questTemplateById(q.templateId)?.title ?? ''}」 의뢰를 포기했다` }
+}
+
+/** 그 NPC 에게 건넬 물건(DELIVER 목표) — 가방에서 빼고 진행 이벤트로. 길드 의뢰는 차례가 된 목표만 */
+function deliverTo(state: GameState, npcId: string): { state: GameState; events: QuestEvent[] } {
+  let inventory = state.inventory
+  const events: QuestEvent[] = []
+  for (const q of state.weekly.quests) {
+    if (q.status !== 'active') continue
+    const t = questTemplateById(q.templateId)
+    if (!t) continue
+    const firstOpen = t.objectives.findIndex((ob, i) => (q.progress[i] ?? 0) < ob.count)
+    t.objectives.forEach((ob, i) => {
+      if (ob.type !== 'DELIVER' || ob.targetId !== npcId || !ob.itemId) return
+      if (q.guild && i !== firstOpen) return
+      const need = ob.count - (q.progress[i] ?? 0)
+      const give = Math.min(need, ownedFor(inventory, ob.itemId))
+      if (give <= 0) return
+      inventory = removeFromInventory(inventory, ob.itemId, give)
+      events.push({ type: 'DELIVER', npcId, itemId: ob.itemId, qty: give })
+    })
+  }
+  if (!events.length) return { state, events }
+  const names = events.map((e) => `${itemById(e.type === 'DELIVER' ? e.itemId : '')?.name ?? ''} ×${e.type === 'DELIVER' ? e.qty : 0}`).join(', ')
+  return { state: { ...state, inventory, toast: joinToast(state.toast, `건넸다: ${names}`) }, events }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,12 +445,7 @@ export function endWeek(state: GameState, force = false): GameState {
   const gw = state.calendar.globalWeek
   const wc = weekCompletion(state.weekly)
   if (!force && !wc.canEnd) {
-    const why = !wc.classDone
-      ? '이번 주 수업을 먼저 들어야 합니다. (학사 수첩 → 수업 참석)'
-      : !wc.mainDone
-        ? wc.storyWeek ? '스토리 미션의 보상을 먼저 받아야 합니다. (학사 수첩 J)' : '필수 미션의 보상을 먼저 받아야 합니다.'
-        : `외부활동 ${wc.requiredOptional}개의 보상을 받아야 이번 주를 마칠 수 있습니다.`
-    return { ...state, toast: why }
+    return { ...state, toast: '이번 주 수업을 먼저 들어야 합니다. (학사 수첩 → 수업 참석)' }
   }
   if (gw >= TOTAL_WEEKS) return { ...state, toast: '4학년 겨울방학 — 마지막 주입니다. (후일담 구간)' }
   const info = calendarInfo(gw)
@@ -559,7 +630,8 @@ export function talkTo(state: GameState, npcId: string): GameState {
   }
   // 이 NPC 에게 말을 걸면 열리는 스토리 장면(대본의 '셀린의 약초실'·'오웬의 기록' 등)
   next = queueBeats(next, (t) => t.type === 'TALK' && t.npcId === npcId)
-  return withQuestEvents(next, [{ type: 'TALK', npcId }], next.toast)
+  const d = deliverTo(next, npcId)
+  return withQuestEvents(d.state, [...d.events, { type: 'TALK', npcId }], d.state.toast)
 }
 
 export function visitMap(state: GameState, mapId: MapId): GameState {

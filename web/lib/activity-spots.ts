@@ -9,12 +9,16 @@
 
 import type { MapId } from '@/lib/types'
 import type { PassageId } from '@/lib/passages'
+import type { GuildKey } from '@/lib/guild-quest-data'
+import { GUILD_SPOTS } from '@/lib/guild-halls'
 
 export interface ActivitySpot {
   id: string
   mapId: MapId
   cell: { x: number; y: number }
-  kind: 'fishing' | 'arcade' | 'fountain'
+  kind: 'fishing' | 'arcade' | 'fountain' | 'guildBoard'
+  /** guildBoard — 어느 길드의 의뢰 표지판인가 */
+  guild?: GuildKey
   /** fountain — 평판 거점 id(lib/story REPUTATION_HUBS) */
   hubId?: string
   /** 상호작용 거리(기본 1.6) — 분수대처럼 큰 소품은 테두리에서 닿게 넓힌다 */
@@ -49,6 +53,10 @@ export const ACTIVITY_SPOTS: ActivitySpot[] = [
   { id: 'rep-ruin', mapId: 'temple-ruin', cell: { x: 32, y: 42 }, kind: 'fountain', hubId: 'RUIN_VILLAGE', reach: 2.2, label: '메마른 분수', prompt: '분수대 의뢰판 보기' },
   { id: 'rep-aurora', mapId: 'aurora-village', cell: { x: 32, y: 42 }, kind: 'fountain', hubId: 'AURORA', reach: 2.2, label: '얼어붙은 분수', prompt: '분수대 의뢰판 보기' },
   { id: 'rep-demon', mapId: 'demon-village', cell: { x: 32, y: 23 }, kind: 'fountain', hubId: 'MONSTER_VILLAGE', reach: 2.2, label: '용암 분수', prompt: '분수대 의뢰판 보기' },
+  // ── 길드관 의뢰 표지판(lib/guild-halls GUILD_SPOTS.sign · 서브 퀘스트 고르기) ──
+  ...(['village', 'atlantis', 'sky', 'ruin', 'aurora', 'demon'] as const).map(
+    (g): ActivitySpot => ({ id: `guild-sign-${g}`, mapId: `${g}-guild` as MapId, cell: { ...GUILD_SPOTS.sign }, kind: 'guildBoard', guild: g, reach: 1.7, label: '의뢰 표지판', prompt: '의뢰 표지판 보기 — 서브 퀘스트 고르기' }),
+  ),
 ]
 
 const BY_ID = new Map(ACTIVITY_SPOTS.map((s) => [s.id, s]))

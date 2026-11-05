@@ -418,7 +418,8 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
   const done = (fx?: BattleFx): ResolveResult => ({ battle: { ...battle, combatants, log: entries, lastFx: fx ?? battle.lastFx } })
 
   if (action.type === 'flee') {
-    if (Math.random() < 0.75) {
+    // 샌드백(개인 공간 무기 거치대) — 언제든 그만둘 수 있다
+    if (battle.sandbag || Math.random() < 0.75) {
       log(entries, `${actor.name}이(가) 전투에서 도망쳤다!`, 'system')
       fled = true
     } else {
@@ -772,6 +773,14 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
 export function resolveEnemyTurn(battle: BattleState, actorUid: string): BattleState {
   const actor = battle.combatants.find((c) => c.uid === actorUid)
   if (!actor) return battle
+  // 샌드백 허수아비 — 반격하지 않고 서 있기만 한다
+  if (battle.sandbag && actor.isTestMonster) {
+    const combatants = battle.combatants.map((c) => ({ ...c }))
+    const me = combatants.find((c) => c.uid === actorUid)!
+    const entries = [...battle.log]
+    endActorTurn(me, entries)
+    return { ...battle, combatants, log: entries }
+  }
   const action = chooseAutoAction(actor, battle.combatants)
   const { battle: next } = resolveAction(battle, actorUid, action)
   return next
@@ -805,7 +814,17 @@ export function advanceTurn(battle: BattleState): BattleState {
   return { ...battle, combatants: dismissSummons(combatants, entries), log: entries, activeUid: null, round: battle.round + 1 }
 }
 
+/** 샌드백 허수아비 체력 — 아무리 때려도 버티도록 넉넉히, 절반 밑으로 내려가면 다시 가득 */
+export const SANDBAG_HP = 9_999_999
+
 export function checkBattleEnd(battle: BattleState): BattleState {
+  // 샌드백 — 허수아비는 쓰러지지 않는다(체력이 줄면 다시 채운다). 끝내는 건 '도망(그만두기)'뿐
+  if (battle.sandbag) {
+    const combatants = battle.combatants.map((c) =>
+      c.isTestMonster && (!c.alive || c.hp < SANDBAG_HP / 2) ? { ...c, alive: true, hp: SANDBAG_HP, effects: c.alive ? c.effects : [] } : c,
+    )
+    return { ...battle, combatants }
+  }
   const enemiesAlive = aliveEnemies(battle.combatants).length > 0
   // 펫·임시 NPC 만 남으면 패배 — 주인공 + 파티 동료 기준
   const playersAlive = alivePlayers(battle.combatants).some(isPlayerControlled)

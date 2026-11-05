@@ -73,6 +73,19 @@ export function SettingsScreen() {
               </div>
               <div className="set-row">
                 <div>
+                  <div className="t">전투 시작 방식</div>
+                  <div className="d">전투에 들어갈 때 자동 전투를 켠 채로 시작할지 고릅니다. 전투 중 「자동」 버튼으로 언제든 바꿀 수 있습니다.</div>
+                </div>
+                <div className="set-toggle">
+                  {([false, true] as const).map((v) => (
+                    <button key={String(v)} type="button" className={`gw-btn is-sm ${!!state.settings.battleAutoStart === v ? 'is-gold' : 'is-quiet'}`} onClick={() => set({ battleAutoStart: v })}>
+                      {v ? '자동' : '수동'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="set-row">
+                <div>
                   <div className="t">전체 화면</div>
                   <div className="d">주소창 없이 화면 전체로 플레이합니다. 휴대폰에서는 가로로 고정됩니다(지원하는 브라우저).</div>
                 </div>
@@ -87,15 +100,6 @@ export function SettingsScreen() {
                 </div>
                 <button type="button" className={`gw-btn is-sm ${state.settings.noFlash ? 'is-gold' : 'is-quiet'}`} onClick={() => set({ noFlash: !state.settings.noFlash })}>
                   {state.settings.noFlash ? 'ON' : 'OFF'}
-                </button>
-              </div>
-              <div className="set-row">
-                <div>
-                  <div className="t">테스트 모드</div>
-                  <div className="d">필드에 훈련용 허수아비를 배치합니다. 10마리 처치 시 정확히 1레벨이 오릅니다.</div>
-                </div>
-                <button type="button" className={`gw-btn is-sm ${state.settings.testMode ? 'is-gold' : 'is-quiet'}`} onClick={() => dispatch({ type: 'TOGGLE_TEST_MODE' })}>
-                  {state.settings.testMode ? 'ON' : 'OFF'}
                 </button>
               </div>
             </>

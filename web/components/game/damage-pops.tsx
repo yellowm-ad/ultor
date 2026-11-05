@@ -30,6 +30,8 @@ export function DamagePopLayer({
 }) {
   const prev = useRef<Map<string, number> | null>(null)
   const seen = useRef<string | null>(null)
+  // 다단 히트 — 치명타 표시는 그 행동의 모든 타에 이어 붙인다(새 로그가 오면 갱신)
+  const lastCrits = useRef<Set<string>>(new Set())
   const [pops, setPops] = useState<Pop[]>([])
 
   useEffect(() => {
@@ -42,7 +44,8 @@ export function DamagePopLayer({
     const at = seen.current ? log.findIndex((l) => l.id === seen.current) : -1
     const fresh = at >= 0 ? log.slice(at + 1) : log.slice(-6)
     seen.current = log[log.length - 1]?.id ?? seen.current
-    const crits = new Set(fresh.map((l) => CRIT_RE.exec(l.text)?.[1]).filter((n): n is string => !!n))
+    if (fresh.length) lastCrits.current = new Set(fresh.map((l) => CRIT_RE.exec(l.text)?.[1]).filter((n): n is string => !!n))
+    const crits = lastCrits.current
     const missed = fresh.some((l) => l.text.includes('빗나갔다'))
     const now = Date.now()
     const add: Pop[] = []

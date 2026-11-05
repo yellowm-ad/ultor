@@ -17,7 +17,6 @@ import type {
   GameState,
   MonsterFamily,
   QuestCategory,
-  QuestInstance,
   QuestObjective,
   QuestReward,
   QuestSlot,
@@ -26,12 +25,12 @@ import type {
 } from '@/lib/types'
 import { calendarInfo } from '@/lib/calendar'
 import { classForWeek } from '@/lib/curriculum'
-import { episodeQuestId, isStoryEpisodeWeek, STORY_EPISODES } from '@/lib/story-episodes'
-import { arcForWeek, flagsAllOn, MAIN_QUEST_BY_WEEK, STORY_ARCS } from '@/lib/story'
+import { episodeQuestId, STORY_EPISODES } from '@/lib/story-episodes'
+import { flagsAllOn } from '@/lib/story'
+import { GUILD_BASE_LEVEL, GUILD_OF_REGION, GUILD_QUESTS, type GuildKey } from '@/lib/guild-quest-data'
 import { REGIONS, type RegionId } from '@/lib/regions'
 import { isActivityUnlocked, itemMatches, type ActivityId } from '@/lib/life'
 import { itemById } from '@/lib/mock-data'
-import { mulberry32 } from '@/lib/rng'
 
 export interface QuestTemplate {
   id: string
@@ -54,6 +53,12 @@ export interface QuestTemplate {
   weight?: number
   /** 다시 나오기까지 최소 주 수(기본 3) */
   cooldownWeeks?: number
+  /** 길드 게시판 — 이 길드에만 건다(생략 시 regionId 로 정하고, 둘 다 없으면 모든 길드) */
+  guild?: GuildKey
+  /** 길드 게시판에 걸리는 최소 레벨(생략 시 길드 기본 레벨 · minYear 보정) */
+  minLevel?: number
+  /** 의뢰인 이름(게시판 표시) */
+  giver?: string
 }
 
 // §7 기본 가중치
@@ -177,6 +182,9 @@ for (const ep of STORY_EPISODES) {
   })
 }
 
+// 길드 서브 퀘스트(lib/guild-quest-data) — 마을 사람과 얽히는 의뢰
+for (const g of GUILD_QUESTS) QUEST_TEMPLATES.push({ ...g })
+
 const TEMPLATE_BY_ID = new Map(QUEST_TEMPLATES.map((t) => [t.id, t]))
 export function questTemplateById(id: string): QuestTemplate | undefined {
   return TEMPLATE_BY_ID.get(id)
@@ -187,77 +195,7 @@ export function yearRewardMult(globalWeek: number): number {
   return 1 + (calendarInfo(globalWeek).year - 1) * 0.8
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 생성기 (§68)
-// ─────────────────────────────────────────────────────────────────────────────
-function hashSeed(...parts: (number | string)[]): number {
-  let h = 2166136261
-  for (const p of parts) {
-    const str = String(p)
-    for (let i = 0; i < str.length; i++) {
-      h ^= str.charCodeAt(i)
-      h = Math.imul(h, 16777619)
-    }
-    h ^= 0x9e3779b9
-  }
-  return h >>> 0
-}
-
-/** 이야기상 이미 도달한(현재 장 이하) 지역들 */
-function reachedRegions(globalWeek: number): Set<RegionId> {
-  const out = new Set<RegionId>(['ACADEMY'])
-  for (const a of STORY_ARCS) if (a.startWeek <= globalWeek) out.add(a.mainRegion)
-  return out
-}
-
 type GenState = Pick<GameState, 'playerSeed' | 'calendar' | 'storyFlags' | 'settings' | 'weekly'>
-
-function eligible(t: QuestTemplate, state: GenState, reached: Set<RegionId>): boolean {
-  const info = calendarInfo(state.calendar.globalWeek)
-  if (t.minYear && info.year < t.minYear) return false
-  if (t.maxYear && info.year > t.maxYear) return false
-  if (t.terms && !t.terms.includes(info.termType)) return false
-  if (t.activity && !isActivityUnlocked(state, t.activity)) return false
-  if (!flagsAllOn(state, t.requiredFlags)) return false
-  if (t.regionId && !reached.has(t.regionId) && !state.storyFlags.DEBUG_UNLOCK_ALL) return false
-  const last = state.weekly.lastSeen[t.id]
-  if (last != null && state.calendar.globalWeek - last < (t.cooldownWeeks ?? 3)) return false
-  return true
-}
-
-function weightOf(t: QuestTemplate, state: GenState): number {
-  const info = calendarInfo(state.calendar.globalWeek)
-  const arcRegion = arcForWeek(state.calendar.globalWeek).mainRegion
-  let w = t.weight ?? CATEGORY_WEIGHT[t.category]
-  // §72 지역 가중치: 학기 = 학교 중심, 방학 = 원정 지역 중심
-  if (t.regionId) {
-    if (t.regionId === arcRegion) w *= info.isVacation ? 3.5 : 1.6
-    else if (t.regionId === 'ACADEMY') w *= info.isVacation ? 0.4 : 2
-    else w *= 0.5 // 이전 지역
-  } else if (info.isVacation && t.category === 'CLASS') {
-    w = 0
-  }
-  // 쉬어가는 주(통합 PRD §48) — 학기 5주차: 강제 전투 없이 생활·대화 비중↑
-  if (isRestWeek(state.calendar.globalWeek)) w *= t.category === 'COMBAT' ? 0.05 : CATEGORY_SLOT[t.category] === 'COMBAT' ? 0.05 : 2.5
-  const last = state.weekly.lastSeen[t.id]
-  if (last != null && state.calendar.globalWeek - last < 6) w *= 0.5
-  return w
-}
-
-function pick<T>(list: T[], weights: number[], rand: () => number): T | null {
-  const total = weights.reduce((a, b) => a + b, 0)
-  if (total <= 0) return null
-  let roll = rand() * total
-  for (let i = 0; i < list.length; i++) {
-    roll -= weights[i]
-    if (roll <= 0) return list[i]
-  }
-  return list[list.length - 1]
-}
-
-function instanceOf(t: QuestTemplate, slot: QuestSlot, week: number): QuestInstance {
-  return { instanceId: `${week}-${t.id}`, templateId: t.id, slot, progress: t.objectives.map(() => 0), status: 'active' }
-}
 
 /** 쉬어가는 주 — 학기마다 1회(5주차). 축제·동아리·기숙사 행사 같은 저강도 주간 */
 export function isRestWeek(globalWeek: number): boolean {
@@ -268,61 +206,65 @@ export function isRestWeek(globalWeek: number): boolean {
 /** 주간 보조 미션 수 — 고르지 않고 랜덤으로 이만큼 바로 주어진다(2026-10-14) */
 export const SIDE_CANDIDATES = 2
 
-/** 최근 3주에 같은 카테고리가 몇 번 나왔는가(§29 중복 방지) */
-function recentCategoryCount(state: GenState, cat: QuestCategory): number {
-  let n = 0
-  for (const [id, wk] of Object.entries(state.weekly.lastSeen)) {
-    if (state.calendar.globalWeek - wk > 3) continue
-    if (questTemplateById(id)?.category === cat) n++
-  }
-  return n
-}
-
-/** 이번 주 목록 생성 — 같은 입력이면 항상 같은 결과. 보조 미션은 랜덤 2개를 바로 'active'(진행 중)로 준다 */
+/**
+ * 이번 주 목록 — 2026-11-05 개편: 주간 보조 미션은 없다(서브 퀘스트는 길드 게시판에서 개별로).
+ * 지난 주에서 아직 끝나지 않은 메인 스토리 미션과 받아 둔 길드 의뢰만 그대로 이어 온다.
+ */
 export function generateWeeklyQuests(state: GenState): WeeklyState {
   const gw = state.calendar.globalWeek
-  const info = calendarInfo(gw)
-  const flagCount = Object.values(state.storyFlags).filter(Boolean).length
-  const arc = arcForWeek(gw)
-  const rand = mulberry32(hashSeed(state.playerSeed, gw, arc.mainRegion, flagCount))
-  const reached = reachedRegions(gw)
-
-  const quests: QuestInstance[] = []
-  const used = new Set<string>()
-  // 스토리가 이 주에 지정한 필수 과제(있을 때만)
-  // 스토리 주간이면 그 주 에피소드 미션이 필수(직접 지정한 MAIN_QUEST_BY_WEEK 가 있으면 그쪽이 우선)
-  const mainId = MAIN_QUEST_BY_WEEK[gw] ?? (isStoryEpisodeWeek(gw) ? episodeQuestId(gw) : undefined)
-  const storyMain = mainId ? questTemplateById(mainId) : undefined
-  if (storyMain) {
-    quests.push(instanceOf(storyMain, 'MAIN', gw))
-    used.add(storyMain.id)
-  }
-
-  // 외부활동 후보 — 전투·생활·자유를 고르게(방학은 하나 더)
-  // 보조 미션 2개 — 종류가 겹치지 않게 두 갈래를 뽑는다(방학은 전투 비중↑, 쉬어가는 주는 생활·자유)
-  const kinds: QuestSlot[] = info.isVacation ? ['COMBAT', 'COMBAT', 'LIFE', 'FREE'] : isRestWeek(gw) ? ['LIFE', 'FREE'] : ['COMBAT', 'LIFE', 'FREE']
-  const first = kinds[Math.floor(rand() * kinds.length)]
-  const rest = kinds.filter((k) => k !== first)
-  const slots: QuestSlot[] = [first, rest[Math.floor(rand() * rest.length)] ?? first].slice(0, SIDE_CANDIDATES)
-  const sideOk = (t: QuestTemplate) => t.category !== 'MAIN' && t.category !== 'CLASS' && !used.has(t.id) && eligible(t, state, reached)
-  for (const slot of slots) {
-    const pool = QUEST_TEMPLATES.filter((t) => CATEGORY_SLOT[t.category] === slot && sideOk(t))
-    const usedCats = new Set(quests.map((q) => questTemplateById(q.templateId)?.category))
-    const weights = pool.map((t) => weightOf(t, state) * (usedCats.has(t.category) ? 0.3 : 1) * Math.pow(0.6, recentCategoryCount(state, t.category)))
-    let chosen = pick(pool, weights, rand)
-    if (!chosen) {
-      const any = QUEST_TEMPLATES.filter(sideOk)
-      chosen = pick(any, any.map((t) => weightOf(t, state)), rand)
-    }
-    if (!chosen) continue
-    used.add(chosen.id)
-    quests.push({ ...instanceOf(chosen, slot, gw), status: 'active' })
-  }
-
-  const lastSeen = { ...state.weekly.lastSeen }
-  for (const q of quests) lastSeen[q.templateId] = gw
-  return { week: gw, quests, lastSeen, format: 3, classDone: false }
+  const carried = state.weekly.quests.filter(
+    (q) => (q.slot === 'MAIN' && q.templateId.startsWith('STORY_EP_') && q.status !== 'claimed') || (!!q.guild && (q.status === 'active' || q.status === 'complete')),
+  )
+  return { week: gw, quests: carried, lastSeen: { ...state.weekly.lastSeen }, format: 4, classDone: false }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 길드 게시판(lib/guild-quest-data) — 마을 길드에서 골라 받는 서브 퀘스트
+// ─────────────────────────────────────────────────────────────────────────────
+/** 이 템플릿을 거는 길드(null = 모든 길드) */
+export function guildOfTemplate(t: QuestTemplate): GuildKey | null {
+  if (t.guild) return t.guild
+  if (t.regionId) return GUILD_OF_REGION[t.regionId] ?? 'village'
+  return null
+}
+
+/** 길드 게시판에 걸 수 있는 템플릿인가(메인·수업은 제외) */
+const BOARD_CATEGORIES = new Set<QuestCategory>(['COMBAT', 'GATHER', 'HUNT', 'FISH', 'ALCHEMY', 'COOK', 'CRAFT', 'NPC', 'EXPLORE', 'HOUSING'])
+
+export function templateMinLevel(t: QuestTemplate, guild: GuildKey): number {
+  if (t.minLevel) return t.minLevel
+  const byYear = t.minYear ? [1, 1, 20, 35, 50][t.minYear] ?? 1 : 1
+  return Math.max(GUILD_BASE_LEVEL[guild], byYear)
+}
+
+export type BoardEntry = { t: QuestTemplate; minLevel: number; locked: string | null }
+
+type BoardState = Pick<GameState, 'storyFlags' | 'calendar' | 'weekly' | 'player' | 'settings'> & Parameters<typeof isActivityUnlocked>[0]
+
+/** 이 길드 게시판 목록 — 받을 수 있는 것 + 레벨이 조금 모자란 것(잠김 표시). 진행 중·쿨다운 중인 것은 뺀다 */
+export function guildBoard(state: BoardState, guild: GuildKey): BoardEntry[] {
+  const gw = state.calendar.globalWeek
+  const active = new Set(state.weekly.quests.filter((q) => q.guild && (q.status === 'active' || q.status === 'complete')).map((q) => q.templateId))
+  const out: BoardEntry[] = []
+  for (const t of QUEST_TEMPLATES) {
+    if (!BOARD_CATEGORIES.has(t.category)) continue
+    const g = guildOfTemplate(t)
+    if (g && g !== guild) continue
+    if (active.has(t.id)) continue
+    const last = state.weekly.lastSeen[`guild:${t.id}`]
+    if (last != null && gw - last < (t.cooldownWeeks ?? 2)) continue
+    if (!flagsAllOn(state, t.requiredFlags)) continue
+    const minLevel = templateMinLevel(t, guild)
+    if (state.player.level + 6 < minLevel) continue // 너무 먼 의뢰는 아직 걸지 않는다
+    const locked = state.player.level < minLevel ? `Lv.${minLevel} 필요` : t.activity && !isActivityUnlocked(state, t.activity) ? '생활 활동 해금 필요' : null
+    out.push({ t, minLevel, locked })
+  }
+  // 마을 사람 의뢰(giver) 먼저, 그다음 레벨 순
+  return out.sort((a, b) => Number(!!b.t.giver) - Number(!!a.t.giver) || Number(!!a.locked) - Number(!!b.locked) || a.minLevel - b.minLevel)
+}
+
+/** 받아 둔 길드 의뢰(진행 중) */
+export const activeGuildQuests = (weekly: WeeklyState) => weekly.quests.filter((q) => !!q.guild && q.status === 'active')
 
 /**
  * 예전 형식(후보 5개 중 2개 고르기, format 2)의 이번 주 목록을 새 형식으로 — 진행 상황은 그대로 두고,
@@ -367,6 +309,7 @@ export type QuestEvent =
   | { type: 'TALK'; npcId: string }
   | { type: 'VISIT'; mapId: string }
   | { type: 'PLACE_FURNITURE' }
+  | { type: 'DELIVER'; npcId: string; itemId: string; qty: number }
 
 function gainFor(obj: QuestObjective, ev: QuestEvent): number {
   if (obj.type !== ev.type) return 0
@@ -390,6 +333,8 @@ function gainFor(obj: QuestObjective, ev: QuestEvent): number {
       return obj.targetId === ev.mapId ? 1 : 0
     case 'PLACE_FURNITURE':
       return 1
+    case 'DELIVER':
+      return obj.targetId === ev.npcId && obj.itemId === ev.itemId ? ev.qty : 0
   }
 }
 
@@ -402,9 +347,12 @@ export function applyQuestEvent(weekly: WeeklyState, ev: QuestEvent): { weekly: 
     const t = questTemplateById(q.templateId)
     if (!t) return q
     let touched = false
+    // 길드 의뢰는 이야기 순서대로(받기 → 전하기 → 보고) — 차례가 된 목표만 오른다
+    const firstOpen = q.guild ? t.objectives.findIndex((ob, i) => (q.progress[i] ?? 0) < ob.count) : -1
     const progress = q.progress.map((p, i) => {
       const obj = t.objectives[i]
       if (p >= obj.count) return p
+      if (q.guild && i !== firstOpen) return p
       const g = gainFor(obj, ev)
       if (g <= 0) return p
       touched = true
@@ -430,17 +378,15 @@ export function applyQuestEvents(weekly: WeeklyState, events: QuestEvent[]): { w
   return { weekly: w, completed }
 }
 
-/** 이 주에 보상까지 받아야 하는 외부활동 수 — 스토리 주간은 에피소드가 큰 덩어리라 1개 */
-export const requiredOptionalFor = (week: number) => (isStoryEpisodeWeek(week) ? 1 : REQUIRED_OPTIONAL)
+/** 주 마감에 필요한 외부활동 수 — 2026-11-05 개편으로 없음(서브 퀘스트는 길드에서 개별로) */
+export const requiredOptionalFor = (_week: number) => 0
 
+/** 주 마감 조건 — 이번 주 수업만 들으면 된다. 메인 스토리·길드 의뢰는 주와 상관없이 이어진다 */
 export function weekCompletion(weekly: WeeklyState): { classRequired: boolean; classDone: boolean; mainDone: boolean; optionalDone: number; requiredOptional: number; storyWeek: boolean; canEnd: boolean } {
   const classRequired = classForWeek(weekly.week) != null
   const classDone = !classRequired || !!weekly.classDone
-  const hasMain = weekly.quests.some((q) => q.slot === 'MAIN')
-  const mainDone = !hasMain || weekly.quests.some((q) => q.slot === 'MAIN' && q.status === 'claimed')
-  const optionalDone = weekly.quests.filter((q) => q.slot !== 'MAIN' && q.status === 'claimed').length
-  const requiredOptional = requiredOptionalFor(weekly.week)
-  return { classRequired, classDone, mainDone, optionalDone, requiredOptional, storyWeek: isStoryEpisodeWeek(weekly.week), canEnd: classDone && mainDone && optionalDone >= requiredOptional }
+  const mainDone = !weekly.quests.some((q) => q.slot === 'MAIN' && q.status !== 'claimed')
+  return { classRequired, classDone, mainDone, optionalDone: 0, requiredOptional: 0, storyWeek: false, canEnd: classDone }
 }
 
 export function regionIds(): RegionId[] {

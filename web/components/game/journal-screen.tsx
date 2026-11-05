@@ -6,8 +6,10 @@ import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { Bar, GameWindow, HeadPill, menuIcon, Ribbon, SideItem, Slot, Sparkle } from '@/components/game/game-window'
 import { calendarInfo, calendarLabel, TERM_META, TOTAL_WEEKS, WEEKS_PER_TERM } from '@/lib/calendar'
-import { academicTitle, arcForWeek } from '@/lib/story'
-import { isRestWeek, questTemplateById, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
+import { academicTitle, arcForStory } from '@/lib/story'
+import { activeGuildQuests, isRestWeek, questTemplateById, SLOT_LABEL, weekCompletion, yearRewardMult } from '@/lib/quests'
+import { episodeGate } from '@/lib/story-progress'
+import { GUILD_ACTIVE_MAX, GUILD_LABEL, type GuildKey } from '@/lib/guild-quest-data'
 import { classForWeek, classMetaFor, MASTERY_LABEL, masteryLevel, MINIGAME_META, professorById, type MasteryField } from '@/lib/curriculum'
 import { MAPS } from '@/lib/maps'
 import type { QuestInstance, QuestReward } from '@/lib/types'
@@ -35,7 +37,7 @@ export function JournalScreen() {
   const [tab, setTab] = useState<Tab>('week')
   if (state.screen !== 'journal') return null
   const close = () => dispatch({ type: 'SET_SCREEN', screen: 'world' })
-  const { optionalDone, requiredOptional } = weekCompletion(state.weekly)
+  const guildN = activeGuildQuests(state.weekly).length
   const claimable = state.weekly.quests.filter((q) => q.status === 'complete').length
 
   return (
@@ -54,7 +56,7 @@ export function JournalScreen() {
             {calendarLabel(state.calendar)}
           </span>
           <HeadPill icon={menuIcon('badge-side')}>
-            외부활동 <b>{optionalDone}</b>/{requiredOptional}
+            길드 의뢰 <b>{guildN}</b>/{GUILD_ACTIVE_MAX}
           </HeadPill>
         </>
       }
@@ -90,7 +92,7 @@ export function JournalScreen() {
 function JournalCalendar() {
   const { state } = useGame()
   const info = calendarInfo(state.calendar.globalWeek)
-  const arc = arcForWeek(state.calendar.globalWeek)
+  const arc = arcForStory(state)
   const next = (Object.keys(ACTIVITY_META) as ActivityId[])
     .filter((a) => activityUnlockWeek(a) > state.calendar.globalWeek)
     .sort((a, b) => activityUnlockWeek(a) - activityUnlockWeek(b))[0]
@@ -161,7 +163,8 @@ function WeekTab() {
   const { state, dispatch } = useGame()
   const [filter, setFilter] = useState<Filter>('all')
   const [selKey, setSelKey] = useState<string | null>(null)
-  const { classRequired, classDone, mainDone, optionalDone, requiredOptional, storyWeek: episodeWeek, canEnd } = weekCompletion(state.weekly)
+  const { classRequired, classDone, mainDone, canEnd } = weekCompletion(state.weekly)
+  const gate = episodeGate(state)
   const mult = yearRewardMult(state.calendar.globalWeek)
   const wc = classForWeek(state.calendar.globalWeek)
   const meta = wc ? classMetaFor(wc.courseId) : null
@@ -191,7 +194,7 @@ function WeekTab() {
       kind: main ? 'main' : 'side',
       title: t.title,
       desc: t.description,
-      pill: main ? '메인 스토리' : `외부활동 · ${SLOT_LABEL[q.slot]}`,
+      pill: main ? '메인 스토리' : q.guild ? `길드 의뢰 · ${GUILD_LABEL[q.guild as GuildKey] ?? ''}` : `보조 · ${SLOT_LABEL[q.slot]}`,
       status: q.status,
       progress: q.status === 'offered' ? '후보' : q.status === 'claimed' ? '완료' : `${p}/${total}`,
       q,
@@ -213,6 +216,17 @@ function WeekTab() {
             </button>
           ))}
         </div>
+        {gate && (
+          <div className="gw-box mb-2 flex items-center gap-2 text-[12.5px]">
+            <span className="min-w-0 flex-1">
+              <b>다음 메인 스토리</b> · {gate.ep.id} 「{gate.ep.title}」
+              <span className="block text-[11.5px] text-[#8a7c62]">{gate.why ?? '지금 시작할 수 있습니다. 이야기는 레벨에 맞춰 이어집니다.'}</span>
+            </span>
+            <button type="button" className="gw-btn is-gold is-sm" disabled={!gate.ready} onClick={() => dispatch({ type: 'START_EPISODE' })}>
+              시작
+            </button>
+          </div>
+        )}
         <div className="gw-scroll is-fill flex flex-col gap-2 pr-1">
           {shown.length === 0 && (
             <div className="gw-empty">
@@ -244,8 +258,8 @@ function WeekTab() {
         </div>
         <div className="gw-foot">
           <span>
-            {`수업 ${classRequired ? (classDone ? '✔' : '✘') : '—'}`}{episodeWeek ? ' · 메인 스토리' : ''} · 보조 미션 {optionalDone}/{requiredOptional} (달성하면 바로 보상)
-            {entries.some((e) => e.kind === 'main') && ` · 스토리 ${mainDone ? '✔' : '✘'}`}
+            {`수업 ${classRequired ? (classDone ? '✔' : '✘') : '—'}`} — 수업만 들으면 이번 주를 마칠 수 있어요 · 서브 퀘스트는 마을 길드에서
+            {entries.some((e) => e.kind === 'main') && ` · 스토리 ${mainDone ? '✔' : '진행 중'}`}
             {isRestWeek(state.calendar.globalWeek) && ' · 쉬어가는 주'}
             
           </span>

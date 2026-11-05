@@ -699,6 +699,7 @@ export type NpcRole =
   | 'companion' // 학교 동료(lib/companions SCHOOL_NPCS) — 학교 안 방·로비에 매주 무작위 배치(lib/school-roster)
   | 'royal' // 국왕
   | 'royalGuard' // 왕실 근위병
+  | 'guildGuide' // 마을 길드 의뢰 안내원 — 서브 퀘스트 게시판을 연다
   | 'guildMentor' // 마을 길드 전수자 — 최상급 마법 전수 시험(lib/guild-trials)
 
 export interface NpcDef {
@@ -824,6 +825,8 @@ export interface BattleState {
    * 연출 전투(흑룡전 등) — 이길 수 없는 상대. 적이 endAfter 번 행동하면(또는 아군이 다 쓰러지면) 패배 없이 중단되고 flag 가 켜진다
    */
   scripted?: { endAfter: number; enemyTurns: number; flag: string; endLine: string }
+  /** 개인 공간 샌드백(무기 거치대) — 죽지 않는 허수아비에게 마법 시험. 보상·패배 없음, 도망으로 끝 */
+  sandbag?: boolean
   /** 연출 전투가 중단으로 끝났다 */
   interrupted?: boolean
   /** 천공 콜로세움 대전(lib/arena) — 보상·기절 대신 점수, 끝나면 그 자리로 */
@@ -847,6 +850,7 @@ export type ScreenId =
   | 'arena' // 천공 콜로세움 — 팀 등록·대전·랭킹·광장(lib/arena)
   | 'journal' // 학사 수첩 — 주간 미션·학사·도감·관계
   | 'fountain' // 거점 분수대 — 평판 의뢰판(lib/reputation)
+  | 'guildBoard' // 길드 의뢰 게시판 — 서브 퀘스트 고르기(lib/guild-quest-data)
 
 export interface GameSettings {
   testMode: boolean
@@ -855,6 +859,8 @@ export interface GameSettings {
   battleAnimSpeed: 1 | 2
   /** true = 동료는 AI 자동 행동, false(기본) = 동료 턴에도 직접 조작 */
   companionAuto?: boolean
+  /** true = 전투가 시작될 때부터 자동 전투 ON (기본 false = 수동으로 시작) */
+  battleAutoStart?: boolean
   /** 광과민성 보호 — 화면 전체가 번쩍이는 연출(순간이동·번개·조우·궁극기)을 끈다 */
   noFlash?: boolean
 }
@@ -864,6 +870,8 @@ export type Facing = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' |
 
 export interface GameState {
   screen: ScreenId
+  /** 열려 있는 길드 게시판(GuildKey) — screen 'guildBoard' */
+  guildBoardKey?: string | null
   /** 열려 있는 분수대(평판 거점 id) — screen 'fountain' */
   fountainHubId?: string | null
   previousScreen: ScreenId
@@ -974,12 +982,15 @@ export type QuestObjectiveType =
   | 'TALK' // targetId = NPC id | 'any'
   | 'VISIT' // targetId = MapId
   | 'PLACE_FURNITURE'
+  | 'DELIVER' // targetId = NPC id, itemId = 건넬 물건 — 그 NPC 에게 말을 걸 때 가방에서 건넨다
 
 export interface QuestObjective {
   type: QuestObjectiveType
   targetId: string
   count: number
   label: string
+  /** DELIVER — 건넬 아이템 */
+  itemId?: string
 }
 
 export type QuestReward =
@@ -997,6 +1008,8 @@ export interface QuestInstance {
   progress: number[] // objectives 와 같은 길이
   /** offered = 이번 주 후보(수락 전) — 통합 PRD §27: 후보 중 2개를 골라 수행 */
   status: 'offered' | 'active' | 'complete' | 'claimed'
+  /** 길드에서 받은 서브 퀘스트(lib/guild-quest-data) — 받은 길드. 주가 바뀌어도 끝낼 때까지 남는다 */
+  guild?: string
 }
 
 export interface WeeklyState {

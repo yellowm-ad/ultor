@@ -1010,7 +1010,18 @@ const GUILD_NPCS: NpcDef[] = [
   { id: 'npc-guild-ice', name: '설원의 현자 이르마', role: 'guildMentor', icon: '/images/npc/npc-aurora-hunter.png', spriteId: 'npc-aurora-hunter', hue: 160, zoneId: 'z-aurora-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['어서 오렴. 손 시리지? 얼음 노래를 들으러 왔다면 잘 찾아왔단다.'] },
   { id: 'npc-guild-fire', name: '용암 수호자 바르칸', role: 'guildMentor', icon: '/images/npc/npc-demon-smith.png', spriteId: 'npc-demon-smith', hue: 15, zoneId: 'z-demon-guild', cell: { x: 13.6, y: 7.2 }, roam: 0, greeting: ['인간이 회의관까지 들어오다니. 그롯이 또 문을 열어 뒀군.'] },
 ]
-export const NPCS: NpcDef[] = [...NPCS_PLACED, ...TOWN_DUO_NPCS, ...CASTLE_NPCS, ...GUILD_NPCS, ...testRoomNpcs(NPCS_BASE)]
+/** 길드 의뢰 안내원(2026-11-05) — 접수대 앞. 말을 걸면 서브 퀘스트 게시판(lib/guild-quest-data)을 연다 */
+const G_GUIDE = { x: 8.8, y: 5.0 }
+const GUILD_GUIDE_NPCS: NpcDef[] = [
+  { id: 'npc-gguide-village', name: '길드 안내원 메리', role: 'guildGuide', icon: '/images/npc/npc-librarian.png', spriteId: 'npc-librarian', hue: 25, zoneId: 'z-village-guild', cell: G_GUIDE, roam: 0.2, greeting: ['어서 오세요, 울토르 마을 길드입니다! 주민들 부탁이 게시판에 잔뜩 붙어 있어요.', '마음에 드는 걸 골라 가세요. 다 끝내면 그 자리에서 사례가 나가요.'] },
+  { id: 'npc-gguide-atlantis', name: '회관 안내원 마린', role: 'guildGuide', icon: '/images/npc/npc-atlantis-merchant.png', spriteId: 'npc-atlantis-merchant', hue: -30, zoneId: 'z-atlantis-guild', cell: G_GUIDE, roam: 0.2, greeting: ['파도 소리 들리죠? 아틀란티스 마을 회관이에요.', '바닷사람들 부탁은 짭짤하답니다. 보상도요!'] },
+  { id: 'npc-gguide-sky', name: '교단 안내원 시엘', role: 'guildGuide', icon: '/images/npc/npc-sky-keeper.png', spriteId: 'npc-sky-keeper', hue: 40, zoneId: 'z-sky-guild', cell: G_GUIDE, roam: 0.2, greeting: ['바람의 교단 회관에 온 걸 환영해요.', '하늘 마을 사람들의 부탁, 들어 줄래요?'] },
+  { id: 'npc-gguide-ruin', name: '관리인 수사 베른', role: 'guildGuide', icon: '/images/npc/npc-abandoned-monk.png', spriteId: 'npc-abandoned-monk', hue: 30, zoneId: 'z-ruin-guild', cell: G_GUIDE, roam: 0.2, greeting: ['폐허에도 사람은 산다네. 그 사람들의 부탁이 여기 모이지.', '게시판을 보게. 조심해서 다녀오고.'] },
+  { id: 'npc-gguide-aurora', name: '회관 안내원 투이', role: 'guildGuide', icon: '/images/npc/npc-aurora-trader.png', spriteId: 'npc-aurora-trader', hue: 20, zoneId: 'z-aurora-guild', cell: G_GUIDE, roam: 0.2, greeting: ['춥지? 일단 들어와. 설인족 마을 회관이야.', '눈 속에서 할 일은 많아. 하나 골라 봐.'] },
+  { id: 'npc-gguide-demon', name: '회의관 서기 쿠르', role: 'guildGuide', icon: '/images/npc/npc-demon-elder.png', spriteId: 'npc-demon-elder', hue: -25, zoneId: 'z-demon-guild', cell: G_GUIDE, roam: 0.2, greeting: ['인간 손님이라… 장로님이 받아 주라셨으니 받는다.', '마물 마을 부탁도 부탁이다. 게시판은 저기.'] },
+]
+
+export const NPCS: NpcDef[] = [...NPCS_PLACED, ...TOWN_DUO_NPCS, ...CASTLE_NPCS, ...GUILD_NPCS, ...GUILD_GUIDE_NPCS, ...testRoomNpcs(NPCS_BASE)]
 /** 지금 맵에 보이는 NPC 인가 — visibleFlag(나타남) · hideFlag(사라짐) */
 export const npcShown = (n: NpcDef, flags: Record<string, unknown>) => (!n.visibleFlag || !!flags[n.visibleFlag]) && (!n.hideFlag || !flags[n.hideFlag])
 /**

@@ -13,6 +13,7 @@ import { banterAdvance, banterScene, duoOf } from '@/lib/npc-banter'
 import { rosterDuoTogether } from '@/lib/school-roster'
 import { newArenaIdentity } from '@/lib/arena'
 import { trialByNpc, trialHave, trialReady, trialState } from '@/lib/guild-trials'
+import type { GuildKey } from '@/lib/guild-quest-data'
 
 const ROLE_LABEL: Record<string, string> = {
   professor: '교수',
@@ -32,6 +33,7 @@ const ROLE_LABEL: Record<string, string> = {
   royal: '국왕',
   royalGuard: '왕실 근위병',
   guildMentor: '길드 전수자',
+  guildGuide: '길드 안내원',
 }
 
 export function DialogueScreen() {
@@ -70,6 +72,8 @@ export function DialogueScreen() {
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'
   const isArena = npc.role === 'arenaMaster'
+  // 길드 안내원 — 서브 퀘스트 게시판(zoneId z-<길드>-guild)
+  const guideGuild = npc.role === 'guildGuide' ? (npc.zoneId.replace(/^z-/, '').replace(/-guild$/, '') as GuildKey) : null
   // 학교 동료 — 아직 합류하지 않았고 조건이 되면 대화 끝에 '파티에 합류' 권유
   const mate = npc.role === 'companion' ? schoolNpcById(npc.id) : undefined
   const canJoin = !!mate && !state.companions.recruited[mate.id] && canRecruit(state, mate).ok
@@ -116,7 +120,7 @@ export function DialogueScreen() {
 
   const favorAct = !!favor && !banter && (favor.st === 'ready' || (favor.st === 'asked' && favorHave >= favor.rule.qty))
   const trialAct = !!trial && (tst === 'offer' || (tst === 'asked' && tReady))
-  const hasActions = isShopkeeper || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct || trialAct
+  const hasActions = isShopkeeper || isCraftStation || isArena || isElder || isProfessor || canJoin || favorAct || trialAct || !!guideGuild
   // 마지막 줄: 할 일이 없는 NPC는 엔터/클릭으로 바로 닫고, 상점·훈련 등은 버튼 선택을 기다린다
   const canAdvance = !lastLine || !hasActions
   const advance = () => (lastLine ? close() : setLineIdx((i) => Math.min(lines.length - 1, i + 1)))
@@ -152,6 +156,11 @@ export function DialogueScreen() {
             {isCraftStation && (
               <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_CRAFT', npcId: npc.id })}>
                 제작하기
+              </button>
+            )}
+            {guideGuild && (
+              <button type="button" className="dlg-btn" onClick={() => dispatch({ type: 'OPEN_GUILD_BOARD', guild: guideGuild })}>
+                ✦ 의뢰 게시판 보기
               </button>
             )}
             {isArena && (
