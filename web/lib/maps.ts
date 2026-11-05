@@ -53,8 +53,14 @@ const DEFAULT_COLLIDE_SIZE: Partial<Record<PropDef['kind'], { w: number; d: numb
 /** solid 프롭들의 충돌 사각형을 그림(footprint)에서 그대로 산출 → "보이는 것 = 막히는 것" */
 /** 프롭 하나의 충돌 사각형(없으면 null) — buildBlockers 와 같은 규칙. 관리자 오브젝트 편집(lib/map-overrides)이 쓴다 */
 export function propBlocker(p: PropDef): Blocker | null {
+  if (p.collideOff) return null
   const solid = p.solid || SOLID_KINDS.has(p.kind)
   if (!solid) return null
+  // 관리자가 직접 정한 길막
+  if (p.collideBox) {
+    const b = p.collideBox
+    return { x0: p.cell.x + b.ox - b.w / 2, y0: p.cell.y + b.oy - b.d / 2, x1: p.cell.x + b.ox + b.w / 2, y1: p.cell.y + b.oy + b.d / 2 }
+  }
   if (p.collide || p.size) {
     const a = propAABB(p)
     return a ? fitBlocker(p, a) : null

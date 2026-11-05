@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import type { GameMap, GameState } from '@/lib/types'
-import { isoToScreen } from '@/lib/iso'
+import { isoToScreen, UNIT_SCALE } from '@/lib/iso'
 import { professorById } from '@/lib/curriculum'
 import { schoolNpcById } from '@/lib/companions'
 import { HeroSprite } from '@/components/game/pixel-hero'
@@ -96,6 +96,7 @@ export function useClassActorEntities(state: GameState, map: GameMap): { sortY: 
       sortY: seat.x + seat.y + 0.2,
       node: (
         <g key={`cls-st-${i}`} transform={`translate(${s.sx},${s.sy})`}>
+          <g transform={`scale(${UNIT_SCALE})`}>
           <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
           <foreignObject x={-DISPLAY / 2} y={-DISPLAY + 7 + (DISPLAY - 74) / 2} width={DISPLAY} height={DISPLAY} style={{ overflow: 'visible' }}>
             {mate ? (
@@ -106,6 +107,7 @@ export function useClassActorEntities(state: GameState, map: GameMap): { sortY: 
               <ClassActorSprite sheet={sheet} fps={5 + (i % 3)} delay={(i * 0.37) % 1.5} />
             )}
           </foreignObject>
+          </g>
         </g>
       ),
     })
@@ -118,6 +120,7 @@ export function useClassActorEntities(state: GameState, map: GameMap): { sortY: 
     sortY: spot.x + spot.y + 0.2,
     node: (
       <g key="cls-prof" transform={`translate(${ps.sx},${ps.sy})`}>
+        <g transform={`scale(${UNIT_SCALE})`}>
         <ellipse cx={0} cy={1} rx={14} ry={5} fill="rgba(0,0,0,0.35)" />
         <foreignObject x={-DISPLAY / 2} y={-DISPLAY + 7 + (DISPLAY - 74) / 2} width={DISPLAY} height={DISPLAY} style={{ overflow: 'visible' }}>
           <ClassActorSprite sheet={prof?.lectureSheet ?? 'prof-mirel'} fps={sc.phase === 'lecture' ? 7 : 4} still={sc.phase !== 'lecture'} />
@@ -127,6 +130,7 @@ export function useClassActorEntities(state: GameState, map: GameMap): { sortY: 
           <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill="#f3dca0">
             {prof?.name ?? '교수'}
           </text>
+        </g>
         </g>
         {sc.alert && (
           <foreignObject x={-22} y={-140} width={44} height={56} style={{ overflow: 'visible' }}>

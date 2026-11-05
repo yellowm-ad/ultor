@@ -3,14 +3,14 @@
 import { GuideArrow, GuideSparks, GuideTrail, type useGuide } from '@/components/game/guide-trail'
 import { isInvisible, isLit } from '@/lib/field-spells'
 import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
-import { Fragment, useMemo, useState, useEffect, type Dispatch } from 'react'
+import { Fragment, useMemo, useState, useEffect, useRef, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
 import { MAPS } from '@/lib/maps'
 import { NPCS, MONSTERS, npcShown } from '@/lib/mock-data'
 import { npcWanderState } from '@/lib/field'
 import { monsterView } from '@/lib/monster-charge'
-import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation } from '@/lib/iso'
+import { ISO_TILE_W, ISO_TILE_H, isoToScreen, isoBounds, stairElevation, UNIT_SCALE } from '@/lib/iso'
 import { IsoStructNode } from '@/components/game/iso-structures'
 import { useWaterOverlays, WaterBackdrop, waterView } from '@/components/game/iso-water'
 import { useTerrainArt, TerrainWaterBackdrop, TerrainCanvas } from '@/components/game/iso-terrain'
@@ -36,7 +36,8 @@ import { RasterProp } from '@/components/game/raster-prop'
 import { ColossusField } from '@/components/game/colossus-field'
 import { DRAGON_ANCHOR, DRAGON_FIELD_SCALE, dragonOnMap } from '@/lib/black-dragon'
 
-const BASE_SCALE = 1.15 // 맵 4배 확장(52×40)에 맞춰 축소 (기존 1.4)
+// 기본 카메라 배율 — 2026-11-05 시점이 너무 넓다는 의견으로 1.5배(1.15 → 1.725)
+const BASE_SCALE = 1.725
 const PAD_TOP = 240 // 키 큰 건물이 앵커 위로 솟는 여유
 const PAD_BOTTOM = 60
 
@@ -229,6 +230,9 @@ export function IsoWorld({
   )
   // 수업 장면 — 책상마다 학생, 칠판 앞 교수(lib/curriculum · components/game/class-actors)
   const classEntities = useClassActorEntities(state, map)
+  // 사람·몬스터를 발밑 기준으로 줄여 그린다(위치·충돌·상호작용 거리는 그대로)
+  const U: number = UNIT_SCALE
+  const unitT = U === 1 ? undefined : `scale(${U})`
   const ND = 74 // NPC 도트 스프라이트 표시 크기
   const npcEntities = mapNpcsForRoam.map((npc) => {
     const { pos, facing: dir, moving } = npcWanderState(npc, wanderT, map.blockers)
@@ -243,6 +247,7 @@ export function IsoWorld({
           style={{ cursor: 'pointer' }}
           onClick={() => dispatch({ type: 'OPEN_NPC', npcId: npc.id })}
         >
+          <g transform={unitT}>
           <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
           <foreignObject x={-ND / 2} y={-ND + 7} width={ND} height={ND} style={{ overflow: 'visible', filter: npc.hue ? `hue-rotate(${npc.hue}deg)` : undefined }}>
             <NpcSprite npcId={`${npc.spriteId ?? npc.id}-walk`} fallbackSrc={npc.icon} dir={dir} walking={moving} px={ND} />
@@ -255,6 +260,7 @@ export function IsoWorld({
           </g>
           <circle cx={0} cy={-52} r={2.2} fill={interactId === npc.id ? '#e8dcc0' : '#ffffffaa'} />
           {guide?.goal.npcId === npc.id ? <GuideArrow lift={76} /> : duoOf(npc.id) && <ChatBubble second={duoOf(npc.id)!.b === npc.id} lift={72} />}
+          </g>
         </g>
       ),
     }
@@ -274,6 +280,7 @@ export function IsoWorld({
         sortY: pos.x + pos.y + 0.2,
         node: (
           <g key={`roster-${def.id}`} transform={`translate(${s.sx},${s.sy})`} style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'OPEN_NPC', npcId: def.id })}>
+            <g transform={unitT}>
             <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
             <foreignObject x={-RD / 2} y={-RD + 12} width={RD} height={RD} style={{ overflow: 'visible' }}>
               <div style={{ width: RD, height: RD, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -287,6 +294,7 @@ export function IsoWorld({
               </text>
             </g>
             {guide?.goal.npcId === def.id ? <GuideArrow lift={80} /> : rosterDuoTogether(state, def.id) && <ChatBubble second={duoOf(def.id)?.b === def.id} lift={76} />}
+            </g>
           </g>
         ),
       },
@@ -315,6 +323,7 @@ export function IsoWorld({
                     dispatch({ type: 'OPEN_ARENA', identity: state.arena ?? newArenaIdentity() })
                   }}
                 >
+                  <g transform={unitT}>
                   <ellipse cx={0} cy={1} rx={13} ry={4.5} fill="rgba(0,0,0,0.32)" />
                   <foreignObject x={-RD / 2} y={-RD + 12} width={RD} height={RD} style={{ overflow: 'visible' }}>
                     <div style={{ width: RD, height: RD, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -326,6 +335,7 @@ export function IsoWorld({
                     <text x={0} y={2} textAnchor="middle" fontSize={10} fontWeight={700} fill={hot ? '#000' : '#f6e2a8'}>
                       {label}
                     </text>
+                  </g>
                   </g>
                 </g>
               ),
@@ -359,6 +369,7 @@ export function IsoWorld({
         node: (
           // 위치는 0.1초마다 갱신 — CSS 전환으로 그 사이를 이어 미끄러지듯 걷게(끊김 방지)
           <g key={fm.uid} style={{ transform: `translate(${s.sx}px,${s.sy}px)`, transition: `transform ${charging ? 0.05 : 0.1}s linear` }}>
+            <g transform={unitT}>
             <ellipse cx={0} cy={2} rx={shadowRx} ry={shadowRy} fill="rgba(0,0,0,0.34)" />
             <foreignObject x={-size / 2} y={-size + 8} width={size} height={size} style={{ overflow: 'visible' }}>
               <CreatureSprite spriteId={def.id} fallbackSrc={def.icon} dir={dir} walking={moving} px={size} />
@@ -386,6 +397,7 @@ export function IsoWorld({
                 </g>
               </g>
             )}
+            </g>
           </g>
         ),
       },
@@ -460,6 +472,7 @@ export function IsoWorld({
   const HD = 88
   const playerNode = (
     <g key="__player" transform={`translate(${ps.sx},${ps.sy})`} className={state.classScene ? undefined : isInvisible(state) ? 'hero-invisible' : (state.contactSafeUntil ?? 0) > Date.now() ? 'hero-safe' : undefined}>
+      <g transform={unitT}>
       <ellipse cx={0} cy={2} rx={17} ry={5.5} fill="rgba(0,0,0,0.34)" />
       <g transform={heroFlip ? 'scale(-1,1)' : undefined}>
         <svg
@@ -473,6 +486,7 @@ export function IsoWorld({
         >
           <image href={`/images/sprites/${heroSheet(state)}.png`} width={704} height={968} />
         </svg>
+      </g>
       </g>
     </g>
   )
@@ -668,9 +682,55 @@ export function IsoWorld({
   const profFocus = inClass ? isoToScreen(professorSpot(map).x, professorSpot(map).y) : null
   // 흑룡 강림 — 카메라를 주인공과 흑룡 머리 사이로(거대한 상반신이 화면 위쪽을 덮게)
   const dragonHead = dragonOnMap(state) ? (() => { const a = isoToScreen(DRAGON_ANCHOR.x, DRAGON_ANCHOR.y); return { sx: a.sx, sy: a.sy - 256 * DRAGON_FIELD_SCALE * 0.55 } })() : null
-  const focus = profFocus ? { sx: (ps.sx + profFocus.sx) / 2, sy: (ps.sy + profFocus.sy) / 2 - 40 } : dragonHead ? { sx: ps.sx * 0.65 + dragonHead.sx * 0.35, sy: (ps.sy + dragonHead.sy) / 2 } : ps
+  // 멀미 방지(2026-11-05) ① 데드존 — 주인공이 화면 가운데 작은 상자 안에서 움직일 땐 카메라가 가만히 있고, 상자 끝을 밀 때만 따라간다
+  const deadRef = useRef<{ sx: number; sy: number; map: string } | null>(null)
+  let follow = ps
+  if (!profFocus && !dragonHead) {
+    const r = deadRef.current
+    if (!r || r.map !== map.id) deadRef.current = { sx: ps.sx, sy: ps.sy, map: map.id }
+    else {
+      const DX = 70 / SCALE
+      const DY = 42 / SCALE
+      const sx = ps.sx - r.sx > DX ? ps.sx - DX : r.sx - ps.sx > DX ? ps.sx + DX : r.sx
+      const sy = ps.sy - r.sy > DY ? ps.sy - DY : r.sy - ps.sy > DY ? ps.sy + DY : r.sy
+      deadRef.current = { sx, sy, map: map.id }
+    }
+    follow = deadRef.current!
+  }
+  const focus = profFocus ? { sx: (ps.sx + profFocus.sx) / 2, sy: (ps.sy + profFocus.sy) / 2 - 40 } : dragonHead ? { sx: ps.sx * 0.65 + dragonHead.sx * 0.35, sy: (ps.sy + dragonHead.sy) / 2 } : follow
   const camX = clamp(viewportSize.w / 2 - (originX + focus.sx) * SCALE, Math.min(0, viewportSize.w - worldW * SCALE), 0)
   const camY = clamp(viewportSize.h / 2 - (originY + focus.sy) * SCALE, Math.min(0, viewportSize.h - worldH * SCALE), 0)
+
+  // 멀미 방지 ② 부드러운 추적 — 렌더는 목표 위치만 정하고, 실제 화면 이동은 매 프레임 감속하며 따라간다(맵이 바뀌면 바로 붙는다)
+  const camEl = useRef<HTMLDivElement>(null)
+  const camNow = useRef<{ x: number; y: number; map: string } | null>(null)
+  const camGoal = useRef({ x: camX, y: camY, s: SCALE })
+  camGoal.current = { x: camX, y: camY, s: SCALE }
+  // 맵이 바뀌었거나 순간이동처럼 한 번에 멀리 뛰면 미끄러지지 않고 바로 붙는다
+  if (!camNow.current || camNow.current.map !== map.id || Math.hypot(camX - camNow.current.x, camY - camNow.current.y) > Math.max(viewportSize.w, viewportSize.h) * 0.9) {
+    camNow.current = { x: camX, y: camY, map: map.id }
+  }
+  useEffect(() => {
+    let raf = 0
+    let last = performance.now()
+    const tick = (t: number) => {
+      raf = requestAnimationFrame(tick)
+      const dt = Math.min(50, t - last)
+      last = t
+      const c = camNow.current
+      const g = camGoal.current
+      const el = camEl.current
+      if (!c || !el) return
+      const k = 1 - Math.exp(-dt / 120)
+      c.x += (g.x - c.x) * k
+      c.y += (g.y - c.y) * k
+      if (Math.abs(g.x - c.x) < 0.1) c.x = g.x
+      if (Math.abs(g.y - c.y) < 0.1) c.y = g.y
+      el.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0) scale(${g.s})`
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   // 화면에 보이는 소품만 그린다 — 마을처럼 소품이 수백 개인 맵에서 걷는 동안 따질 것이 크게 준다.
   // 보이는 범위는 64px 눈금으로 끊어서, 카메라가 조금 움직일 때마다 목록을 다시 만들지 않는다.
@@ -705,7 +765,7 @@ export function IsoWorld({
   const waterViewRect = map.water || terrainArt.surface ? waterView(camX, camY, SCALE, viewportSize.w, viewportSize.h, worldW, worldH) : null
 
   return (
-    <div className="absolute left-0 top-0" style={{ transform: `translate3d(${camX}px, ${camY}px, 0) scale(${SCALE})`, transformOrigin: '0 0', willChange: 'transform' }}>
+    <div ref={camEl} className="absolute left-0 top-0" style={{ transform: `translate3d(${camNow.current.x}px, ${camNow.current.y}px, 0) scale(${SCALE})`, transformOrigin: '0 0', willChange: 'transform' }}>
       {waterViewRect && terrainArt.surface && <TerrainWaterBackdrop surface={terrainArt.surface} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}
       {terrainArt.canvas && <TerrainCanvas canvas={terrainArt.canvas} w={worldW} h={worldH} />}
       {waterViewRect && map.water && <WaterBackdrop map={map} ov={waterArt} originX={originX} originY={originY} vx={waterViewRect.x} vy={waterViewRect.y} vw={waterViewRect.w} vh={waterViewRect.h} />}

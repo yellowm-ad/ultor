@@ -6,6 +6,9 @@
 
 import type { Facing } from '@/lib/types'
 
+/** 캐릭터·NPC·몬스터 그림 배율 — 카메라 1.5배에 맞춰 실내·야외 공통(2026-11-05 사용자 조정 0.8). iso-world · class-actors */
+export const UNIT_SCALE = 0.8
+
 export const ISO_TILE_W = 64
 export const ISO_TILE_H = 32 // 2:1
 
@@ -263,6 +266,10 @@ export interface PropDef {
   collide?: { w: number; d: number }
   /** 충돌 사각형 중심을 cell 에서 이만큼(셀) 옮긴다 — 반전 전 그림 기준. 위에서 내려다본 분수처럼 그림 밑단 ≠ 바닥 중심일 때(lib/fountain-feet) */
   collideOffset?: { x: number; y: number }
+  /** 관리자가 직접 정한 길막(셀 기준 중심 오프셋 · 너비 · 깊이, 화면 반전과 무관한 맵 축) — 있으면 자동 계산·맞춤보다 우선 */
+  collideBox?: { w: number; d: number; ox: number; oy: number }
+  /** 관리자가 길막을 껐다(종류와 상관없이 통과) */
+  collideOff?: boolean
   // ── 라스터(PNG) 에셋 모드 (GameMap.assets === 'raster') ──
   /** 투명배경 PNG 경로 (public/ 기준). 있으면 SVG 스프라이트 대신 사용 */
   sprite?: string

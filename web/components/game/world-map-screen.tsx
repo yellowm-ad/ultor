@@ -1,147 +1,97 @@
 'use client'
 
 // ============================================================================
-// 전체 지도 — 미니맵을 눌러 여는 확대판. 현재 맵 구조(구역+포탈+내 위치)를 크게 보여주고,
-// 좌측 목록에서 다른 지역을 골라 그 맵의 구역 배치를 미리 볼 수 있다.
-// 2026-10-07: 가 본 맵은 [텔레포트]로 바로 이동(lib/teleport.ts). 야생맵은 지형 썸네일(길·물·용암)을 바탕에 깐다.
+// 전체 지도(2026-11-05 개편) — 소울나이트식 연결도. 미니맵을 누르면 연다.
+//   왼쪽: 야외 맵 전체를 칸과 통로로(어느 포탈로 어디에 갈 수 있는지). 칸을 누르면 오른쪽에 그 맵 정보.
+//   오른쪽: 이름 · 지역 · 권장 레벨 · 이어진 곳 · 가 본 곳이면 [텔레포트].
+//   실내에 있으면 그 건물이 속한 야외 칸이 '지금 위치'.
 // ============================================================================
 import { useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
 import type { MapId } from '@/lib/types'
-import { REGIONS } from '@/lib/regions'
+import { regionById, regionOfMap } from '@/lib/regions'
 import { Modal } from '@/components/ui/modal'
-import { teleportBlockReason, teleportTargets } from '@/lib/teleport'
-import { mapThumbUrl } from '@/components/game/map-thumb'
+import { teleportBlockReason } from '@/lib/teleport'
+import { GRAPH_POS, graphAnchor, REGION_COLOR } from '@/lib/map-graph'
+import { MapGraph } from '@/components/game/minimap-graph'
+import { guideGoal, guidePin } from '@/lib/guide'
 
-// 지역 목록은 lib/regions.ts 에서 파생 — 맵이 추가돼도 여기 손댈 필요 없음(테스트룸 제외)
-const MAP_GROUPS: { label: string; ids: MapId[] }[] = [
-  ...REGIONS.map((r) => ({ label: r.name, ids: r.maps.filter((m) => m !== 'testroom' && m !== 'personal-space' && m !== 'academy-secret') })),
-  { label: '개인 공간', ids: ['personal-space'] },
-]
-
-const BOX = 440
+const GW = 520
+const GH = 560
 
 export function WorldMapScreen() {
   const { state, dispatch } = useGame()
-  const [viewId, setViewId] = useState<MapId>(state.currentMapId)
+  const here = graphAnchor(state.currentMapId, MAPS) ?? 'village'
+  const [viewId, setViewId] = useState<MapId>(here)
 
   if (state.screen !== 'worldmap') return null
   const close = () => dispatch({ type: 'SET_SCREEN', screen: 'world' })
+  const goal = guideGoal(state, guidePin())
+  const goalMap = goal?.mapId ? graphAnchor(goal.mapId, MAPS) : null
 
   const map = MAPS[viewId]
-  const aspect = map.grid.w / map.grid.h
-  let w = BOX
-  let h = BOX / aspect
-  if (h > BOX) {
-    h = BOX
-    w = BOX * aspect
-  }
-  const fx = (cx: number) => (cx / map.grid.w) * w
-  const fy = (cy: number) => (cy / map.grid.h) * h
-  const gateShown = new Set<string>()
-  const targets = teleportTargets(state)
+  const region = regionOfMap(viewId)
+  const known = viewId === 'village' || (state.visitedMaps ?? []).includes(viewId)
+  const links = [...new Set(map.portals.map((p) => p.to as MapId).filter((t) => GRAPH_POS[t] && t !== viewId))]
   const blockReason = teleportBlockReason(state, viewId)
-  const thumb = map.zones.length === 0 ? mapThumbUrl(map) : null
+  const isHere = viewId === here
+  const inside = state.currentMapId !== here ? MAPS[state.currentMapId]?.name : null
 
   return (
-    <Modal open onClose={close} title={`지도 — ${map.name}`} widthClass="max-w-4xl">
-      <div className="flex gap-4">
-        <div className="flex w-40 shrink-0 flex-col gap-3 overflow-y-auto pr-1" style={{ maxHeight: BOX }}>
-          {MAP_GROUPS.map((g) => (
-            <div key={g.label}>
-              <div className="mb-1 text-[10px] font-display text-gold-soft">{g.label}</div>
-              <div className="flex flex-col gap-0.5">
-                {g.ids.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setViewId(id)}
-                    className={`rounded-md px-2 py-1 text-left text-[11px] transition-colors ${
-                      viewId === id ? 'bg-gold/20 text-gold-soft' : 'text-muted-foreground hover:bg-white/5'
-                    }`}
-                  >
-                    {MAPS[id].name}
-                    {id === state.currentMapId ? (
-                      <span className="ml-1 text-[9px] text-emerald-400">● 현재 위치</span>
-                    ) : targets.has(id) ? (
-                      <span className="ml-1 text-[9px] text-sky-300" title="텔레포트 가능">✦</span>
-                    ) : (
-                      <span className="ml-1 text-[9px] text-white/30" title="아직 가 본 적 없음">?</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+    <Modal open onClose={close} title="전체 지도" widthClass="max-w-4xl">
+      <div className="flex flex-col gap-4 md:flex-row">
+        <div className="shrink-0 overflow-hidden rounded-md border-2 border-[#c79a3e]/70 bg-[#0d0a08]" style={{ width: GW, maxWidth: '100%' }}>
+          <MapGraph state={state} focus={here} guideMap={goalMap} width={GW} height={GH} unit={56} node={26} center="fit" labels selected={viewId} onPick={setViewId} />
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <div className="relative overflow-hidden rounded-md" style={{ width: w, height: h, background: thumb ? `url(${thumb}) 0 0 / 100% 100%` : undefined, imageRendering: 'pixelated' }}>
-            {map.zones.map((z) => (
-              <div
-                key={z.id}
-                className="absolute flex items-center justify-center overflow-hidden"
-                style={{
-                  left: fx(z.cell.x0),
-                  top: fy(z.cell.y0),
-                  width: fx(z.cell.x1) - fx(z.cell.x0),
-                  height: fy(z.cell.y1) - fy(z.cell.y0),
-                  // 구역이 하나뿐인 맵(실내 등)은 덧칠하지 않는다 — 맵 전체가 남색으로 덮여 보였다(2026-10-18)
-                  background: map.zones.length > 1 ? `${z.color}30` : 'transparent',
-                  border: map.zones.length > 1 ? `1px solid ${z.color}99` : 'none',
-                }}
-              >
-                <span className="px-1 text-center text-[10px] leading-tight text-white/90" style={{ textShadow: '0 1px 2px #000' }}>
-                  {z.name}
-                </span>
-              </div>
-            ))}
-
-            {map.portals.map((p) => {
-              if (p.secret) return null
-              if (p.kind === 'gate') {
-                if (gateShown.has(`${p.cell.x},${p.cell.y}`)) return null
-                gateShown.add(`${p.cell.x},${p.cell.y}`)
-              }
-              const color = p.kind === 'gate' ? '#f0c040' : p.kind === 'exit' ? '#7fd0f0' : '#e879f9'
-              return (
-                <div key={p.id} className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center" style={{ left: fx(p.cell.x), top: fy(p.cell.y) }}>
-                  <span className="mb-0.5 whitespace-nowrap rounded bg-black/75 px-1 text-[9px]" style={{ color }}>
-                    {p.label}
-                  </span>
-                  <div className="rounded-full border border-black/40" style={{ width: 8, height: 8, background: color }} />
-                </div>
-              )
-            })}
-
-            {viewId === state.currentMapId && (
-              <div
-                className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"
-                style={{ left: fx(state.position.x), top: fy(state.position.y), width: 10, height: 10, background: '#fff176' }}
-              />
-            )}
-
-            {map.zones.length === 0 && !thumb && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-[11px] text-muted-foreground">
-                (야생 지역 — 세부 구역 없이 포탈 배치만 표시됩니다)
-              </div>
-            )}
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="rounded-md border border-gold/30 bg-black/30 p-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-3 w-3 rounded-sm" style={{ background: REGION_COLOR[region] }} />
+              <span className="text-[11px] text-gold-soft">{regionById(region).name}</span>
+            </div>
+            <div className="mt-1 font-display text-[18px] text-[#f3e6c4]">{known ? map.name : '아직 가 본 적 없는 곳'}</div>
+            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[#f3e6c4]">{map.kind === 'town' ? '마을 · 안전 지대' : map.bossSpawns?.length ? '보스가 사는 곳' : '야생'}</span>
+              {map.recommendedLevel ? <span className="rounded bg-white/10 px-1.5 py-0.5 text-[#f3e6c4]">권장 Lv.{map.recommendedLevel}</span> : null}
+              {isHere && <span className="rounded bg-emerald-700/50 px-1.5 py-0.5 text-emerald-100">● 지금 여기{inside ? ` (${inside})` : ''}</span>}
+              {goalMap === viewId && <span className="rounded bg-yellow-700/50 px-1.5 py-0.5 text-yellow-100">! 길 안내 목표</span>}
+            </div>
           </div>
-          {/* 텔레포트 */}
-          {viewId !== state.currentMapId && (
-            <div className="flex items-center gap-3">
+
+          <div className="rounded-md border border-gold/30 bg-black/30 p-3">
+            <div className="mb-1.5 text-[11px] text-gold-soft">포탈로 이어진 곳</div>
+            <div className="flex flex-wrap gap-1.5">
+              {links.map((t) => {
+                const k = t === 'village' || (state.visitedMaps ?? []).includes(t)
+                return (
+                  <button key={t} type="button" onClick={() => setViewId(t)} className="flex items-center gap-1 rounded border border-white/15 bg-white/5 px-2 py-1 text-[11px] text-[#f3e6c4] hover:bg-white/10">
+                    <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: REGION_COLOR[regionOfMap(t)] }} />
+                    {k ? MAPS[t].name : '???'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {!isHere && (
+            <div className="flex flex-col gap-1.5">
               <button
                 type="button"
                 disabled={!!blockReason}
                 onClick={() => dispatch({ type: 'TELEPORT', mapId: viewId })}
-                className="rounded-md border border-sky-300/70 bg-sky-900/40 px-4 py-1.5 text-[12px] font-display text-sky-100 shadow-[0_0_10px_rgba(125,200,255,0.25)] transition-colors hover:bg-sky-800/60 disabled:cursor-not-allowed disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:shadow-none"
+                className="rounded-md border border-sky-300/70 bg-sky-900/40 px-4 py-2 text-[13px] font-display text-sky-100 shadow-[0_0_10px_rgba(125,200,255,0.25)] transition-colors hover:bg-sky-800/60 disabled:cursor-not-allowed disabled:border-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:shadow-none"
               >
-                ✦ {map.name}(으)로 텔레포트
+                ✦ {known ? map.name : '이곳'}(으)로 텔레포트
               </button>
               {blockReason && <span className="text-[11px] text-muted-foreground">{blockReason}</span>}
             </div>
           )}
+
+          <div className="mt-auto text-[10.5px] leading-relaxed text-white/45">
+            ⌂ 마을 · ☠ 보스 · ◆ 가 본 곳 · ? 아직 안 가 본 곳 · ! 길 안내 목표 — 칸을 눌러 정보를 보고, 가 본 곳은 바로 텔레포트할 수 있습니다.
+          </div>
         </div>
       </div>
     </Modal>

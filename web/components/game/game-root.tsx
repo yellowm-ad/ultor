@@ -7,6 +7,7 @@ import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
 import { LevelUpFx } from '@/components/game/result-fx'
+import { MapLoadingOverlay } from '@/components/game/map-loading'
 import { FarmSeedPicker } from '@/components/game/farm-seed-picker'
 import { GuildBoardScreen } from '@/components/game/guild-board-screen'
 import { FountainScreen } from '@/components/game/fountain-screen'
@@ -150,6 +151,7 @@ export function GameShell({ extra }: { extra?: ReactNode } = {}) {
       {state.screen === 'fountain' && <FountainScreen />}
       {state.screen === 'guildBoard' && <GuildBoardScreen />}
       {state.farmPick && <FarmSeedPicker />}
+      <MapLoadingOverlay />
       </ScreenGuard>
       {state.storyQueue.length > 0 && <StoryOverlay />}
       {state.fishing && <FishingOverlay />}

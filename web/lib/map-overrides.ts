@@ -28,6 +28,18 @@ export interface MapOverride {
   tiles?: Record<string, TileKind>
   /** 벽면 '구조물id#면번호' → 새 무늬 */
   walls?: Record<string, IsoTex>
+  /** 프롭 id → 그림 크기 배율(원래 크기 = 1) */
+  size?: Record<string, number>
+  /** 프롭 id → 직접 정한 길막(off = 길막 없음) */
+  collide?: Record<string, CollideEdit>
+}
+export interface CollideEdit {
+  w: number
+  d: number
+  /** 발밑 셀 기준 길막 중심(맵 축) */
+  ox: number
+  oy: number
+  off?: boolean
 }
 export type MapOverrides = Record<string, MapOverride>
 type FullOverride = Required<MapOverride>
@@ -100,6 +112,16 @@ const tileFnCache = new Map<string, { sig: string; tileAt?: (x: number, y: numbe
 const tileKey = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`
 export const wallKey = (groupId: string, partIndex: number) => `${groupId}#${partIndex}`
 
+/** 그림 크기 배율 · 직접 정한 길막을 프롭에 입힌다 */
+function resizeAndCollide(p: PropDef, k: number | undefined, c: CollideEdit | undefined): PropDef {
+  let q = p
+  if (k != null && k !== 1 && p.px) {
+    q = { ...q, px: { w: p.px.w * k, h: p.px.h * k }, ...(p.anchor ? { anchor: { x: p.anchor.x * k, y: p.anchor.y * k } } : {}) }
+  }
+  if (c) q = c.off ? { ...q, collideOff: true, collideBox: undefined } : { ...q, solid: true, collideOff: false, collideBox: { w: c.w, d: c.d, ox: c.ox, oy: c.oy } }
+  return q
+}
+
 function applyMap(id: string) {
   const current = MAP_TABLE[id]
   if (!current) return
@@ -113,7 +135,9 @@ function applyMap(id: string) {
   const removed = new Set(ov.removed ?? [])
   const moved = ov.moved ?? {}
   const flip = ov.flip ?? {}
-  const changed = (pid: string) => !!moved[pid] || !!flip[pid]
+  const sizeOv = ov.size ?? {}
+  const collideOv = ov.collide ?? {}
+  const changed = (pid: string) => !!moved[pid] || !!flip[pid] || sizeOv[pid] != null || !!collideOv[pid]
   const oldBoxes: ReturnType<typeof propBlocker>[] = []
   const props: PropDef[] = []
   for (const p of orig.props ?? []) {
@@ -131,9 +155,10 @@ function applyMap(id: string) {
         if (q.facing === 'left') q.facing = undefined
       } else q.mirrorX = true
     }
-    props.push(q)
+    props.push(resizeAndCollide(q, sizeOv[p.id], collideOv[p.id]))
   }
-  props.push(...(ov.added ?? []))
+  const addedNow = (ov.added ?? []).map((a) => resizeAndCollide(a, sizeOv[a.id], collideOv[a.id]))
+  props.push(...addedNow)
   // 충돌: 옮기거나 돌리거나 지운 프롭의 원래 사각형을 빼고, 새 자리·새 프롭의 사각형을 더한다
   const blockers = [...(orig.blockers ?? [])]
   for (const box of oldBoxes) {
@@ -141,7 +166,7 @@ function applyMap(id: string) {
     const i = blockers.findIndex((b) => sameBox(b, box))
     if (i >= 0) blockers.splice(i, 1)
   }
-  const added = new Set(ov.added ?? [])
+  const added = new Set(addedNow)
   for (const p of props)
     if (changed(p.id) || added.has(p)) {
       const box = propBlocker(p)
@@ -234,6 +259,8 @@ function full(base: MapOverride): FullOverride {
     flip: { ...(base.flip ?? {}) },
     tiles: { ...(base.tiles ?? {}) },
     walls: { ...(base.walls ?? {}) },
+    size: { ...(base.size ?? {}) },
+    collide: { ...(base.collide ?? {}) },
   }
 }
 
@@ -303,6 +330,8 @@ export function removeProp(mapId: string, propId: string) {
     else {
       delete o.moved[propId]
       delete o.flip[propId]
+      delete o.size[propId]
+      delete o.collide[propId]
       if (!o.removed.includes(propId)) o.removed.push(propId)
     }
   })
@@ -314,6 +343,34 @@ export function addProp(mapId: string, prop: Omit<PropDef, 'id'>): string {
     o.added.push({ ...prop, id, cell: { x: Math.round(prop.cell.x * 4) / 4, y: Math.round(prop.cell.y * 4) / 4 } } as PropDef)
   })
   return id
+}
+
+/** 그림 크기 배율(원래 = 1, 0.3~3) */
+export function scaleProp(mapId: string, propId: string, k: number) {
+  const v = Math.round(Math.max(0.3, Math.min(3, k)) * 100) / 100
+  edit(mapId, (o) => {
+    if (Math.abs(v - 1) < 1e-6) delete o.size[propId]
+    else o.size[propId] = v
+  })
+}
+export const propSizeOf = (mapId: string, propId: string) => effectiveOverrides()[mapId]?.size?.[propId] ?? 1
+
+/** 길막 직접 정하기 — null = 자동(원래대로), { off: true } = 길막 없음 */
+export function setPropCollide(mapId: string, propId: string, c: CollideEdit | null) {
+  edit(mapId, (o) => {
+    if (!c) delete o.collide[propId]
+    else o.collide[propId] = { w: r2(c.w), d: r2(c.d), ox: r2(c.ox), oy: r2(c.oy), ...(c.off ? { off: true } : {}) }
+  })
+}
+const r2 = (v: number) => Math.round(v * 100) / 100
+/** 지금 길막(편집 시작값) — 셀 기준 중심 · 너비 · 깊이. 길막이 없으면 0.6칸 상자 */
+export function propCollideNow(mapId: string, propId: string): CollideEdit & { custom: boolean } {
+  const p = MAP_TABLE[mapId]?.props?.find((x) => x.id === propId)
+  const custom = effectiveOverrides()[mapId]?.collide?.[propId]
+  if (custom) return { ...custom, custom: true }
+  const b = p ? propBlocker(p) : null
+  if (!p || !b) return { w: 0.6, d: 0.6, ox: 0, oy: 0, off: true, custom: false }
+  return { w: b.x1 - b.x0, d: b.y1 - b.y0, ox: (b.x0 + b.x1) / 2 - p.cell.x, oy: (b.y0 + b.y1) / 2 - p.cell.y, custom: false }
 }
 
 /** 바닥 칠하기 — kind null 이면 원래 바닥으로 */

@@ -25,6 +25,10 @@ import {
   localChangeCount,
   canUndoMapEdit,
   flipProp,
+  propCollideNow,
+  propSizeOf,
+  scaleProp,
+  setPropCollide,
   moveProp,
   removeProp,
   resetLocalMap,
@@ -581,6 +585,7 @@ function ObjectEditorSection({
                     해제
                   </Button>
                 </div>
+                <PropTuner mapId={map.id} propId={sel.id} onShowBlockers={() => setMapEditor({ showBlockers: true })} />
               </>
             ) : editor.placing ? (
               <div className="text-gold-soft">놓을 오브젝트: {editor.placing.name} — 맵에서 놓을 자리를 누르세요</div>
@@ -753,6 +758,63 @@ function ObjectEditorSection({
           이 맵: 원래 게임 배치로
         </Button>
         <div className="text-white/45">모두에게 반영하려면 저장한 파일을 web/public/map-overrides.json 에 넣고 배포.</div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * 선택한 오브젝트의 크기 · 길막 조절(lib/map-overrides scaleProp · setPropCollide).
+ * 길막은 맵 축(↗ = 셀 y−, ↘ = 셀 x+)으로 옮기고, 너비 = 셀 x 방향 · 깊이 = 셀 y 방향. 「길막 보기」의 빨간 상자로 확인한다.
+ */
+function PropTuner({ mapId, propId, onShowBlockers }: { mapId: string; propId: string; onShowBlockers: () => void }) {
+  useMapOverridesVersion()
+  const k = propSizeOf(mapId, propId)
+  const c = propCollideNow(mapId, propId)
+  const setC = (patch: Partial<typeof c>) => {
+    const n = { ...c, ...patch }
+    setPropCollide(mapId, propId, { w: Math.max(0.1, n.w), d: Math.max(0.1, n.d), ox: n.ox, oy: n.oy, off: n.off })
+    onShowBlockers()
+  }
+  const S = 0.1
+  return (
+    <div className="mt-2 space-y-1 border-t border-gold/20 pt-2">
+      <div className="flex items-center gap-1">
+        <span className="w-12 text-white/60">크기</span>
+        <Button size="sm" variant="outline" onClick={() => scaleProp(mapId, propId, k - 0.05)}>−</Button>
+        <span className="w-12 text-center text-gold-soft">{k.toFixed(2)}×</span>
+        <Button size="sm" variant="outline" onClick={() => scaleProp(mapId, propId, k + 0.05)}>+</Button>
+        <Button size="sm" variant="outline" className="ml-auto" onClick={() => scaleProp(mapId, propId, 1)}>원래대로</Button>
+      </div>
+      <div className="text-white/60">
+        길막 {c.off ? '없음' : `${c.w.toFixed(2)} × ${c.d.toFixed(2)}칸 · 중심 (${c.ox.toFixed(2)}, ${c.oy.toFixed(2)})`} {c.custom ? '· 직접 지정' : '· 자동'}
+      </div>
+      {!c.off && (
+        <>
+          <div className="flex items-center gap-1">
+            <span className="w-12 text-white/60">너비</span>
+            <Button size="sm" variant="outline" onClick={() => setC({ w: c.w - S })}>−</Button>
+            <Button size="sm" variant="outline" onClick={() => setC({ w: c.w + S })}>+</Button>
+            <span className="ml-2 w-10 text-white/60">깊이</span>
+            <Button size="sm" variant="outline" onClick={() => setC({ d: c.d - S })}>−</Button>
+            <Button size="sm" variant="outline" onClick={() => setC({ d: c.d + S })}>+</Button>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-12 text-white/60">위치</span>
+            <Button size="sm" variant="outline" onClick={() => setC({ oy: c.oy - S })}>↗</Button>
+            <Button size="sm" variant="outline" onClick={() => setC({ ox: c.ox + S })}>↘</Button>
+            <Button size="sm" variant="outline" onClick={() => setC({ ox: c.ox - S })}>↖</Button>
+            <Button size="sm" variant="outline" onClick={() => setC({ oy: c.oy + S })}>↙</Button>
+          </div>
+        </>
+      )}
+      <div className="flex gap-1">
+        <Button size="sm" variant="outline" className="flex-1" onClick={() => setC({ off: !c.off })}>
+          {c.off ? '길막 켜기' : '길막 끄기'}
+        </Button>
+        <Button size="sm" variant="outline" className="flex-1" disabled={!c.custom} onClick={() => setPropCollide(mapId, propId, null)}>
+          길막 자동으로
+        </Button>
       </div>
     </div>
   )

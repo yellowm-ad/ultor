@@ -7,6 +7,9 @@ import { MAPS } from '@/lib/maps'
 import { MONSTERS } from '@/lib/mock-data'
 import { DiamondMark } from '@/components/game/ui-motifs'
 import { mapThumbUrl } from '@/components/game/map-thumb'
+import { MinimapGraph } from '@/components/game/minimap-graph'
+import { GRAPH_POS } from '@/lib/map-graph'
+import type { MapId } from '@/lib/types'
 
 const MAX = 148
 
@@ -25,9 +28,9 @@ export function Minimap() {
   const map = MAPS[state.currentMapId]
   // 지금 따라가는 목표가 이 맵에서 가리키는 곳
   const pin = useSyncExternalStore(subscribeGuidePin, guidePin, () => null)
-  const target = useMemo(() => {
+  const { target, goalMap } = useMemo(() => {
     const goal = guideGoal(state, pin)
-    return goal ? guideRoute(state, goal).target : null
+    return { target: goal ? guideRoute(state, goal).target : null, goalMap: (goal?.mapId ?? null) as MapId | null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pin, state.weekly, state.calendar.globalWeek, state.storyFlags, state.currentMapId, state.classScene])
   const aspect = map.grid.w / map.grid.h
@@ -78,6 +81,21 @@ export function Minimap() {
   }, [map, w, h])
 
   if (state.screen !== 'world') return null
+  // 야외 맵 — 소울나이트식 연결도(어느 포탈로 어디에 갈 수 있는지). 실내는 아래의 방 지도
+  if (GRAPH_POS[map.id]) {
+    return (
+      <div className="minimap-safe title-enter-2 pointer-events-none absolute right-3 top-24 z-30 flex flex-col items-center gap-1 sm:right-4 sm:top-32">
+        <div className="hud-map-label flex items-center gap-1 text-[11px]">
+          <DiamondMark size={8} />
+          {map.name}
+        </div>
+        <MinimapGraph state={state} focus={map.id} guideMap={goalMap} onOpen={() => dispatch({ type: 'SET_SCREEN', screen: 'worldmap' })} />
+        <div className="hud-map-label pointer-events-auto text-[9px] opacity-70" style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'worldmap' })}>
+          전체 지도 · 텔레포트
+        </div>
+      </div>
+    )
+  }
   // 야생맵은 구역이 없어 비어 보였다 — 지형 썸네일(길·물·용암)을 바탕에 깐다
   const thumb = map.zones.length === 0 ? mapThumbUrl(map) : null
 
