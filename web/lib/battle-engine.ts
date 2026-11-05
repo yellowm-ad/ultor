@@ -598,11 +598,11 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
         return doneSkill(mkFx(targets, 'buff', 1))
       }
       case 'summon': {
-        // 소환 — 한 번에 한 마리. 먼저 나와 있던 소환수는 돌아가고 새로 나온다
+        // 소환 — 파티 전체에서 한 번에 한 마리. 우리 편에 먼저 나와 있던 소환수(누가 불렀든)는 돌아가고 새로 나온다
         const def = skill.summon ? petDefById(skill.summon.creatureId) : undefined
         if (!def) return doneSkill()
         for (let i = combatants.length - 1; i >= 0; i--) {
-          if (combatants[i].kind === 'pet' && combatants[i].ownerUid === actor.uid) {
+          if (combatants[i].kind === 'pet' && combatants[i].side === actor.side) {
             log(entries, `${combatants[i].name}이(가) 돌아갔다.`, 'info')
             combatants.splice(i, 1)
           }
@@ -740,7 +740,7 @@ export function chooseAutoAction(actor: Combatant, combatants: Combatant[]): Bat
       const candidates = usable.filter((s) => {
         if (s.kind === 'heal' || s.kind === 'revive') return false
         if (s.kind === 'execute') return foes.some(isExecutable)
-        if (s.kind === 'summon') return !allies.some((c) => c.kind === 'pet' && c.ownerUid === actor.uid)
+        if (s.kind === 'summon') return !allies.some((c) => c.kind === 'pet' && c.alive)
         if (s.kind === 'stealth') return allies.some((a) => !isStealthed(a) && a.kind !== 'pet')
         if (s.cleanse) return allies.some((a) => a.effects.some((e) => e.kind !== 'buff'))
         return true

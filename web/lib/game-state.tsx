@@ -11,7 +11,7 @@ import type {
   Position,
   ScreenId,
 } from '@/lib/types'
-import { MAX_ENEMIES, MAX_PARTY_SIZE, computeStatsForLevel } from '@/lib/constants'
+import { MAX_ENEMIES, MAX_PARTY_SIZE, SKILL_LOADOUT_SIZE, SUMMON_SLOT_SIZE, computeStatsForLevel } from '@/lib/constants'
 import { BLACK_DRAGON_ID, DRAGON_FLAGS, DRAGON_ROUNDS, dragonInReach } from '@/lib/black-dragon'
 import { TRIAL_MIN_LEVEL, trialByEl, trialKey, trialReady, trialState } from '@/lib/guild-trials'
 import { MAPS, zoneAt } from '@/lib/maps'
@@ -120,6 +120,7 @@ export type Action =
   | { type: 'EQUIP_ITEM'; itemId: string; slot: EquipSlot }
   | { type: 'UNEQUIP_ITEM'; slot: EquipSlot }
   | { type: 'TOGGLE_EQUIP_SKILL'; skillId: string }
+  | { type: 'CLEAR_SKILL_LOADOUT' }
   | { type: 'START_BATTLE'; fieldMonsterUid: string }
   /** 천공 콜로세움 창 — 신분이 없으면 이때 넘겨준 것으로(무작위 값은 리듀서 밖에서 만든다) */
   | { type: 'OPEN_ARENA'; identity: ArenaIdentity }
@@ -423,6 +424,8 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'TOGGLE_EQUIP_SKILL':
       return toggleEquipSkill(state, action.skillId)
+    case 'CLEAR_SKILL_LOADOUT':
+      return { ...state, player: { ...state.player, equippedSkills: [] }, toast: '전투 마법을 모두 뺐다.' }
 
     case 'ADMIN_SET_WEEK':
       return adminSetWeek(state, action.week)
@@ -1022,10 +1025,10 @@ function reducerCore(state: GameState, action: Action): GameState {
     }
 
     case 'ADMIN_LEARN_ALL_SKILLS': {
-      // 학생이 배울 수 있는 스킬 전부(바람·소환수 기술 제외) — 소환 마법은 소환 칸 4개에
+      // 학생이 배울 수 있는 스킬 전부(바람·소환수 기술 제외) — 장착 칸·소환 칸 크기에 맞춰 채운다
       const learnedSkills = SKILLS.filter(isStudentSkill).map((s) => s.id)
       const summonIds = SKILLS.filter((s) => s.kind === 'summon').map((s) => s.id)
-      return { ...state, player: { ...state.player, learnedSkills, equippedSkills: learnedSkills.filter((id) => !summonIds.includes(id)).slice(0, 8), summonSkills: summonIds.slice(0, 4) } }
+      return { ...state, player: { ...state.player, learnedSkills, equippedSkills: learnedSkills.filter((id) => !summonIds.includes(id)).slice(0, SKILL_LOADOUT_SIZE), summonSkills: summonIds.slice(0, SUMMON_SLOT_SIZE) } }
     }
 
     case 'ADMIN_CLEAR_SKILLS':

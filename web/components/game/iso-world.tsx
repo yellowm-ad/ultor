@@ -342,14 +342,11 @@ export function IsoWorld({
             }
           })
 
-  // 필드 몬스터 — 홈 셀 반경 6.5셀 안만 렌더(연산 절약), wanderT 마다 배회 위치 재계산
-  const visibleMonsters = useMemo(
-    () =>
-      state.fieldMonsters.filter(
-        (fm) => Math.hypot(fm.homeCell.x - state.position.x, fm.homeCell.y - state.position.y) < 6.5,
-      ),
-    [state.fieldMonsters, state.position.x, state.position.y],
-  )
+  // 필드 몬스터 — 맵의 몬스터를 거리와 상관없이 전부 그린다(2026-11-05: 맵 단위 로딩 화면 도입 후 거리 컬링 제거 — 멀리 있어도 사라지지 않게).
+  //   wanderT 마다 배회 위치 재계산
+  const visibleMonsters = state.fieldMonsters
+  // 렉 방지 — 카메라에 보이는 영역(+여유 260px) 밖의 몬스터만 그리기를 건너뛴다. 화면 안에서는 절대 사라지지 않는다(직전 프레임의 시야 기준)
+  const viewRef = useRef<{ cx: number; cy: number; hw: number; hh: number } | null>(null)
   const MD = 58 // 몬스터 도트 표시 크기(일반 몬스터 기준)
   /** 필드에서의 보스 크기 배율 — 일반몹 1배 기준 중간보스 2.1배(3×0.7), 필드보스 4.2배(6×0.7) */
   const fieldRankScale = (rank?: string) => (rank === 'fieldBoss' || rank === 'storyBoss' ? 4.2 : rank === 'miniBoss' ? 2.1 : 1)
@@ -358,6 +355,8 @@ export function IsoWorld({
     if (!def) return []
     const { pos, facing: dir, moving, alert, charging } = monsterView(fm, wanderT, map, state.position)
     const s = isoToScreen(pos.x, pos.y)
+    const vr = viewRef.current
+    if (vr && !charging && (Math.abs(s.sx - vr.cx) > vr.hw + 260 || Math.abs(s.sy - vr.cy) > vr.hh + 260)) return []
     const scale = fieldRankScale(def.rank)
     const size = MD * scale
     const shadowRx = 12 * Math.sqrt(scale)
@@ -738,6 +737,7 @@ export function IsoWorld({
   const viewCy = Math.round(((viewportSize.h / 2 - camY) / SCALE - padTop) / 64) * 64
   const viewHw = viewportSize.w / 2 / SCALE + 96
   const viewHh = viewportSize.h / 2 / SCALE + 96
+  viewRef.current = { cx: ((viewportSize.w / 2 - camX) / SCALE + bounds.minSx), cy: ((viewportSize.h / 2 - camY) / SCALE - padTop), hw: viewHw, hh: viewHh }
   const visibleStatic = useMemo(
     () => (staticEntities.filter((e) => !e.at || (Math.abs(e.at.sx - viewCx) < viewHw + e.at.reach && Math.abs(e.at.sy - viewCy) < viewHh + e.at.reach * 1.5))),
     [staticEntities, viewCx, viewCy, viewHw, viewHh],

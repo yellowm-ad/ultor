@@ -528,7 +528,8 @@ export function refreshSkills(state: GameState): GameState {
   const learnedSkills = [...learned, ...add]
   // 소환 마법은 전투 장착 칸이 아니라 소환 전용 칸(최대 SUMMON_SLOT_SIZE)에 들어간다
   const equipped = state.player.equippedSkills.filter((id) => learnedSkills.includes(id) && !isSummonSkill(id))
-  const summons = (state.player.summonSkills ?? []).filter((id) => learnedSkills.includes(id) && isSummonSkill(id))
+  // 칸 수가 줄어든 옛 세이브도 여기서 맞춘다(앞에서부터 SUMMON_SLOT_SIZE 개)
+  const summons = (state.player.summonSkills ?? []).filter((id) => learnedSkills.includes(id) && isSummonSkill(id)).slice(0, SUMMON_SLOT_SIZE)
   for (const id of add) {
     if (isSummonSkill(id)) {
       if (summons.length < SUMMON_SLOT_SIZE) summons.push(id)
@@ -550,7 +551,8 @@ export function toggleEquipSkill(state: GameState, skillId: string): GameState {
   if (isSummonSkill(skillId)) {
     const summons = state.player.summonSkills ?? []
     if (summons.includes(skillId)) return { ...state, player: { ...state.player, summonSkills: summons.filter((id) => id !== skillId) } }
-    if (summons.length >= SUMMON_SLOT_SIZE) return { ...state, toast: `소환 마법 칸은 ${SUMMON_SLOT_SIZE}개입니다. 먼저 하나를 빼 주세요.` }
+    // 칸이 차 있으면 가장 먼저 넣은 것과 바로 바꾼다(빼고 넣는 두 번 대신 한 번에)
+    if (summons.length >= SUMMON_SLOT_SIZE) return { ...state, player: { ...state.player, summonSkills: [...summons.slice(1), skillId] }, toast: `소환 마법을 「${SKILLS.find((x) => x.id === skillId)?.name ?? ''}」(으)로 바꿨다.` }
     return { ...state, player: { ...state.player, summonSkills: [...summons, skillId] } }
   }
   if (equippedSkills.includes(skillId)) return { ...state, player: { ...state.player, equippedSkills: equippedSkills.filter((id) => id !== skillId) } }

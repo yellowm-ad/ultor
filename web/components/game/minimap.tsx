@@ -16,14 +16,8 @@ const MAX = 148
 export function Minimap() {
   const { state, dispatch } = useGame()
 
-  const nearMonsters = useMemo(
-    () =>
-      state.fieldMonsters.filter((fm) => {
-        const d = Math.hypot(fm.homeCell.x - state.position.x, fm.homeCell.y - state.position.y)
-        return d < 9
-      }),
-    [state.fieldMonsters, state.position.x, state.position.y],
-  )
+  // 맵의 몬스터 전부(거리 제한 없음)
+  const nearMonsters = state.fieldMonsters
 
   const map = MAPS[state.currentMapId]
   // 지금 따라가는 목표가 이 맵에서 가리키는 곳

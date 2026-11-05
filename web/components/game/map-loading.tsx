@@ -4,7 +4,7 @@
 //   · 그림은 원래도 지금 맵 것만 불러온다. 이 화면은 '받는 동안 빈 화면·튀어나오는 그림'을 가리는 역할.
 //   · 한 번 받은 그림은 브라우저가 기억하므로 다시 가는 맵은 금방 지나간다(최소 0.35초 · 최대 4초).
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { MAPS } from '@/lib/maps'
 import { regionById, regionOfMap } from '@/lib/regions'
@@ -51,11 +51,9 @@ export function MapLoadingOverlay() {
   const { state } = useGame()
   const mapId = state.screen === 'title' || state.screen === 'create' ? null : state.currentMapId
   const [show, setShow] = useState<{ id: string; total: number; loaded: number; fading: boolean } | null>(null)
-  const last = useRef<string | null>(null)
-
   useEffect(() => {
-    if (!mapId || mapId === last.current) return
-    last.current = mapId
+    // 맵이 바뀔 때마다(개발 모드에서 두 번 실행돼도 다시 시작할 뿐 — 예전엔 두 번째 실행을 건너뛰어 화면이 안 걷혔다)
+    if (!mapId) return
     const map = MAPS[mapId]
     if (!map) return
     const srcs = imagesOf(map).filter((s) => !done.has(s))

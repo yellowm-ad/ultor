@@ -273,7 +273,8 @@ export function migrateLoadedState(state: GameState, raw: Partial<GameState>): G
     equipped,
     learnedSkills: player.learnedSkills ?? [...STARTER_SKILLS],
     equippedSkills: player.equippedSkills ?? (player.learnedSkills ?? []).slice(0, 8),
-    summonSkills: player.summonSkills ?? [],
+    // 소환 칸이 1칸으로 줄었다(2026-11-05) — 옛 세이브는 앞에서부터 칸 수만큼
+    summonSkills: (player.summonSkills ?? []).slice(0, SUMMON_SLOT_SIZE),
     skillMastery: player.skillMastery ?? {},
     gear: player.gear ?? {},
     appearance: defaultAppearance(player.appearance ?? {}),

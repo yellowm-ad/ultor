@@ -191,10 +191,10 @@ export const MAX_PARTY_SIZE = 4
 export const MAX_GUESTS = 2
 /** 적 최대 수 */
 export const MAX_ENEMIES = 4
-/** 소환 마법 전용 칸(2026-10-31 — 옛 펫 고정 칸 대신) */
-export const SUMMON_SLOT_SIZE = 4
-/** 전투에 들고 가는 스킬 슬롯 수 */
-export const SKILL_LOADOUT_SIZE = 8
+/** 소환 마법 전용 칸(2026-10-31 — 옛 펫 고정 칸 대신). 2026-11-05: 1칸(전투 중 소환수도 파티 전체에서 한 마리) */
+export const SUMMON_SLOT_SIZE = 1
+/** 전투에 들고 가는 스킬 슬롯 수(2026-11-05: 8 → 12) */
+export const SKILL_LOADOUT_SIZE = 12
 
 export const POSITIONS: Position[] = ['front', 'rear', 'support']
 

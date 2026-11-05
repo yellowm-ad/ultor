@@ -197,13 +197,25 @@ export function MagicScreen() {
         <section className="gw-panel is-flex p-3">
           <div className="magic-loadout">
             <div className="magic-loadout-row">
-              <span className="magic-loadout-label">전투 장착 {player.equippedSkills.length}/{SKILL_LOADOUT_SIZE}</span>
+              <span className="magic-loadout-label">
+                전투 장착 {player.equippedSkills.length}/{SKILL_LOADOUT_SIZE}
+                {player.equippedSkills.length > 0 && (
+                  <button type="button" className="magic-clear" onClick={() => dispatch({ type: 'CLEAR_SKILL_LOADOUT' })} title="장착한 전투 마법을 모두 뺀다">
+                    전부 해제
+                  </button>
+                )}
+              </span>
               {Array.from({ length: SKILL_LOADOUT_SIZE }).map((_, i) => {
                 const s = SKILLS.find((x) => x.id === player.equippedSkills[i])
                 return (
-                  <button key={i} type="button" className={`magic-slot ${s ? '' : 'is-empty'}`} title={s ? `${s.name} — 눌러서 보기` : '빈 칸'} onClick={() => s && setSelectedId(s.id)}>
+                  <button key={i} type="button" className={`magic-slot ${s ? '' : 'is-empty'}`} title={s ? `${s.name} — 눌러서 보기 · 더블클릭/× 로 빼기` : '빈 칸'} onClick={() => s && setSelectedId(s.id)} onDoubleClick={() => s && dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id })}>
                     {s && <Image src={s.icon} alt={s.name} width={26} height={26} unoptimized />}
                     {s && <i style={{ background: elementColor(s.element) }} />}
+                    {s && (
+                      <span role="button" aria-label={`${s.name} 빼기`} className="magic-slot-x" onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id }) }}>
+                        ×
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -213,8 +225,13 @@ export function MagicScreen() {
               {Array.from({ length: SUMMON_SLOT_SIZE }).map((_, i) => {
                 const s = SKILLS.find((x) => x.id === summons[i])
                 return (
-                  <button key={i} type="button" className={`magic-slot is-summon ${s ? '' : 'is-empty'}`} title={s ? s.name : '빈 소환 칸'} onClick={() => s && setSelectedId(s.id)}>
+                  <button key={i} type="button" className={`magic-slot is-summon ${s ? '' : 'is-empty'}`} title={s ? `${s.name} — 다른 소환 마법의 [장착]을 누르면 바로 바뀝니다` : '빈 소환 칸'} onClick={() => s && setSelectedId(s.id)} onDoubleClick={() => s && dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id })}>
                     {s && <Image src={s.icon} alt={s.name} width={28} height={28} unoptimized />}
+                    {s && (
+                      <span role="button" aria-label={`${s.name} 빼기`} className="magic-slot-x" onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id }) }}>
+                        ×
+                      </span>
+                    )}
                   </button>
                 )
               })}
@@ -248,7 +265,7 @@ export function MagicScreen() {
               // 최상급(히든) — 배우기 전에는 이름을 가린다
               const hidden = !has && g === 4
               return (
-                <button key={s.id} type="button" className={`magic-row ${selected?.id === s.id ? 'is-active' : ''} ${has ? '' : 'is-dim'} ${hidden ? 'is-hidden-skill' : ''}`} onClick={() => setSelectedId(s.id)}>
+                <button key={s.id} type="button" className={`magic-row ${selected?.id === s.id ? 'is-active' : ''} ${has ? '' : 'is-dim'} ${hidden ? 'is-hidden-skill' : ''}`} onClick={() => setSelectedId(s.id)} onDoubleClick={() => has && dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id })}>
                   <span className="magic-row-icon" style={{ ['--el' as string]: elementColor(s.element) }}>
                     <Image src={s.icon} alt="" width={30} height={30} unoptimized />
                   </span>
@@ -272,6 +289,12 @@ export function MagicScreen() {
                     )}
                   </span>
                   <span className="magic-row-mp">MP {masteredMpCost(s, m.lv)}</span>
+                  {/* 바로 장착/해제 — 상세 창까지 가지 않아도 된다(더블클릭도 같음) */}
+                  {has && (
+                    <span role="button" className={`magic-quick ${on ? 'is-on' : ''}`} onClick={(e) => { e.stopPropagation(); dispatch({ type: 'TOGGLE_EQUIP_SKILL', skillId: s.id }) }}>
+                      {on ? '해제' : s.kind === 'summon' && summons.length >= SUMMON_SLOT_SIZE ? '교체' : '장착'}
+                    </span>
+                  )}
                 </button>
               )
             })}
