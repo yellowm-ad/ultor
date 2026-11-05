@@ -19,6 +19,7 @@ import { IsoWorld } from '@/components/game/iso-world'
 import { groundFallbackColor } from '@/components/game/iso-ground'
 import { useGuide } from '@/components/game/guide-trail'
 import { mapLockReason } from '@/lib/passages'
+import { nearestPlot, plotPrompt } from '@/lib/farming'
 import { nearestSpot } from '@/lib/activity-spots'
 import { WeatherLayer } from '@/components/game/weather-layer'
 import { dragonOnMap } from '@/lib/black-dragon'
@@ -220,6 +221,11 @@ export function WorldScreen() {
       dispatch({ type: 'START_SANDBAG' })
       return
     }
+    const plot = nearestPlot(map.id, state.position)
+    if (plot) {
+      dispatch({ type: 'FARM_INTERACT', plotId: plot.id })
+      return
+    }
     const node = nearestGatherNode(map, state.life, state.position)
     if (node) {
       dispatch({ type: 'GATHER', nodeKey: node.key })
@@ -330,7 +336,8 @@ export function WorldScreen() {
   const nearDoor = interactTarget || nearSecret ? null : nearestDoor()
   const nearSpot = interactTarget || nearSecret || nearDoor ? null : nearestSpot(map.id, state.position)
   const nearBag = !interactTarget && !nearSecret && !nearDoor && !nearSpot && !state.housing.editMode && nearSandbag(state)
-  const nearNode = interactTarget || nearSecret || nearDoor || nearSpot || nearBag ? null : nearestGatherNode(map, state.life, state.position)
+  const nearPlot = interactTarget || nearSecret || nearDoor || nearSpot || nearBag ? null : nearestPlot(map.id, state.position)
+  const nearNode = interactTarget || nearSecret || nearDoor || nearSpot || nearBag || nearPlot ? null : nearestGatherNode(map, state.life, state.position)
   const lifePrompt = interactTarget
     ? null
     : nearSecret
@@ -341,6 +348,8 @@ export function WorldScreen() {
       ? nearSpot.prompt
       : nearBag
       ? '샌드백 연습 — 죽지 않는 허수아비에게 마법 시험'
+      : nearPlot
+      ? plotPrompt(state, nearPlot.id)
       : nearNode
       ? `${GATHER_NODE_META[nearNode.kind].verb} — ${GATHER_NODE_META[nearNode.kind].name}`
       : isActivityUnlocked(state, 'fishing') && isNearWater(map, state.position)
@@ -373,7 +382,7 @@ export function WorldScreen() {
       viewportSize={viewportSize}
       moving={moving}
       running={running}
-      interactId={interactTarget?.id ?? nearRival?.npc.id ?? nearSpot?.id ?? nearNode?.key ?? null}
+      interactId={interactTarget?.id ?? nearRival?.npc.id ?? nearSpot?.id ?? (nearPlot ? `farm:${nearPlot.id}` : null) ?? nearNode?.key ?? null}
       guide={guideOn ? guide : null}
     />
     {/* 날씨(설원 눈·화산 불티·폭풍) — 화면 고정 층 */}

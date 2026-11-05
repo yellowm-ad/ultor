@@ -74,6 +74,24 @@ export const GUILD_QUESTS: GuildQuestDef[] = [
     objectives: [kill('mon-bark-golem', 3, '나무 골렘 처치'), talk('npc-workbench', '핀에게 보고')],
     rewards: [exp(200), gold(180), rel('npc-workbench', 5), item('mat-lifewood-chip', 1)] },
 
+  // 농사(lib/farming) — 햇살 농가 밭에서 기른 것을 전한다
+  { id: 'GQ_V_HARVEST', guild: 'village', category: 'NPC', giver: '농부 하름', title: '첫 수확', minLevel: 1, cooldownWeeks: ONCE,
+    description: '밭 한 칸 내줬으니 뭐든 길러서 보여 주게. 감자면 더 좋고. 흙이 정직하다는 걸 직접 봐야 알지.',
+    objectives: [give('npc-farmer', 'crop-potato', 3, '하름에게 직접 기른 감자 3개')],
+    rewards: [exp(60), gold(60), rel('npc-farmer', 6), item('seed-carrot', 3), item('seed-wheat', 3)] },
+  { id: 'GQ_V_BAKE', guild: 'village', category: 'NPC', giver: '제빵사 폴코', title: '햇밀 빵', minLevel: 2, cooldownWeeks: 2,
+    description: '올해 첫 햇밀로 빵을 굽고 싶은데, 방앗간 밀이 다 떨어졌다네.',
+    objectives: [give('npc-duo-baker', 'crop-wheat', 5, '폴코에게 밀 이삭 5개')],
+    rewards: [exp(70), gold(90), rel('npc-duo-baker', 4), item('food-trail-lunch', 1)] },
+  { id: 'GQ_V_PUMPKIN', guild: 'village', category: 'NPC', giver: '꽃집 로잔', title: '수확제 장식', minLevel: 4, cooldownWeeks: 3,
+    description: '광장 수확제에 호박 등불을 걸고 싶어요. 크고 동그란 걸로요!',
+    objectives: [give('npc-duo-florist', 'crop-pumpkin', 2, '로잔에게 호박 2개'), talk('npc-elder', '촌장 헬가에게 장식 허락받기')],
+    rewards: [exp(120), gold(140), rel('npc-duo-florist', 5), rel('npc-elder', 3)] },
+  { id: 'GQ_V_BERRY', guild: 'village', category: 'NPC', giver: '요리 장인 마르코', title: '베리 타르트 시식', minLevel: 3, cooldownWeeks: 2,
+    description: '타르트에 올릴 달콤 베리가 모자라. 덤불째 길러 오면 첫 조각은 자네 거야.',
+    objectives: [give('npc-kitchen', 'crop-berry', 6, '마르코에게 달콤 베리 6개')],
+    rewards: [exp(80), gold(80), rel('npc-kitchen', 4), item('food-berry-tart', 2)] },
+
   // ── 아틀란티스 마을 회관 ──────────────────────────────────────────────────────
   { id: 'GQ_A_SHELL', guild: 'atlantis', category: 'NPC', giver: '진주상인 카로', title: '진주 고르는 눈', minLevel: 8, cooldownWeeks: 3,
     description: '해변 조개껍데기를 모아 오면 진주 고르는 법을 알려 주겠대요.',

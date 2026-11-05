@@ -245,9 +245,9 @@ const EPISODES: StoryEpisode[] = [
     ['고온 때문에 드러난 고대 석비 발견', '유실 문자라 읽을 수 없음', '미르엘은 해독에 도움을 주지 않음', '빈손에 가까운 상황'],
     [visit('frozen-lake', '얼어붙은 호수'), win('SNOWFIELD', 3, '석비 주변 정리')], ['SNOW_STELE_FOUND']),
   E(44, 153, 'CH5', 'SNOWFIELD', '동굴 속의 루스벨',
-    ['설원 곳곳에서 루스벨의 화염 흔적 추적', '얼음 동굴 깊은 곳 — 직접 그린 이동진(포탈)으로 얼음벽 너머로', '강경파 아즈카 일행과 조우 · 보스전', '끝낼 것인가, 이야기를 들을 것인가'],
+    ['설원 곳곳에서 루스벨의 화염 흔적 추적', '얼음 동굴 깊은 곳 — 직접 그린 이동진(포탈)으로 얼음벽 너머로', '아즈카가 앞세운 서리 늑대 펜리르 → 헬라의 불꽃을 빌린 아즈카', '끝낼 것인가, 이야기를 들을 것인가'],
     // v3.4 — 동굴에 들어가면 포탈·아즈카 보스전(story-script EP44_AZKA). 결말 선택 → EP44_ARREST(A) / EP44_SPARE(B·C)
-    [visit('ice-cave', '얼음 동굴'), kill('mon-azka', 1, '잿빛 로브 아즈카 제압')], [],
+    [visit('ice-cave', '얼음 동굴'), kill('mon-fenrir', 1, '서리 늑대 펜리르 쓰러뜨리기'), kill('mon-azka', 1, '헬라의 불꽃 아즈카 제압')], [],
     { choices: [
       { label: '「여기서 끝낸다」 — 미르엘 교수에게 보고하고 넘긴다', setFlags: ['AZKA_ARRESTED', 'RUSPELL_NOT_FOUND'] },
       { label: '「…이야기를 들어 보자」', setFlags: ['AZKA_SPARED', 'RUSPELL_FOUND'] },

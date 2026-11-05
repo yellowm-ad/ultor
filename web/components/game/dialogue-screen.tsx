@@ -67,7 +67,7 @@ export function DialogueScreen() {
     dispatch({ type: 'CLOSE_OVERLAY' })
   }
 
-  const isShopkeeper = ['weaponMerchant', 'potionMerchant', 'toolMerchant'].includes(npc.role)
+  const isShopkeeper = ['weaponMerchant', 'potionMerchant', 'toolMerchant'].includes(npc.role) || (npc.role === 'farmer' && !!npc.shopItemIds)
   const isProfessor = npc.role === 'professor'
   const isElder = npc.role === 'housing'
   const isCraftStation = npc.role === 'craftStation'

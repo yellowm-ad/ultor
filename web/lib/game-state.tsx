@@ -53,6 +53,8 @@ import {
   afterBattleVictory,
   acceptQuest,
   acceptGuildQuest,
+  farmInteract,
+  farmPlant,
   dropGuildQuest,
   openGuildBoard,
   startEpisode,
@@ -177,6 +179,9 @@ export type Action =
   | { type: 'ADMIN_RESPAWN_MONSTERS' }
   | { type: 'FIELD_RESPAWN_TICK' }
   | { type: 'START_SANDBAG' }
+  | { type: 'FARM_INTERACT'; plotId: string }
+  | { type: 'FARM_PLANT'; plotId: string; seedId: string }
+  | { type: 'FARM_CANCEL' }
   // ── 4년제 학사·생활·동료 ────────────────────────────────────────────────────
   | { type: 'LOAD_GAME'; saved: Partial<GameState> }
   | { type: 'CLAIM_QUEST'; instanceId: string }
@@ -371,6 +376,14 @@ function reducerCore(state: GameState, action: Action): GameState {
 
     case 'GATHER':
       return gatherAt(state, action.nodeKey)
+
+    // 햇살 농가 밭(lib/farming)
+    case 'FARM_INTERACT':
+      return state.screen === 'world' ? farmInteract(state, action.plotId) : state
+    case 'FARM_PLANT':
+      return farmPlant(state, action.plotId, action.seedId)
+    case 'FARM_CANCEL':
+      return { ...state, farmPick: null }
 
     case 'START_FISHING':
       return state.screen === 'world' && !state.fishing ? startFishing(state) : state

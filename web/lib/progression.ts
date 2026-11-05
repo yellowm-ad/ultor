@@ -53,6 +53,7 @@ import { CLASS_MASTERY_XP, grantMastery, MASTERY_MAX, MASTERY_XP_PER_USE, master
 import { MAPS } from '@/lib/maps'
 import { regionOfMap } from '@/lib/regions'
 import { npcSheet } from '@/lib/costumes'
+import { cropById, cropBySeed, FARM_MAP, farmOf, growth, minutesLeft, plotById, STAGE_LABEL, stageOf } from '@/lib/farming'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 공용
@@ -670,6 +671,63 @@ export function gatherAt(state: GameState, nodeKey: string, reach = 1.6): GameSt
   }
   const label = got.map((g) => `${itemById(g.itemId)?.name ?? g.itemId} x${g.qty}`).join(', ')
   return withQuestEvents(next, got.map((g) => ({ type: 'GATHER' as const, itemId: g.itemId, qty: g.qty })), `채집: ${label}`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 농사(lib/farming) — 햇살 농가 밭 24칸
+// ─────────────────────────────────────────────────────────────────────────────
+/** 밭 칸에서 E — 빈 칸이면 씨앗 고르기, 자라는 중이면 물 주기, 다 자랐으면 거두기 */
+export function farmInteract(state: GameState, plotId: string): GameState {
+  const plot = plotById(plotId)
+  if (!plot || state.currentMapId !== FARM_MAP) return state
+  if (Math.hypot(plot.cell.x - state.position.x, plot.cell.y - state.position.y) > 1.6) return { ...state, toast: '밭에 조금 더 가까이 가야 한다.' }
+  const farm = farmOf(state)
+  const p = farm.plots[plotId]
+  if (!p) {
+    if (!state.inventory.some((s) => cropBySeed(s.itemId))) return { ...state, toast: '심을 씨앗이 없다. 농부 하름에게서 살 수 있다.' }
+    return { ...state, farmPick: plotId }
+  }
+  const crop = cropById(p.crop)
+  if (!crop) return { ...state, farm: { plots: Object.fromEntries(Object.entries(farm.plots).filter(([k]) => k !== plotId)) } }
+  const now = Date.now()
+  if (growth(p, now) < 1) {
+    if (p.waterAt) return { ...state, toast: `${crop.name} — ${STAGE_LABEL[stageOf(growth(p, now))]} · 약 ${minutesLeft(p, now)}분 남았다.` }
+    return { ...state, farm: { plots: { ...farm.plots, [plotId]: { ...p, waterAt: now } } }, toast: `${crop.name}에 물을 줬다 — 이제부터 두 배로 자란다.` }
+  }
+  // 거두기
+  let inventory = state.inventory
+  const gathered = { ...state.collections.gathered }
+  const got: { itemId: string; qty: number }[] = []
+  for (const y of crop.yields) {
+    if (y.chance != null && Math.random() > y.chance) continue
+    const qty = y.qty[0] + Math.floor(Math.random() * (y.qty[1] - y.qty[0] + 1))
+    if (qty <= 0) continue
+    inventory = addToInventory(inventory, y.itemId, qty)
+    if (!cropBySeed(y.itemId)) gathered[y.itemId] = (gathered[y.itemId] ?? 0) + qty
+    got.push({ itemId: y.itemId, qty })
+  }
+  const plots = { ...farm.plots }
+  // 다시 자라는 작물은 '자람' 단계(25%)부터 다시 — 물기는 초기화
+  if (crop.regrow) plots[plotId] = { crop: crop.id, plantedAt: now - crop.growMin * 60 * 1000 * 0.25 }
+  else delete plots[plotId]
+  const next: GameState = { ...state, inventory, farm: { plots }, collections: { ...state.collections, gathered } }
+  const label = got.map((g) => `${itemById(g.itemId)?.name ?? g.itemId} x${g.qty}`).join(', ')
+  return withQuestEvents(next, got.filter((g) => !cropBySeed(g.itemId)).map((g) => ({ type: 'GATHER' as const, itemId: g.itemId, qty: g.qty })), `수확: ${label}`)
+}
+
+/** 씨앗 고르기 창에서 고른 씨앗을 심는다 */
+export function farmPlant(state: GameState, plotId: string, seedId: string): GameState {
+  const crop = cropBySeed(seedId)
+  const farm = farmOf(state)
+  if (!crop || !plotById(plotId) || farm.plots[plotId]) return { ...state, farmPick: null }
+  if (!hasItem(state.inventory, seedId)) return { ...state, farmPick: null, toast: '그 씨앗이 없다.' }
+  return {
+    ...state,
+    farmPick: null,
+    inventory: removeFromInventory(state.inventory, seedId, 1),
+    farm: { plots: { ...farm.plots, [plotId]: { crop: crop.id, plantedAt: Date.now() } } },
+    toast: `${crop.name}을(를) 심었다 — 다 자라기까지 약 ${crop.growMin}분(물 주면 절반).`,
+  }
 }
 
 /** atSpot = 마을 낚시터(lib/activity-spots) — 낚싯대를 빌려 주므로 해금·낚싯대·물가 조건을 보지 않는다 */

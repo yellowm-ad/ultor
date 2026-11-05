@@ -20,6 +20,7 @@ import { FURNITURE_BY_ID } from '@/lib/housing'
 import { spotsOnMap } from '@/lib/activity-spots'
 import { duoOf } from '@/lib/npc-banter'
 import { GATHER_NODE_META, gatherNodesForMap, isNodeReady } from '@/lib/life'
+import { cropById, FARM_MAP, FARM_PLOTS, farmOf, growth, stageOf } from '@/lib/farming'
 import { CreatureSprite, NpcSprite } from '@/components/game/creature-sprite'
 import { professorSpot, useClassActorEntities } from '@/components/game/class-actors'
 import { HeroSprite } from '@/components/game/pixel-hero'
@@ -572,6 +573,37 @@ export function IsoWorld({
     }
   })
 
+  // 햇살 농가 밭(lib/farming) — 갈아 둔 흙 마름모 + 작물 성장 단계 도트. 물 준 칸은 흙이 짙다. 다 자라면 반짝임
+  const farmPlots = map.id === FARM_MAP ? farmOf(state).plots : null
+  const farmEntities = farmPlots
+    ? FARM_PLOTS.map((pl) => {
+        const s = isoToScreen(pl.cell.x, pl.cell.y)
+        const p = farmPlots[pl.id]
+        const crop = p ? cropById(p.crop) : undefined
+        const stage = p ? stageOf(growth(p, now)) : -1
+        const tall = crop?.art === 'tree'
+        const hot = interactId === `farm:${pl.id}`
+        return {
+          sortY: pl.cell.x + pl.cell.y,
+          node: (
+            <g key={`farm-${pl.id}`} transform={`translate(${s.sx},${s.sy})`} style={{ cursor: 'pointer' }} onClick={() => dispatch({ type: 'FARM_INTERACT', plotId: pl.id })}>
+              <polygon points="0,-13 26,0 0,13 -26,0" fill={p?.waterAt ? '#4a3220' : '#7a5634'} stroke={hot ? '#e0b050' : '#3a2616'} strokeWidth={hot ? 2 : 1} />
+              <path d="M-17,-4 L9,9 M-8,-9 L18,4" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth={1.5} />
+              {crop && (
+                <image href={`/images/farm/${crop.id}-${stage}.svg`} x={-20} y={tall ? -58 : -34} width={40} height={tall ? 60 : 40} style={{ imageRendering: 'pixelated' }} />
+              )}
+              {stage === 3 && (
+                <g style={{ animation: 'portal-pulse 1.8s ease-in-out infinite' }}>
+                  <rect x={-1.5} y={tall ? -64 : -40} width={3} height={3} fill="#fff6c8" />
+                  <rect x={12} y={tall ? -48 : -30} width={2} height={2} fill="#fff6c8" />
+                </g>
+              )}
+            </g>
+          ),
+        }
+      })
+    : []
+
   // 마을 놀이 지점(lib/activity-spots) — 바닥 고리 + 통통 튀는 표식 + 이름표. 누르면(가까이 있을 때) 시작
   const spotEntities = spotsOnMap(map.id).map((sp) => {
     const s = isoToScreen(sp.cell.x, sp.cell.y)
@@ -653,7 +685,7 @@ export function IsoWorld({
 
   // 흑룡 강림(lib/black-dragon) — 앞발 자리 기준으로 깊이 정렬
   const dragonEntities = dragonOnMap(state) ? [{ sortY: DRAGON_ANCHOR.x + DRAGON_ANCHOR.y, node: <ColossusField key="black-dragon" /> }] : []
-  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities, ...dragonEntities].sort((a, b) => a.sortY - b.sortY)
+  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...farmEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities, ...dragonEntities].sort((a, b) => a.sortY - b.sortY)
   // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
   const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
   // 플레이어 앞뒤를 한 목록으로 — 따로 두면 플레이어가 소품을 지나칠 때마다 그 소품이 통째로 새로 만들어진다

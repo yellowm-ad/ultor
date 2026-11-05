@@ -187,6 +187,8 @@ export type MaterialTag =
   | 'claw'
   | 'core'
   | 'fish'
+  | 'crop' // 농사 수확물(lib/farming)
+  | 'seed' // 씨앗·포자·묘목
 export type EquipSlot = 'weapon' | 'armor' | 'accessory'
 /** 장비 성장 등급(§장비·아이템 PRD). 티어(전직 단계)와 독립적인 별도 축 */
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'mythic' | 'unique'
@@ -870,6 +872,10 @@ export type Facing = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' |
 
 export interface GameState {
   screen: ScreenId
+  /** 햇살 농가 밭(lib/farming) — 칸 id → 심은 작물 */
+  farm?: import('./farming').FarmState
+  /** 씨앗 고르기 창이 열린 밭 칸 */
+  farmPick?: string | null
   /** 열려 있는 길드 게시판(GuildKey) — screen 'guildBoard' */
   guildBoardKey?: string | null
   /** 열려 있는 분수대(평판 거점 id) — screen 'fountain' */

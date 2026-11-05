@@ -1,4 +1,5 @@
 import type { ItemDef, ItemRarity, MonsterDef, NpcDef, RecipeDef, Skill, Stats } from '@/lib/types'
+import { CROPS } from '@/lib/farming'
 import { computeStatsForLevel, toLevel100 } from '@/lib/constants'
 import { legacyMonsterBaseExp, monsterBaseExp } from '@/lib/exp-table'
 import { COURSES } from '@/lib/academics'
@@ -6,6 +7,8 @@ import { TRIAL_MIN_LEVEL, TRIAL_OF_SKILL } from '@/lib/guild-trials'
 import { LIFE_ITEMS, LIFE_RECIPES } from '@/lib/life'
 import { SCHOOL_NPCS } from '@/lib/companions'
 import { VILLAGE_BASE_ZONE_IDS, villageShift } from '@/lib/village-layout'
+/** 농부 하름의 씨앗 진열대(lib/farming) */
+const FARM_SEED_IDS = CROPS.map((c) => c.seedId)
 
 const FIRE = '/images/elements/fire-crest.png'
 const ICE = '/images/elements/ice-crest.png'
@@ -862,21 +865,40 @@ const MONSTERS_LEGACY: MonsterDef[] = [
   // v3.4 강경파 마족 '아즈카'의 수장(로브) — EP44 설원 얼음 동굴 보스. 그림은 '모르스의 전령'(같은 무리)을 쓴다.
   //   스토리 장면(EP44_AZKA)에서만 전투가 열린다. 쓰러뜨리면 EP44 결말에서 끝낼지/이야기를 들을지 고른다.
   {
+    // 2차전 — 헬라(불)의 힘을 빌린 아즈카. 펜리르보다 강하다
     id: 'mon-azka',
-    name: '잿빛 로브 아즈카',
-    level: 44,
+    name: '헬라의 불꽃 아즈카',
+    level: 47,
     icon: '/images/monsters/mon-azka-herald.png',
     element: 'fire',
     family: 'darkmage',
-    stats: mstat(44, { maxHp: 6, matk: 2.3, maxMp: 3, mdef: 1.8, def: 1.3, spd: 1.2, atk: 1.2, luck: 1.4 }),
+    stats: mstat(47, { maxHp: 7.5, matk: 2.7, maxMp: 3.5, mdef: 2, def: 1.5, spd: 1.3, atk: 1.3, luck: 1.5 }),
     traits: ['caster', 'aggressive'],
-    skills: ['fire-high-1', 'fire-adv-3', 'dark-curse', 'dark-miasma'],
-    expReward: 2200,
-    goldReward: 900,
+    skills: ['fire-high-1', 'fire-high-2', 'fire-adv-3', 'dark-curse', 'dark-miasma'],
+    expReward: 2600,
+    goldReward: 1000,
     zoneKinds: [],
     rank: 'storyBoss',
     aiProfile: 'healerHunt',
     aura: 'rage-violet',
+  },
+  // v3.4 EP44 1차전 — 펜리르(펜리르 기숙사 문장의 늑대). 설원 얼음 속에 오래 묶여 있던 탓에 서리를 두른 얼음늑대로 나타난다.
+  //   아즈카가 목걸이로 불러내 앞세운다. ⚠ 전용 그림 전(PixelLab 예정) — 지금은 회색 늑대 그림을 빌린다
+  {
+    id: 'mon-fenrir',
+    name: '서리 늑대 펜리르',
+    level: 44,
+    icon: '/images/monsters/mon-grey-wolf.png',
+    element: 'ice',
+    family: 'beast',
+    stats: mstat(44, { maxHp: 5.5, atk: 2.2, def: 1.6, mdef: 1.4, spd: 1.6, luck: 1.3 }),
+    traits: ['swift', 'aggressive'],
+    skills: ['ice-adv-1', 'ice-high-1', 'pet-frost-nip'],
+    expReward: 1800,
+    goldReward: 400,
+    zoneKinds: [],
+    rank: 'storyBoss',
+    aiProfile: 'finisher',
   },
   // v3.4 요르문간드 — 요르문간드 기숙사 문장의 신화 속 서리 뱀. EP34 아즈카가 불러낸다(연출 전투 — 미르엘이 상대하는 동안 버틴다).
   //   ⚠ 전용 그림 전(PixelLab 예정) — 지금은 서리 망령 그림을 빌린다
@@ -958,7 +980,7 @@ const NPCS_BASE: NpcDef[] = [
   // 성녀는 EP21(75주) '성녀와 첫 대화'가 시작돼 울토르를 방문한 뒤부터 성역 신전에 머문다
   { id: 'npc-saint', name: '성녀 리아나', role: 'saint', icon: '/images/npc/npc-saint.png', zoneId: 'z-temple', visibleFlag: 'beat:EP_75_OPEN', cell: { x: 11.5, y: 32.6 }, greeting: ['빛이 그대와 함께하기를.', '언젠가 이 손으로 그대에게 축복을 내릴 날이 오겠지요. 지금은 준비 중이랍니다.'] },
   // ── 햇살 농가 ──
-  { id: 'npc-farmer', name: '농부 하름', role: 'farmer', icon: '/images/npc/npc-farmer.png', zoneId: 'z-farm', cell: { x: 26, y: 29.2 }, greeting: ['어이, 견습생! 여기가 햇살 농가일세.', '밭농사에 펫 농장까지 해볼 생각인데, 아직은 삽질만 하고 있다네. 곧 열 테니 기대하게.'] },
+  { id: 'npc-farmer', name: '농부 하름', role: 'farmer', icon: '/images/npc/npc-farmer.png', zoneId: 'z-farm', cell: { x: 26, y: 29.2 }, greeting: ['어이, 견습생! 여기가 햇살 농가일세.', '허수아비 양옆 밭은 자네들 몫으로 비워 뒀네. 씨앗은 내게서 사 가고, 심었으면 물 주는 거 잊지 말게. 흙은 정직하거든.'], shopItemIds: FARM_SEED_IDS },
 
   // ── 아틀란티스 마을 (안전지대) ──
   { id: 'npc-atlantis-elder', name: '해류사제 넬리아', role: 'flavor', icon: '/images/npc/npc-atlantis-elder.png', zoneId: 'z-atlantis', cell: { x: 18.6, y: 23.2 }, greeting: ['숨은 걱정 말게 — 이 돔 안은 뭍과 같으니.', '아틀란티스는 심해가 삼키기 전, 삼원을 가장 먼저 연구한 도시였네.'] },

@@ -11,6 +11,7 @@
 // PixelLab 으로 교체할 때는 같은 경로에 PNG 를 두고 ITEM 의 icon 만 바꾸면 된다.
 // ============================================================================
 
+import { FARM_ITEMS } from '@/lib/farming'
 import { CRAFT_FURNITURE, craftFurnitureItemId } from '@/lib/housing'
 import type { GameMap, GameState, ItemDef, MapId, MaterialTag, MonsterFamily, RecipeCategory, RecipeDef } from '@/lib/types'
 import { calendarInfo, globalWeekOf } from '@/lib/calendar'
@@ -174,7 +175,7 @@ const craftedLifeItems: ItemDef[] = [
   { id: 'cos-festival-cape', name: '축제 망토', type: 'costume', icon: LIFE_ICON('cos-festival-cape'), description: '예전에 만들어 둔 축제 망토. 코스튬 제작이 없어져 입을 수는 없지만 상점에 팔 수 있다.', price: 0, sellPrice: 100, stackable: false, maxStack: 1, shopBuyable: false },
 ]
 
-export const LIFE_ITEMS: ItemDef[] = [...gatherItems, ...huntItems, ...fishItems, ...foodItems, ...craftedLifeItems]
+export const LIFE_ITEMS: ItemDef[] = [...gatherItems, ...huntItems, ...fishItems, ...foodItems, ...craftedLifeItems, ...FARM_ITEMS]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 채집 (§33, §53)
@@ -500,6 +501,8 @@ export const TAG_LABEL: Record<MaterialTag, string> = {
   claw: '발톱',
   core: '마력핵',
   fish: '물고기',
+  crop: '작물',
+  seed: '씨앗',
 }
 
 export function currentYear(state: Pick<GameState, 'calendar'>): number {
