@@ -68,6 +68,11 @@ const SPEAKERS = {
   룬: ['서리사냥꾼 룬', 'npc-aurora-hunter', null],
   '장로 카즈': ['장로 카즈', 'npc-demon-elder', null],
   그롯: ['그롯', 'npc-demon-smith', null],
+  // v3.4
+  넬리아: ['해류사제 넬리아', 'npc-atlantis-elder', null],
+  아즈카: ['아즈카', null, null],
+  '은둔수도자 그림': ['은둔수도자 그림', 'npc-abandoned-monk', null],
+  '바람사제 이엘': ['바람사제 이엘', 'npc-sky-priest', null],
 }
 function speakerOf(raw) {
   const m = raw.match(/^(.+?)(\((.+)\))?$/)
@@ -150,7 +155,7 @@ for (const file of FILES) {
   let sawGameplay = false
   let sectionRoute = null // ## [ROUTE X] 구역
   let inlineRoute = null // **[X 루트]** 표시 이후 다음 제목까지
-  const ROUTE_OF = { A: 'A', 'B/C': 'B_OR_C', B: 'B', C: 'C' }
+  const ROUTE_OF = { A: 'A', 'B/C': 'B_OR_C', B: 'B', C: 'C', 'B-RUIN': 'B_RUIN', 'B-ESCAPE': 'B_ESCAPE', 'B-파멸': 'B_RUIN', 'B-도피': 'B_ESCAPE' }
 
   const push = (line) => {
     if (!ep || ep.no > MAX_EP || ep.no < MIN_EP) return
@@ -190,7 +195,7 @@ for (const file of FILES) {
       continue
     }
     if (!ep) continue
-    const head = l.match(/^(#{2,3}) \[([A-Z /]+)(?: ([\d-]+[A-Z]?\d*))?\](.*)$/)
+    const head = l.match(/^(#{2,3}) \[((?:ROUTE [A-Z/-]+)|[A-Z /]+)(?: ([\d-]+[A-Z]?\d*))?\](.*)$/)
     if (head) {
       const [, hashes, kind, num, rest] = head
       inlineRoute = null
@@ -237,7 +242,7 @@ for (const file of FILES) {
     if (/^#{1,4} /.test(l)) { collect = false; inlineRoute = null; continue }
     if (!collect) continue
     if (/^\*\*\[GAMEPLAY\]\*\*/.test(l)) continue
-    const rm = l.match(/^\*\*\[(A|B\/C|B|C)(?: 루트)?[^\]]*\]\*\*\s*(.*)$/)
+    const rm = l.match(/^\*\*\[(A|B\/C|B-파멸|B-도피|B|C)(?: 루트)?[^\]]*\]\*\*\s*(.*)$/)
     if (rm) {
       inlineRoute = ROUTE_OF[rm[1]]
       if (!rm[2]) continue
@@ -300,7 +305,8 @@ for (const e of Object.values(episodes)) {
   const seen = new Set()
   const pick = new Set()
   e.scenes.forEach((sc, i) => {
-    const key = sc.route ?? 'ALL'
+    // B-파멸·B-도피는 B 의 뒷부분(엔딩 갈래) — 따로 오프닝을 뽑지 않는다
+    const key = sc.route === 'B_RUIN' || sc.route === 'B_ESCAPE' ? 'B' : sc.route ?? 'ALL'
     if (seen.has(key)) return
     seen.add(key)
     const end = e.scenes[i + 1]?.at ?? all.length

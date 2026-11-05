@@ -74,6 +74,14 @@ export const FLAGS = {
   RUSPELL_ENRAGED: 'RUSPELL_ENRAGED',
   /** 엔딩 루트 첫 분기 — 설원에서 루스벨을 찾았는가(EP45) */
   RUSPELL_FOUND: 'RUSPELL_FOUND',
+  RUSPELL_NOT_FOUND: 'RUSPELL_NOT_FOUND',
+  /** v3.4 EP44 선택 — 강경파 아즈카를 끝냈나(A) / 이야기를 들었나(B·C, 루스벨에게 안내받음) */
+  AZKA_ARRESTED: 'AZKA_ARRESTED',
+  AZKA_SPARED: 'AZKA_SPARED',
+  /** v3.4 EP34 — 아즈카가 요르문간드를 불러냈다 */
+  JORMUNGANDR_SUMMONED: 'JORMUNGANDR_SUMMONED',
+  /** v3.4 EP14 — 인어 사제 넬리아가 바다 비석을 대충 읽어 줬다 */
+  NELIA_READ_STELE: 'NELIA_READ_STELE',
   SNOW_STELE_FOUND: 'SNOW_STELE_FOUND',
   ANCIENT_SCRIPT_CONFIRMED: 'ANCIENT_SCRIPT_CONFIRMED',
   MORS_MEMORY_ACQUIRED: 'MORS_MEMORY_ACQUIRED',
@@ -119,22 +127,29 @@ export const ENDING_EMBLEM_FLAGS: string[] = REPUTATION_HUBS.map((h) => h.emblem
 /** 마물 마을 평판 Lv.5(상징) — 모르스와의 첫 대화에서 협력 루트가 열리는 조건 */
 export const VOLCANO_REPUTATION_LV5 = 'EMBLEM_MONSTER_VILLAGE'
 
-/** 엔딩 판정(v3.0 §6) — 루스벨을 못 찾았거나 마물 마을 상징이 없으면 A, 상징이 하나라도 빠지면 B, 전부면 C */
-export function endingRoute(state: Pick<GameState, 'storyFlags'>): 'A' | 'B' | 'C' {
-  if (!flagOn(state, FLAGS.RUSPELL_FOUND) || !flagOn(state, VOLCANO_REPUTATION_LV5)) return 'A'
-  return ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f)) ? 'C' : 'B'
-}
+/** 엔딩·대사 루트(v3.4) — A / B-파멸 / B-도피 / C */
+export type LineRoute = 'A' | 'B_RUIN' | 'B_ESCAPE' | 'C'
 
 /**
- * 대사 줄 루트 판정 — 루트 전용 줄(StoryLine.route)을 보여 줄지 정한다.
- * EP47(마물 마을, 167주)을 마치기 전에는 루스벨 발견 여부만 본다(A ↔ B/C). 그 뒤로는 endingRoute.
+ * 엔딩 판정(v3.4 §7)
+ *  · A      = EP44 에서 아즈카를 끝냈다(또는 루스벨을 못 찾았다)
+ *  · C      = 이야기를 들었고 여섯 거점 상징이 전부
+ *  · B-도피 = 상징이 모자라지만 마물 마을 상징은 있다 — 모르스가 주인공에게서 유일한 희망을 본다
+ *  · B-파멸 = 상징이 모자라고 마물 마을 상징도 없다 — 희망이 배신으로 바뀐다
  */
-export function storyLineRoute(state: Pick<GameState, 'storyFlags'>): 'A' | 'B' | 'C' {
-  if (!flagOn(state, FLAGS.RUSPELL_FOUND)) return 'A'
-  if (!flagOn(state, 'EP_167_DONE')) return ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f)) ? 'C' : 'B'
+export function endingRoute(state: Pick<GameState, 'storyFlags'>): LineRoute {
+  if (flagOn(state, FLAGS.AZKA_ARRESTED) || !flagOn(state, FLAGS.RUSPELL_FOUND)) return 'A'
+  if (ENDING_EMBLEM_FLAGS.every((f) => flagOn(state, f))) return 'C'
+  return flagOn(state, VOLCANO_REPUTATION_LV5) ? 'B_ESCAPE' : 'B_RUIN'
+}
+
+/** 대사 줄 루트 판정 — 루트 전용 줄(StoryLine.route)을 보여 줄지 정한다(선택 전에는 A 로 본다) */
+export function storyLineRoute(state: Pick<GameState, 'storyFlags'>): LineRoute {
   return endingRoute(state)
 }
-export const lineOnRoute = (l: StoryLine, r: 'A' | 'B' | 'C') => !l.route || l.route === r || (l.route === 'B_OR_C' && r !== 'A')
+/** 줄의 route: 'B' = B 두 갈래 공통, 'B_OR_C' = 이야기를 들은 루트 전부 */
+export const lineOnRoute = (l: Pick<StoryLine, 'route'>, r: LineRoute) =>
+  !l.route || l.route === r || (l.route === 'B' && (r === 'B_RUIN' || r === 'B_ESCAPE')) || (l.route === 'B_OR_C' && r !== 'A')
 
 // ── 스토리 비트 ─────────────────────────────────────────────────────────────────
 export type StoryTrigger =
@@ -172,8 +187,8 @@ export interface StoryLine {
   anim?: string | string[]
   /** 전체 무대 연출(components/game/dragon-clash) — 이 줄부터 다음 fx(또는 null)까지 유지 */
   fx?: 'clash-arrive' | 'clash-charge' | 'clash-collide' | 'clash-retreat' | null
-  /** 루트 전용 줄(EP45~) — 없으면 공통. 'B_OR_C' = 루스벨을 찾은 루트 */
-  route?: 'A' | 'B' | 'C' | 'B_OR_C'
+  /** 루트 전용 줄(EP45~) — 없으면 공통. 'B_OR_C' = 루스벨을 찾은 루트, 'B' = B 두 갈래 공통 */
+  route?: 'A' | 'B' | 'C' | 'B_OR_C' | 'B_RUIN' | 'B_ESCAPE'
   text: string
 }
 
@@ -189,7 +204,7 @@ export interface StoryBeat {
   trigger: StoryTrigger
   requiredFlags?: string[]
   /** 루트 전용 장면 — 그 루트일 때만 발생한다(storyLineRoute). 없으면 공통 */
-  route?: 'A' | 'B' | 'C' | 'B_OR_C'
+  route?: 'A' | 'B' | 'C' | 'B_OR_C' | 'B_RUIN' | 'B_ESCAPE'
   /** 이 주차(globalWeek) 이전에는 조건이 맞아도 발생하지 않는다 — 방문/전투 트리거 페이싱용 */
   minWeek?: number
   /** 재생 후 켜질 플래그 */
@@ -198,7 +213,11 @@ export interface StoryBeat {
   /** 마지막 대사에서 고르는 선택지 — 고른 쪽 setFlags 가 켜지고 FLAG 트리거로 이어진다 */
   choices?: StoryChoice[]
   /** 장면을 닫으면 이 몬스터들과 바로 전투(스토리 보스). 지거나 도망치면 장면이 되돌아가 다시 도전할 수 있다 */
-  battle?: { monsterIds: string[] }
+  battle?: {
+    monsterIds: string[]
+    /** 연출 전투(이길 수 없는 상대 — 흑룡전과 같은 방식) — 적이 endAfter 번 행동하면 중단되고 flag 가 켜진다 */
+    scripted?: { endAfter: number; flag: string; endLine: string }
+  }
 }
 
 /**
@@ -363,7 +382,7 @@ export function beatsFor(state: Pick<GameState, 'storyFlags' | 'calendar'>, matc
       match(b.trigger) &&
       !flagOn(state, `beat:${b.id}`) &&
       flagsAllOn(state, b.requiredFlags) &&
-      (!b.route || lineOnRoute({ speaker: '', text: '', route: b.route }, storyLineRoute(state))) &&
+      (!b.route || lineOnRoute({ route: b.route }, storyLineRoute(state))) &&
       (b.minWeek === undefined || storyWeekOf(state) >= b.minWeek),
   )
 }

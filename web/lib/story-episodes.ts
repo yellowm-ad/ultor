@@ -33,7 +33,7 @@ export interface EpisodeRewards {
 /** v3.0 장 구분 */
 export type StoryChapter = 'CH0' | 'CH1' | 'CH2' | 'CH3' | 'CH4' | 'CH5' | 'CH6' | 'CH7'
 /** 엔딩 루트 — 공통(ALL) 또는 루트 전용. 루트 판정은 Phase 2(평판·상징) 이후 연결 */
-export type StoryRoute = 'ALL' | 'A' | 'B' | 'C' | 'B_OR_C'
+export type StoryRoute = 'ALL' | 'A' | 'B' | 'C' | 'B_OR_C' | 'B_RUIN' | 'B_ESCAPE'
 
 export interface StoryEpisode {
   /** globalWeek(1~192) */
@@ -52,7 +52,7 @@ export interface StoryEpisode {
   /** v3.0 문서의 막 요점 */
   points: string[]
   /** 루트별로 달라지는 요점(EP46~52) */
-  routes?: Partial<Record<'A' | 'B' | 'C' | 'B_OR_C', string[]>>
+  routes?: Partial<Record<'A' | 'B' | 'C' | 'B_OR_C' | 'B_RUIN' | 'B_ESCAPE', string[]>>
   brief: StoryLine[]
   objectives: QuestObjective[]
   outro: StoryLine[]
@@ -224,7 +224,7 @@ const EPISODES: StoryEpisode[] = [
     ["풀려난 '로(怒)'가 루스벨에게 흘러듦", '루스벨 폭주', '화염 마족의 힘 + 분노 인격으로 전투 양상이 완전히 변함', '폐허된 신전 편 최종보스 — 마왕 루스벨'],
     // 신전 내부에 들어가면 폭주 장면(story-script EP37_RAGE) → 보스전. 처치해도 도주(EP37_FLED)
     [visit('ruin-sanctum', '버려진 신전 내부'), kill('mon-ruspell-rage', 1, '폭주한 루스벨 저지')]),
-  E(38, 130, 'CH4', 'RUINS', '노는 죽지 않았다',
+  E(38, 130, 'CH4', 'RUINS', '로(怒)는 죽지 않았다',
     ['루스벨은 처치되지 않고 도주', '신전에서 고대문자·인격 조각에 대한 단서 획득', '루스벨이 살아 있는 한 사건이 끝나지 않았음을 깨달음'],
     [visit('ruin-sanctum', '버려진 신전 내부'), talk('npc-abandoned-scholar', '유물학자 세라와 고대문자 단서 확인')]),
   E(39, 132, 'CH4', 'ACADEMY', '기록을 바꾼 사람',
@@ -245,11 +245,16 @@ const EPISODES: StoryEpisode[] = [
     ['고온 때문에 드러난 고대 석비 발견', '유실 문자라 읽을 수 없음', '미르엘은 해독에 도움을 주지 않음', '빈손에 가까운 상황'],
     [visit('frozen-lake', '얼어붙은 호수'), win('SNOWFIELD', 3, '석비 주변 정리')], ['SNOW_STELE_FOUND']),
   E(44, 153, 'CH5', 'SNOWFIELD', '동굴 속의 루스벨',
-    ['설원 곳곳에서 루스벨의 화염 흔적 추적', '루스벨 은신 동굴 후보 발견', '설원 평판이 높을수록 추적 단서 증가', '루스벨을 찾을 수 있는 마지막 기회가 준비됨'],
-    [visit('ice-cave', '얼음 동굴'), win('SNOWFIELD', 4, '설원에서 전투 승리')]),
+    ['설원 곳곳에서 루스벨의 화염 흔적 추적', '얼음 동굴 깊은 곳 — 직접 그린 이동진(포탈)으로 얼음벽 너머로', '강경파 아즈카 일행과 조우 · 보스전', '끝낼 것인가, 이야기를 들을 것인가'],
+    // v3.4 — 동굴에 들어가면 포탈·아즈카 보스전(story-script EP44_AZKA). 결말 선택 → EP44_ARREST(A) / EP44_SPARE(B·C)
+    [visit('ice-cave', '얼음 동굴'), kill('mon-azka', 1, '잿빛 로브 아즈카 제압')], [],
+    { choices: [
+      { label: '「여기서 끝낸다」 — 미르엘 교수에게 보고하고 넘긴다', setFlags: ['AZKA_ARRESTED', 'RUSPELL_NOT_FOUND'] },
+      { label: '「…이야기를 들어 보자」', setFlags: ['AZKA_SPARED', 'RUSPELL_FOUND'] },
+    ] }),
   E(45, 156, 'CH5', 'SNOWFIELD', '두 갈래의 진실',
     ['기말평가·졸업 준비가 멈추고 최종 조사로 전환', '루스벨 발견 여부를 확정하는 핵심 분기', '여기서부터 4학년 2학기는 엔딩 특수 루프로 전환'],
-    // ⚠ RUSPELL_FOUND 판정(설원 평판·추적 단서)은 Phase 2 — 지금은 자동으로 켜지지 않는다
+    // v3.4 — 루트는 EP44 결말의 선택으로 이미 갈렸다(AZKA_SPARED = 루스벨 발견 / AZKA_ARRESTED = 못 찾음)
     [visit('ice-cave', '얼음 동굴')], [],
     { routes: { B_OR_C: ["RUSPELL_FOUND — 루스벨 생존 확인, '로(怒)' 인격 상태와 깃든 모르스의 기억 확인"], A: ['루스벨을 찾지 못한 채 학교로 귀환'] } }),
 

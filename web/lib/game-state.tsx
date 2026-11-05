@@ -360,7 +360,7 @@ function reducerCore(state: GameState, action: Action): GameState {
       // 장면이 보스전을 여는 비트면(EP37 폭주한 루스벨 등) 닫자마자 전투
       const head = state.storyQueue[0] ? beatById(state.storyQueue[0]) : undefined
       const next = dismissStory(state)
-      return head?.battle ? startStoryBattle(next, head.id, head.battle.monsterIds) : next
+      return head?.battle ? startStoryBattle(next, head.id, head.battle.monsterIds, head.battle.scripted) : next
     }
 
     case 'STORY_CHOICE':
@@ -1407,11 +1407,13 @@ function startBattleFromField(state: GameState, fieldMonsterUid: string): GameSt
 }
 
 /** 스토리 장면이 여는 보스전 — 호위 없이 지정한 몬스터만(장면의 battle.monsterIds) */
-function startStoryBattle(state: GameState, beatId: string, monsterIds: string[]): GameState {
+function startStoryBattle(state: GameState, beatId: string, monsterIds: string[], scripted?: { endAfter: number; flag: string; endLine: string }): GameState {
   const defs = monsterIds.map((id) => MONSTERS.find((m) => m.id === id)).filter((m): m is NonNullable<typeof m> => !!m)
   if (!defs.length) return state
   const ready = ensureParty(state)
   const battle = initBattle(battleParty(ready), defs, state.position, undefined, { huntEnabled: isActivityUnlocked(state, 'hunting') })
+  // 연출 전투(요르문간드 등) — 흑룡전과 같은 규칙: 적이 endAfter 번 행동하면 중단 → flag
+  if (scripted) return { ...ready, previousScreen: state.screen, screen: 'battle', battle: { ...battle, scripted: { ...scripted, enemyTurns: 0 } } }
   return { ...ready, previousScreen: state.screen, screen: 'battle', battle: { ...battle, storyBeatId: beatId } }
 }
 

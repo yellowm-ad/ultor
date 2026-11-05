@@ -70,7 +70,7 @@ export function queueBeats(state: GameState, match: (t: StoryTrigger) => boolean
   const newFlags: string[] = []
   for (const b of beats) {
     // 보스전을 여는 장면은 이겼을 때 '봤음' 처리(afterBattleVictory) — 전투 중에 끄고 다시 켜도 재도전 가능
-    if (!b.battle) storyFlags[`beat:${b.id}`] = true
+    if (!b.battle || b.battle.scripted) storyFlags[`beat:${b.id}`] = true // 연출 전투는 이길 수 없으니 바로 '봤음'
     for (const f of b.setFlags ?? []) {
       if (!storyFlags[f]) newFlags.push(f)
       storyFlags[f] = true

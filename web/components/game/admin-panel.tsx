@@ -382,13 +382,14 @@ export function AdminPanel() {
               <div className="flex gap-1">
                 {(
                   [
-                    ['A', { RUSPELL_FOUND: false }],
-                    ['B', { RUSPELL_FOUND: true, EMBLEM_MONSTER_VILLAGE: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.filter((f) => f !== 'EMBLEM_MONSTER_VILLAGE').map((f) => [f, false])) }],
-                    ['C', { RUSPELL_FOUND: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.map((f) => [f, true])) }],
-                  ] as [string, Record<string, boolean>][]
-                ).map(([r, flags]) => (
+                    ['A', 'A', { RUSPELL_FOUND: false, AZKA_ARRESTED: true, AZKA_SPARED: false }],
+                    ['B_RUIN', 'B-파멸', { RUSPELL_FOUND: true, AZKA_ARRESTED: false, AZKA_SPARED: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.map((f) => [f, false])) }],
+                    ['B_ESCAPE', 'B-도피', { RUSPELL_FOUND: true, AZKA_ARRESTED: false, AZKA_SPARED: true, EMBLEM_MONSTER_VILLAGE: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.filter((f) => f !== 'EMBLEM_MONSTER_VILLAGE').map((f) => [f, false])) }],
+                    ['C', 'C', { RUSPELL_FOUND: true, AZKA_ARRESTED: false, AZKA_SPARED: true, ...Object.fromEntries(ENDING_EMBLEM_FLAGS.map((f) => [f, true])) }],
+                  ] as [string, string, Record<string, boolean>][]
+                ).map(([r, label, flags]) => (
                   <Button key={r} size="sm" className="flex-1" variant={storyLineRoute(state) === r ? 'default' : 'outline'} onClick={() => dispatch({ type: 'ADMIN_SET_FLAGS', flags })}>
-                    {r} 루트
+                    {label}
                   </Button>
                 ))}
               </div>
