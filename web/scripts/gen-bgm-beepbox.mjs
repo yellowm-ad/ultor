@@ -91,6 +91,10 @@ const INST = {
   clarinet: (o = {}) => ({ type: 'harmonics', volume: o.vol ?? 70, eqFilter: [], effects: ['vibrato', 'panning', 'reverb'], vibrato: 'light', pan: o.pan ?? -10, reverb: o.rev ?? 35, fadeInSeconds: 0, fadeOutTicks: 6, harmonics: [100, 0, 57, 0, 43, 0, 29, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unison: 'none', envelopes: [] }),
   // 현악 패드 — 천천히 차오르는 화음
   strings: (o = {}) => ({ type: 'harmonics', volume: o.vol ?? 55, eqFilter: [], effects: ['chord type', 'reverb'], chord: 'simultaneous', reverb: o.rev ?? 35, fadeInSeconds: o.fadeIn ?? 0.15, fadeOutTicks: 24, harmonics: [100, 86, 71, 57, 43, 29, 29, 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unison: 'none', envelopes: [] }),
+  // 합창 — 모음 '아' 배음을 천천히 차오르게(보스전 화음)
+  choir: (o = {}) => ({ type: 'harmonics', volume: o.vol ?? 40, eqFilter: [{ type: 'low-pass', cutoffHz: 2828, linearGain: 0.7071 }], effects: ['chord type', 'note filter', 'reverb'], chord: 'simultaneous', noteFilter: [{ type: 'peak', cutoffHz: 1000, linearGain: 2 }], reverb: 60, fadeInSeconds: 0.2, fadeOutTicks: 48, harmonics: [71, 100, 86, 57, 43, 57, 43, 29, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unison: 'hum', envelopes: [] }),
+  // 스타카토 현악 — 보스전 16분 오스티나토(바이올린 군)
+  stringsStac: (o = {}) => ({ type: 'harmonics', volume: o.vol ?? 40, eqFilter: [{ type: 'low-pass', cutoffHz: 4000, linearGain: 0.7071 }], effects: ['panning', 'reverb'], pan: o.pan ?? 20, reverb: 30, fadeInSeconds: 0, fadeOutTicks: -3, harmonics: [100, 86, 71, 57, 43, 29, 29, 14, 14, 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unison: 'none', envelopes: [] }),
   // 오르간 — 성·신전
   organ: (o = {}) => ({ type: 'harmonics', volume: o.vol ?? 55, eqFilter: [], effects: ['chord type', 'reverb'], chord: 'simultaneous', reverb: o.rev ?? 70, fadeInSeconds: 0.025, fadeOutTicks: 24, harmonics: [100, 100, 0, 71, 0, 0, 0, 57, 0, 0, 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unison: 'none', envelopes: [] }),
   // 금관 — 전투 리드(톱니파 + 부풀기)
@@ -349,6 +353,13 @@ function accompBar(kind, chord, v, bpb, barIndex = 0) {
     ]
     const pat = P[(chord.root * 5 + v.length + barIndex) % P.length]
     for (const [st, l, k] of pat) if (st < S) notes.push({ s: st, l: Math.min(l, S - st), p: [v[k % v.length] + (k === 3 ? 12 : 0)], vol: [st === 0 ? 75 : 55, 25] })
+  } else if (kind === 'ostinato8') {
+    // 8분 오스티나토 — 어둡게 몰아붙이는 현악(근음·3도·근음·5도)
+    const seq = [v[0], v[1], v[0], v[2] ?? v[1]]
+    for (let st = 0; st < S; st += 2) notes.push({ s: st, l: 2, p: [seq[(st / 2) % 4]], vol: [st % 8 === 0 ? 90 : 60, 45] })
+  } else if (kind === 'ostinato') {
+    // 16분 오스티나토 — 화음 아래 두 음을 번갈아 몰아친다(강박만 세게)
+    for (let st = 0; st < S; st++) notes.push({ s: st, l: 1, p: [st % 2 === 0 ? v[0] : v[2] ?? v[1]], vol: [st % 4 === 0 ? 85 : 55, 40] })
   } else if (kind === 'swell') {
     // 웅장한 곡 — 마디 내내 차오르는 화음
     notes.push({ s: 0, l: S, p: v, vol: [55, 100] })
@@ -435,6 +446,10 @@ const DRUMS = {
   // 칩 전투 — 2·4박 스네어 + 8분 하이햇(킥 없음)
   chip: { k: [], s: [4, 12], h: [0, 2, 4, 6, 8, 10, 12, 14], t: [] },
   chipBoss: { k: [], s: [4, 10, 12], h: [0, 2, 4, 6, 8, 10, 12, 14], t: [] },
+  // 오케스트라 — 팀파니 1·3박, 하이햇 없음(구간 끝에 스네어 롤)
+  orch: { k: [], s: [], h: [], t: [0, 8] },
+  // 엘든링풍 — 느린 큰북(1 · 2& · 3 · 4&) + 구간 끝 스네어 롤
+  epicSlow: { k: [], s: [], h: [], t: [0, 6, 8, 14] },
   pulseSoft: { k: [], s: [4, 12], h: [2, 6, 10, 14], t: [] },
 }
 
@@ -556,7 +571,7 @@ function buildSong(spec) {
       const mb = mel ? shape(mel[i] ?? [], i, k) : []
       lead.push(mb)
       // 화음 2단 — 첫 주제는 3도만, 그 뒤로는 3도 + 6도
-      harm1.push(spec.octaveDouble && mel ? mb.map((n) => ({ ...n, p: [n.p[0] - 12] })) : spec.harmony && mel ? harmonyBar(mb, ch, scale, [3, 4]) : [])
+      harm1.push(spec.octaveDouble && mel ? mb.map((n) => ({ ...n, p: [n.p[0] + (spec.doubleShift ?? -12)] })) : spec.harmony && mel ? harmonyBar(mb, ch, scale, [3, 4]) : [])
       harm2.push(spec.thirdVoice && mel ? harmonyBar(mb, ch, scale, [3, 4], 1) : spec.harmony && mel && !(it.take === 0 && pi === 0) ? harmonyBar(mb, ch, scale, [8, 9], 4) : [])
       v = spec.ext ? voicing(extend(ch, scale), v, spec.accRange?.[0] ?? 57, spec.accRange?.[1] ?? 79) : voicing(ch, v, spec.accRange?.[0] ?? 55, spec.accRange?.[1] ?? 74)
       acc.push(accKind ? accompBar(accKind, ch, v, bpb, acc.length) : [])
@@ -576,7 +591,7 @@ function buildSong(spec) {
         if (fill) for (let s = S - 4; s < S; s++) if (!sn.some((x) => x.s === s)) sn.push({ s, l: 1, p: [7], vol: [50 + (s - S + 4) * 12, 0] })
         snare.push(sn.sort((a, b) => a.s - b.s).filter((x, k, a) => k === 0 || x.s >= a[k - 1].s + a[k - 1].l))
         hat.push(at(D.h).map((s) => ({ s, l: 1, p: [11], vol: [Math.round((s % 4 === 0 ? 80 : 50) * dv), 0] })))
-        timp.push(at(D.t).map((s) => ({ s, l: 4, p: [s === 0 ? 2 : 4], vol: [100, 0] })))
+        timp.push(at(D.t).map((s) => ({ s, l: 4, p: [s === 0 ? 2 : 4], vol: [Math.round(100 * dv), 0] })))
       } else {
         kick.push([])
         snare.push([])
@@ -588,9 +603,9 @@ function buildSong(spec) {
   const keyBase = 12 + tonic
   const chans = []
   if (spec.lead) chans.push(channel('pitch', INST[spec.lead]({ vol: spec.leadVol }), lead, keyBase))
-  if (spec.octaveDouble && harm1.some((b) => b.length)) chans.push(channel('pitch', INST.chipLead({ vol: 20, pan: -15 }), harm1, keyBase))
+  if (spec.octaveDouble && harm1.some((b) => b.length)) chans.push(channel('pitch', INST[spec.doubleInst ?? 'chipLead']({ vol: spec.doubleVol ?? 20, pan: -15 }), harm1, keyBase))
   else if (spec.harmony && harm1.some((b) => b.length)) chans.push(channel('pitch', INST[spec.harmony[0]]({ vol: spec.harmVol ?? 40, pan: -25 }), harm1, keyBase))
-  if (spec.thirdVoice && harm2.some((b) => b.length)) chans.push(channel('pitch', INST.voca({ vol: 20 }), harm2, keyBase))
+  if (spec.thirdVoice && harm2.some((b) => b.length)) chans.push(channel('pitch', INST[spec.thirdInst ?? 'voca']({ vol: 20 }), harm2, keyBase))
   else if (spec.harmony && harm2.some((b) => b.length)) chans.push(channel('pitch', INST[spec.harmony[1]]({ vol: (spec.harmVol ?? 40) - 5, pan: 25 }), harm2, keyBase))
   if (spec.accomp) chans.push(channel('pitch', INST[spec.accInst ?? 'harp']({ vol: spec.accVol }), acc, keyBase))
   if (spec.pad) chans.push(channel('pitch', INST[spec.padInst ?? 'strings']({ vol: spec.padVol }), pad, keyBase))
@@ -765,6 +780,46 @@ function arrange(id, spec) {
   const o = { ...spec, sections: { ...spec.sections } }
   if (spec.once) return o
   const isBattle = id.startsWith('battle')
+  if (id === 'battle-boss' || id === 'battle-final') {
+    // 보스전(2026-11-10 7차) — 느리고 어둡고 웅장한 오케스트라(엘든링 보스전 같은 분위기, 원곡 멜로디는 쓰지 않는다):
+    //   낮은 금관 주선율 + 한 옥타브 위 현악 · 합창 화음 · 8분 현악 오스티나토 · 저현 · 느린 큰북
+    for (const k of Object.keys(o.sections)) o.sections[k] = { ...o.sections[k], feel: 'flow' }
+    return {
+      ...o,
+      bpm: id === 'battle-final' ? 96 : 90,
+      bpb: 4,
+      seconds: 180,
+      endAny: true,
+      lead: 'horn',
+      leadVol: 40,
+      leadRange: [55, 74],
+      octaveDouble: true,
+      doubleShift: 12,
+      doubleInst: 'strings',
+      doubleVol: 40,
+      thirdVoice: true,
+      thirdInst: 'horn',
+      harmony: null,
+      sparseLead: false,
+      accomp: 'ostinato8',
+      accInst: 'stringsStac',
+      accVol: 40,
+      accRange: [48, 67],
+      pad: 'pad',
+      padInst: 'choir',
+      padVol: 40,
+      bass: 'whole',
+      bassInst: 'strings',
+      bassVol: 40,
+      bassLo: 31,
+      drums: 'epicSlow',
+      drumVol: 0.6,
+      chipDrums: true,
+      feel: 'flow',
+      ext: false,
+      mode: spec.mode === 'major' || spec.mode === 'lydian' || spec.mode === 'mixolydian' ? 'harmonic' : spec.mode,
+    }
+  }
   if (isBattle) {
     const boss = id === 'battle-boss' || id === 'battle-final'
     return {
