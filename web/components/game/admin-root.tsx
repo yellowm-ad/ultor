@@ -5,6 +5,7 @@ import { initDialogueOverrides } from '@/lib/dialogue-overrides'
 import { useEffect, useState } from 'react'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
+import { SfxBridge } from '@/components/game/sfx-bridge'
 import { GameShell } from '@/components/game/game-root'
 import { LevelUpFx } from '@/components/game/result-fx'
 import { AdminPanel } from '@/components/game/admin-panel'
@@ -103,6 +104,7 @@ export function AdminRoot() {
     <AdminGate>
       <GameProvider>
         <BgmPlayer />
+      <SfxBridge />
         <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
           <AdminShell />
         </div>

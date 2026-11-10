@@ -225,12 +225,17 @@ export type Action =
   | { type: 'ADMIN_PLAY_BEAT'; beatId: string }
   | { type: 'ADMIN_SET_FLAGS'; flags: Record<string, boolean> }
 
-import { groundBlocked } from '@/lib/collision'
+import { groundBlocked, BLOCK_FRONT_R, BLOCK_BACK_R } from '@/lib/collision'
 
-const BODY_R = 0.24 // 캐릭터 반경(셀) — 이 만큼 건물 벽에서 떨어져 선다
+const BODY_R = 0.24 // 캐릭터 반경(셀) — 가구 배치 판정 등
+// 길막 여유(2026-11-10) — 쿼터뷰에선 상자의 앞 두 면(x1·y1, 화면 아래쪽)에 다가갈 때 캐릭터가 그림 앞에 서므로
+// 발이 길막 선에 거의 닿을 때까지 걸어가야 '부딪힌 것'처럼 보인다. 뒤 두 면(x0·y0)은 몸이 소품에 가려지니 조금 넉넉히.
+// → 편집기의 빨간 상자 앞 테두리 = 실제로 발이 멈추는 선. (lib/collision-margin 과 같은 값)
+const FRONT_R = BLOCK_FRONT_R
+const BACK_R = BLOCK_BACK_R
 function blockedAt(state: GameState, mapId: GameState['currentMapId'], x: number, y: number): boolean {
   const hits = (r: { x0: number; y0: number; x1: number; y1: number }) =>
-    x > r.x0 - BODY_R && x < r.x1 + BODY_R && y > r.y0 - BODY_R && y < r.y1 + BODY_R
+    x > r.x0 - BACK_R && x < r.x1 + FRONT_R && y > r.y0 - BACK_R && y < r.y1 + FRONT_R
   const map = MAPS[mapId]
   const b = map.blockers
   if (b && b.some(hits)) return true
@@ -478,7 +483,8 @@ function reducerCore(state: GameState, action: Action): GameState {
       const oy = state.position.y
       // 건물 충돌: 대각선이 막히면 x/y 축으로 슬라이드.
       // 한 번에 0.2칸 이하로 나눠 움직인다 — 프레임이 떨어진 채 질주하면 한 번에 0.7칸 넘게 가서 얇은 벽(난간·울타리)을 뚫던 문제(2026-11-03)
-      const steps = Math.max(1, Math.ceil(Math.hypot(action.dx, action.dy) / 0.2))
+      // (2026-11-10 길막 여유를 앞 0.06·뒤 0.16 으로 줄이며 0.15칸으로 — 가장 얇은 막힘 폭 0.22 보다 작게)
+      const steps = Math.max(1, Math.ceil(Math.hypot(action.dx, action.dy) / 0.15))
       const sx = action.dx / steps
       const sy = action.dy / steps
       let nx = ox

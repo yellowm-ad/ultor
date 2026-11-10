@@ -11,24 +11,28 @@
 import { useEffect, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
-import { ISO_TILE_H, isoToScreen, propAABB, TILE_COLORS, type PropDef } from '@/lib/iso'
+import { ISO_TILE_H, isoToScreen, propAABB, stairElevation, TILE_COLORS, type PropDef } from '@/lib/iso'
 import { propBlocker } from '@/lib/maps'
-import { brushCells, getMapEditor, setMapEditor, useEditorDrag, type MapEditorState } from '@/lib/map-editor'
-import { flipProp, removeProp, undoMapEdit, wallKey } from '@/lib/map-overrides'
+import { BLOCK_BACK_R, BLOCK_FRONT_R } from '@/lib/collision'
+import { beginDrag, brushCells, clientToCell, getMapEditor, setMapEditor, useEditorDrag, type MapEditorState } from '@/lib/map-editor'
+import { blockKey, flipProp, moveProp, offBlockers, removeProp, setBlockOff, undoMapEdit, wallKey } from '@/lib/map-overrides'
 import { FURNITURE_BY_ID, furnitureFitReason, furnitureHalf } from '@/lib/housing'
 import { RasterProp } from '@/components/game/raster-prop'
 
 type Box = { x0: number; y0: number; x1: number; y1: number }
 const HW = 32
 
-/** 셀 사각형 → 화면 마름모 */
-function boxPoints(b: Box): string {
+/** 셀 사각형 → 화면 마름모(z = 그 자리 바닥 높이 — 테라스·계단 위 상자는 그만큼 올려 그린다) */
+function boxPoints(b: Box, z = 0): string {
   const a = isoToScreen(b.x0, b.y0)
   const c = isoToScreen(b.x1, b.y0)
   const d = isoToScreen(b.x1, b.y1)
   const e = isoToScreen(b.x0, b.y1)
-  return `${a.sx},${a.sy} ${c.sx},${c.sy} ${d.sx},${d.sy} ${e.sx},${e.sy}`
+  return `${a.sx},${a.sy - z} ${c.sx},${c.sy - z} ${d.sx},${d.sy - z} ${e.sx},${e.sy - z}`
 }
+/** 실제로 발(캐릭터 중심)이 멈추는 선 — 앞 두 면은 BLOCK_FRONT_R, 뒤 두 면은 BLOCK_BACK_R 만큼 바깥 */
+const stopBox = (b: Box): Box => ({ x0: b.x0 - BLOCK_BACK_R, y0: b.y0 - BLOCK_BACK_R, x1: b.x1 + BLOCK_FRONT_R, y1: b.y1 + BLOCK_FRONT_R })
+const sameBox = (a: Box, b: Box) => Math.abs(a.x0 - b.x0) < 1e-6 && Math.abs(a.y0 - b.y0) < 1e-6 && Math.abs(a.x1 - b.x1) < 1e-6 && Math.abs(a.y1 - b.y1) < 1e-6
 const overlaps = (a: Box, b: Box) => a.x0 < b.x1 - 0.02 && a.x1 > b.x0 + 0.02 && a.y0 < b.y1 - 0.02 && a.y1 > b.y0 + 0.02
 
 function Ghost({ p, ok, box }: { p: PropDef; ok: boolean; box: Box | null }) {
@@ -66,7 +70,12 @@ export function AdminEditOverlay({ map, editor }: { map: GameMap; editor: MapEdi
         undoMapEdit(map.id)
         return
       }
-      if (e.code === 'Escape') setMapEditor({ selected: null, placing: null, wall: null })
+      if (e.code === 'Escape') setMapEditor({ selected: null, placing: null, wall: null, block: null })
+      if (ed.block && ed.tool === 'object' && (e.code === 'Delete' || e.code === 'Backspace')) {
+        setBlockOff(map.id, ed.block, true)
+        setMapEditor({ block: null })
+        return
+      }
       if (!ed.selected || ed.tool !== 'object') return
       if (e.code === 'KeyR' && !e.repeat) flipProp(map.id, ed.selected)
       if (e.code === 'Delete' || e.code === 'Backspace') {
@@ -123,16 +132,10 @@ export function AdminEditOverlay({ map, editor }: { map: GameMap; editor: MapEdi
 
   return (
     <g>
-      {editor.showBlockers && (
-        <g pointerEvents="none">
-          {(map.blockers ?? []).map((b, i) => (
-            <polygon key={i} points={boxPoints(b)} fill="rgba(255,80,80,0.16)" stroke="rgba(255,120,120,0.7)" strokeWidth={1} />
-          ))}
-        </g>
-      )}
+      {editor.showBlockers && <BlockerLayer map={map} editor={editor} />}
       {sel && !(drag?.kind === 'prop' && drag.moved) && (
         <g pointerEvents="none">
-          {selBox && <polygon points={boxPoints(selBox)} fill="rgba(255,215,90,0.14)" stroke="#ffd75a" strokeWidth={2} strokeDasharray="5 3" />}
+          {selBox && <polygon points={boxPoints(selBox, zAt(map, selBox))} fill="rgba(255,215,90,0.14)" stroke="#ffd75a" strokeWidth={2} strokeDasharray="5 3" />}
           {(() => {
             const s = isoToScreen(sel.cell.x, sel.cell.y)
             return (
@@ -149,6 +152,101 @@ export function AdminEditOverlay({ map, editor }: { map: GameMap; editor: MapEdi
       {ghost}
       {paint}
       {editor.tool === 'wall' && <WallPicker map={map} editor={editor} />}
+    </g>
+  )
+}
+
+const zAt = (map: GameMap, b: Box) => stairElevation(map.stairs, (b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2).z
+
+/**
+ * 길막 보기(2026-11-10) — 모든 길막 상자를 누를 수 있게 그린다.
+ *   · 오브젝트의 길막(빨강): 누르면 그 오브젝트를 고르고, 그대로 끌면 옮긴다.
+ *   · 주인 없는 길막(주황, 벽·지형 상자): 누르면 고르고 Del(또는 패널 버튼)로 끈다.
+ *   · 꺼 둔 길막(회색 점선): 누르면 다시 켠다.
+ *   · 흰 점선 = 실제로 발이 멈추는 선(앞 두 면은 거의 붙고, 뒤 두 면은 조금 넉넉).
+ * 작은 상자가 큰 상자 위에 오도록 넓은 것부터 그린다.
+ */
+function BlockerLayer({ map, editor }: { map: GameMap; editor: MapEditorState }) {
+  const owners = new Map<Box, PropDef>()
+  for (const p of map.props ?? []) {
+    const pb = propBlocker(p)
+    if (!pb) continue
+    const hit = (map.blockers ?? []).find((b) => !owners.has(b) && sameBox(b, pb))
+    if (hit) owners.set(hit, p)
+  }
+  const area = (b: Box) => (b.x1 - b.x0) * (b.y1 - b.y0)
+  const list = [...(map.blockers ?? [])].sort((a, b) => area(b) - area(a))
+  const off = offBlockers(map.id)
+  const object = editor.tool === 'object'
+  return (
+    <g>
+      {list.map((b, i) => {
+        const owner = owners.get(b)
+        const key = blockKey(b)
+        const picked = owner ? editor.selected === owner.id : editor.block === key
+        const z = zAt(map, b)
+        return (
+          <g key={`${key}#${i}`}>
+            <polygon
+              points={boxPoints(b, z)}
+              fill={picked ? 'rgba(255,215,90,0.22)' : owner ? 'rgba(255,80,80,0.16)' : 'rgba(255,150,60,0.2)'}
+              stroke={picked ? '#ffd75a' : owner ? 'rgba(255,120,120,0.75)' : 'rgba(255,170,80,0.9)'}
+              strokeWidth={picked ? 2 : 1}
+              style={object ? { cursor: owner ? 'grab' : 'pointer', touchAction: 'none' } : { pointerEvents: 'none' }}
+              onPointerDown={
+                object
+                  ? (e) => {
+                      if (e.button !== 0) return
+                      e.stopPropagation()
+                      e.preventDefault()
+                      if (!owner) {
+                        setMapEditor({ block: key, selected: null, placing: null })
+                        return
+                      }
+                      const svg = e.currentTarget.ownerSVGElement
+                      const c = clientToCell(e.clientX, e.clientY, svg)
+                      setMapEditor({ selected: owner.id, block: null, placing: null })
+                      if (!c) return
+                      beginDrag(e, { kind: 'prop', id: owner.id, grab: { x: c.x - owner.cell.x, y: c.y - owner.cell.y } }, {
+                        svg,
+                        onEnd: (d) => {
+                          if (d.moved && d.cell) moveProp(map.id, owner.id, d.cell)
+                        },
+                      })
+                    }
+                  : undefined
+              }
+            />
+            <polygon points={boxPoints(stopBox(b), z)} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={0.8} strokeDasharray="2 3" pointerEvents="none" />
+          </g>
+        )
+      })}
+      {off.map((b, i) => {
+        const key = blockKey(b)
+        return (
+          <polygon
+            key={`off-${key}#${i}`}
+            points={boxPoints(b, zAt(map, b))}
+            fill="rgba(200,200,200,0.06)"
+            stroke="rgba(220,220,220,0.55)"
+            strokeWidth={1}
+            strokeDasharray="4 4"
+            style={object ? { cursor: 'pointer' } : { pointerEvents: 'none' }}
+            onPointerDown={
+              object
+                ? (e) => {
+                    if (e.button !== 0) return
+                    e.stopPropagation()
+                    setBlockOff(map.id, key, false)
+                    setMapEditor({ block: key, selected: null })
+                  }
+                : undefined
+            }
+          >
+            <title>꺼 둔 길막 — 누르면 다시 켭니다</title>
+          </polygon>
+        )
+      })}
     </g>
   )
 }

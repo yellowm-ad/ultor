@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { BattleLogEntry, Combatant } from '@/lib/types'
+import { hitSfx, sfx, type SfxId } from '@/lib/sfx'
 
 type Pop = { id: number; uid: string; kind: 'dmg' | 'crit' | 'heal' | 'miss'; amount: number; t: number; jitter: number; stack: number }
 
@@ -19,6 +20,7 @@ export function DamagePopLayer({
   posOf,
   missTargets,
   liftOf,
+  fx,
 }: {
   combatants: Combatant[]
   log: BattleLogEntry[]
@@ -27,7 +29,11 @@ export function DamagePopLayer({
   missTargets: string[]
   /** 발밑에서 숫자를 띄울 높이(무대 %) */
   liftOf: (uid: string) => number
+  /** 지금 연출 중인 행동 — 효과음 고르기(속성 마법 겹소리 · 다단 히트) */
+  fx?: { fxId: string; element: string | null; physical?: boolean; archetype: string; hits: number } | null
 }) {
+  const fxSounded = useRef<string | null>(null)
+  const alivePrev = useRef<Map<string, boolean> | null>(null)
   const prev = useRef<Map<string, number> | null>(null)
   const seen = useRef<string | null>(null)
   // 다단 히트 — 치명타 표시는 그 행동의 모든 타에 이어 붙인다(새 로그가 오면 갱신)
@@ -64,6 +70,36 @@ export function DamagePopLayer({
     }
     if (missed) for (const uid of missTargets) if (!add.some((p) => p.uid === uid)) push(uid, 'miss', 0)
     prev.current = cur
+    // ── 효과음(2026-11-10) — 숫자가 튀는 바로 그 순간에 ──
+    const alive = new Map(combatants.map((c) => [c.uid, c.alive]))
+    const wasAlive = alivePrev.current
+    alivePrev.current = alive
+    if (add.length) {
+      const magic = !!fx && !fx.physical && fx.archetype !== 'attack'
+      const multi = (fx?.hits ?? 1) > 1
+      // 속성 마법은 행동마다 한 번 겹소리
+      if (fx && magic && fxSounded.current !== fx.fxId && add.some((p) => p.kind === 'dmg' || p.kind === 'crit')) {
+        fxSounded.current = fx.fxId
+        sfx(`magic-${fx.element ?? 'none'}` as SfxId)
+      }
+      const maxHpOf = new Map(combatants.map((c) => [c.uid, c.stats.maxHp]))
+      let healed = false
+      let missed2 = false
+      add.forEach((p, i) => {
+        if (p.kind === 'dmg' || p.kind === 'crit') {
+          const ratio = p.amount / Math.max(1, maxHpOf.get(p.uid) ?? 100)
+          // 광역은 몇 대만 소리 내서 뭉개지지 않게
+          if (i < 3) setTimeout(() => hitSfx(ratio, { crit: p.kind === 'crit', magic, multi }), i * 40)
+        } else if (p.kind === 'heal') healed = true
+        else if (p.kind === 'miss') missed2 = true
+      })
+      if (healed) sfx('heal')
+      if (missed2) sfx('miss')
+    }
+    if (wasAlive) {
+      const fallen = combatants.filter((c) => wasAlive.get(c.uid) && !c.alive)
+      if (fallen.length) setTimeout(() => sfx(fallen.some((c) => c.side === 'enemy') ? 'ko-enemy' : 'ko-ally'), 140)
+    }
     if (!add.length) return
     setPops((p) => [...p.filter((x) => now - x.t < 1600), ...add])
     const id = window.setTimeout(() => setPops((p) => p.filter((x) => Date.now() - x.t < 1600)), 1700)

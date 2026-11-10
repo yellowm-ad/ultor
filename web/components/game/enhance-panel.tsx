@@ -26,7 +26,7 @@ import { Divider, Ribbon, Sparkle } from '@/components/game/game-window'
 import { EnhanceBurst } from '@/components/game/result-fx'
 
 const RARITY_PILL: Record<ItemRarity, string> = { common: 'is-soft', uncommon: 'is-green', rare: 'is-blue', mythic: 'is-purple', unique: 'is-gold' }
-const STAT_LABEL: Record<StatKey, string> = { maxHp: '최대 HP', maxMp: '최대 MP', atk: '공격력', def: '방어력', matk: '마법공격력', mdef: '마법방어력', spd: '속도', luck: '행운' }
+const STAT_LABEL: Record<StatKey, string> = { maxHp: '최대 HP', maxMp: '최대 MP', atk: '물리 공격력', def: '방어력', matk: '마법공격력', mdef: '마법방어력', spd: '속도', luck: '행운' }
 const SLOT_ORDER = { weapon: 0, armor: 1, accessory: 2 } as Record<string, number>
 
 function EnhPips({ enh }: { enh: number }) {

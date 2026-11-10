@@ -8,13 +8,24 @@
 //   · 한 번만 나오는 곡(승리·패배·수업 종료)은 되풀이하지 않는다.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '@/lib/game-state'
-import { bgmChain, bgmSlot, initBgm, onBgmChange, resolveBgm } from '@/lib/bgm'
+import { bgmChain, bgmElement, bgmSlot, initBgm, onBgmChange, resolveBgm } from '@/lib/bgm'
+import { BeepTrack } from '@/lib/bgm-beepbox'
 
 const FADE_MS = 900
 /** 이어 틀 곡(돌아왔을 때 멈춘 자리부터) */
 const RESUMABLE = /^(town|field)/
 
-type Track = { el: HTMLAudioElement; url: string; slot: string; fade: number }
+type Track = { el: HTMLAudioElement | BeepTrack; url: string; slot: string; fade: number }
+/** 이어 틀 자리 — 음원은 초, 빕박스는 마디 */
+const posOf = (el: Track['el']) => (el instanceof BeepTrack ? el.position : el.currentTime)
+function stopEl(el: Track['el']) {
+  el.pause()
+  if (el instanceof BeepTrack) el.dispose()
+  else {
+    el.removeAttribute('src')
+    el.load()
+  }
+}
 
 function fadeTo(t: Track, to: number, ms: number, done?: () => void) {
   cancelAnimationFrame(t.fade)
@@ -61,22 +72,20 @@ export function BgmPlayer() {
     }
     // 이전 곡 — 이어 틀 곡이면 자리를 기억하고 서서히 줄여 멈춘다
     if (prev) {
-      if (RESUMABLE.test(prev.slot) && !prev.el.ended) resumeAt.current.set(prev.url, prev.el.currentTime)
+      if (RESUMABLE.test(prev.slot) && !prev.el.ended) resumeAt.current.set(prev.url, posOf(prev.el))
       cur.current = null
-      fadeTo(prev, 0, FADE_MS, () => {
-        prev.el.pause()
-        prev.el.removeAttribute('src')
-        prev.el.load()
-      })
+      fadeTo(prev, 0, FADE_MS, () => stopEl(prev.el))
     }
     if (!url || !pick) return
-    const el = new Audio(url)
     const once = !!bgmSlot(pick.slot)?.once
-    el.loop = !once
-    el.preload = 'auto'
+    const el = bgmElement(pick.src, once)
+    if (!(el instanceof BeepTrack)) el.preload = 'auto'
     el.volume = 0
     const at = RESUMABLE.test(pick.slot) ? resumeAt.current.get(url) : undefined
-    if (at) el.addEventListener('loadedmetadata', () => (el.currentTime = at % (el.duration || Infinity)), { once: true })
+    if (at) {
+      if (el instanceof BeepTrack) el.position = at
+      else el.addEventListener('loadedmetadata', () => (el.currentTime = at % (el.duration || Infinity)), { once: true })
+    }
     const t: Track = { el, url, slot: pick.slot, fade: 0 }
     cur.current = t
     const start = () => {
@@ -124,7 +133,7 @@ export function BgmPlayer() {
       const t = cur.current
       if (t) {
         cancelAnimationFrame(t.fade)
-        t.el.pause()
+        stopEl(t.el)
       }
     },
     [],

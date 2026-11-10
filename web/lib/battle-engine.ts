@@ -28,7 +28,7 @@ import type {
   SkillElement,
   Stats,
 } from '@/lib/types'
-import { ATB, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, WIND_USERS, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
+import { ATB, TU, tuSpeedFactor, MAX_ENEMIES, MAX_GUESTS, MAX_PARTY_SIZE, MORS_MONSTER_ID, WIND_USERS, POSITION_BONUS, elementMultiplier, expSharePerMember } from '@/lib/constants'
 import { MONSTERS, itemById, skillById } from '@/lib/mock-data'
 import { rollHuntDrops } from '@/lib/life'
 import { testMonsterExpReward } from '@/lib/exp-table'
@@ -160,6 +160,9 @@ export function initBattle(
   const core = members.map((m) => applyPosition(m.combatant, m.position))
   const enemies = monsterDefs.slice(0, MAX_ENEMIES).map(combatantFromMonster)
   const combatants = [...core, ...enemies]
+  // 첫 차례 — 속도가 빠를수록 앞에서 시작(에버테일처럼), 약간의 무작위
+  const maxSpd = Math.max(1, ...combatants.map((c) => c.stats.spd))
+  for (const c of combatants) c.atb = 45 * (c.stats.spd / maxSpd) + Math.random() * 20
 
   const entries: BattleLogEntry[] = []
   log(entries, `${enemies.map((e) => e.name).join(', ')}이(가) 나타났다!`, 'system')
@@ -197,8 +200,33 @@ export function expShareMemberCount(combatants: Combatant[]): number {
 // ─── ATB 충전 ────────────────────────────────────────────────────────────────
 
 function atbGain(c: Combatant): number {
-  const spd = statWithEffects(c, 'spd')
-  return ATB.BASE_TICK * (spd / ATB.REF_SPD) * atbRateFactor(c)
+  // TU 방식 — 충전 속도는 모두 같고(감속·가속 효과만), 속도는 행동 TU 를 줄인다(endActorTurn)
+  return ATB.BASE_TICK * atbRateFactor(c)
+}
+
+/** 스킬 하나의 TU — 위력이 셀수록 · 광역일수록 · 후딜(atbCost)이 클수록 길다 */
+export function skillTu(s: Skill): number {
+  if (s.tu != null) return s.tu
+  let t: number
+  if (s.kind === 'attack') t = 8 + s.power * 2.5
+  else if (s.kind === 'debuff') t = 9 + s.power * 2
+  else if (s.kind === 'heal') t = s.reviveHpRatio ? 14 : 10
+  else if (s.kind === 'summon') t = 12
+  else if (s.kind === 'buff') t = 8
+  else t = 9
+  if (s.targeting === 'allEnemies' || s.targeting === 'allAllies') t += 3
+  t += (s.atbCost ?? 0) / ATB.BASE_TICK
+  if (s.grade === 4) t += 2
+  return Math.max(4, Math.round(t))
+}
+
+/** 이 전투원이 다음 차례까지 기다릴 TU(표시용) */
+export function tuUntil(c: Combatant): number {
+  return Math.max(0, Math.round((ATB.THRESHOLD - Math.min(ATB.THRESHOLD, c.atb)) / (ATB.BASE_TICK * atbRateFactor(c))))
+}
+/** 이 전투원이 이 스킬을 쓰면 실제로 들 TU(속도 반영, 표시용) */
+export function effectiveTu(c: Combatant, baseTu: number): number {
+  return Math.max(1, Math.round(baseTu * tuSpeedFactor(statWithEffects(c, 'spd'))))
 }
 
 /**
@@ -413,6 +441,9 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
   let fled = false
 
   if (!actor || !actor.alive) return { battle: { ...battle, combatants, log: entries } }
+  // 이 행동의 TU — 턴이 끝날 때(endActorTurn) 다음 차례까지의 기다림이 된다
+  actor.pendingTu =
+    action.type === 'skill' ? (skillById(action.skillId) ? skillTu(skillById(action.skillId)!) : TU.ATTACK) : action.type === 'defend' ? TU.DEFEND : action.type === 'flee' ? TU.FLEE : action.type === 'attack' ? TU.ATTACK : TU.ITEM
 
   const find = (uid?: string) => combatants.find((c) => c.uid === uid)
   const done = (fx?: BattleFx): ResolveResult => ({ battle: { ...battle, combatants, log: entries, lastFx: fx ?? battle.lastFx } })
@@ -432,7 +463,6 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
     // 효과는 자기 턴이 끝날 때 1씩 준다 — 1 이면 걸자마자 사라져 방어가 아무 소용 없었다(2026-10-10). 다음 자기 턴 끝까지 유지
     actor.effects = actor.effects.filter((e) => e.id !== 'defendGuard')
     actor.effects.push({ key: nextUid('eff'), kind: 'buff', id: 'defendGuard', name: '방어', turnsLeft: 2, magnitude: 0.5 })
-    actor.atb += ATB.DEFEND_GAIN
     log(entries, `${actor.name}이(가) 방어 태세를 취했다.`)
     return done()
   }
@@ -443,7 +473,9 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
     let fx: BattleFx | undefined
     if (target && target.alive) {
       if (target.side === actor.side) log(entries, `${actor.name}은(는) 환술에 홀려 같은 편을 공격했다!`, 'status')
-      damageTarget(entries, actor, target, 1.0, false, null, '공격')
+      // 주인공·동료의 기본 공격은 마력탄(마법공격력 × 0.85). 몬스터·소환수는 그대로 물리
+      const bolt = actor.side === 'player' && (actor.kind === 'hero' || actor.kind === 'ally')
+      damageTarget(entries, actor, target, bolt ? 0.85 : 1.0, bolt, null, bolt ? '마력탄' : '공격')
       fx = { fxId: nextUid('fx'), sourceUid: actor.uid, targetUids: [target.uid], element: null, archetype: 'attack', aoe: false, power: 1.0 }
     } else {
       log(entries, `${actor.name}의 공격 — 노릴 대상이 보이지 않는다.`)
@@ -473,7 +505,6 @@ export function resolveAction(battle: BattleState, actorUid: string, action: Bat
       return done()
     }
     actor.mp -= mpCost
-    if (skill.atbCost) actor.atb -= skill.atbCost
     // 숙련도 — 위력 +4%/Lv. 주인공이 쓴 횟수는 전투가 끝나면 숙련 경험치가 된다
     const power = skill.power * masteryPowerMult(mLv)
     const skillUses = actor.kind === 'hero' ? { ...(battle.skillUses ?? {}), [skill.id]: (battle.skillUses?.[skill.id] ?? 0) + 1 } : battle.skillUses
@@ -789,7 +820,11 @@ export function resolveEnemyTurn(battle: BattleState, actorUid: string): BattleS
 // ─── 턴 종료 / 진행 ──────────────────────────────────────────────────────────
 
 function endActorTurn(actor: Combatant, entries: BattleLogEntry[]) {
-  actor.atb = Math.max(0, actor.atb - ATB.THRESHOLD)
+  // TU — 다음 차례까지 (행동 TU × 속도 배율) 틱을 기다린다. 넘친 게이지는 조금 이월
+  const over = Math.max(0, actor.atb - ATB.THRESHOLD)
+  const tu = (actor.pendingTu ?? TU.ATTACK) * tuSpeedFactor(statWithEffects(actor, 'spd'))
+  actor.atb = Math.min(ATB.THRESHOLD - 1, ATB.THRESHOLD - tu * ATB.BASE_TICK + Math.min(over, ATB.BASE_TICK))
+  actor.pendingTu = undefined
   const expired = decayEffects(actor)
   for (const name of expired) log(entries, `${actor.name}의 ${name} 효과가 사라졌다.`, 'info')
   if (actor.summonTurns != null) actor.summonTurns -= 1

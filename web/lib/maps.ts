@@ -1521,6 +1521,55 @@ for (const m of Object.values(MAPS)) {
   }
 }
 
+// 떨어진 길막 붙이기(2026-11-10) — 마을 빌더(put)·테마 마을처럼 충돌 상자를 프롭과 따로 만든 맵은
+// 프롭을 옮기거나 지워도 길막이 제자리에 남았다(분수 둘레 의자 등). 상자의 앞꼭짓점(x1,y1)이 발밑 셀 근처이고
+// 그림 크기가 상자와 어울리는 프롭에게 그 상자를 collideBox 로 넘겨, 이제 길막이 프롭을 따라다닌다.
+// 주인을 못 찾은 상자(벽·지형)는 관리자 편집기에서 직접 골라 끌 수 있다(lib/map-overrides blockOff).
+for (const m of Object.values(MAPS)) {
+  const props = m.props ?? []
+  const bl = m.blockers ?? []
+  if (!props.length || !bl.length) continue
+  const owned = new Set<number>()
+  const owner = new Set<string>()
+  for (const p of props) {
+    const pb = propBlocker(p)
+    if (!pb) continue
+    const i = bl.findIndex((b, k) => !owned.has(k) && sameBox(b, pb))
+    if (i >= 0) {
+      owned.add(i)
+      owner.add(p.id)
+    }
+  }
+  bl.forEach((b, i) => {
+    if (owned.has(i)) return
+    const w = b.x1 - b.x0
+    const d = b.y1 - b.y0
+    if (w <= 0 || d <= 0 || w > 12 || d > 12) return
+    const tol = 0.16 * Math.max(w, d) + 0.12
+    const screenW = (w + d) * 32
+    let best: PropDef | null = null
+    let bestD = Infinity
+    for (const p of props) {
+      if (owner.has(p.id) || !p.sprite || !p.px || p.backdrop || p.collideBox || p.collideOff || p.solid === false) continue
+      if (Math.abs(b.x1 - p.cell.x) > tol || Math.abs(b.y1 - p.cell.y) > tol) continue
+      // 그림 폭이 상자 폭과 동떨어지면(벽 앞 가로등 등) 주인이 아니다
+      if (p.px.w < screenW * 0.45 || p.px.w > screenW * 2.4 + 40) continue
+      const dd = Math.hypot(b.x1 - p.cell.x, b.y1 - p.cell.y)
+      if (dd < bestD) {
+        bestD = dd
+        best = p
+      }
+    }
+    if (!best) return
+    best.collideBox = { w, d, ox: (b.x0 + b.x1) / 2 - best.cell.x, oy: (b.y0 + b.y1) / 2 - best.cell.y }
+    best.solid = true
+    owned.add(i)
+    owner.add(best.id)
+    // 반올림 오차 없이 propBlocker 와 같은 상자로(편집기가 sameBox 로 찾아 지운다)
+    bl[i] = propBlocker(best) ?? b
+  })
+}
+
 export const VILLAGE_MAP_ID: MapId = 'village'
 
 export function mapById(id: MapId): GameMap {

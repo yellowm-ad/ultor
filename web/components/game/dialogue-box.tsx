@@ -5,12 +5,13 @@
 // + 오른쪽 나침반 워터마크 + 우상단 AUTO/빨리감기. 전부 CSS/SVG 라 어떤 해상도에서도 선이 뭉개지지 않는다.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { blip, type Voice } from '@/lib/sfx'
 
 const TYPE_MS = 26 // 한 글자당
 const AUTO_DELAY_MS = 1500 // 타이핑이 끝난 뒤 자동 진행까지
 
 /** 글자를 하나씩 드러낸다. `done`이 되기 전 클릭하면 `finish()`로 한 번에 다 보여 준다. */
-function useTypewriter(text: string) {
+function useTypewriter(text: string, voice: Voice = 'neutral') {
   const [shown, setShown] = useState(0)
   const [prevText, setPrevText] = useState(text)
   if (prevText !== text) {
@@ -20,6 +21,8 @@ function useTypewriter(text: string) {
   const done = shown >= text.length
   useEffect(() => {
     if (done) return
+    // 글자 소리(언더테일처럼 말하는 사람마다 다른 높이) — 2글자에 한 번꼴로
+    if (shown % 2 === 0) blip(voice, text[shown] ?? '')
     const t = setTimeout(() => setShown((n) => n + 1), TYPE_MS)
     return () => clearTimeout(t)
   }, [shown, done])
@@ -44,10 +47,12 @@ export interface DialogueBoxProps {
   /** 타이핑이 끝난 뒤 본문 아래에 나오는 버튼들 */
   actions?: ReactNode
   zClass?: string
+  /** 글자 소리 목소리(생략 = 보통) — lib/voices voiceOf */
+  voice?: Voice
 }
 
-export function DialogueBox({ speaker, role, portrait, text, italic, title, canAdvance, onAdvance, onSkip, onClose, actions, zClass = 'z-40' }: DialogueBoxProps) {
-  const { visible, done, finish } = useTypewriter(text)
+export function DialogueBox({ speaker, role, portrait, text, italic, title, canAdvance, onAdvance, onSkip, onClose, actions, zClass = 'z-40', voice }: DialogueBoxProps) {
+  const { visible, done, finish } = useTypewriter(text, voice ?? (italic && !speaker ? 'none' : 'neutral'))
   const [auto, setAuto] = useState(false)
 
   const advance = useCallback(() => {

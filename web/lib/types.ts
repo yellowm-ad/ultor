@@ -137,7 +137,9 @@ export interface Skill {
   /** 소환 마법 — 불러낼 소환수(lib/pets SUMMON_DEFS id)와 기본으로 머무는 턴 */
   summon?: { creatureId: string; turns: number }
   mpCost: number
-  atbCost?: number // 사용 후 추가 ATB 차감(궁극기 후딜)
+  atbCost?: number // 사용 후 추가 ATB 차감(궁극기 후딜) — TU 로 바뀌어 skillTu 에 더해진다
+  /** 행동 시간(TU) 직접 지정 — 생략하면 lib/battle-engine skillTu 가 위력·광역·후딜로 정한다 */
+  tu?: number
   power: number // 위력 배율
   kind: SkillKind
   physical?: boolean // true면 atk/def 기반. 기본 false(마법)
@@ -367,6 +369,8 @@ export interface Combatant {
   mp: number
   skills: string[]
   atb: number // 0~100+ (이월 허용)
+  /** 이번 행동의 TU — 턴이 끝날 때 다음 차례까지의 기다림이 된다 */
+  pendingTu?: number
   effects: ActiveEffect[]
   isTestMonster?: boolean
   traits?: MonsterTrait[]

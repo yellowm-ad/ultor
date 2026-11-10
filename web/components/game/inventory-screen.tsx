@@ -55,7 +55,7 @@ const TYPE_LABEL: Record<ItemType, string> = {
 const STAT_LABEL: Record<StatKey, string> = {
   maxHp: '최대 HP',
   maxMp: '최대 MP',
-  atk: '공격력',
+  atk: '물리 공격력',
   def: '방어력',
   matk: '마법공격력',
   mdef: '마법방어력',

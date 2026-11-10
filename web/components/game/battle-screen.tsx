@@ -4,9 +4,10 @@ import Image from 'next/image'
 import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import { useGame } from '@/lib/game-state'
 import { DamagePopLayer } from '@/components/game/damage-pops'
+import { sfx } from '@/lib/sfx'
 import { skillHitCount } from '@/lib/skill-hits'
 import { Button } from '@/components/ui/button'
-import { awaitsPlayerInput, currentActor } from '@/lib/battle-engine'
+import { awaitsPlayerInput, currentActor, effectiveTu, skillTu, tuUntil } from '@/lib/battle-engine'
 import { SKILLS, itemById, monsterById, skillById } from '@/lib/mock-data'
 import { HeroSprite } from '@/components/game/pixel-hero'
 import { CreatureSprite, spriteIdFromRefId } from '@/components/game/creature-sprite'
@@ -179,11 +180,6 @@ type Pending =
   | { kind: 'item'; itemId: string; needsTarget: boolean }
   | null
 
-// 대략적인 TU(다음 행동까지 남은 시간 단위) 추정 — 표시용
-function tuUntil(c: Combatant): number {
-  const gain = Math.max(0.5, (c.stats.spd / 20) * 8)
-  return Math.max(0, Math.round((100 - Math.min(100, c.atb)) / gain))
-}
 
 export function BattleScreen() {
   const { state, dispatch } = useGame()
@@ -274,6 +270,10 @@ export function BattleScreen() {
     const timers: ReturnType<typeof setTimeout>[] = []
     const at = (ms: number, fn: () => void) => timers.push(setTimeout(fn, Math.max(0, ms)))
     for (const ms of [motion.castMs, motion.impactMs, motion.impactMs + 450, motion.totalMs]) at(ms + 15, bumpFx)
+    // 효과음 — 마법은 모으는 소리, 강화·약화·아이템·소환은 맞는 순간(피해·회복 소리는 DamagePopLayer)
+    if (motion.castMs > 0 && !fx.physical && fx.archetype !== 'item') sfx('cast')
+    const tag = fx.skillId?.startsWith('summon-') ? 'summon' : fx.archetype === 'buff' ? 'buff' : fx.archetype === 'debuff' ? 'debuff' : fx.archetype === 'item' ? 'item-use' : null
+    if (tag) at(motion.impactMs, () => sfx(tag))
     for (let k = 1; k < hits; k++) at(motion.impactMs + hitGap * k + 15, bumpFx)
     // 강한 기술은 맞는 순간, 궁극기는 마무리 폭발에서 전장을 흔든다
     const shakeAt = motion.ultimate ? motion.finaleMs : motion.tier >= 3 ? motion.impactMs : -1
@@ -624,6 +624,7 @@ export function BattleScreen() {
           posOf={(uid) => posMap[uid]}
           missTargets={battle.lastFx?.targetUids ?? []}
           liftOf={(uid) => (uid === colossus?.uid ? 34 : players.some((c) => c.uid === uid) ? (colossus ? 17 : 24) : 26)}
+          fx={battle.lastFx ? { fxId: battle.lastFx.fxId, element: battle.lastFx.element, physical: battle.lastFx.physical, archetype: battle.lastFx.archetype, hits } : null}
         />
       </div>
 
@@ -727,7 +728,7 @@ export function BattleScreen() {
                           {i < 9 && <span className="battle-fan-key">{i + 1}</span>}
                           <span className="battle-tip">
                             <b>{s.name}</b>
-                            <i>MP {mpOf(s)}{actor?.mastery?.[s.id] ? ` · 숙련 Lv.${actor.mastery[s.id]}` : ''}{actor && actor.mp < mpOf(s) ? ' · MP 부족' : ''}</i>
+                            <i>MP {mpOf(s)} · TU {actor ? effectiveTu(actor, skillTu(s)) : skillTu(s)}{actor?.mastery?.[s.id] ? ` · 숙련 Lv.${actor.mastery[s.id]}` : ''}{actor && actor.mp < mpOf(s) ? ' · MP 부족' : ''}</i>
                             {s.description}
                           </span>
                         </button>

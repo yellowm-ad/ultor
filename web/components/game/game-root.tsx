@@ -6,6 +6,7 @@ import { useEffect, type ReactNode } from 'react'
 import { RotateGate } from '@/components/game/rotate-gate'
 import { GameProvider, useGame } from '@/lib/game-state'
 import { BgmPlayer } from '@/components/game/bgm-player'
+import { SfxBridge } from '@/components/game/sfx-bridge'
 import { LevelUpFx } from '@/components/game/result-fx'
 import { MapLoadingOverlay } from '@/components/game/map-loading'
 import { FarmSeedPicker } from '@/components/game/farm-seed-picker'
@@ -171,6 +172,7 @@ export function GameRoot() {
   return (
     <GameProvider>
       <BgmPlayer />
+      <SfxBridge />
       <div className="fixed inset-0 h-dvh w-dvw select-none overflow-hidden bg-background">
         <GameShell />
       </div>

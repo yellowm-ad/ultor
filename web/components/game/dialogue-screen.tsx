@@ -1,5 +1,6 @@
 'use client'
 
+import { voiceOf } from '@/lib/voices'
 import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { npcById, itemById } from '@/lib/mock-data'
@@ -128,6 +129,7 @@ export function DialogueScreen() {
   return (
     <DialogueBox
       speaker={speaker.name}
+      voice={voiceOf(speaker.name)}
       role={speakerMate ? speakerMate.title : ROLE_LABEL[speaker.role]}
       // 색조(hue)는 빌린 도트를 다른 사람처럼 보이게 하는 것 — 자기 초상화(portraitId)가 있으면 물들이지 않는다
       portrait={

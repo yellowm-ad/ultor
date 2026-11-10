@@ -29,6 +29,7 @@ import {
   propSizeOf,
   scaleProp,
   setPropCollide,
+  setBlockOff,
   moveProp,
   removeProp,
   resetLocalMap,
@@ -531,7 +532,7 @@ function ObjectEditorSection({
   }
   return (
     <div className="space-y-3">
-      <Button size="sm" className="w-full" variant={editor.on ? 'default' : 'outline'} onClick={() => setMapEditor({ on: !editor.on, selected: null, placing: null, wall: null })}>
+      <Button size="sm" className="w-full" variant={editor.on ? 'default' : 'outline'} onClick={() => setMapEditor({ on: !editor.on, selected: null, placing: null, wall: null, block: null })}>
         오브젝트 편집 모드 {editor.on ? 'ON' : 'OFF'}
       </Button>
       <div className="text-white/55">
@@ -542,7 +543,7 @@ function ObjectEditorSection({
         <>
           <div className="grid grid-cols-3 gap-1">
             {tools.map(([t, label]) => (
-              <Button key={t} size="sm" variant={editor.tool === t ? 'default' : 'outline'} onClick={() => setMapEditor({ tool: t, selected: null, placing: null, wall: null })}>
+              <Button key={t} size="sm" variant={editor.tool === t ? 'default' : 'outline'} onClick={() => setMapEditor({ tool: t, selected: null, placing: null, wall: null, block: null })}>
                 {label}
               </Button>
             ))}
@@ -561,6 +562,9 @@ function ObjectEditorSection({
       {editor.on && editor.tool === 'object' && (
         <>
           <div className="text-white/55">오브젝트를 잡고 끌면 옮겨집니다(초록 = 빈 자리, 빨강 = 길막과 겹침). 목록에서 맵으로 끌어다 놓거나, 고른 뒤 땅을 눌러 놓습니다. R 회전 · Del 제거 · Esc 해제</div>
+          {editor.showBlockers && (
+            <div className="text-white/55">길막 보기: 빨강 = 오브젝트 길막(누르면 그 오브젝트 선택·끌기), 주황 = 주인 없는 길막(누르고 Del 로 끄기), 흰 점선 = 실제로 발이 멈추는 선.</div>
+          )}
           <div className="rounded border border-gold/30 p-2">
             {sel ? (
               <>
@@ -586,6 +590,20 @@ function ObjectEditorSection({
                   </Button>
                 </div>
                 <PropTuner mapId={map.id} propId={sel.id} onShowBlockers={() => setMapEditor({ showBlockers: true })} />
+              </>
+            ) : editor.block ? (
+              <>
+                <div className="mb-1 text-gold-soft">선택: 주인 없는 길막(벽·지형)</div>
+                <div className="mb-1 break-all text-white/55">{editor.block}</div>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" className="flex-1 text-red-200" onClick={() => { setBlockOff(map.id, editor.block!, true); setMapEditor({ block: null }) }}>
+                    길막 끄기 (Del)
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setMapEditor({ block: null })}>
+                    해제
+                  </Button>
+                </div>
+                <div className="mt-1 text-white/45">꺼 둔 길막은 회색 점선으로 남고, 누르면 다시 켜집니다.</div>
               </>
             ) : editor.placing ? (
               <div className="text-gold-soft">놓을 오브젝트: {editor.placing.name} — 맵에서 놓을 자리를 누르세요</div>

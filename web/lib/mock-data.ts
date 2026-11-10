@@ -1,6 +1,6 @@
 import type { ItemDef, ItemRarity, MonsterDef, NpcDef, RecipeDef, Skill, Stats } from '@/lib/types'
 import { CROPS } from '@/lib/farming'
-import { computeStatsForLevel, toLevel100 } from '@/lib/constants'
+import { computeStatsForLevel, computeMonsterBase, toLevel100 } from '@/lib/constants'
 import { legacyMonsterBaseExp, monsterBaseExp } from '@/lib/exp-table'
 import { COURSES } from '@/lib/academics'
 import { TRIAL_MIN_LEVEL, TRIAL_OF_SKILL } from '@/lib/guild-trials'
@@ -669,16 +669,22 @@ function earlyLevelEase(level: number): number {
   return 0.7 + 0.3 * (level / 30)
 }
 
+/** 몬스터 강도(2026-11-10) — 초반(옛 레벨 1~12)은 예전처럼 순하게 두고, 그 뒤로 서서히 올린다 */
+const MON_TUNE_EARLY = { hp: 0.62, atk: 0.72, matk: 0.58 }
+const MON_TUNE_LATE = { hp: 1.1, atk: 1.0, matk: 0.85 }
 function mstat(level: number, mult: Partial<Stats> = {}): Stats {
+  const tk = Math.min(1, Math.max(0, (level - 2) / 10))
+  const MON_TUNE = { hp: MON_TUNE_EARLY.hp + (MON_TUNE_LATE.hp - MON_TUNE_EARLY.hp) * tk, atk: MON_TUNE_EARLY.atk + (MON_TUNE_LATE.atk - MON_TUNE_EARLY.atk) * tk, matk: MON_TUNE_EARLY.matk + (MON_TUNE_LATE.matk - MON_TUNE_EARLY.matk) * tk }
   // 새 100레벨 축 스탯식(PRD §15)으로 계산 — 주인공과 같은 성장률이라 레벨 대비 상대 강도가 유지된다
-  const s = computeStatsForLevel(toLevel100(level))
+  const s = computeMonsterBase(toLevel100(level))
   const ease = earlyLevelEase(level)
   const base: Stats = {
-    maxHp: Math.round(s.maxHp * 0.62 * ease),
+    // 2026-11-10 재조정(TU·마법 중심 개편) — 몬스터가 한두 방에 녹던 걸 1마리 ≈ 2.5~3행동, 3마리 ≈ 7~9행동으로
+    maxHp: Math.round(s.maxHp * MON_TUNE.hp * ease),
     maxMp: Math.round(s.maxMp * 0.6),
-    atk: Math.round(s.atk * 0.72 * ease),
+    atk: Math.round(s.atk * MON_TUNE.atk * ease),
     def: Math.round(s.def * 0.58 * ease),
-    matk: Math.round(s.matk * 0.58 * ease),
+    matk: Math.round(s.matk * MON_TUNE.matk * ease),
     mdef: Math.round(s.mdef * 0.55 * ease),
     spd: Math.round(s.spd * 0.9),
     luck: Math.round(s.luck * 0.6),

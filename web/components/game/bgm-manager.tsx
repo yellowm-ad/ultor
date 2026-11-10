@@ -9,6 +9,7 @@ import {
   BGM_GROUPS,
   BGM_SLOTS,
   bgmChain,
+  bgmElement,
   bgmOverrideFile,
   bgmSource,
   buildBgmManifest,
@@ -19,6 +20,7 @@ import {
   setBgmOverride,
   type BgmSlot,
 } from '@/lib/bgm'
+import { BeepTrack, beepEditorUrl, beepFor, exportBeepJson, parseBeepInput, setBeepEdit } from '@/lib/bgm-beepbox'
 
 function download(blob: Blob, name: string) {
   const a = document.createElement('a')
@@ -35,16 +37,23 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
   const [dragOver, setDragOver] = useState<string | null>(null)
   const [playing, setPlaying] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const preview = useRef<HTMLAudioElement | null>(null)
+  const preview = useRef<HTMLAudioElement | BeepTrack | null>(null)
+  /** 빕박스 주소 붙여넣기 칸을 연 칸 · 입력값 · 오류 */
+  const [paste, setPaste] = useState<{ id: string; text: string; err?: string } | null>(null)
 
   useEffect(() => {
     void initBgm().then(() => setVersion((v) => v + 1))
     return onBgmChange(() => setVersion((v) => v + 1))
   }, [])
-  useEffect(() => () => preview.current?.pause(), [])
+  const stopEl = (el: HTMLAudioElement | BeepTrack | null) => {
+    if (!el) return
+    el.pause()
+    if (el instanceof BeepTrack) el.dispose()
+  }
+  useEffect(() => () => stopEl(preview.current), [])
 
   const stopPreview = () => {
-    preview.current?.pause()
+    stopEl(preview.current)
     preview.current = null
     setPlaying(null)
   }
@@ -53,8 +62,9 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
     stopPreview()
     const src = bgmSource(id)
     if (!src) return
-    const el = new Audio(src.url)
-    el.onended = () => setPlaying((p) => (p === id ? null : p))
+    const el = bgmElement(src, !!BGM_SLOTS.find((x) => x.id === id)?.once)
+    el.volume = 0.8
+    if (!(el instanceof BeepTrack)) el.onended = () => setPlaying((p) => (p === id ? null : p))
     el.play().catch(() => setPlaying(null))
     preview.current = el
     setPlaying(id)
@@ -71,12 +81,23 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const applyPaste = async () => {
+    if (!paste) return
+    const song = await parseBeepInput(paste.text)
+    if (!song) return setPaste({ ...paste, err: '빕박스 주소(https://www.beepbox.co/#…)나 곡 문자열을 붙여 넣으세요.' })
+    if (playing === paste.id) stopPreview()
+    setBeepEdit(paste.id, song)
+    setPaste(null)
+  }
+
   const now = resolveBgm(bgmChain(state))
   const filled = BGM_SLOTS.filter((s) => bgmSource(s.id)).length
 
   const row = (s: BgmSlot) => {
     const src = bgmSource(s.id)
     const own = bgmOverrideFile(s.id)
+    const beep = beepFor(s.id)
+    const beepOwn = beep?.from === 'override'
     return (
       <div
         key={s.id}
@@ -113,9 +134,33 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <span className={`shrink-0 truncate rounded px-1.5 py-0.5 text-[10px] ${src?.from === 'override' ? 'bg-emerald-800/70' : src ? 'bg-sky-800/70' : 'bg-white/5 text-white/40'}`} style={{ maxWidth: 160 }} title={src?.name}>
-          {busy === s.id ? '저장 중…' : src?.from === 'override' ? `직접 넣음 · ${src.name}` : src ? `배포 파일 · ${src.name}` : '비어 있음'}
+          {busy === s.id ? '저장 중…' : src?.beep ? (src.from === 'override' ? '빕박스 · 고친 곡' : '빕박스 · 배포 곡') : src?.from === 'override' ? `직접 넣음 · ${src.name}` : src ? `배포 파일 · ${src.name}` : '비어 있음'}
         </span>
-        <div className="flex shrink-0 gap-1">
+        <div className="flex shrink-0 flex-wrap gap-1">
+          <button
+            type="button"
+            className="rounded border border-violet-400/50 px-2 py-0.5 text-[11px] text-violet-200"
+            title="빕박스 편집기를 새 탭에 열어 고칩니다. 다 고친 뒤 주소창의 주소를 복사해 「붙여넣기」"
+            onClick={() => window.open(beep ? beepEditorUrl(beep.song) : 'https://www.beepbox.co/', '_blank', 'noopener')}
+          >
+            빕박스에서 열기
+          </button>
+          <button type="button" className="rounded border border-violet-400/50 px-2 py-0.5 text-[11px] text-violet-200" onClick={() => setPaste(paste?.id === s.id ? null : { id: s.id, text: '' })}>
+            붙여넣기
+          </button>
+          {beepOwn && (
+            <button
+              type="button"
+              className="rounded border border-red-400/50 px-2 py-0.5 text-[11px] text-red-200"
+              title="이 브라우저에서 고친 빕박스 곡을 지우고 배포 곡으로"
+              onClick={() => {
+                if (playing === s.id) stopPreview()
+                setBeepEdit(s.id, null)
+              }}
+            >
+              빕박스 되돌리기
+            </button>
+          )}
           <label className="cursor-pointer rounded border border-gold/60 bg-primary/80 px-2 py-0.5 text-[11px] text-primary-foreground">
             {src ? '바꾸기' : '곡 넣기'}
             <input type="file" accept="audio/*,.mp3,.ogg,.wav,.m4a" className="hidden" onChange={(e) => void put(s.id, e.target.files?.[0])} />
@@ -138,6 +183,22 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
             </>
           )}
         </div>
+        {paste?.id === s.id && (
+          <div className="flex w-full flex-wrap items-center gap-1">
+            <input
+              autoFocus
+              value={paste.text}
+              onChange={(e) => setPaste({ id: s.id, text: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && void applyPaste()}
+              placeholder="고친 빕박스 주소를 붙여 넣기 (https://www.beepbox.co/#…)"
+              className="min-w-0 flex-1 rounded border border-violet-400/40 bg-black/40 px-2 py-1 text-[11px] text-white"
+            />
+            <button type="button" className="rounded border border-violet-400/60 bg-violet-900/50 px-2 py-1 text-[11px]" onClick={() => void applyPaste()}>
+              적용
+            </button>
+            {paste.err && <div className="w-full text-[10px] text-red-300">{paste.err}</div>}
+          </div>
+        )}
       </div>
     )
   }
@@ -168,6 +229,14 @@ export function BgmManager({ onClose }: { onClose: () => void }) {
               className="rounded border border-gold/50 px-3 py-1 text-xs text-gold-soft hover:bg-gold/10"
             >
               목록 저장
+            </button>
+            <button
+              type="button"
+              title="배포 곡 + 이 브라우저에서 고친 빕박스 곡 → web/public/bgm/beepbox.json 에 넣고 배포"
+              onClick={() => download(new Blob([exportBeepJson()], { type: 'application/json' }), 'beepbox.json')}
+              className="rounded border border-violet-400/50 px-3 py-1 text-xs text-violet-200 hover:bg-violet-400/10"
+            >
+              빕박스 목록 저장
             </button>
             <button type="button" onClick={onClose} className="rounded border border-gold/50 px-3 py-1 text-xs text-gold-soft hover:bg-gold/10">
               닫기

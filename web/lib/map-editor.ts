@@ -29,9 +29,11 @@ export interface MapEditorState {
   wallTex: IsoTex | null
   /** 길막(충돌 사각형)을 맵 위에 보여 줄지 */
   showBlockers: boolean
+  /** 고른 '주인 없는' 길막(벽·지형 상자) — lib/map-overrides blockKey */
+  block: string | null
 }
 
-let st: MapEditorState = { on: false, tool: 'object', selected: null, placing: null, solid: true, tile: null, brush: 1, wall: null, wallAll: false, wallTex: null, showBlockers: false }
+let st: MapEditorState = { on: false, tool: 'object', selected: null, placing: null, solid: true, tile: null, brush: 1, wall: null, wallAll: false, wallTex: null, showBlockers: false, block: null }
 const subs = new Set<() => void>()
 
 export function setMapEditor(patch: Partial<MapEditorState>) {

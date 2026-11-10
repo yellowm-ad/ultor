@@ -3,6 +3,7 @@
 // 스토리 비트 재생 — GameState.storyQueue 앞에서부터 한 개씩 대사를 넘기며 보여준다.
 // 비트 데이터는 lib/story.ts STORY_BEATS. (재생 여부 플래그는 큐에 넣을 때 이미 켜짐)
 
+import { voiceOf } from '@/lib/voices'
 import { useEffect, useState } from 'react'
 import { useGame } from '@/lib/game-state'
 import { beatById, lineOnRoute, storyLineRoute, type HeroRole } from '@/lib/story'
@@ -81,6 +82,7 @@ export function StoryOverlay() {
       title={cur?.place ? `${beat.title} · ${cur.place}` : beat.title}
       speaker={speaker}
       italic={!speaker}
+      voice={isPlayer ? voiceOf(undefined, { isPlayer: true, playerGender: state.player.appearance.gender === 'female' ? 'female' : 'male' }) : hero ? (hero.gender === 'female' ? 'female' : 'male') : voiceOf(speaker)}
       portrait={
         hasPortrait ? isPlayer ? (
           <span className="flex h-full w-full items-end justify-center overflow-hidden bg-[#1c1822]">

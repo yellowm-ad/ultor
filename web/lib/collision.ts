@@ -21,3 +21,11 @@ export function groundBlocked(map: GameMap, x: number, y: number): boolean {
   if (map.terrain && map.terrain.at(x, y) === 'demon-lava') return true
   return false
 }
+
+/**
+ * 플레이어 길막 여유(셀, 2026-11-10) — 상자 앞 두 면(x1·y1 = 화면 아래쪽)은 거의 딱 붙게, 뒤 두 면(x0·y0)은 조금 넉넉히.
+ * 쿼터뷰에서 앞면은 캐릭터가 그림 앞에 서므로 '발이 길막 선에 닿는 순간'이 부딪히는 순간으로 보여야 한다.
+ * 편집기 길막 보기의 점선(실제로 발이 멈추는 선)도 이 값으로 그린다.
+ */
+export const BLOCK_FRONT_R = 0.06
+export const BLOCK_BACK_R = 0.16

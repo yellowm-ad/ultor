@@ -131,12 +131,14 @@ export function elementMultiplier(attacker: SkillElement, defender: SkillElement
 // ────────────────────────────────────────────────────────────────
 // 스탯 성장(§15) — 8스탯, 속성별 보정 없음. finalStat = round(BASE + GROWTH × (level − 1))
 // ────────────────────────────────────────────────────────────────
+// 2026-11-10 마법 중심 재편 — 마법공격력이 주 스탯(기본 공격도 마력탄), 물리 공격력은 물리 스킬용 사이드 스탯.
+//   속도는 행동 TU 를 줄인다(lib/constants TU · tuSpeedFactor).
 export const BASE_STATS: Stats = {
   maxHp: 60,
-  maxMp: 40,
-  atk: 6,
+  maxMp: 44,
+  atk: 4,
   def: 4,
-  matk: 8,
+  matk: 9,
   mdef: 4,
   spd: 6,
   luck: 3,
@@ -144,13 +146,25 @@ export const BASE_STATS: Stats = {
 
 export const STAT_GROWTH_PER_LEVEL: Stats = {
   maxHp: 14,
-  maxMp: 8,
-  atk: 2.2,
+  maxMp: 8.5,
+  atk: 1.3,
   def: 1.6,
-  matk: 2.6,
+  matk: 2.75,
   mdef: 1.6,
-  spd: 1.2,
+  spd: 1.1,
   luck: 0.8,
+}
+
+/** 몬스터 스탯의 바탕(옛 주인공 성장표) — 주인공 성장을 바꿔도 몬스터가 따라 흔들리지 않게 따로 둔다 */
+const MONSTER_BASE: Stats = { maxHp: 60, maxMp: 40, atk: 6, def: 4, matk: 8, mdef: 4, spd: 6, luck: 3 }
+const MONSTER_GROWTH: Stats = { maxHp: 14, maxMp: 8, atk: 2.2, def: 1.6, matk: 2.6, mdef: 1.6, spd: 1.2, luck: 0.8 }
+export function computeMonsterBase(levelIn: number): Stats {
+  const level = Math.max(1, Math.min(100, levelIn))
+  const out = {} as Stats
+  ;(Object.keys(MONSTER_BASE) as (keyof Stats)[]).forEach((key) => {
+    out[key] = Math.max(1, Math.round(MONSTER_BASE[key] + MONSTER_GROWTH[key] * (level - 1)))
+  })
+  return out
 }
 
 export const MAX_CHARACTER_LEVEL = 100
@@ -181,6 +195,22 @@ export const ATB = {
   SLOW_FACTOR: 0.6,
   DEFEND_GAIN: 20,
 }
+
+// ────────────────────────────────────────────────────────────────
+// TU(행동 시간, 2026-11-10 — 에버테일식) — 행동마다 TU 가 붙고, 그만큼 기다려야 다음 차례가 온다.
+//   · 기다림(틱) = 행동 TU × 속도 배율. 속도 스탯은 TU 를 줄여 준다(충전 속도는 모두 같다).
+//   · 속도 배율 = SPD_K / (SPD_K + 속도) ÷ 기준(속도 0 = 1.0). 속도 60 이면 0.5배, 속도 120 이면 약 0.33배.
+//   · 스킬 TU 는 lib/battle-engine skillTu(위력·광역·후딜·등급으로 정하고, 스킬에 tu 를 적으면 그 값).
+// ────────────────────────────────────────────────────────────────
+export const TU = {
+  ATTACK: 10,
+  DEFEND: 6,
+  ITEM: 8,
+  FLEE: 8,
+  SPD_K: 60,
+}
+/** 속도 → TU 배율(1 = 속도 0) */
+export const tuSpeedFactor = (spd: number) => TU.SPD_K / (TU.SPD_K + Math.max(0, spd))
 
 // ────────────────────────────────────────────────────────────────
 // 4대4 전투 · 포지션(§16~20)

@@ -15,15 +15,16 @@ import { Bar, GameWindow, HeadPill, menuIcon, Ribbon, Slot } from '@/components/
 import { CostumeButton } from '@/components/game/wardrobe'
 import { heroSheet, npcSheet } from '@/lib/costumes'
 
+// 마법공격력이 주 스탯 — 물리 공격력은 물리 스킬용 사이드 스탯이라 맨 아래(2026-11-10)
 const STAT_LABELS: Record<StatKey, string> = {
   maxHp: '최대 HP',
   maxMp: '최대 MP',
-  atk: '공격력',
-  def: '방어력',
   matk: '마법공격력',
   mdef: '마법방어력',
-  spd: '속도',
+  def: '방어력',
+  spd: '속도 (TU 감소)',
   luck: '행운',
+  atk: '물리 공격력 (물리 스킬용)',
 }
 
 const SLOT_LABELS: Record<EquipSlot, string> = { weapon: '무기', armor: '방어구', accessory: '장신구' }
@@ -126,7 +127,7 @@ export function CharacterScreen() {
             <Ribbon>스탯</Ribbon>
             <div className="gw-box grid grid-cols-1 gap-x-6 sm:grid-cols-2">
               {(Object.keys(STAT_LABELS) as StatKey[]).map((key) => (
-                <div key={key} className="char-stat">
+                <div key={key} className="char-stat" style={key === 'atk' ? { opacity: 0.6 } : undefined}>
                   <span>{STAT_LABELS[key]}</span>
                   <b>{effStats[key]}</b>
                 </div>

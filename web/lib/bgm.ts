@@ -18,6 +18,7 @@ import { REGIONS, regionOfMap, type RegionId } from '@/lib/regions'
 import { STORY_ARCS, arcForWeek } from '@/lib/story'
 import { STORY_EPISODES } from '@/lib/story-episodes'
 import type { GameState, MapId } from '@/lib/types'
+import { BeepTrack, beepFor, initBeep, type BeepPick } from '@/lib/bgm-beepbox'
 
 export interface BgmSlot {
   id: string
@@ -181,6 +182,8 @@ export interface BgmSource {
   from: 'override' | 'static'
   /** 파일 이름(표시·내려받기용) */
   name: string
+  /** 빕박스 곡이면 곡 문자열·음량 보정(url 은 'beep:…' 식별자) */
+  beep?: BeepPick
 }
 
 let manifest: Record<string, string> = {}
@@ -222,6 +225,7 @@ export function initBgm(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
   ready ??= (async () => {
     try {
+      void initBeep().then(() => window.dispatchEvent(new CustomEvent(EVENT)))
       const res = await fetch(BGM_MANIFEST, { cache: 'no-cache' })
       if (res.ok) manifest = (await res.json()) as Record<string, string>
     } catch {
@@ -241,12 +245,31 @@ export function initBgm(): Promise<void> {
   return ready
 }
 
-/** 이 칸에 들어 있는 곡 — 직접 넣은 것이 배포 파일보다 먼저 */
+const hashOf = (s: string) => {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+const beepSource = (slotId: string, b: BeepPick): BgmSource => ({ url: `beep:${slotId}:${hashOf(b.song)}`, from: b.from, name: b.from === 'override' ? '빕박스(고친 곡)' : '빕박스', beep: b })
+
+/** 이 칸에 들어 있는 곡 — 직접 넣은 음원 > 이 브라우저에서 고친 빕박스 곡 > 배포 음원 > 배포 빕박스 곡 */
 export function bgmSource(slotId: string): BgmSource | null {
   const o = overrides.get(slotId)
   if (o) return { url: o.url, from: 'override', name: o.name }
+  const be = beepFor(slotId, 'override')
+  if (be) return beepSource(slotId, be)
   const f = manifest[slotId]
-  return f ? { url: BGM_DIR + encodeURIComponent(f), from: 'static', name: f } : null
+  if (f) return { url: BGM_DIR + encodeURIComponent(f), from: 'static', name: f }
+  const bs = beepFor(slotId, 'static')
+  return bs ? beepSource(slotId, bs) : null
+}
+
+/** 곡을 트는 요소 — 음원은 <audio>, 빕박스 곡은 게임 안 신디 */
+export function bgmElement(src: BgmSource, once: boolean): HTMLAudioElement | BeepTrack {
+  if (src.beep) return new BeepTrack(src.beep.song, src.beep.gain, once)
+  const el = new Audio(src.url)
+  el.loop = !once
+  return el
 }
 
 /** 후보 칸들 중 곡이 들어 있는 첫 칸 */
@@ -293,9 +316,14 @@ export function playBgmJingle(slotId: string, volume01: number) {
   void initBgm().then(() => {
     const src = bgmSource(slotId)
     if (!src) return
-    const el = new Audio(src.url)
+    const el = bgmElement(src, true)
     el.volume = Math.min(1, volume01)
     el.play().catch(() => {})
+    if (el instanceof BeepTrack) {
+      // 다 울리면 신디를 닫는다
+      const done = () => (el.ended ? setTimeout(() => el.dispose(), 1500) : setTimeout(done, 500))
+      setTimeout(done, 500)
+    }
   })
 }
 

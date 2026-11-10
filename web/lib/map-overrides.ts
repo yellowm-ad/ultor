@@ -32,6 +32,8 @@ export interface MapOverride {
   size?: Record<string, number>
   /** 프롭 id → 직접 정한 길막(off = 길막 없음) */
   collide?: Record<string, CollideEdit>
+  /** 꺼 둔 '주인 없는' 길막(벽·지형 상자) — blockKey 목록 */
+  blockOff?: string[]
 }
 export interface CollideEdit {
   w: number
@@ -108,6 +110,9 @@ export function effectiveOverrides(): MapOverrides {
 const sameBox = (a: { x0: number; y0: number; x1: number; y1: number }, b: { x0: number; y0: number; x1: number; y1: number }) =>
   Math.abs(a.x0 - b.x0) < 1e-6 && Math.abs(a.y0 - b.y0) < 1e-6 && Math.abs(a.x1 - b.x1) < 1e-6 && Math.abs(a.y1 - b.y1) < 1e-6
 
+/** 길막 상자 하나를 가리키는 이름(소수 3자리) — 주인 없는 길막 끄기에 쓴다 */
+export const blockKey = (b: { x0: number; y0: number; x1: number; y1: number }) => [b.x0, b.y0, b.x1, b.y1].map((v) => v.toFixed(3)).join(',')
+
 const tileFnCache = new Map<string, { sig: string; tileAt?: (x: number, y: number) => TileKind; terrain?: GameMap['terrain'] }>()
 const tileKey = (x: number, y: number) => `${Math.floor(x)},${Math.floor(y)}`
 export const wallKey = (groupId: string, partIndex: number) => `${groupId}#${partIndex}`
@@ -117,6 +122,8 @@ function resizeAndCollide(p: PropDef, k: number | undefined, c: CollideEdit | un
   let q = p
   if (k != null && k !== 1 && p.px) {
     q = { ...q, px: { w: p.px.w * k, h: p.px.h * k }, ...(p.anchor ? { anchor: { x: p.anchor.x * k, y: p.anchor.y * k } } : {}) }
+    // 맵이 붙여 준 길막(collideBox)도 그림과 같이 커지고 작아진다
+    if (p.collideBox) q.collideBox = { w: p.collideBox.w * k, d: p.collideBox.d * k, ox: p.collideBox.ox * k, oy: p.collideBox.oy * k }
   }
   if (c) q = c.off ? { ...q, collideOff: true, collideBox: undefined } : { ...q, solid: true, collideOff: false, collideBox: { w: c.w, d: c.d, ox: c.ox, oy: c.oy } }
   return q
@@ -154,6 +161,8 @@ function applyMap(id: string) {
         q.mirrorX = false
         if (q.facing === 'left') q.facing = undefined
       } else q.mirrorX = true
+      // 맵이 붙여 준 길막도 같이 뒤집는다(화면 좌우 반전 = 셀 x·y 축 맞바꿈)
+      if (q.collideBox) q.collideBox = { w: q.collideBox.d, d: q.collideBox.w, ox: q.collideBox.oy, oy: q.collideBox.ox }
     }
     props.push(resizeAndCollide(q, sizeOv[p.id], collideOv[p.id]))
   }
@@ -172,7 +181,9 @@ function applyMap(id: string) {
       const box = propBlocker(p)
       if (box) blockers.push(box)
     }
-  const next: GameMap = { ...orig, props, blockers }
+  // 관리자가 끈 주인 없는 길막
+  const off = ov.blockOff?.length ? new Set(ov.blockOff) : null
+  const next: GameMap = { ...orig, props, blockers: off ? blockers.filter((b) => !off.has(blockKey(b))) : blockers }
   // 바닥 타일 — 칠한 칸만 바꾸고 나머지는 원래 함수(낚시·채집·물/용암 판정도 같이 따라간다)
   const tiles = ov.tiles
   if (tiles && Object.keys(tiles).length) {
@@ -261,6 +272,7 @@ function full(base: MapOverride): FullOverride {
     walls: { ...(base.walls ?? {}) },
     size: { ...(base.size ?? {}) },
     collide: { ...(base.collide ?? {}) },
+    blockOff: [...(base.blockOff ?? [])],
   }
 }
 
@@ -373,6 +385,21 @@ export function propCollideNow(mapId: string, propId: string): CollideEdit & { c
   return { w: b.x1 - b.x0, d: b.y1 - b.y0, ox: (b.x0 + b.x1) / 2 - p.cell.x, oy: (b.y0 + b.y1) / 2 - p.cell.y, custom: false }
 }
 
+/** 주인 없는 길막(벽·지형 상자) 끄기/켜기 */
+export function setBlockOff(mapId: string, key: string, off: boolean) {
+  edit(mapId, (o) => {
+    o.blockOff = o.blockOff.filter((k) => k !== key)
+    if (off) o.blockOff.push(key)
+  })
+}
+/** 이 맵에서 꺼 둔 주인 없는 길막 상자들(원래 맵 기준) */
+export function offBlockers(mapId: string): { x0: number; y0: number; x1: number; y1: number }[] {
+  const keys = effectiveOverrides()[mapId]?.blockOff
+  if (!keys?.length) return []
+  const set = new Set(keys)
+  return (originalMap(mapId)?.blockers ?? []).filter((b) => set.has(blockKey(b)))
+}
+
 /** 바닥 칠하기 — kind null 이면 원래 바닥으로 */
 export function paintTiles(mapId: string, cells: Iterable<string>, kind: TileKind | null) {
   const map = MAP_TABLE[mapId]
@@ -421,6 +448,9 @@ export function resetMapToOriginal(mapId: string) {
     o.flip = {}
     o.tiles = {}
     o.walls = {}
+    o.size = {}
+    o.collide = {}
+    o.blockOff = []
   })
 }
 
@@ -431,7 +461,10 @@ const countOf = (o: MapOverride | undefined) =>
       (o.added ?? []).length +
       Object.keys(o.flip ?? {}).length +
       Object.keys(o.tiles ?? {}).length +
-      Object.keys(o.walls ?? {}).length
+      Object.keys(o.walls ?? {}).length +
+      Object.keys(o.size ?? {}).length +
+      Object.keys(o.collide ?? {}).length +
+      (o.blockOff ?? []).length
     : 0
 
 /** 배포용 파일 내용 — 배포본 + 이 브라우저 기록을 합친 것(빈 맵·빈 칸은 뺀다) */
@@ -447,6 +480,10 @@ export function exportMapOverrides(): string {
     if (Object.keys(o.flip ?? {}).length) c.flip = o.flip
     if (Object.keys(o.tiles ?? {}).length) c.tiles = o.tiles
     if (Object.keys(o.walls ?? {}).length) c.walls = o.walls
+    // 크기·길막 편집도 파일에 담는다(예전엔 빠져서 배포하면 사라졌다)
+    if (Object.keys(o.size ?? {}).length) c.size = o.size
+    if (Object.keys(o.collide ?? {}).length) c.collide = o.collide
+    if ((o.blockOff ?? []).length) c.blockOff = o.blockOff
     clean[id] = c
   }
   return JSON.stringify(clean, null, 2)

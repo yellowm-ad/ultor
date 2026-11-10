@@ -6,7 +6,7 @@ import { CACHE_NEAR, cachesForMap, isCacheOpened } from '@/lib/hidden-caches'
 import { Fragment, useMemo, useState, useEffect, useRef, type Dispatch } from 'react'
 import type { Action } from '@/lib/game-state'
 import type { GameMap, GameState } from '@/lib/types'
-import { MAPS } from '@/lib/maps'
+import { MAPS, propBlocker } from '@/lib/maps'
 import { NPCS, MONSTERS, npcShown } from '@/lib/mock-data'
 import { npcWanderState } from '@/lib/field'
 import { monsterView } from '@/lib/monster-charge'
@@ -162,7 +162,7 @@ export function IsoWorld({
 
   // 정적 오브젝트(건물·나무·NPC·포탈) — 깊이정렬 목록
   const staticEntities = useMemo(() => {
-    const list: { sortY: number; node: React.ReactNode; at?: { sx: number; sy: number; reach: number } }[] = []
+    const list: { sortY: number; node: React.ReactNode; at?: { sx: number; sy: number; reach: number }; box?: { x0: number; y0: number; x1: number; y1: number } | null }[] = []
 
     let backdropOrder = 0
     for (const p of map.props ?? []) {
@@ -172,6 +172,8 @@ export function IsoWorld({
       list.push({
         // 화면 밖 소품은 그리지 않는다(아래 visibleStatic) — 자리와 그림 크기
         at: { sx: s.sx, sy: s.sy - (p.elev ?? 0), reach: Math.max(p.px?.w ?? 96, p.px?.h ?? 96) },
+        // 길막 상자 — 플레이어와 앞뒤를 정확히 가린다(아래 exactStatic)
+        box: p.backdrop ? null : propBlocker(p),
         // backdrop(방 뒤쪽 벽·문) = 선언 순서대로 맨 뒤 레이어 — 긴 벽 조각이 앞의 플레이어를 덮지 않게
         sortY: p.backdrop ? -1e6 + (p.backOrder ?? backdropOrder++) : p.cell.x + p.cell.y + half,
         node: (
@@ -190,7 +192,7 @@ export function IsoWorld({
                     const svg = e.currentTarget.ownerSVGElement
                     const c = clientToCell(e.clientX, e.clientY, svg)
                     if (!c) return
-                    setMapEditor({ selected: p.id, placing: null })
+                    setMapEditor({ selected: p.id, placing: null, block: null })
                     beginDrag(e, { kind: 'prop', id: p.id, grab: { x: c.x - p.cell.x, y: c.y - p.cell.y } }, {
                       svg,
                       onEnd: (d) => {
@@ -745,7 +747,24 @@ export function IsoWorld({
 
   // 흑룡 강림(lib/black-dragon) — 앞발 자리 기준으로 깊이 정렬
   const dragonEntities = dragonOnMap(state) ? [{ sortY: DRAGON_ANCHOR.x + DRAGON_ANCHOR.y, node: <ColossusField key="black-dragon" /> }] : []
-  const allEntities = [...spotEntities, ...visibleStatic, ...gatherEntities, ...farmEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities, ...dragonEntities].sort((a, b) => a.sortY - b.sortY)
+  // 길막 있는 소품의 앞뒤(2026-11-10) — 소품 깊이는 발밑 셀 하나(cell 합)로 정렬해서, 넓은 소품(의자·가판대)의
+  // 앞면 앞에 서 있어도 캐릭터가 소품 뒤로 숨던 문제가 있었다(그래서 길막을 일부러 위로 올려 맞춰야 했다).
+  // 플레이어 근처 소품만 상자로 정확히 판정: 앞 두 면(x1·y1) 앞이면 소품을 먼저, 뒤 두 면(x0·y0) 뒤면 소품을 나중에 그린다.
+  const ppx = state.position.x
+  const ppy = state.position.y
+  const exactStatic =
+    onStair.stair && !onStair.stair.flat
+      ? visibleStatic
+      : visibleStatic.map((e) => {
+          const b = e.box
+          if (!b || ppx < b.x0 - 3 || ppx > b.x1 + 3 || ppy < b.y0 - 3 || ppy > b.y1 + 3) return e
+          const inFrontOfIt = ppx >= b.x1 - 0.02 || ppy >= b.y1 - 0.02
+          const behindIt = ppx <= b.x0 + 0.02 || ppy <= b.y0 + 0.02
+          if (inFrontOfIt && !behindIt && e.sortY > playerSortY) return { ...e, sortY: playerSortY - 1e-4 }
+          if (behindIt && !inFrontOfIt && e.sortY <= playerSortY) return { ...e, sortY: playerSortY + 1e-4 }
+          return e
+        })
+  const allEntities = [...spotEntities, ...exactStatic, ...gatherEntities, ...farmEntities, ...monsterEntities, ...npcEntities, ...rosterEntities, ...rivalEntities, ...furnitureEntities, ...classEntities, ...dragonEntities].sort((a, b) => a.sortY - b.sortY)
   // 맨 뒤 레이어(바닥 러그·뒤쪽 벽) / 그 위에 길찾기 안내선 / 깊이정렬되는 나머지
   const backLayer = allEntities.filter((e) => e.sortY < -1e5).map((e) => e.node)
   // 플레이어 앞뒤를 한 목록으로 — 따로 두면 플레이어가 소품을 지나칠 때마다 그 소품이 통째로 새로 만들어진다
